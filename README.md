@@ -15,3 +15,9 @@ There are two ways of installation: automatic via docker(easy) or manual(harder)
   
   
     pip3 install -r requirements.txt
+
+Support
+-------
+We offer a great support for everyone.
+For now we have a telegram group:
+https://t.me/bitcartcc
