@@ -1,0 +1,159 @@
+{% extends 'gui/base.html' %}
+{% load static %}
+
+{% block navigation %}
+<nav class="navbar navbar-expand-lg navbar-light fixed-top" id="mainNav">
+{% endblock navigation %}
+
+{% block content %}
+<header class="masthead">
+    <div class="header-content">
+        <div class="header-content-inner text-white">
+            <h1>Welcome to Electrum thingy!</h1>
+            <hr>
+            <p>Electrum thingy is a free and open source server for merchants wanting to accept Bitcoin for their business.</p>
+            <a style="background-color: #fff;color: #222;display:inline-block;text-align: center;white-space: nowrap;vertical-align: middle;user-select: none;line-height: 1.25;font-size: 1rem;text-decoration:none;font-weight: 700;    text-transform: uppercase;border: none;border-radius: 300px;padding: 15px 30px;" href="https://docs.btcpayserver.org/">Getting started</a>
+        </div>
+    </div>
+</header>
+
+<section id="services">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-12 text-center">
+                <h2 class="section-heading">A Payment Server for Bitcoin</h2>
+                <hr class="primary">
+            </div>
+        </div>
+    </div>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-4 col-md-6 text-center">
+                <div class="service-box">
+                    <img src="{% static "gui/img/lock-logo.png" %}">
+                    <h3 class="text-dark">Secure</h3>
+                    <p class="text-muted">The payment server does not need to know your private keys, so your money can't be stolen.</p>
+                </div>
+            </div>
+            <div class="col-lg-4 col-md-6 text-center">
+                <div class="service-box">
+                    <img src="{% static "gui/img/qr-logo.png" %}">
+                    <h3 class="text-dark">Easy</h3>
+                    <p class="text-muted">A user-friendly Bitcoin checkout page for your customers.</p>
+                </div>
+            </div>
+            <div class="col-lg-4 col-md-6 text-center">
+                <div class="service-box">
+                    <img src="{% static "gui/img/money-logo.png" %}">
+                    <h3 class="text-dark">Visibility</h3>
+                    <p class="text-muted">Manage, generate reports, and search for your invoices easily.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+
+
+<div class="call-to-action bg-dark text-white">
+    <div class="container text-center">
+        <h2>Video tutorials</h2>
+        <div class="row">
+            <div class="col-md-2 text-center">
+            </div>
+            <div class="col-md-8 text-center">
+                <a href="https://www.youtube.com/channel/UCpG9WL6TJuoNfFVkaDMp9ug" target="_blank">
+                    <img src="{% static "gui/img/youtube.png" %}" class="img-fluid">
+                </a>
+            </div>
+            <div class="col-md-2 text-center">
+            </div>
+        </div>
+    </div>
+</div>
+
+<section>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 mx-auto text-center">
+                <h2 class="section-heading">Special thanks</h2>
+                <hr class="primary">
+                <p>Thanks to those who gave me some time to work on this project, or helped me.</p>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-lg-4 mr-auto text-center">
+                <a href="https://www.dglab.com/en/">
+                    <img src="{% static "gui/img/dglab.gif" %}" height="100">
+                </a>
+                <p>
+                    <a href="https://www.dglab.com/en/">DG Lab</a>
+                </p>
+            </div>
+            <div class="col-lg-4 ml-auto text-center">
+                <a href="https://metaco.com/">
+                    <img src="{% static "gui/img/metaco.jpg" %}" height="100">
+                </a>
+                <p><a href="https://metaco.com/">Metaco</a></p>
+            </div>
+            <div class="col-lg-4 mr-auto text-center">
+                <a href="https://ibukingdom.themedia.jp/">
+                    <img src="{% static "gui/img/ibuki.png" %}" height="100">
+                </a>
+                <p>
+                    <a href="https://ibukingdom.themedia.jp/">Designer</a>
+                </p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<div class="call-to-action bg-dark text-white">
+    <div class="container text-center">
+        <h2>Donate</h2>
+        <p>Donation to this address will be reinvested into the development of this tool</p>
+        <p><img src="{% static "gui/img/donation.jpg" %}"></p>
+        <p>3BpfdkF93GwFRWdrAN3SNsRAsi6d158YQi</p>
+    </div>
+</div>
+
+<section id="contact">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 mx-auto text-center">
+                <h2 class="section-heading">Let's Get In Touch!</h2>
+                <hr class="primary">
+                <p>
+                    An open source project is nothing without its community<br>
+                    Come and get in touch with us!
+                </p>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-lg-4 ml-auto text-center">
+                <a href="http://slack.forkbitpay.ninja/">
+                    <img src="{% static "gui/img/slack.png" %}" height="100">
+                </a>
+                <p><a href="http://slack.forkbitpay.ninja/">On Slack</a></p>
+            </div>
+            <div class="col-lg-4 mr-auto text-center">
+                <a href="https://twitter.com/BtcpayServer">
+                    <img src="{% static "gui/img/twitter.png" %}" height="100">
+                </a>
+                <p>
+                    <a href="https://twitter.com/BtcpayServer">On Twitter</a>
+                </p>
+            </div>
+            <div class="col-lg-4 mr-auto text-center">
+                <a href="https://github.com/btcpayserver/btcpayserver">
+                    <img src="{% static "gui/img/github.png" %}" height="100">
+                </a>
+                <p>
+                    <a href="https://github.com/btcpayserver/btcpayserver">On Github</a>
+                </p>
+            </div>
+        </div>
+    </div>
+</section>
+
+{% endblock content%}

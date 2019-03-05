@@ -1,0 +1,60 @@
+{% load static %}
+<html lang="en"><head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="description" content="">
+    <meta name="author" content="">
+
+    <title>Electrum thingy</title>
+    {% block head %}
+    {% endblock head %}
+    <link rel="icon" type="image/png" href="{% static "gui/favicon.ico" %}" />
+    <link href="{% static "gui/css/bootstrap.css" %}" rel="stylesheet">
+    <link href="{% static "gui/css/creative.css" %}" rel="stylesheet">
+
+    <link href="{% static "gui/css/main-bundle.css" %}" rel="stylesheet">
+
+
+    <script src="{% static "gui/js/main-bundle.js" %}" type="text/javascript"></script>
+    
+</head>
+
+<body id="page-top">
+
+
+    <!-- Navigation -->
+    {% block navigation %}
+    <nav class="navbar navbar-expand-lg navbar-light fixed-top navbar-shrink always-shrinked" id="mainNav">
+    {% endblock navigation%}
+        <div class="container">
+            <a class="navbar-brand js-scroll-trigger" href="{% url 'main' %}">
+                <img src="{% static "gui/img/logo.png" %}" height="45">
+            </a>
+            <button class="navbar-toggler navbar-toggler-right" type="button" data-toggle="collapse" data-target="#navbarResponsive" aria-controls="navbarResponsive" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarResponsive">
+                <ul class="navbar-nav ml-auto">
+                        {% if user.is_authenticated %}
+                        <li class="nav-item"><a class="nav-link js-scroll-trigger" href="{% url 'stores' %}">Stores</a></li>
+                        <li class="nav-item"><a class="nav-link js-scroll-trigger" href="{% url 'apps' %}">Apps</a></li>
+                        <li class="nav-item"><a class="nav-link js-scroll-trigger" href="{% url 'wallets' %}">Wallets</a></li>
+                        <li class="nav-item"><a class="nav-link js-scroll-trigger" href="{% url 'products' %}">Products</a></li>
+                        <li class="nav-item">
+                        <a title="Manage" class="nav-link js-scroll-trigger" href="{% url 'account_settings' %}">My settings</a>
+                        </li>
+                        <li class="nav-item">
+                        <a title="Manage" class="nav-link js-scroll-trigger" href="{% url 'logout' %}">Log out</a>
+                        </li>
+                        {% else %}
+                        <li class="nav-item"><a class="nav-link js-scroll-trigger" href="{% url 'register' %}">Register</a></li>
+                        <li class="nav-item"><a class="nav-link js-scroll-trigger" href="{% url 'login' %}">Log in</a></li>
+                        {% endif %}
+                </ul>
+            </div>
+        </div>
+    </nav>
+{% block content %}
+{% endblock content %}
+</body></html>

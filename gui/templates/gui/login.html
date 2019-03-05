@@ -1,0 +1,52 @@
+{% extends 'gui/base.html' %}
+
+{% block content %}
+<section>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-12 text-center">
+                <h2 class="section-heading">Log in</h2>
+                <hr class="primary">
+            </div>
+            <div class="col-md-4">
+                <form method="post" action="/account/login/">
+                    {% csrf_token %}
+                    {% if error%}
+                        <span class="text-danger field-validation-valid" data-valmsg-for="id_email" data-valmsg-replace="true">Invalid username or password</span>
+                    {% endif %}
+                    <div class="form-group">
+                        <label for="id_username">Username</label>
+                        {{form.username}}
+                        <span class="text-danger field-validation-valid" data-valmsg-for="id_username" data-valmsg-replace="true">{{form.username.errors}}</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="id_password">Password</label>
+                        {{form.password}}
+                        <span class="text-danger field-validation-valid" data-valmsg-for="id_password" data-valmsg-replace="true">{{form.password.errors}}</span>
+                    </div>
+                    <div class="form-group">
+                        <div class="checkbox">
+                            <label for="remember_me">
+                                <input type="checkbox" data-val="true" data-val-required="The Remember me? field is required." id="remember_me" name="remember_me" value="true">
+                                Remember me?
+                            </label>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <button type="submit" class="btn btn-primary">Log in</button>
+                    </div>
+                    <div class="form-group">
+                        <p>
+                            <a href="https://mainnet.demo.btcpayserver.org/Account/ForgotPassword">Forgot your password?</a>
+                        </p>
+                        <p>
+                            <a href="{% url 'register' %}">Register as a new user?</a>
+                        </p>
+                    </div>
+                    <input type="hidden"  id="redirect_to" name="redirect_to" value="{{redirect_to}}">
+                </form>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock content %}

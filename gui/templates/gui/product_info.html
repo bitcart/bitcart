@@ -1,0 +1,259 @@
+{% extends 'gui/base.html' %}
+{% load thumbnail %}
+{% load embed_video_tags %}
+
+{% block head %}
+<meta name="robots" content="noindex,nofollow">
+{% endblock head %}
+    
+{% block content %}
+<style type="text/css">
+    .linethrough {
+        text-decoration: line-through;
+    }
+
+    .smMaxWidth {
+        max-width: 200px;
+    }
+
+    @media (min-width: 768px) {
+        .smMaxWidth {
+            max-width: 400px;
+        }
+    }
+
+    .firstCol {
+        width: 140px;
+    }
+</style>
+
+<section>
+    <div class="container">
+
+        <div class="row">
+            <div class="col-lg-12 text-center">
+                
+
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-lg-12 text-center">
+                <h2 class="section-heading">Product {{product.id}}</h2>
+                <hr class="primary">
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-lg-12 text-center">
+                {% if product.image %}
+                {% thumbnail product.image "200x200" as im %}
+                <img src="{{ im.url }}" width="{{ im.width }}" height="{{ im.height }}">
+                {% endthumbnail %}
+                <hr class="primary">
+                {% endif %}
+
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-lg-12 text-center">
+                {% if product.video %}
+                {% video product.video medium %}
+                <hr class="primary">
+                {% endif %}
+            </div>
+        </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <h3>Information</h3>
+            <table class="table table-sm table-responsive-md">
+                <tbody><tr>
+                    <th>Store</th>
+                    <td><a href="https://mainnet.demo.btcpayserver.org/stores/84SohXDMnyWLoqRcn3JzmKnRZfup5gJy6b2CpX7qYghb">test1</a></td>
+                </tr>
+                <tr>
+                    <th>Id</th>
+                    <td>{{product.id}}</td>
+                </tr>
+                <tr>
+                    <th>State</th>
+                    <td>{{product.status}}</td>
+                </tr>
+                <tr>
+                    <th>Created date</th>
+                    <td>{{product.date}}</td>
+                </tr>
+                <tr>
+                    <th>Expiration date</th>
+                    <td><span class="localizeDate">19.02.2019 21:55:33</span></td>
+                </tr>
+                <tr>
+                    <th>Monitoring date</th>
+                    <td><span class="localizeDate">19.02.2019 22:55:33</span></td>
+                </tr>
+                <tr>
+                    <th>Transaction speed</th>
+                    <td>medium</td>
+                </tr>
+                <tr>
+                    <th>Refund email</th>
+                    <td><a href="mailto:"></a></td>
+                </tr>
+                <tr>
+                    <th>Order Id</th>
+                    <td>{{product.order_id}}</td>
+                </tr>
+                <tr>
+                    <th>Total fiat due</th>
+                    <td>${{product.amount}} (USD)</td>
+                </tr>
+                <tr>
+                    <th>Notification Email</th>
+                    <td></td>
+                </tr>
+                <tr>
+                    <th>Notification Url</th>
+                    <td></td>
+                </tr>
+                <tr>
+                    <th>Redirect Url</th>
+                    <td><a></a></td>
+                </tr>
+            </tbody></table>
+        </div>
+
+        <div class="col-md-6">
+            <h3>Buyer information</h3>
+            <table class="table table-sm table-responsive-md">
+                <tbody><tr>
+                    <th>Name</th>
+                    <td></td>
+                </tr>
+                <tr>
+                    <th>Email</th>
+                    <td><a href="mailto:"></a></td>
+                </tr>
+                <tr>
+                    <th>Phone</th>
+                    <td></td>
+                </tr>
+                <tr>
+                    <th>Address 1</th>
+                    <td></td>
+                </tr>
+                <tr>
+                    <th>Address 2</th>
+                    <td></td>
+                </tr>
+                <tr>
+                    <th>City</th>
+                    <td></td>
+                </tr>
+                <tr>
+                    <th>State</th>
+                    <td></td>
+                </tr>
+                <tr>
+                    <th>Country</th>
+                    <td></td>
+                </tr>
+                <tr>
+                    <th>Zip</th>
+                    <td></td>
+                </tr>
+            </tbody></table>
+                <h3>Product information</h3>
+                <table class="table table-sm table-responsive-md">
+                    <tbody><tr>
+                        <th>Item code</th>
+                        <td>{{product.id}}</td>
+                    </tr>
+                    <tr>
+                        <th>Item Description</th>
+                        <td>{{product.description}}</td>
+                    </tr>
+                    <tr>
+                        <th>Price</th>
+                        <td>${{product.amount}} (USD)</td>
+                    </tr>
+                    <tr>
+                        <th>Tax included</th>
+                        <td>$0.00 (USD)</td>
+                    </tr>
+                </tbody></table>
+        </div>
+    </div>
+
+
+    <div class="row">
+            <div class="col-md-12">
+                <h3>Paid summary</h3>
+                <table class="table table-sm table-responsive-md">
+                    <thead class="thead-inverse">
+                        <tr>
+                            <th>Payment method</th>
+                            <th>Address</th>
+                            <th class="text-right">Rate</th>
+                            <th class="text-right">Paid</th>
+                            <th class="text-right">Due</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                            <tr>
+                                <td>BTC (On-Chain)</td>
+                                <td>bc1qsy0uldssglpxm9dvnhcmmqvx9a3w88axsvly9j</td>
+                                <td class="text-right">$3,944.74 (USD)</td>
+                                <td class="text-right">0.00000000 BTC</td>
+                                <td class="text-right">0.01673116 BTC</td>
+                            </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-12">
+                <h3>Events</h3>
+                <table class="table table-sm table-responsive-md">
+                    <thead class="thead-inverse">
+                        <tr>
+                            <th>Date</th>
+                            <th>Message</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                            <tr>
+                                <td><span class="localizeDate">19.02.2019 21:40:33</span></td>
+                                <td>Creation of invoice starting</td>
+                            </tr>
+                            <tr>
+                                <td><span class="localizeDate">19.02.2019 21:40:33</span></td>
+                                <td>BTC_USD: The rating rule is coinaverage(BTC_USD)</td>
+                            </tr>
+                            <tr>
+                                <td><span class="localizeDate">19.02.2019 21:40:33</span></td>
+                                <td>BTC_USD: The evaluated rating rule is 3944.73767079121</td>
+                            </tr>
+                            <tr>
+                                <td><span class="localizeDate">19.02.2019 21:40:34</span></td>
+                                <td>Invoice 5ojFugLykivcBNEXwqhQus new event: invoice_created (1001)</td>
+                            </tr>
+                            <tr>
+                                <td><span class="localizeDate">19.02.2019 21:55:33</span></td>
+                                <td>Invoice status is expired</td>
+                            </tr>
+                            <tr>
+                                <td><span class="localizeDate">19.02.2019 21:55:33</span></td>
+                                <td>Invoice 5ojFugLykivcBNEXwqhQus new event: invoice_expired (1004)</td>
+                            </tr>
+                            <tr>
+                                <td><span class="localizeDate">19.02.2019 22:55:33</span></td>
+                                <td>Invoice 5ojFugLykivcBNEXwqhQus is not monitored anymore.</td>
+                            </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock content %}

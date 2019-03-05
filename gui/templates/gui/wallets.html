@@ -1,0 +1,48 @@
+{% extends 'gui/base.html' %}
+
+{% block content %}
+<section>
+    <div class="container">
+
+        <div class="row">
+            <div class="col-lg-12 text-center">
+                
+
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-lg-12 text-center">
+                <h2 class="section-heading">Wallets</h2>
+                <hr class="primary">
+                <p>Create and manage wallets.</p>
+            </div>
+        </div>
+
+        <div class="row">
+            <table class="table table-sm table-responsive-md">
+                <thead>
+                    <tr>
+                        <th>Store Name</th>
+                        <th>Crypto Code</th>
+                        <th>Balance</th>
+                        <th style="text-align:right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for i in stores%}
+                    <tr>
+                            <td><a href="{% url 'store_settings' store=i.id %}">{{i.name}}</a></td>
+                        <td>BTC</td>
+                        <td>{{i.balance}} BTC</td>
+                        <td style="text-align:right">
+                            <a href="{% url 'wallet_history' wallet=i.id%}">Manage</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+{% endblock content %}

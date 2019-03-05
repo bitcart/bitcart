@@ -1,0 +1,56 @@
+{% extends 'gui/base.html' %}
+{% load static %}
+
+{% block head %}
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
+{% endblock head %}
+
+{% block content %}
+<section>
+    <div class="container">
+
+        <div class="row">
+            <div class="col-lg-12 text-center">
+                
+
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-lg-12 text-center">
+                <h2 class="section-heading">Stores</h2>
+                <hr class="primary">
+                <p>Create and manage store settings.</p>
+                
+            </div>
+        </div>
+
+        <div class="row">
+            <a class="btn btn-primary" role="button" href="{% url 'create_store' %}"><span class="fa fa-plus"></span> Create a new store</a>
+            <table class="table table-sm table-responsive-md">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Website</th>
+                        <th style="text-align:right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                        {% for obj in t %}
+                        <tr>
+                            <td>{{obj.name}}</td>
+                            <td>{{obj.website}}</td>
+                            <td style="text-align:right">
+                                <a href="{% url 'products' %}?search_term=storeid:{{obj.id}}">Products</a><span> - </span>
+                                    <a href="{% url 'store_settings' store=obj.id%}">Settings</a><span> - </span>
+                                <a href="{% url 'delete_store' store=obj.id %}">Remove</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+</section>
+{% endblock content %}

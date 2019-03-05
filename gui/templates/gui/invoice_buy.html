@@ -1,0 +1,169 @@
+{% load static %}
+<html><head>
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="robots" content="noindex,nofollow">
+    <title>Bitcart Product</title>
+
+    <link href="{% static "gui/css/checkout-bundle.css" %}" rel="stylesheet">
+
+    <script src="https://use.fontawesome.com/d3677cf65c.js"></script>
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.2/css/all.css" integrity="sha384-fnmOCqbTlWIlj8LyTjo7mOUStjsKC4pOpQbqyi7RrhN7udi9RwhKkMHpvLbHG9Sr" crossorigin="anonymous">
+    <script type="text/javascript">
+        var srvModel = JSON.parse('{{ dumped_j|safe }}');
+    </script>
+
+    <script src="{% static "gui/js/checkout-bundle.js" %}" type="text/javascript"></script>
+
+    <script>vex.defaultOptions.className = 'vex-theme-btcpay'</script>
+
+
+        <style type="text/css">
+            body {
+                background: rgba(55, 58, 60, 0.4);
+            }
+
+            .close-icon {
+                display: flex;
+            }
+        </style>
+</head>
+<body>
+    <noscript>
+        <center style="padding: 2em">
+            <h2>Javascript is currently disabled in your browser.</h2>
+            <h5>Please enable Javascript and refresh this page for the best experience.</h5>
+
+            <p>Alternatively, click below to continue to our HTML-only invoice.</p>
+
+            <form action="/invoice-noscript" method="GET">
+                <button style="text-decoration: underline; color: blue">Continue to javascript-disabled invoice &gt;</button>
+            </form>
+        </center>
+    </noscript>
+
+    <!--[if lte IE 8]>
+    <center style="padding: 2em">
+      <form action="/invoice-noscript" method="GET">
+        <button style="text-decoration: underline; color: blue">Continue to legacy browser compatible invoice page
+        </button>
+      </form>
+    </center>
+    <![endif]-->
+
+    <invoice style="">
+        <div id="checkoutCtrl" class="no-bounce"><div class="modal page"><div role="document" class="modal-dialog open opened enter-purchaser-email"><div class="modal-content long"><div class="content"><div class="invoice"><div class="top-header"><div class="header"><div class="header__icon"><img src="{% static "gui/img/logo-white.png" %}" class="header__icon__img" height="40"></div> <div class="close-icon close-action">
+            ✖
+        </div></div> <div class="timer-row"><div class="timer-row__progress-bar" style="width: 58%;"></div> <div class="timer-row__spinner"><bp-spinner><svg xml:space="preserve" version="1.1" viewBox="0 0 50 50" x="0px" xmlns="http://www.w3.org/2000/svg" y="0px"><path d="M11.1,29.6c-0.5-1.5-0.8-3-0.8-4.6c0-8.1,6.6-14.7,14.7-14.7S39.7,16.9,39.7,25c0,1.6-0.3,3.2-0.8,4.6l6.1,2c0.7-2.1,1.1-4.3,1.1-6.6c0-11.7-9.5-21.2-21.2-21.2S3.8,13.3,3.8,25c0,2.3,0.4,4.5,1.1,6.6L11.1,29.6z"></path></svg></bp-spinner></div> <div class="timer-row__message"><span>
+                Awaiting Payment...
+            </span></div> <div class="timer-row__time-left">{{obj_j.timeLeft}}</div></div></div> <div class="order-details"><div class="currency-selection"><div class="single-item-order__left"><div style="font-weight: 600;">
+                Pay with
+            </div></div> <div class="single-item-order__right"><div class="payment__currencies"><img src="{% static "gui/img/bitcoin.svg" %}"> <span>Bitcoin (BTC)</span> <span style="display: none;">⚡</span></div> <div class="payment__spinner" style="display: none;"><bp-spinner><svg xml:space="preserve" version="1.1" viewBox="0 0 50 50" x="0px" xmlns="http://www.w3.org/2000/svg" y="0px"><path d="M11.1,29.6c-0.5-1.5-0.8-3-0.8-4.6c0-8.1,6.6-14.7,14.7-14.7S39.7,16.9,39.7,25c0,1.6-0.3,3.2-0.8,4.6l6.1,2c0.7-2.1,1.1-4.3,1.1-6.6c0-11.7-9.5-21.2-21.2-21.2S3.8,13.3,3.8,25c0,2.3,0.4,4.5,1.1,6.6L11.1,29.6z"></path></svg></bp-spinner></div></div></div> <div class="single-item-order buyerTotalLine"><div class="single-item-order__left"><div class="single-item-order__left__name">
+                {{obj.store.name}}
+            </div> <div class="single-item-order__left__description">
+                {{obj.description}}
+            </div></div> <div class="single-item-order__right"><div class="single-item-order__right__btc-price"><span>{{obj.amount}} BTC</span></div> <div class="single-item-order__right__ex-rate">
+                1 BTC = $ To be added soon(USD)
+            </div></div> <span class="fa fa-angle-double-down"></span> <span class="fa fa-angle-double-up"></span></div> <line-items><div class="line-items"><div class="line-items__item"><div class="line-items__item__label">Order Amount</div> <div class="line-items__item__value">{{obj.amount}} BTC</div></div> <div class="line-items__item line-items_fiatvalue"><div class="line-items__item__label">&nbsp;</div> <div class="line-items__item__value single-item-order__right__ex-rate">
+                    $ To be added soon(USD)
+                </div></div> <div class="line-items__item" style="display: none;"><div class="line-items__item__label"><span>Network Cost</span></div> <div class="line-items__item__value"><span>
+                        1 transaction x 0 BTC
+                    </span></div></div> <div class="line-items__item"><div class="line-items__item__label"><span>Already Paid</span></div> <div class="line-items__item__value">-{{obj_j.btcPaid}} BTC</div></div> <div class="line-items__item line-items__item--total"><div class="line-items__item__label">Due</div> <div class="line-items__item__value">{{obj_j.btcDue}} BTC</div></div></div></line-items> <div class="payment-tabs"><div id="scan-tab" class="payment-tabs__tab active"><span>Scan</span></div> <div id="copy-tab" class="payment-tabs__tab"><span>Copy</span></div> <div id="tabsSlider" class="payment-tabs__slider"></div></div></div> <div class="payment-box"><div id="emailAddressView" class="bp-view payment manual-flow enter-contact-email active"><form id="emailAddressForm" name="emailAddressForm" novalidate="novalidate" class="manual__step-one refund-address-form contact-email-form"><div class="manual__step-one__header"><span>Contact &amp; Refund Email</span></div> <div class="manual__step-one__instructions"><span class="initial-label"><span>Please provide an email address below. We’ll contact you at this address if there is an issue with your payment.</span></span> <span class="submission-error-label">Please enter a valid email address</span></div> <div class="input-wrapper"><input id="emailAddressFormInput" placeholder="Your email" type="email" class="bp-input email-input ng-pristine ng-invalid ng-touched"> <bp-loading-button><button type="submit" class="action-button" style="margin-top: 15px;"><span class="button-text">Continue</span> <div class="loader-wrapper"><bp-spinner><svg xml:space="preserve" version="1.1" viewBox="0 0 50 50" x="0px" xmlns="http://www.w3.org/2000/svg" y="0px"><path d="M11.1,29.6c-0.5-1.5-0.8-3-0.8-4.6c0-8.1,6.6-14.7,14.7-14.7S39.7,16.9,39.7,25c0,1.6-0.3,3.2-0.8,4.6l6.1,2c0.7-2.1,1.1-4.3,1.1-6.6c0-11.7-9.5-21.2-21.2-21.2S3.8,13.3,3.8,25c0,2.3,0.4,4.5,1.1,6.6L11.1,29.6z"></path></svg></bp-spinner></div></button></bp-loading-button></div></form></div> <div id="scan" class="bp-view payment scan"><div class="wrapBtnGroup invisible"><div class="btnGroupLnd"><button onclick="lndToggleBolt11()" title="BOLT 11 Invoice" class="">
+                    BOLT 11 Invoice
+                </button> <button onclick="lndToggleNode()" title="Node Info" class="">
+                    Node Info
+                </button></div></div> <div class="payment__scan"><img src="{% static "gui/img/bitcoin.svg" %}" class="qr_currency_icon"> <div><canvas height="256" width="256" val="bitcoin:bc1q76ywrh8k3rtss40wzj7h6px4xhc5jy0qpk2q3s?amount=0.00138708" style="height: 256px; width: 256px;"></canvas></div></div> <div class="payment__details__instruction__open-wallet"><a href="bitcoin:bc1q76ywrh8k3rtss40wzj7h6px4xhc5jy0qpk2q3s?amount=0.00138708" class="payment__details__instruction__open-wallet__btn action-button"><span>Open in wallet</span></a></div></div> <div id="copy" class="bp-view payment manual-flow"><div class="manual__step-two__instructions"><span i18n="">To complete your payment, please send 0.00138708 BTC to the address below.</span></div> <div class="copyLabelPopup"><span>Copied</span></div> <nav class="copyBox"><div class="copySectionBox bottomBorder"><label>Amount</label> <div class="copyAmountText copy-cursor _copySpan"><span>0.00138708</span> BTC
+                </div></div> <div class="separatorGem"></div> <div class="copySectionBox"><label>Address</label> <div class="inputWithIcon _copyInput"><input type="text" readonly="readonly" class="checkoutTextbox" value="bc1q76ywrh8k3rtss40wzj7h6px4xhc5jy0qpk2q3s"> <img src="{% static "gui/img/bitcoin.svg" %}"></div></div></nav></div> <div id="paid" class="bp-view"><div class="status-block"><div class="success-block"><div class="status-icon"><div class="status-icon__wrapper"><div class="inner-wrapper"><div class="status-icon__wrapper__icon"><img src="{% static "gui/img/checkmark.svg" %}"></div> <div class="status-icon__wrapper__outline"></div></div></div></div> <div class="success-message">This invoice has been paid</div> <a href="https://mainnet.demo.btcpayserver.org/" class="action-button" style="display: none;"><span>Return to test1</span></a> <button class="action-button close-action"><span>Close</span></button></div></div> <div id="refund-overpayment-button" class="button-wrapper refund-address-form-container"></div></div> <div id="archived" class="bp-view expired"><div class="expired-icon"><img src="{% static "gui/img/archived.svg" %}"></div> <div class="archived__message"><div class="archived__message__header"><span>This invoice has been archived</span></div> <div><span>Please contact the store for order information or assistance</span></div></div></div> <div id="expired" class="bp-view expired"><div><div class="expired__body" style="margin-bottom: 20px;"><div class="expired__header">What happened?</div> <div i18n="" class="expired__text">
+                    This invoice has expired. An invoice is only valid for 15 minutes.  
+You can return to test1 if you would like to submit your payment again.
+                </div> <div class="expired__text">
+                    If you tried to send a payment, it has not yet been 
+accepted by the network. We have not yet received your funds.
+                </div> <div class="expired__text">
+                    If we receive it at a later point, we will either 
+process your order or contact you to make refund arrangements...
+                </div> <div class="expired__text expired__text__smaller"><span class="expired__text__bullet">Invoice ID</span>:
+                    U6XwkkdCmdKjKbJH8ZPK6b
+                    <br> <span class="expired__text__bullet">Order ID</span>:
+                    
+                </div></div> <a href="https://mainnet.demo.btcpayserver.org/" class="action-button" style="display: none;"><span>Return to test1</span></a> <button class="action-button close-action"><span>Return to test1</span></button></div></div></div></div></div></div> <div style="margin-top: 10px; text-align: center;"><div id="prettydropdown-DefaultLang" class="prettydropdown arrow" style="width: 202px;"><ul tabindex="0" role="listbox" aria-activedescendant="item1550425607201-1" aria-expanded="false" style="max-height:30px;margin:0px 0px 0px 0px;"><li id="item1550425607201-1" data-value="en" role="option" class="selected" style="height: 30px; line-height: 28px; width: 200px;">English<span aria-hidden="true" class="checked"> ✓</span></li><li id="item1550425607201-2" data-value="it-IT" role="option" style="height: 30px; line-height: 28px; width: 200px;">Italiano</li><li id="item1550425607201-3" data-value="is-IS" role="option" style="height: 30px; line-height: 28px; width: 200px;">Íslenska</li><li id="item1550425607201-4" data-value="kk-KZ" role="option" style="height: 30px; line-height: 28px; width: 200px;">Қазақша</li><li id="item1550425607201-5" data-value="pt-PT" role="option" style="height: 30px; line-height: 28px; width: 200px;">Portuguese</li><li id="item1550425607201-6" data-value="fr-FR" role="option" style="height: 30px; line-height: 28px; width: 200px;">Français</li><li id="item1550425607201-7" data-value="es-ES" role="option" style="height: 30px; line-height: 28px; width: 200px;">Español</li><li id="item1550425607201-8" data-value="tr" role="option" style="height: 30px; line-height: 28px; width: 200px;">Türkçe</li><li id="item1550425607201-9" data-value="pt-BR" role="option" style="height: 30px; line-height: 28px; width: 200px;">Portuguese (Brazil)</li><li id="item1550425607201-10" data-value="np-NP" role="option" style="height: 30px; line-height: 28px; width: 200px;">नेपाली</li><li id="item1550425607201-11" data-value="uk-UA" role="option" style="height: 30px; line-height: 28px; width: 200px;">Українська</li><li id="item1550425607201-12" data-value="vi-VN" role="option" style="height: 30px; line-height: 28px; width: 200px;">Tiếng Việt</li><li id="item1550425607201-13" data-value="pl" role="option" style="height: 30px; line-height: 28px; width: 200px;">Polski</li><li id="item1550425607201-14" data-value="zh-SP" role="option" style="height: 30px; line-height: 28px; width: 200px;">中文（简体）</li><li id="item1550425607201-15" data-value="ru-RU" role="option" style="height: 30px; line-height: 28px; width: 200px;">русский</li><li id="item1550425607201-16" data-value="sk-SK" role="option" style="height: 30px; line-height: 28px; width: 200px;">Slovenčina</li><li id="item1550425607201-17" data-value="sl-SI" role="option" style="height: 30px; line-height: 28px; width: 200px;">Slovenščina</li><li id="item1550425607201-18" data-value="sr" role="option" style="height: 30px; line-height: 28px; width: 200px;">Srpski</li><li id="item1550425607201-19" data-value="de-DE" role="option" style="height: 30px; line-height: 28px; width: 200px;">Deutsch</li><li id="item1550425607201-20" data-value="ja-JP" role="option" style="height: 30px; line-height: 28px; width: 200px;">日本語</li><li id="item1550425607201-21" data-value="hi" role="option" style="height: 30px; line-height: 28px; width: 200px;">हिंदी</li><li id="item1550425607201-22" data-value="hu-HU" role="option" style="height: 30px; line-height: 28px; width: 200px;">Magyar</li><li id="item1550425607201-23" data-value="cs-CZ" role="option" style="height: 30px; line-height: 28px; width: 200px;">Česky</li><li id="item1550425607201-24" data-value="hr-HR" role="option" style="height: 30px; line-height: 28px; width: 200px;">Croatian</li><li id="item1550425607201-25" data-value="nl-NL" role="option" style="height: 30px; line-height: 28px; width: 200px;">Dutch</li></ul><select onchange="changeLanguage($(this).val())" id="DefaultLang" name="DefaultLang" class="cmblang reverse invisible" style="visibility: hidden; height: 32px;"><option value="it-IT">Italiano</option> <option value="is-IS">Íslenska</option> <option value="kk-KZ">Қазақша</option> <option value="pt-PT">Portuguese</option> <option value="fr-FR">Français</option> <option value="es-ES">Español</option> <option value="tr">Türkçe</option> <option value="pt-BR">Portuguese (Brazil)</option> <option value="np-NP">नेपाली</option> <option value="uk-UA">Українська</option> <option value="vi-VN">Tiếng Việt</option> <option value="pl">Polski</option> <option value="zh-SP">中文（简体）</option> <option value="ru-RU">русский</option> <option value="sk-SK">Slovenčina</option> <option value="sl-SI">Slovenščina</option> <option value="sr">Srpski</option> <option value="de-DE">Deutsch</option> <option value="ja-JP">日本語</option> <option value="hi">हिंदी</option> <option value="hu-HU">Magyar</option> <option value="cs-CZ">Česky</option> <option value="hr-HR">Croatian</option> <option value="nl-NL">Dutch</option> <option selected="selected" value="en">English</option></select></div></div> <div class="form-text small text-muted" style="margin-top: 10px; text-align: center;"><span>Powered by <a target="_blank" href="https://github.com/bitcart/bitcart">Bitcart</a></span></div></div></div></div>
+    </invoice>
+<script type="text/javascript">
+    var availableLanguages = ["it-IT","is-IS","kk-KZ","pt-PT","fr-FR","es-ES","tr","pt-BR","np-NP","uk-UA","vi-VN","pl","zh-SP","ru-RU","sk-SK","sl-SI","sr","de-DE","ja-JP","hi","hu-HU","cs-CZ","hr-HR","nl-NL","en"];
+    var storeDefaultLang = "en";
+    var fallbackLanguage = "en";
+    startingLanguage = computeStartingLanguage();
+    console.log(startingLanguage);
+      // initialization
+    i18next
+        .use(window.i18nextXHRBackend)
+        .init({
+            lng: startingLanguage,
+            backend: {
+                loadPath: '/locales/'+startingLanguage+'.json'
+            },
+            fallbackLng: fallbackLanguage,
+            nsSeparator: false,
+            keySeparator: false
+        });
+    
+    function computeStartingLanguage() {
+        console.log(urlParams.lang);
+        console.log(isLanguageAvailable(urlParams.lang));
+        console.log(isLanguageAvailable(storeDefaultLang));
+        if (urlParams.lang && isLanguageAvailable(urlParams.lang)) {
+            c
+            return urlParams.lang;
+        }
+        else if (isLanguageAvailable(storeDefaultLang)) {
+            return storeDefaultLang;
+        } else {
+            return fallbackLanguage;
+        }
+    }
+
+    function changeLanguage(lang) {
+        console.log("we are here!");
+        console.log(lang);
+        if (isLanguageAvailable(lang)) {
+            i18next.changeLanguage(lang);
+        }
+    }
+        
+    function isLanguageAvailable(languageCode) {
+        return availableLanguages.indexOf(languageCode) >= 0;
+    }
+    
+    const i18n = new VueI18next(i18next);
+
+    // TODO: Move all logic from core.js to Vue controller
+    Vue.config.ignoredElements = [
+        'line-items',
+        'low-fee-timeline',
+        // Ignoring custom HTML5 elements, eg: bp-spinner
+        /^bp-/
+    ];
+
+    var checkoutCtrl = new Vue({
+        i18n: i18n,
+        el: '#checkoutCtrl',
+        components: {
+            qrcode: VueQr,
+            changelly: ChangellyComponent,
+            coinswitch: CoinSwitchComponent
+        },
+        data: {
+            srvModel: srvModel,
+            lndModel: null,
+            scanDisplayQr: "",
+            expiringSoon: false,
+            isModal: srvModel.isModal,
+            selectedThirdPartyProcessor: ""
+        }
+    });
+</script>
+
+
+</body></html>

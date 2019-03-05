@@ -1,0 +1,83 @@
+{% extends 'gui/base.html' %}
+
+{% block content %}
+<section>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-12 text-center">
+                <h2 class="section-heading">Manage wallet</h2>
+                <hr class="primary">
+            </div>
+        </div>
+
+        <div>
+            <div class="row">
+                <div class="col-md-3">
+
+<div class="nav flex-column nav-pills">
+    <a class="nav-link active" href="https://mainnet.demo.btcpayserver.org/wallets/S-38EPKk73uhnaigyG5HoPN58Y6sd1vc5UBSGjCyMmq9Yj-BTC">Transactions</a>
+    <a class="nav-link" href="https://mainnet.demo.btcpayserver.org/wallets/S-38EPKk73uhnaigyG5HoPN58Y6sd1vc5UBSGjCyMmq9Yj-BTC/send">Send</a>
+    <a class="nav-link" href="https://mainnet.demo.btcpayserver.org/wallets/S-38EPKk73uhnaigyG5HoPN58Y6sd1vc5UBSGjCyMmq9Yj-BTC/rescan">Rescan</a>
+</div>
+
+                </div>
+                <div class="col-md-9">
+                    
+<style type="text/css">
+    .smMaxWidth {
+        max-width: 200px;
+    }
+
+    @media (min-width: 768px) {
+        .smMaxWidth {
+            max-width: 400px;
+        }
+    }
+
+    .unconf {
+        opacity: 0.5;
+    }
+</style>
+
+<div class="row">
+    <div class="col-md-10 text-center">
+        
+
+    </div>
+</div>
+<h4>Transactions</h4>
+<div class="row">
+    <div class="col-md-10">
+        If BTCPay Server shows you an invalid balance, <a href="https://mainnet.demo.btcpayserver.org/wallets/S-38EPKk73uhnaigyG5HoPN58Y6sd1vc5UBSGjCyMmq9Yj-BTC/rescan">rescan your wallet</a>. <br>
+        If some transactions appear in BTCPay Server, but are missing on Electrum or another wallet, <a href="https://docs.btcpayserver.org/faq-and-common-issues/faq-wallet#missing-payments-in-my-software-or-hardware-wallet">follow those instructions</a>.
+    </div>
+</div>
+<div class="row">
+    <div class="col-md-10">
+        <table class="table table-sm table-responsive-lg">
+            <thead class="thead-inverse">
+                <tr>
+                    <th>Timestamp</th>
+                    <th>Transaction Id</th>
+                    <th style="text-align:right">Balance</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for obj in transactions %}
+            <tr>
+                <td>{{obj.date}}</td>
+                <td>{{obj.txid}}</td>
+                <td>{{obj.balance}}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock content %}
