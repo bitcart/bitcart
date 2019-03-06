@@ -8,7 +8,9 @@ There are two ways of installation: automatic via docker(easy) or manual(harder)
 
   Automatic
   ---------
-  Soon!
+  Now we offer docker automatic installation!
+  https://github.com/MrNaif2018/bitcart-docker
+  https://hub.docker.com/r/mrnaif/bitcart
   
   Manual
   ------
