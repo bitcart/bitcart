@@ -5,8 +5,8 @@ db.sqlite3
 #cache
 __pycache__/
 #collected static and media
-static/
-media/
+/static/
+/media/
 #python optimizations
 *.pyo
 *.pyc
