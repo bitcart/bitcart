@@ -14,3 +14,5 @@ __pycache__/
 .env
 #vs code
 .vscode/
+#pytest
+pytest.ini

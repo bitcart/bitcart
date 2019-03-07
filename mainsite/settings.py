@@ -11,7 +11,9 @@ https://docs.djangoproject.com/en/2.1/ref/settings/
 """
 
 import os
-from decouple import config, Csv
+from decouple import Csv, AutoConfig
+
+config=AutoConfig(search_path="conf")
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -26,7 +28,13 @@ SECRET_KEY = config("SECRET_KEY", default="replaceme")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config("DEBUG", default=False, cast=bool)
 
-ALLOWED_HOSTS = config("ALLOWED_HOSTS",default="localhost, 127.0.0.1, [::1]",cast=Csv())
+ALLOWED_HOSTS_DEFAULT=config("ALLOWED_HOSTS_DEFAULT", default=True, cast=bool)
+ALLOWED_HOSTS=[]
+if ALLOWED_HOSTS_DEFAULT:
+    ALLOWED_HOSTS.extend(["localhost", "127.0.0.1", "[::1]"])
+
+ALLOWED_HOSTS_ADD = config("ALLOWED_HOSTS",default="",cast=Csv())
+ALLOWED_HOSTS.extend(ALLOWED_HOSTS_ADD)
 
 # Application definition
 
