@@ -163,10 +163,10 @@ DATABASES = {
     'default': {
         'ENGINE' : 'django.db.backends.postgresql',
         'NAME': config("DB_DATABASE", default="bitcart"),
-        'USER' : config("DB_USER", default="root"),
+        'USER' : config("DB_USER", default="postgres"),
         'PASSWORD' : config("DB_PASSWORD", default="123@"),
         'HOST' : config("DB_HOST", default="127.0.0.1"),
-        'PORT' : config("DB_PORT", default="3306"),
+        'PORT' : config("DB_PORT", default="5432"),
     }
 }
 
