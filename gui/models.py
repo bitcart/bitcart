@@ -6,32 +6,26 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from rest_framework.authtoken.models import Token
 from django.conf import settings
-from django.contrib.auth.models import User
+from django.contrib.auth.models import AbstractUser
 import secrets
+from . import tasks
 
 # Create your models here.
 
-class Store(models.Model):
-    FEE_CHOICES=(
-        (1,"... only if the customer makes more than one payment for the invoice"),
-        (2,"Always"),
-        (3,"Never")
-    )
+class User(AbstractUser):
+    is_confirmed = models.BooleanField(default=False,blank=True)
+
+class Wallet(models.Model):
     id = models.CharField(max_length=255, primary_key=True)
-    can_delete = models.IntegerField(default=1, blank=True)
     name = models.CharField(max_length=1000)
-    website = models.CharField(max_length=1000, blank=True, default="")
-    can_invoice = models.BooleanField(default=False)
     xpub = models.CharField(max_length=1000, blank=True, default="")
-    invoice_expire = models.IntegerField(default=15)
-    fee_mode = models.IntegerField(default=1,choices=FEE_CHOICES)
-    payment_tolerance = models.FloatField(default=0)
-    user=models.ForeignKey(User,on_delete=models.CASCADE)
+    balance = models.DecimalField(max_digits=16, decimal_places=8, blank=True, default=0)
+    updated_date = models.DateTimeField(default=timezone.now)
+    user=models.ForeignKey(settings.AUTH_USER_MODEL,on_delete=models.CASCADE)
 
     class Meta:
         managed = True
-        db_table = 'stores'
-
+        db_table = 'wallets'
 
     def create(self, name, user):
         self.name=name
@@ -39,10 +33,27 @@ class Store(models.Model):
         self.id=secrets.token_urlsafe(44)
         self.save()
 
+class Store(models.Model):
+    id = models.CharField(max_length=255, primary_key=True)
+    name = models.CharField(max_length=1000)
+    domain = models.CharField(max_length=1000, blank=True, default="")
+    template = models.CharField(max_length=1000, blank=True, default="")
+    email = models.CharField(max_length=1000, blank=True, default="")
+    wallet=models.ForeignKey(Wallet,on_delete=models.CASCADE)
+
+    class Meta:
+        managed = True
+        db_table = 'stores'
+    
+    def create(self, name):
+        self.name=name
+        self.id=secrets.token_urlsafe(44)
+        self.save()
+
 class Product(models.Model):
     id = models.CharField(max_length=255, primary_key=True)
-    amount = models.FloatField()
-    quantity = models.FloatField()
+    amount = models.DecimalField(max_digits=16, decimal_places=8)
+    quantity = models.DecimalField(max_digits=16, decimal_places=8)
     title = models.CharField(max_length=1000)
     status = models.CharField(max_length=1000,default="new")
     order_id = models.CharField(max_length=255, blank=True, default="")
@@ -63,3 +74,8 @@ class Product(models.Model):
 def create_auth_token(sender, instance=None, created=False, **kwargs):
     if created:
         Token.objects.create(user=instance)
+
+@receiver(post_save, sender=Wallet)
+def create_wallet(sender, instance=None, created=False, **kwargs):
+    if created:
+        tasks.sync_wallet.delay(instance.id, instance.xpub)

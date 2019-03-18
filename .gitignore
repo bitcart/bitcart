@@ -16,3 +16,12 @@ __pycache__/
 .vscode/
 #pytest
 pytest.ini
+#backups
+backups/
+backup/
+#locales,for now
+locales/
+#logs
+debug.log
+#migrations will be generated on client machines
+migrations/

@@ -7,7 +7,7 @@ class StoreSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = models.Store
-        fields = ("id","name","website","can_invoice","xpub","invoice_expire","fee_mode","payment_tolerance","user")
+        fields = ("id","name","domain","template","email","wallet")
 
 class ProductSerializer(serializers.ModelSerializer):
 
@@ -15,3 +15,8 @@ class ProductSerializer(serializers.ModelSerializer):
         model = models.Product
         fields = ("id","amount","quantity","title","description","date","status","order_id","date","image","video","store")
 
+class WalletSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = models.Wallet
+        fields = ("id","name","xpub","user")

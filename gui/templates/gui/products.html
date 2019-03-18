@@ -1,11 +1,5 @@
 {% extends 'gui/base.html' %}
-{% load static %}
 
-{% block head %}
-<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
-<script src="{% static "gui/js/btcpay.js" %}"></script>
-{% endblock head %}
-    
 {% block content %}
 <section>
     <div class="container">
@@ -57,7 +51,7 @@ information.<br>
                 <a class="btn btn-primary dropdown-toggle" href="#" role="button" id="dropdownMenuLink" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                     Export
                 </a>
-                <a href="https://docs.btcpayserver.org/features/accounting" target="_blank"><span class="fa fa-question-circle-o" title="More information..."></span></a>
+                <a href="#" target="_blank"><span class="fa fa-question-circle-o" title="More information..."></span></a>
                 <div class="dropdown-menu" aria-labelledby="dropdownMenuLink">
                     <a class="dropdown-item" target="_blank" href="{% url 'product_export' %}?format=csv">CSV</a>
                     <a class="dropdown-item" target="_blank" href="{% url 'product_export' %}?format=json">JSON</a>
@@ -83,64 +77,68 @@ information.<br>
             </div>
         </div>
 
-        <div class="row">
-            <table class="table table-sm table-responsive-md">
-                <thead>
-                    <tr>
-                        <th>Date</th>
-                        <th>OrderId</th>
-                        <th>InvoiceId</th>
-                        <th>Status</th>
-                        <th style="text-align:right">Amount</th>
-                        <th style="text-align:right">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                {% for product in products%}
-                <tr>
-                    <td>{{product.date}}</td>
-                    <td>{{product.order_id}}</td>
-                    <td>{{product.id}}</td>
-                    <td>{{product.status}}</td>
-                    <td style="text-align:right">{{product.amount}}</td>
-                    <td style="text-align:right">
-                            {% if product.status == 'new' %}
-                            <span>
-                                <a href="/i/{{product.id}}">Checkout</a>
-                                <a href="javascript:btcpay.showInvoice('{{product.id}}')">[^]</a>
-                            </span>
-                            {% endif %}
-                                                            <a class="dropdown-toggle dropdown-toggle-split" href="#" style="cursor: pointer;" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                Change status <span class="sr-only">Toggle Dropdown</span>
-                            </a>
-                            <div class="dropdown-menu pull-right">
-                                    <form method="get" action="/products/{{product.id}}/changestate/invalid">
-                                        <button class="dropdown-item small">Mark as invalid <span class="fa fa-times"></span></button>
-                                    </form>
-                                                                    </div>
-                        <a href="/products/{{product.id}}">Details</a>
-                    </td>
-                </tr>
-                {% endfor %}
-                </tbody>
-            </table>
-
-            <nav aria-label="...">
-                <ul class="pagination">
-                    <li class="page-item  disabled">
-                        <a class="page-link" tabindex="-1" href="https://mainnet.demo.btcpayserver.org/invoices?skip=0&amp;count=50">Previous</a>
-                    </li>
-                    <li class="page-item disabled">
-                        <span class="page-link">1 to 0 of 0</span>
-                    </li>
-                    <li class="page-item disabled">
-                        <a class="page-link" href="https://mainnet.demo.btcpayserver.org/invoices?skip=50&amp;count=50">Next</a>
-                    </li>
-                </ul>
-            </nav>
-
+        <div class="card content-area">
+    <div class="card-innr">
+        <div class="card-head">
+            <h4 class="card-title">Products</h4>
         </div>
+        <div id="DataTables_Table_0_wrapper" class="dataTables_wrapper dt-bootstrap4 no-footer">
+            <div>
+                <table class="data-table dt-init user-tnx dataTable no-footer" id="DataTables_Table_0" role="grid" aria-describedby="DataTables_Table_0_info">
+                    <thead>
+                        <tr class="data-item data-head" role="row">
+                            <th class="data-col dt-date sorting_disabled" rowspan="1" colspan="1">Date</th>
+                            <th class="data-col dt-orderid sorting_disabled" rowspan="1" colspan="1">OrderId</th>
+                            <th class="data-col dt-invoiceid sorting_disabled" rowspan="1" colspan="1">InvoiceId</th>
+                            <th class="data-col dt-status sorting_disabled" rowspan="1" colspan="1">Status</th>
+                            <th class="data-col dt-amount sorting_disabled" rowspan="1" colspan="1">Amount</th>
+                            <th class="data-col sorting_disabled" rowspan="1" colspan="1">
+                            <th class="data-col dt-actions sorting_disabled" rowspan="1" colspan="1">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- .data-item --><!-- .data-item --><!-- .data-item --><!-- .data-item --><!-- .data-item --><!-- .data-item --><!-- .data-item --><!-- .data-item -->
+                        {% for product in products%}
+                        <tr class="data-item odd" role="row">
+                            <td class="data-col dt-date">
+                                <div class="d-flex align-items-center">
+                                    <div class="fake-class"><span class="sub sub-date">{{product.date}}</span></div>
+                                </div>
+                            </td>
+                            <td class="data-col dt-orderid"><span class="sub sub-date">{{product.order_id}}</span></td>
+                            <td class="data-col dt-invoiceid"><span class="sub sub-date">{{product.id}}</span></td>
+                            <td class="data-col dt-status"><span class="sub sub-date">{{product.status}}</span></td>
+                            <td class="data-col dt-amount"><span class="sub sub-date">{{product.amount}}</span></td>
+                            <td class="data-col">
+                                <div class="relative d-inline-block d-md-none">
+                                        <a href="#" class="btn btn-light-alt btn-xs btn-icon toggle-tigger"><em class="ti ti-more-alt"></em></a>
+                                        <div class="toggle-class dropdown-content dropdown-content-center-left pd-2x">
+                                            <ul class="data-action-list">
+                                                <li><a href="#" class="btn btn-auto btn-primary btn-xs"><span>Pay <span class="d-none d-xl-inline-block">Now</span></span><em class="ti ti-wallet"></em></a></li>
+                                                <li><a href="#" class="btn btn-danger-alt btn-xs btn-icon"><em class="ti ti-trash"></em></a></li>
+                                            </ul>
+                                        </div>
+                                </div>
+                                <ul class="data-action-list d-none d-md-inline-flex">
+                                    <li><a href="{% url 'invoice_buy' invoice=product.id %}" class="btn btn-auto btn-primary btn-xs"><span>Pay <span class="d-none d-xl-inline-block">Now</span></span><em class="ti ti-wallet"></em></a></li>
+                                </ul>
+                            </td>
+                            <td class="data-col text-right">                              
+                            <a href="{% url 'product_info' product=product.id %}" class="btn btn-light-alt btn-xs btn-icon"><em class="ti ti-eye"></em></a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+        </div>
+    </div>
+    <!-- .card-innr -->
+</div>
+
 
     </div>
 </section>
+
 {% endblock content %}

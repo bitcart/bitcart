@@ -1,5 +1,5 @@
 {% extends 'gui/base.html' %}
-
+{% load crispy_forms_tags %}
 {% block content %}
 <section>
     <div class="container">
@@ -14,12 +14,12 @@
             <div class="row">
                 <div class="col-md-3">
 <div class="nav flex-column nav-pills">
-    <a class="nav-link active" href="https://mainnet.demo.btcpayserver.org/stores/84SohXDMnyWLoqRcn3JzmKnRZfup5gJy6b2CpX7qYghb">General settings</a>
-    <a class="nav-link" href="https://mainnet.demo.btcpayserver.org/stores/84SohXDMnyWLoqRcn3JzmKnRZfup5gJy6b2CpX7qYghb/rates">Rates</a>
-    <a class="nav-link" href="https://mainnet.demo.btcpayserver.org/stores/84SohXDMnyWLoqRcn3JzmKnRZfup5gJy6b2CpX7qYghb/checkout">Checkout experience</a>
-    <a class="nav-link" href="https://mainnet.demo.btcpayserver.org/stores/84SohXDMnyWLoqRcn3JzmKnRZfup5gJy6b2CpX7qYghb/Tokens">Access Tokens</a>
-    <a class="nav-link" href="https://mainnet.demo.btcpayserver.org/stores/84SohXDMnyWLoqRcn3JzmKnRZfup5gJy6b2CpX7qYghb/users">Users</a>
-    <a class="nav-link" href="https://mainnet.demo.btcpayserver.org/stores/84SohXDMnyWLoqRcn3JzmKnRZfup5gJy6b2CpX7qYghb/paybutton">Pay Button</a>
+    <a class="nav-link active" href="#">General settings</a>
+    <a class="nav-link" href="#">Rates</a>
+    <a class="nav-link" href="#">Checkout experience</a>
+    <a class="nav-link" href="#">Access Tokens</a>
+    <a class="nav-link" href="#">Users</a>
+    <a class="nav-link" href="#">Pay Button</a>
 </div>
 
                 </div>
@@ -57,6 +57,7 @@ Store successfully updated
 <div class="row">
     <div class="col-md-8">
         <form method="post">
+        {{form|crispy}}
         {% csrf_token %}
         <div class="form-group"><label for="id_id">Id</label>{{form.id}}</div>
         <div class="form-group"><label for="id_name">Store Name</label>{{form.name}}</div>

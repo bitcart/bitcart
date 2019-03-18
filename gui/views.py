@@ -1,10 +1,11 @@
 #pylint: disable=no-member
 from django.shortcuts import render,get_object_or_404,redirect,reverse
 from django.conf import settings
+from django.core.mail import send_mail
 from . import models, forms, tasks
 from django import forms as django_forms
 from django.http import JsonResponse, HttpResponse
-from django.contrib.auth.models import User
+from .models import User
 from django.contrib.auth import authenticate, login as django_login,logout as django_logout
 from django.contrib.auth.decorators import login_required
 import csv
@@ -25,16 +26,48 @@ RPC_URL=settings.RPC_URL
 
 btc=BTC(RPC_URL)
 
-# Create your views here.
+#misc
+def truncate(text:str,chars:int, endchar=".."):
+    return (text[:chars] + endchar) if len(text) > chars else text
 
+# Create your views here.
+@login_required
 def main(request):
-    return render(request,"gui/main.html",{})
+    return render(request,"gui/main.html",{"main_active":"active","setting_active":"",})
 
 @login_required
 def stores(request):
-    t=models.Store.objects.all()
-    t=t.filter(user=request.user)
-    return render(request,"gui/stores.html",{"t":t})
+    if request.method == "POST":
+        form=forms.StoreForm(json.loads(request.body))
+        if form.is_valid():
+            form=form.save(commit=False)
+            form.id=secrets.token_urlsafe(32)
+            form.save()
+            #form
+            #user=request.user
+            
+            #return redirect("stores")
+            return JsonResponse({"id":form.id})
+        else:
+            print(form.errors)
+            return render(request,"gui/create_store.html",{"form":form})
+    else:
+        stores=models.Store.objects.select_related("wallet").filter(wallet__user=request.user)
+        #stores=models.Store.objects.filter(wallet__user=request.user)
+        form=forms.StoreForm()
+        return render(request,"gui/stores.html",{"stores":stores, "stores_active":True, "form":form})
+
+@login_required
+def edit_store(request, store):
+    if request.method == "POST":
+        model=get_object_or_404(models.Store,id=store)
+        form=forms.UpdateStoreForm(json.loads(request.body), instance=model)
+        if form.is_valid():
+            form=form.save(commit=False)
+            form.save()
+        else:
+            print(form.errors)
+    return JsonResponse({})
 
 @login_required
 def store_settings(request,store):
@@ -87,8 +120,7 @@ def filter_products(p_val,products):
 
 @login_required
 def products(request):
-    products=models.Product.objects.all()
-    products=products.filter(store__user=request.user)
+    products=models.Product.objects.filter(store__wallet__user=request.user)
     products=products.order_by("-date")
     if request.method == "POST":
         p_val=request.POST.get("search_term","")
@@ -96,7 +128,7 @@ def products(request):
         p_val=request.GET.get("search_term","")
     products=filter_products(p_val,products)
     ok=request.GET.get("ok",False)
-    return render(request,"gui/products.html",{"products":products,"ok":ok})
+    return render(request,"gui/products.html",{"products":products,"ok":ok, "products_active":True})
 
 def invoice_buy(request,invoice):
     obj=get_object_or_404(models.Product,id=invoice)
@@ -135,7 +167,7 @@ def get_product_dict(i):
 @login_required
 def product_export(request):
     format_=request.GET.get("format","json")
-    products=models.Product.objects.filter(store__user=request.user)
+    products=models.Product.objects.filter(store__wallet__user=request.user)
     lst=[]
         
     if format_ == "json":
@@ -161,7 +193,7 @@ def product_export(request):
 @login_required
 def create_store(request):
     if request.method == "POST":
-        form=forms.CreateStoreForm(request.POST)
+        form=forms.CreateStoreForm(json.loads(request.body))
         if form.is_valid():
             if request.user.is_authenticated:
                 user=request.user
@@ -201,6 +233,7 @@ def register(request):
 
 def login(request):
     if request.method == "POST":
+        print("hi")
         form=forms.LoginForm(request.POST)
         remember_me=request.POST.get("remember_me",False)
         if form.is_valid():
@@ -220,6 +253,7 @@ def login(request):
                 return redirect(redirect_to)
             else:
                 print(form)
+                print(form.errors)
                 return render(request,"gui/login.html",{"form":form,"error":True})
             
         else:
@@ -245,7 +279,7 @@ def account_settings(request):
         return redirect(reverse("account_settings")+"?ok=true")
     else:
         ok=request.GET.get("ok",False)
-        return render(request,"gui/account_settings.html",{"ok":ok})
+        return render(request,"gui/account_settings.html",{"ok":ok, "main_active":"","setting_active":"active"})
 
 @login_required
 def change_password(request):
@@ -267,12 +301,12 @@ def change_password(request):
 
 @login_required
 def wallets(request):
-    stores=models.Store.objects.all()
-    stores=stores.filter(user=request.user)
-    stores=stores.exclude(xpub__exact="")
-    for i in stores:
+    wallets=models.Wallet.objects.filter(user=request.user)
+    wallets=wallets.exclude(xpub__exact="")
+    for i in wallets:
         i.balance=BTC(RPC_URL,xpub=i.xpub, rpc_user=RPC_USER, rpc_pass=RPC_PASS).balance()['confirmed']
-    return render(request,"gui/wallets.html",{"stores":stores})
+    ok=request.GET.get("ok",False)
+    return render(request,"gui/wallets.html",{"wallets":wallets,"success":ok, "wallets_active":True})
 
 @login_required
 def apps(request):
@@ -280,7 +314,7 @@ def apps(request):
 
 @login_required
 def wallet_history(request,wallet):
-    model=get_object_or_404(models.Store,id=wallet)
+    model=get_object_or_404(models.Wallet,id=wallet)
     transactions=BTC(RPC_URL,xpub=model.xpub, rpc_user=RPC_USER, rpc_pass=RPC_PASS).server.history()["transactions"]
     return render(request,"gui/wallet_history.html",{"model":model,"transactions":transactions})
 
@@ -296,7 +330,7 @@ def create_product(request):
             form=form.save(commit=False)
             form.id=secrets.token_urlsafe(22)
             form.status="new"
-            data_got=BTC(RPC_URL, xpub=form.store.xpub, rpc_user=RPC_USER, rpc_pass=RPC_PASS).addrequest(form.amount, description=form.description, expire=form.store.invoice_expire)
+            data_got=BTC(RPC_URL, xpub=form.store.wallet.xpub, rpc_user=RPC_USER, rpc_pass=RPC_PASS).addrequest(form.amount, description=form.description)
             print(data_got)
             form.bitcoin_address=data_got["address"]
             form.bitcoin_url=data_got["URI"]
@@ -307,66 +341,55 @@ def create_product(request):
             return render(request,"gui/create_product.html",{"form":form})
     else:
         form=forms.ProductForm()
-        form.fields["store"].queryset=models.Store.objects.filter(user=request.user)
+        form.fields["store"].queryset=models.Store.objects.filter(wallet__user=request.user)
         return render(request,"gui/create_product.html",{"form":form})
 
 def invoice_status(request,invoice):
     obj=get_object_or_404(models.Product,id=invoice)
-    creation_date=obj.date
-    expire_date=creation_date+timedelta(minutes=obj.store.invoice_expire)
-    expire_date_seconds=time.mktime(expire_date.timetuple())
-    time_passed=time.time()-expire_date_seconds
-    if time_passed >= 0:
-        expire_at=0
-    else:
-        expire_at=abs(time_passed)
-    response_json={"availableCryptos": [{"cryptoCode": "BTC",
-                       "cryptoImage": "/imlegacy/bitcoin.svg",
-                       "isLightning": False,
-                       "link": "/i/{}/BTC".format(obj.id),
-                       "paymentMethodId": "BTC",
-                       "paymentMethodName": "Bitcoin"}],
- "btcAddress": obj.bitcoin_address,
- "btcDue": obj.amount,
- "btcPaid": "0.00000000" if obj.status != "completed" else obj.amount,
- "changellyAmountDue": None,
- "changellyEnabled": False,
- "changellyMerchantId": None,
- "coinSwitchEnabled": False,
- "coinSwitchMerchantId": None,
- "coinSwitchMode": None,
- "cryptoCode": "BTC",
- "cryptoImage": "/imlegacy/bitcoin.svg",
- "customCSSLink": None,
- "customLogoLink": None,
- "customerEmail": None,
- "defaultLang": "en",
- "expirationSeconds": expire_at,
- "htmlTitle": "Bitcart Invoice",
- "invoiceBitcoinUrl": obj.bitcoin_url,
- "invoiceBitcoinUrlQR": obj.bitcoin_url,
- "invoiceId": obj.id,
- "isLightning": False,
- "isModal": False,
- "isMultiCurrency": False,
- "itemDesc": obj.description,
- "maxTimeMinutes": obj.store.invoice_expire,
- "maxTimeSeconds": obj.store.invoice_expire*60,
- "merchantRefLink": None,
- "networkFee": 0.0,
- "orderAmount": obj.amount,
- "orderAmountFiat": None,
- "orderId": obj.order_id,
- "paymentMethodId": "BTC",
- "paymentMethodName": "Bitcoin",
- "paymentType": None,
- "peerInfo": None,
- "rate": "1.00000000 BTC",
- "requiresRefundEmail": False,
- "status": obj.status,
- "storeEmail": None,
- "storeId": obj.store.id,
- "storeName": obj.store.name,
- "timeLeft": "{:02d}:{:02d}".format(*divmod(int(expire_at),60)),
- "txCount": 1}
+    response_json={}
     return JsonResponse(response_json)
+
+@login_required
+def create_wallet(request):
+    if request.method == "POST":
+        form=forms.WalletForm(json.loads(request.body))
+        print(request.POST)
+        print(request.body)
+        if form.is_valid():
+            form=form.save(commit=False)
+            form.id=secrets.token_urlsafe(16)
+            form.user=request.user
+            form.save()
+            return JsonResponse({"id":form.id})
+            #return redirect(reverse("wallets")+"?ok=true")
+        else:
+            print(form.errors)
+            return render(request, "gui/create_wallet.html", {"form":form})
+    else:
+        form=forms.WalletForm()
+        return render(request, "gui/create_wallet.html", {"form":form})
+
+@login_required
+def api_wallet_info(request, wallet):
+    model=get_object_or_404(models.Wallet,id=wallet)
+    txes=BTC(RPC_URL,xpub=model.xpub, rpc_user=RPC_USER, rpc_pass=RPC_PASS).server.history()["transactions"]
+    response=[]
+    for i in txes:
+        
+        response.append([i["date"],truncate(i["txid"],20),i["value"]])
+        '''response.append({
+            "date":i.date,
+            "invoiceid":i.id,
+            "status":i.status,
+            "amount":i.amount
+        })'''
+    return JsonResponse(response, safe=False)
+
+@login_required
+def delete_wallet(request, wallet):
+    obj=get_object_or_404(models.Wallet,id=wallet)
+    if request.method == "POST":
+        obj.delete()
+        return redirect("wallets")
+    else:
+        return render(request,"gui/delete_wallet.html",{"wallet":wallet})

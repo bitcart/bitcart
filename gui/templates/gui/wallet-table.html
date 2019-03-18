@@ -1,0 +1,66 @@
+{% block content %}
+<section>
+    <button id="view-popup" class="toastr-top-right" style="display: none;"></button>
+    <div class="container">
+
+        <div class="row">
+            <div class="col-lg-12 text-center">
+                
+
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-lg-12 text-center">
+                <h2 class="section-heading">Wallets</h2>
+                <hr class="primary">
+                <p>Create and manage wallets.</p>
+            </div>
+        </div>
+        <div class="col">
+            <a class="btn btn-primary" role="button" href="{% url 'create_wallet' %}"><span class="fa fa-plus"></span> Create a new wallet</a>
+        </div>
+
+        <div class="col my-2">
+            <div class="card content-area">
+                <div class="card-innr">
+                    <div class="card-head">
+                        <h4 class="card-title">Wallets</h4>
+                    </div>
+                    <div id="DataTables_Table_0_wrapper" class="dataTables_wrapper dt-bootstrap4 no-footer">
+                        <div>
+                            <table class="data-table dt-init user-tnx dataTable no-footer" id="DataTables_Table_0" role="grid" aria-describedby="DataTables_Table_0_info">
+                                <thead>
+                                    <tr class="data-item data-head" role="row">
+                                        <th class="data-col dt-wallet sorting_disabled" rowspan="1" colspan="1">Wallet Name</th>
+                                        <th class="data-col dt-currency sorting_disabled" rowspan="1" colspan="1">Currency</th>
+                                        <th class="data-col dt-balance sorting_disabled" rowspan="1" colspan="1">Balance</th>
+                                        <th class="data-col dt-actions sorting_disabled" rowspan="1" colspan="1">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- .data-item --><!-- .data-item --><!-- .data-item --><!-- .data-item --><!-- .data-item --><!-- .data-item --><!-- .data-item --><!-- .data-item -->
+                                    {% for wallet in wallets %}
+                                    <tr class="data-item odd" role="row">
+                                        <td class="data-col dt-wallet"><span class="lead token-amount">{{wallet.name}}</span></td>
+                                        <td class="data-col dt-currency"><span class="sub sub-date">BTC</span></td>
+                                        <td class="data-col dt-balance"><span class="sub sub-date">{{wallet.balance}}</span></td>
+                                        <td class="data-col dt-actions">                                   
+                                            <a href="{% url 'wallet_history' wallet=wallet.id %}" class="btn btn-auto btn-primary btn-xs"><span>Manage</span></a>     
+                                            
+                                        </td>
+                                        
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                    </div>
+                </div>
+                <!-- .card-innr -->
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock content %}
