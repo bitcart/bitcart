@@ -1,48 +1,325 @@
 {% extends 'gui/base.html' %}
 
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@8"></script>
+{% endblock head %}
+
 {% block content %}
-<section>
-    <div class="container">
-
-        <div class="row">
-            <div class="col-lg-12 text-center">
-                
+<div class="row row-eq-height row-grid">
+    <div class="col-lg-4">
+        <div class="card h-100 content-area">
+            <div class="card-innr">
+                <div class="row">
+                    <div class="col-lg-6">
+                        <h1>All active wallets</h1>
+                    </div>
+                    <div class="col-lg-6">
+                        <button id="add-new-wallet" class="btn btn-primary btn-auto">Add new wallet</button>
+                    </div>
+                </div>
+                <div id="DataTables_Table_0_wrapper" class="dataTables_wrapper dt-bootstrap4 no-footer">
+                        <div>
+                            <table class="data-table user-tnx dataTable no-footer" id="DataTables_Table_0" role="grid" aria-describedby="DataTables_Table_0_info">
+                                <thead>
+                                    <tr class="data-item data-head" role="row">
+                                        <th class="data-col dt-id sorting_disabled" rowspan="1" colspan="1"></th>
+                                        <th class="data-col dt-wallet sorting_disabled" rowspan="1" colspan="1">Wallet Name</th>
+                                        <th class="data-col dt-balance sorting_disabled" rowspan="1" colspan="1">Amount</th>
+                                        <th class="data-col dt-actions sorting_disabled" rowspan="1" colspan="1"></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- .data-item --><!-- .data-item --><!-- .data-item --><!-- .data-item --><!-- .data-item --><!-- .data-item --><!-- .data-item --><!-- .data-item -->
+                                    {% for wallet in wallets %}
+                                    <tr class="data-item odd" role="row">
+                                        <td class="data-col dt-id"><span class="lead token-amount">{{wallet.id}}</span></td>
+                                        <td class="data-col dt-wallet"><span class="lead token-amount">{{wallet.name}}</span></td>
+                                        <td class="data-col dt-balance"><span class="sub sub-date">{{wallet.balance}}</span></td>
+                                        <td class="data-col dt-actions">                                   
+                                            <a href="{% url 'delete_wallet' wallet=wallet.id %}" class="btn btn-auto btn-danger btn-xs"><span>Delete wallet</span></a>     
+                                            
+                                        </td>
+                                        
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                    </div>
 
             </div>
-        </div>
-
-        <div class="row">
-            <div class="col-lg-12 text-center">
-                <h2 class="section-heading">Wallets</h2>
-                <hr class="primary">
-                <p>Create and manage wallets.</p>
-            </div>
-        </div>
-
-        <div class="row">
-            <table class="table table-sm table-responsive-md">
-                <thead>
-                    <tr>
-                        <th>Store Name</th>
-                        <th>Crypto Code</th>
-                        <th>Balance</th>
-                        <th style="text-align:right">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for i in stores%}
-                    <tr>
-                            <td><a href="{% url 'store_settings' store=i.id %}">{{i.name}}</a></td>
-                        <td>BTC</td>
-                        <td>{{i.balance}} BTC</td>
-                        <td style="text-align:right">
-                            <a href="{% url 'wallet_history' wallet=i.id%}">Manage</a>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
         </div>
     </div>
-</section>
+    <div class="col-lg-8">
+        <div class="card h-100 content-area">
+            <div class="card-innr">
+                <h1 id="tx-table-title">Select wallet on the left</h1>
+                <div id="DataTables_Table_1_wrapper" class="dataTables_wrapper dt-bootstrap4 no-footer">
+                    <div>
+                        <table class="data-table user-tnx dataTable no-footer" id="DataTables_Table_1" role="grid" aria-describedby="DataTables_Table_0_info">
+                            <thead>
+                                <tr class="data-item data-head" role="row">
+                                    <th class="data-col dt-date sorting_disabled" rowspan="1" colspan="1">Date</th>
+                                    <th class="data-col dt-txid sorting_disabled" rowspan="1" colspan="1">Tx Id</th>
+                                    <th class="data-col dt-amount sorting_disabled" rowspan="1" colspan="1">Amount</th>
+                                    
+                                </tr>
+                            </thead>
+                            <tbody>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="row row-grid">
+    <div class="col-lg-12">
+        <div class="card content-area">
+            <div class="card-innr">
+                <h1>WHAT IS XPUB</h1>
+                <p>Xpub is your wallet 'key' to generate
+                addresses for recieving bitcoin. If someone
+                uses this xpub, he will be able to create your
+                wallet's addresses, but not spend your bitcoin.</p>
+                <h1>WHAT WILL XPUB DO</h1>
+                <p>It will make your bitcart wallets and
+                associated stores work.</p>
+                <h1>WHERE CAN I FIND MY XPUB</h1>
+                <p>In your wallet, some section called
+                xpub or extended public key, or
+                wallet info, or similar.</p>
+            </div>
+        </div>
+    </div>
+    
+</div>
 {% endblock content %}
+{% block last_scripts %}
+<script type="text/javascript">
+$("#DataTables_Table_0").on('click','tr',function() {
+          console.log("yes");
+          var id = $(this).find("td:first-child").text();
+          var tr=$(this).closest("tr");
+          var dt=$("#DataTables_Table_0").DataTable();
+          var id = $(dt.row(tr).data()[0]).text();
+          console.log(id);
+          var wallet_name=$(this).find("td:nth-child(2)").text();
+          $(this).toggleClass("select");
+$.ajax({
+    url: '/api/wallets/'+id,
+    method: 'GET',
+    success: function(result) {
+      var dt=$("#DataTables_Table_1").DataTable();
+      var settings=dt.init();
+      dt.clear();
+      dt.destroy();
+      
+      
+      settings.bPaginate=result.length > 5;
+      //settings.data=result;
+      //dt.DataTable(settings);
+      //console.log($("#DataTables_Table_1 tbody tr"));
+      
+      dt=$("#DataTables_Table_1").DataTable(settings);
+      //console.log('nn');
+      dt.rows.add(result).draw();
+      $("#tx-table-title").text("Transactions of "+wallet_name);
+    }
+  });
+});
+var F = $("#DataTables_Table_0");
+if (F.length > 0) {
+    var O = F.DataTable({
+        ordering: !1,
+        autoWidth: !1,
+        dom: '<"row justify-content-between pdb-1x"<"col-9 col-sm-6 text-left"f><"col-3 text-right"<"data-table-filter relative d-inline-block">>><t><"row justify-content-between"<"col-sm-9 text-left"p><"col-sm-6 text-sm-right"i>>',
+        pageLength: 5,
+        bPaginate: true,
+        iDisplayLength: 6,
+        pagingType: "simple",
+        language: {
+            search: "",
+            searchPlaceholder: "Search",
+            info: "_START_ -_END_ of _TOTAL_",
+            infoEmpty: "No records",
+            infoFiltered: "( Total _MAX_  )",
+            paginate: {
+                first: "First",
+                last: "Last",
+                next: "Next",
+                previous: "Prev"
+            }
+        },
+        createdRow: function( row, data, dataIndex ) {
+        $(row).addClass("data-item odd");
+        var r1=$(row).find("td:nth-child(1)");//.addClass("lead token-amount")
+        var r2=$(row).find("td:nth-child(2)");//.addClass("sub sub-date");
+        r1.addClass("data-col");
+        r2.addClass("data-col");
+        r1.html(`<span class="lead token-amount">`+r1.text()+`</span>`);
+        r2.html(`<span class="sub sub-date">`+r2.text()+`</span>`);
+        
+        console.log($(row));
+  },
+        columnDefs:
+            [
+            {targets:[0], visible:false}
+            ]
+    });
+}
+var A = $("#DataTables_Table_1");
+A.length > 0 && A.DataTable({
+    ordering: !1,
+    autoWidth: !1,
+    dom: '<"row justify-content-between pdb-1x"<"col-9 col-sm-6 text-left"f><"col-3 text-right"<"data-table-filter relative d-inline-block">>><t><"row"<"col-auto text-left"p><"col-sm-6 text-sm-right"i>>',
+    pageLength: 5,
+    bPaginate: $(".data-table tbody tr").length > 5,
+    iDisplayLength: 5,
+    language: {
+        search: "",
+        searchPlaceholder: "Type in to Search",
+        info: "_START_ -_END_ of _TOTAL_",
+        infoEmpty: "No records",
+        infoFiltered: "( Total _MAX_  )",
+        paginate: {
+            first: "First",
+            last: "Last",
+            next: "Next",
+            previous: "Prev"
+        }
+    },
+    createdRow: function( row, data, dataIndex ) {
+        $(row).addClass("data-item-tx");
+  },
+    columns: [
+    {"name":"date"},
+    {"name":"invoiceid"},
+    {"name":"amount"}]
+});
+function delete_wallet_url(id){
+    return "{% url 'wallets' %}"+id+"/delete/";
+}
+$("#add-new-wallet").on('click', async function() {
+  const {value: got}= await Swal.fire({
+  title: 'Create new wallet',
+  html:
+    '<label for="swal-input1">Name:</label>' +
+    '<input id="swal-input1" class="swal2-input">' +
+    '<label for="swal-input2">Xpub:</label>' +
+    '<input id="swal-input2" class="swal2-input">',
+  focusConfirm: false,
+  preConfirm: () => {
+    return [
+      document.getElementById('swal-input1').value,
+      document.getElementById('swal-input2').value
+    ];
+  }
+});
+    if (typeof got == 'undefined')
+        return;
+    if (got[0] == "")
+        {
+        Swal.fire({
+            type: "error",
+            title: "Error",
+            text: "Name must not be empty!"
+        });
+        return;
+        }
+    if (got[1] == "")
+        {
+        Swal.fire({
+            type: "error",
+            title: "Error",
+            text: "Xpub must not be empty!"
+        });
+        return;
+        }
+    var csrftoken = getCookie('csrftoken');
+    var to_send={"name":got[0], "xpub":got[1]};
+    $.ajax({
+        type: "POST",
+        url: "/wallets/create/",
+        // The key needs to match your method's input parameter (case-sensitive).
+        data: JSON.stringify(to_send),
+        contentType: "application/json; charset=utf-8",
+        beforeSend: function(xhr) {
+            xhr.setRequestHeader('X-CSRFToken', csrftoken);
+        },
+        dataType: "json",
+        success: function(data) {
+            try {
+                n=window.location;
+                t = n.protocol === "https:" ? "wss:" : "ws:";
+                t += "/" + n.host;
+                t += n.pathname + "ws/?wallet="+data.id;
+                t=decode(t);
+                u = new WebSocket(t);
+                u.onmessage = function (data2) {
+                    console.log("here");
+                    console.log(data2);
+                    data2=JSON.parse(data2.data);
+                    if (data2.status == "success")
+                        {
+                        text='<em class="ti ti-check toast-message-icon"></em> Your wallet is now active';
+                        dt=$("#DataTables_Table_0").DataTable();
+                        dt.row.add([data.id,got[0],data2.balance,`<a href="`+delete_wallet_url(data.id)+`" class="btn btn-auto btn-danger btn-xs"><span>Delete wallet</span></a>`]).draw(false);
+                        }
+                    if (data2.status == "error")
+                        text='<em class="ti ti-na toast-message-icon"></em> Invalid xpub!';
+                    function toast() {
+                        toastr.clear(),
+                        toastr.options = {
+                        closeButton: !0,
+                        debug: !1,
+                        newestOnTop: !1,
+                        progressBar: !1,
+                        positionClass: 'toast-top-right',
+                        preventDuplicates: !0,
+                        showDuration: '3000',
+                        hideDuration: '10000',
+                        timeOut: '2000',
+                        extendedTimeOut: '1000'
+                        },
+                        toastr.info(text);
+                    };
+                    toast();
+                };
+                u.onerror = function () {
+                    console.error("Error while connecting to websocket for invoice notifications (callback)")
+                };
+            }
+            catch (p) {
+                console.error("Error while connecting to websocket");
+            }
+        },
+        error: function(err) {
+            console.log("err nooo");
+            console.log(err);
+        }
+    });
+});
+{% if success %}
+function toast() {
+        toastr.clear(),
+        toastr.options = {
+          closeButton: !0,
+          debug: !1,
+          newestOnTop: !1,
+          progressBar: !1,
+          positionClass: 'toast-top-right',
+          preventDuplicates: !0,
+          showDuration: '1000',
+          hideDuration: '10000',
+          timeOut: '2000',
+          extendedTimeOut: '1000'
+        },
+        toastr.info('<em class="ti ti-check toast-message-icon"></em> Your wallet is now active');
+};
+toast();
+{% endif %}
+</script>
+{% endblock last_scripts %}

@@ -1,0 +1,26 @@
+{% extends 'gui/base.html' %}
+
+{% block content %}
+<div class="page-ath-form">
+    <h2 class="page-ath-heading">Sign in</h2>
+    {% if error %}
+    <span class="text-danger field-validation-valid" data-valmsg-for="id_email" data-valmsg-replace="true">Invalid username or password</span>
+    {% endif %}
+    <form action="" method="post">
+        {% csrf_token %}
+        {{wizard.management_form}}
+        <div class="input-item"><input type="text" id="username" name="auth-username" placeholder="Your name" class="input-bordered"></div>
+        <div class="input-item"><input type="password" id="password" name="auth-password" placeholder="Password" class="input-bordered"></div>
+        <div class="d-flex justify-content-between align-items-center">
+            <div class="input-item text-left"><input class="input-checkbox input-checkbox-md" id="remember_me" type="checkbox"><label for="remember_me">Remember Me</label></div>
+            <div>
+                <a href="#">Forgot password?</a>
+                <div class="gaps-2x"></div>
+            </div>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">Sign In</button>
+    </form>
+    <div class="gaps-2x"></div>
+    <div class="form-note">Don’t have an account? <a href="{% url 'register' %}"> <strong>Sign up here</strong></a></div>
+</div>
+{% endblock content %}

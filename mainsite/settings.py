@@ -11,12 +11,14 @@ https://docs.djangoproject.com/en/2.1/ref/settings/
 """
 
 import os
+import gui
 from decouple import Csv, AutoConfig
 
 config=AutoConfig(search_path="conf")
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+GUI_DIR = os.path.dirname(os.path.abspath(gui.__file__))
 
 
 # Quick-start development settings - unsuitable for production
@@ -50,6 +52,11 @@ INSTALLED_APPS = [
     'embed_video',
     'sorl.thumbnail',
     'channels',
+    'django_otp',
+    'django_otp.plugins.otp_static',
+    'django_otp.plugins.otp_totp',
+    'two_factor',
+    'crispy_forms',
     'gui'
 ]
 
@@ -71,11 +78,20 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django_otp.middleware.OTPMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
 MIDDLEWARE.extend(config("MIDDLEWARE",default="",cast=Csv()))
+
+INTERNAL_IPS=['127.0.0.1']
+
+if DEBUG:
+    INSTALLED_APPS.append("debug_toolbar")
+    MIDDLEWARE=['debug_toolbar.middleware.DebugToolbarMiddleware']+MIDDLEWARE
+
+AUTH_USER_MODEL="gui.User"
 
 APPEND_SLASH=config("APPEND_SLASH", default=True, cast=bool)
 SESSION_EXPIRE_AT_BROWSER_CLOSE=config("SESSION_EXPIRE_AT_BROWSER_CLOSE", default=False, cast=bool)
@@ -83,6 +99,7 @@ LOGIN_REDIRECT_URL = config("LOGIN_REDIRECT_URL", default="/")
 LOGIN_URL=config("LOGIN_URL", default="/account/login")
 ASGI_APPLICATION = "mainsite.routing.application"
 ROOT_URLCONF = 'mainsite.urls'
+CRISPY_TEMPLATE_PACK = "bootstrap4"
 
 #rpc
 RPC_USER=config("RPC_USER", default="electrum")
@@ -119,11 +136,10 @@ else:
             'BACKEND': 'django.core.cache.backends.dummy.DummyCache',
         }
 }
-
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [os.path.join(GUI_DIR, 'templates')],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -131,6 +147,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'gui.context_processors.provide_stats'
             ],
         },
     },
@@ -144,7 +161,7 @@ WSGI_APPLICATION = 'mainsite.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE' : 'django.db.backends.mysql',
+        'ENGINE' : 'django.db.backends.postgresql',
         'NAME': config("DB_DATABASE", default="bitcart"),
         'USER' : config("DB_USER", default="root"),
         'PASSWORD' : config("DB_PASSWORD", default="123@"),

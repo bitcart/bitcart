@@ -1,19 +1,34 @@
 from django import forms
-from django.contrib.auth.models import User
+from django.conf import settings
 from . import models
 
 class StoreForm(forms.ModelForm):
 
     class Meta:
         model = models.Store
-        fields = ("id","name","website","can_invoice","xpub","invoice_expire","fee_mode","payment_tolerance")
+        fields = ("name","wallet","domain","template","email")
 
     def __init__(self,*args, **kwargs):
         super().__init__(*args, **kwargs)
         for visible in self.visible_fields():
             visible.field.widget.attrs['class'] = 'form-control'
-        self.fields["can_invoice"].widget.attrs['class'] = 'form-check'
-        self.fields["id"].widget.attrs["readonly"]=True
+        #self.fields["wallet"].widget.attrs['class'] = 'form-check'
+        #self.fields["id"].widget.attrs["readonly"]=True
+
+class UpdateStoreForm(forms.ModelForm):
+
+    class Meta:
+        model = models.Store
+        fields = ("name","wallet","domain","template","email")
+
+    def __init__(self,*args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for visible in self.visible_fields():
+            visible.field.widget.attrs['class'] = 'form-control'
+            #visible.field.required=False
+        #print(self.visible_fields())
+        #self.fields["wallet"].widget.attrs['class'] = 'form-check'
+        #self.fields["id"].widget.attrs["readonly"]=True
         
 class ProductForm(forms.ModelForm):
 
@@ -27,7 +42,7 @@ class CreateStoreForm(forms.Form):
 class RegisterForm(forms.ModelForm):
     confirm_password = forms.CharField(max_length=255,widget=forms.PasswordInput())
     class Meta:
-        model = User
+        model = models.User
         fields = ("username","email","password")
         widgets={
         "confirm_password":forms.PasswordInput(),
@@ -68,3 +83,9 @@ class ChangePasswordForm(forms.Form):
         super().__init__(*args, **kwargs)
         for visible in self.visible_fields():
             visible.field.widget.attrs['class'] = 'form-control'
+
+class WalletForm(forms.ModelForm):
+
+    class Meta:
+        model = models.Wallet
+        fields = ("name","xpub")

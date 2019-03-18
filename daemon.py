@@ -39,19 +39,25 @@ async def get_tx_async(tx):
     result_formatted=Transaction(result).deserialize()
     result_formatted.update({"confirmations":result["confirmations"]})
     return result_formatted
+
+def exchange_rate():
+    return fx.exchange_rate()
     
 wallets={}
-supported_methods={"get_transaction":get_transaction}
+supported_methods={"get_transaction":get_transaction, "exchange_rate":exchange_rate}
 
 #verbosity level, uncomment for debug info
 #set_verbosity(True)
 
 def start_it():
-    global network
+    global network, fx
     asyncio.set_event_loop(asyncio.new_event_loop())
     config = SimpleConfig()
+    config.set_key("currency","USD")
+    config.set_key("use_exchange_rate", True)
     daemon = Daemon(config, listen_jsonrpc=False)
     network = daemon.network
+    fx=daemon.fx
     while True:
         pass
 
@@ -92,7 +98,10 @@ async def xpub_func(request):
     params=data.get("params",[])
     if not method:
         return web.json_response({"jsonrpc": "2.0", "error": {"code": -32601, "message": "Procedure not found."}, "id": id})
-    wallet=load_wallet(xpub)
+    try:
+        wallet=load_wallet(xpub)
+    except Exception:
+        return web.json_response({"jsonrpc": "2.0", "error": {"code": -32601, "message": "Error loading wallet"}, "id": id})
     if method in supported_methods:
         exec_method=supported_methods[method]
     else:
