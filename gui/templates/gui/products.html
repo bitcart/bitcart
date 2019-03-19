@@ -120,7 +120,6 @@ var form=`{{form|crispy}}`;
 {% endblock content %}
 
 {% block last_scripts %}
-<script type="module">import * as another from "{% static 'gui/js/__target__/another.js' %}"; window.another=another;</script>
 <script type="text/javascript">
 $("#create-product-btn").on("click", function() {another.main.create_popup('Create a product',form)});
 $.ajax({
