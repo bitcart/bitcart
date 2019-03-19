@@ -1,90 +1,61 @@
 {% extends 'gui/base.html' %}
+{% load crispy_forms_tags %}
+{% load static %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@8"></script>
+{% endblock head %}
+{% block head_last %}
+<script type="text/javascript">
+var form=`{{form|crispy}}`;
+</script>
+{% endblock head_last %}
 
 {% block content %}
-<section>
-    <div class="container">
+<div class="row no-gutter" style="margin-bottom: 5px;">
+    <div class="col-lg-6">
+        <button class="btn btn-primary" id="create-product-btn">Create a new product</button>
 
-        <div class="row">
-            <div class="col-lg-12 text-center">
-                
-
-            </div>
+        <a class="btn btn-primary dropdown-toggle" href="#" role="button" id="dropdownMenuLink" data-toggle="dropdown"
+            aria-haspopup="true" aria-expanded="false">
+            Export
+        </a>
+        <a href="#" target="_blank"><span class="fa fa-question-circle-o" title="More information..."></span></a>
+        <div class="dropdown-menu" aria-labelledby="dropdownMenuLink">
+            <a class="dropdown-item" target="_blank" href="{% url 'product_export' %}?format=csv">CSV</a>
+            <a class="dropdown-item" target="_blank" href="{% url 'product_export' %}?format=json">JSON</a>
         </div>
+    </div>
 
-        <div class="row">
-            <div class="col-lg-12 text-center">
-                <h2 class="section-heading">Products</h2>
-                {% if ok %}
-                <div class="alert alert-success alert-dismissible" role="alert">
-                <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">×</span></button>
-                Product successfully created          
+    <div class="col-lg-6">
+        <div class="form-group">
+            <form method="post" style="float:right;">
+                {% csrf_token %}
+                <div class="input-group">
+                    <input class="form-control" style="width:300px;" type="text" id="search_term" name="search_term">
+                    <span class="input-group-btn">
+                        <button type="submit" class="btn btn-primary" title="Search invoice">
+                            <span class="fa fa-search"></span> Search
+                        </button>
+                    </span>
                 </div>
-                {% endif %}
-                <hr class="primary">
-                <p>Create, search or pay a product. (<a href="#help" data-toggle="collapse">Help</a>)</p>
-                <div id="help" class="collapse text-left">
-                    <p>
-                        You can search for product Id, deposit address, 
-price, order id, store id, any buyer information and any product 
-information.<br>
-                        You can also apply filters to your search by searching for <code>filtername:value</code>, here is a list of supported filters
-                    </p>
-                    <ul>
-                        <li><code>storeid:id</code> for filtering a specific store</li>
-                        <li><code>orderid:id</code> for filtering a specific order</li>
-                        <li><code>itemcode:code</code> for filtering a specific type of item purchased through the pos or crowdfund apps</li>
-                        <li><code>status:(expired|invalid|complete|confirmed|paid|new)</code> for filtering a specific status</li>
-                        <li><code>exceptionstatus:(paidover|paidlate|paidpartial)</code> for filtering a specific exception state</li>
-                        <li><code>unusual:(true|false)</code> for filtering invoices which might requires merchant attention (those invalid or with an exceptionstatus)</li>
-                    </ul>
-                    <p>
-                        If you want all confirmed and complete products, you can duplicate a filter <code>status:confirmed status:complete</code>.
-                    </p>
-                </div>
-            </div>
+                <input type="hidden" data-val="true" data-val-required="The Count field is required." id="Count" name="Count"
+                    value="50">
+                <span class="text-danger field-validation-valid" data-valmsg-for="SearchTerm" data-valmsg-replace="true"></span>
+            </form>
         </div>
+    </div>
+</div>
 
-        <div class="row no-gutter" style="margin-bottom: 5px;">
-            <div class="col-lg-6">
-                <a class="btn btn-primary" role="button" href="{% url 'create_product' %}"><span class="fa fa-plus"></span> Create a new product</a>
-
-                <a class="btn btn-primary dropdown-toggle" href="#" role="button" id="dropdownMenuLink" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                    Export
-                </a>
-                <a href="#" target="_blank"><span class="fa fa-question-circle-o" title="More information..."></span></a>
-                <div class="dropdown-menu" aria-labelledby="dropdownMenuLink">
-                    <a class="dropdown-item" target="_blank" href="{% url 'product_export' %}?format=csv">CSV</a>
-                    <a class="dropdown-item" target="_blank" href="{% url 'product_export' %}?format=json">JSON</a>
-                </div>
-            </div>
-
-            <div class="col-lg-6">
-                <div class="form-group">
-                    <form method="post" style="float:right;">
-                        {% csrf_token %}
-                        <div class="input-group">
-                            <input class="form-control" style="width:300px;" type="text" id="search_term" name="search_term">
-                            <span class="input-group-btn">
-                                <button type="submit" class="btn btn-primary" title="Search invoice">
-                                    <span class="fa fa-search"></span> Search
-                                </button>
-                            </span>
-                        </div>
-                        <input type="hidden" data-val="true" data-val-required="The Count field is required." id="Count" name="Count" value="50">
-                        <span class="text-danger field-validation-valid" data-valmsg-for="SearchTerm" data-valmsg-replace="true"></span>
-                    </form>
-                </div>
-            </div>
-        </div>
-
-        <div class="card content-area">
+<div class="card content-area">
     <div class="card-innr">
         <div class="card-head">
             <h4 class="card-title">Products</h4>
         </div>
         <div id="DataTables_Table_0_wrapper" class="dataTables_wrapper dt-bootstrap4 no-footer">
             <div>
-                <table class="data-table dt-init user-tnx dataTable no-footer" id="DataTables_Table_0" role="grid" aria-describedby="DataTables_Table_0_info">
+                <table class="data-table dt-filter-init user-tnx dataTable no-footer" id="DataTables_Table_0" role="grid"
+                    aria-describedby="DataTables_Table_0_info">
                     <thead>
                         <tr class="data-item data-head" role="row">
                             <th class="data-col dt-date sorting_disabled" rowspan="1" colspan="1">Date</th>
@@ -97,7 +68,14 @@ information.<br>
                         </tr>
                     </thead>
                     <tbody>
-                        <!-- .data-item --><!-- .data-item --><!-- .data-item --><!-- .data-item --><!-- .data-item --><!-- .data-item --><!-- .data-item --><!-- .data-item -->
+                        <!-- .data-item -->
+                        <!-- .data-item -->
+                        <!-- .data-item -->
+                        <!-- .data-item -->
+                        <!-- .data-item -->
+                        <!-- .data-item -->
+                        <!-- .data-item -->
+                        <!-- .data-item -->
                         {% for product in products%}
                         <tr class="data-item odd" role="row">
                             <td class="data-col dt-date">
@@ -111,34 +89,56 @@ information.<br>
                             <td class="data-col dt-amount"><span class="sub sub-date">{{product.amount}}</span></td>
                             <td class="data-col">
                                 <div class="relative d-inline-block d-md-none">
-                                        <a href="#" class="btn btn-light-alt btn-xs btn-icon toggle-tigger"><em class="ti ti-more-alt"></em></a>
-                                        <div class="toggle-class dropdown-content dropdown-content-center-left pd-2x">
-                                            <ul class="data-action-list">
-                                                <li><a href="#" class="btn btn-auto btn-primary btn-xs"><span>Pay <span class="d-none d-xl-inline-block">Now</span></span><em class="ti ti-wallet"></em></a></li>
-                                                <li><a href="#" class="btn btn-danger-alt btn-xs btn-icon"><em class="ti ti-trash"></em></a></li>
-                                            </ul>
-                                        </div>
+                                    <a href="#" class="btn btn-light-alt btn-xs btn-icon toggle-tigger"><em class="ti ti-more-alt"></em></a>
+                                    <div class="toggle-class dropdown-content dropdown-content-center-left pd-2x">
+                                        <ul class="data-action-list">
+                                            <li><a href="#" class="btn btn-auto btn-primary btn-xs"><span>Pay <span
+                                                            class="d-none d-xl-inline-block">Now</span></span><em class="ti ti-wallet"></em></a></li>
+                                            <li><a href="#" class="btn btn-danger-alt btn-xs btn-icon"><em class="ti ti-trash"></em></a></li>
+                                        </ul>
+                                    </div>
                                 </div>
                                 <ul class="data-action-list d-none d-md-inline-flex">
-                                    <li><a href="{% url 'invoice_buy' invoice=product.id %}" class="btn btn-auto btn-primary btn-xs"><span>Pay <span class="d-none d-xl-inline-block">Now</span></span><em class="ti ti-wallet"></em></a></li>
+                                    <li><a href="{% url 'invoice_buy' invoice=product.id %}" class="btn btn-auto btn-primary btn-xs"><span>Pay
+                                                <span class="d-none d-xl-inline-block">Now</span></span><em class="ti ti-wallet"></em></a></li>
                                 </ul>
                             </td>
-                            <td class="data-col text-right">                              
-                            <a href="{% url 'product_info' product=product.id %}" class="btn btn-light-alt btn-xs btn-icon"><em class="ti ti-eye"></em></a>
+                            <td class="data-col text-right">
+                                <a href="{% url 'product_info' product=product.id %}" class="btn btn-light-alt btn-xs btn-icon"><em
+                                        class="ti ti-eye"></em></a>
                             </td>
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
-            
+
         </div>
     </div>
     <!-- .card-innr -->
 </div>
-
-
-    </div>
-</section>
-
 {% endblock content %}
+
+{% block last_scripts %}
+<script type="module">import * as another from "{% static 'gui/js/__target__/another.js' %}"; window.another=another;</script>
+<script type="text/javascript">
+$("#create-product-btn").on("click", function() {another.main.create_popup('Create a product',form)});
+$.ajax({
+        type: "GET",
+        url: "/api/v1/product",
+        // The key needs to match your method's input parameter (case-sensitive).
+        contentType: "application/json; charset=utf-8",
+        dataType: "json",
+        success:
+            function(data)
+                {
+                    console.log(data);
+                },
+        error:
+        function(data)
+                {
+                    console.log(data);
+                },
+  });
+</script>
+{% endblock last_scripts %}

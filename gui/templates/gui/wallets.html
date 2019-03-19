@@ -106,7 +106,7 @@ $("#DataTables_Table_0").on('click','tr',function() {
           var dt=$("#DataTables_Table_0").DataTable();
           var id = $(dt.row(tr).data()[0]).text();
           console.log(id);
-          var wallet_name=$(this).find("td:nth-child(2)").text();
+          var wallet_name=$(this).find("td:nth-child(1)").text();
           $(this).toggleClass("select");
 $.ajax({
     url: '/api/wallets/'+id,

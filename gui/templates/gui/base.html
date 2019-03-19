@@ -18,9 +18,11 @@
     <link href="{% static "gui/css/style.css" %}" rel="stylesheet">
     <script type="text/javascript" src="{% static "gui/js/jquery.js" %}"></script>
     <link rel="stylesheet" type="text/css" href="//cdn.datatables.net/1.10.19/css/jquery.dataTables.min.css">
+    {% block head_last %}
+    {% endblock head_last %}
 
 </head>
-{% block content_wrapper %}
+
 <body id="page-top">
 
 <div class="topbar-wrap">
@@ -137,7 +139,6 @@
     </div>
 </div>
 {% endif %}
-{% endblock content_wrapper %}
 {% block content %}
 {% endblock content %}
 </div>

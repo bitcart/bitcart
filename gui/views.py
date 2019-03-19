@@ -128,7 +128,7 @@ def products(request):
         p_val=request.GET.get("search_term","")
     products=filter_products(p_val,products)
     ok=request.GET.get("ok",False)
-    return render(request,"gui/products.html",{"products":products,"ok":ok, "products_active":True})
+    return render(request,"gui/products.html",{"products":products,"ok":ok, "products_active":True, "form":forms.ProductForm()})
 
 def invoice_buy(request,invoice):
     obj=get_object_or_404(models.Product,id=invoice)

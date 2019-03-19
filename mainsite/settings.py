@@ -66,6 +66,7 @@ INSTALLED_APPS.extend(config("INSTALLED_APPS",default="",cast=Csv()))
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.BasicAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
         'rest_framework.authentication.TokenAuthentication',
         
     ],
