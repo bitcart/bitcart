@@ -5,7 +5,9 @@ Linked repositories
 -------------------
 Our ecosystem consists of a few packages, this is main web interface.
 Other repositories:
+
 https://github.com/MrNaif2018/bitcart-docker - docker packaging, easy install
+
 https://github.com/MrNaif2018/bitcart-sdk - python library for coins connection
 
 Docs
