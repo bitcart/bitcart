@@ -41,7 +41,7 @@ async def get_tx_async(tx):
     return result_formatted
 
 def exchange_rate():
-    return fx.exchange_rate()
+    return str(fx.exchange_rate())
     
 wallets={}
 supported_methods={"get_transaction":get_transaction, "exchange_rate":exchange_rate}
@@ -116,6 +116,7 @@ async def xpub_func(request):
             result=exec_method(**params)
     except Exception:
         return web.json_response({"jsonrpc": "2.0", "error": {"code": -32601, "message": traceback.format_exc().splitlines()[-1]}, "id": id})
+    print(result)
     return web.json_response({"jsonrpc": "2.0", "result": result, "error":None, "id": id})
 
 app=web.Application()

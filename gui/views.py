@@ -6,6 +6,7 @@ from . import models, forms, tasks
 from django import forms as django_forms
 from django.http import JsonResponse, HttpResponse
 from .models import User
+import decimal
 from django.contrib.auth import authenticate, login as django_login,logout as django_logout
 from django.contrib.auth.decorators import login_required
 import csv
@@ -133,6 +134,9 @@ def products(request):
 def invoice_buy(request,invoice):
     obj=get_object_or_404(models.Product,id=invoice)
     obj_j=json.loads(invoice_status(request,invoice).content)
+    usd_price=decimal.Decimal(BTC(RPC_URL,xpub=obj.store.wallet.xpub, rpc_user=RPC_USER, rpc_pass=RPC_PASS).server.exchange_rate())
+    usd_price=(obj.amount*usd_price).quantize(decimal.Decimal('0.00000001'))
+    
     '''obj=get_object_or_404(models.Product,id=invoice)
     creation_date=obj.date
     expire_date=creation_date+timedelta(minutes=obj.store.invoice_expire)
@@ -143,7 +147,7 @@ def invoice_buy(request,invoice):
     else:
         expire_at=abs(time_passed)
     time_left="{:02d}:{:02d}".format(*divmod(expire_at*60,60))'''
-    return render(request,"gui/invoice_buy.html",{"invoice":obj.id,"address":obj.bitcoin_address,"obj":obj,"obj_j":obj_j,"dumped_j":json.dumps(obj_j)})
+    return render(request,"gui/invoice_buy.html",{"invoice":obj.id,"usd_price":usd_price,"address":obj.bitcoin_address,"obj":obj,"obj_j":obj_j,"dumped_j":json.dumps(obj_j)})
 
 @login_required
 def product_info(request,product):

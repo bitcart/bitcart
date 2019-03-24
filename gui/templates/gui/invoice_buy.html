@@ -1,5 +1,56 @@
 {% extends 'gui/base.html' %}
+{% load thumbnail %}
+{% load embed_video_tags %}
+{% load qr_tags %}
 
 {% block content %}
-<h1>Not yet implemented!</h1>
+<div role="document" class="modal-dialog open opened">
+    <div class="modal-content long">
+        <div class="content">
+            <div class="container">
+            <div class="card-title text-center">Buy {{obj.title}}</div>
+            <hr class="primary">
+            <div class="text-center">
+            {% if obj.image %}
+            {% thumbnail obj.image "200x200" as im %}
+            <img class="rounded" src="{{ im.url }}" width="{{ im.width }}" height="{{ im.height }}">
+            {% endthumbnail %}
+            <hr class="primary">
+            {% endif %}
+            {% if obj.video %}
+            {% video obj.video tiny %}
+            <hr class="primary">
+            {% endif %}
+            </div>
+            <div class="row">
+                <div class="col">
+                    <div class="spinner"></div>
+                </div>
+                <div class="col">
+                    <p class="large">11:30</p>
+                </div>
+            </div>
+            <p class="large">Status: <span id="product-status">{{obj.status}}</span><br>
+            Amount: {{obj.amount}} BTC ~= {{usd_price}} USD<br>
+            Quantity: {{obj.quantity}}
+            </p>
+            <p class="border">{{obj.description}}</p>
+            <a class="btn btn-primary" href="{{obj.bitcoin_url}}">Pay</a><br>
+            {% qr_from_text obj.bitcoin_url %}
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock content %}
+
+{% block last_scripts %}
+<script type="text/javascript">
+console.log("/i/"+"{{obj.id}}/status/ws");
+var w=new WebSocket("ws://"+"{{request.get_host}}/i/"+"{{obj.id}}/status/ws/");
+w.onmessage=function (data) {
+    console.log(data);
+    var got=JSON.parse(data.data);
+    $("#product-status").text(got.status);
+};
+</script>
+{% endblock last_scripts %}

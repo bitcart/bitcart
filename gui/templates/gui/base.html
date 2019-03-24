@@ -38,7 +38,7 @@
                     <!-- .topbar-nav-item -->
                 </ul>
                 <!-- .topbar-nav --><a class="topbar-logo" href="/"><img src="{% static 'gui/img/logo-light-sm.png' %}" alt="logo"></a>
-                {% if user.is_authenticated %}
+                {% if user.is_authenticated and is_active %}
                 <ul class="topbar-nav">
                     <li class="topbar-nav-item relative">
                         <span class="user-welcome d-none d-lg-inline-block">Welcome! {{request.user}}</span><a class="toggle-tigger user-thumb" href="#"><em class="ti ti-user"></em></a>
@@ -63,7 +63,7 @@
         </div>
         <!-- .container -->
     </div>
-{% if user.is_authenticated %}
+{% if user.is_authenticated and is_active %}
 <div class="navbar">
     <div class="container">
         <div class="navbar-innr">
@@ -78,10 +78,10 @@
     </div>
     <!-- .container -->
 </div>
-</div>
 {% endif %}
+</div>
 <div class="container">
-{% if user.is_authenticated %}
+{% if user.is_authenticated and is_active %}
 <div class="row">
     <div class="col-lg-4">
         <div id="wallet-stats" class="token-statistics card card-token height-auto">
