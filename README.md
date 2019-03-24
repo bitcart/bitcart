@@ -1,25 +1,13 @@
 # bitcart
 Bitcart is a platform for merchants, users and developers which offers easy setup and use.
 
-Installation
-------------
+Linked repositories
+-------------------
+Our ecosystem consists of a few packages, this is main web interface.
+Other repositories:
+https://github.com/MrNaif2018/bitcart-docker - docker packaging, easy install
+https://github.com/MrNaif2018/bitcart-sdk - python library for coins connection
 
-There are two ways of installation: automatic via docker(easy) or manual(harder).
-
-  Automatic
-  ---------
-  Now we offer docker automatic installation!
-  https://github.com/MrNaif2018/bitcart-docker
-  https://hub.docker.com/r/mrnaif/bitcart
-  
-  Manual
-  ------
-  
-  
-    pip3 install -r requirements.txt
-
-Support
--------
-We offer a great support for everyone.
-For now we have a telegram group:
-https://t.me/bitcartcc
+Docs
+----
+Docs are available at https://bitcart.readthedocs.io/en/latest/ or at docs directory in this repository.
