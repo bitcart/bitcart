@@ -9,7 +9,7 @@ Babel==2.6.0
 billiard==3.6.0.0
 bitcart==0.1.2
 celery==4.3.0
-certifi==2018.11.29
+certifi==2019.3.9
 channels==2.1.7
 channels-rabbitmq==0.0.11
 chardet==3.0.4
