@@ -33,7 +33,7 @@ incremental==17.5.0
 itypes==1.1.0
 Jinja2==2.10.1
 kombu==4.5.0
-Markdown==3.0.1
+Markdown==3.1
 MarkupSafe==1.1.1
 msgpack==0.6.1
 phonenumberslite==8.10.7
