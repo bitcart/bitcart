@@ -38,7 +38,7 @@ MarkupSafe==1.1.1
 msgpack==0.6.1
 phonenumberslite==8.10.9
 Pillow==6.0.0
-psycopg2-binary==2.7.7
+psycopg2-binary==2.8.1
 Pygments==2.3.1
 PyHamcrest==1.9.0
 python-decouple==3.1
