@@ -47,7 +47,7 @@ qrcode==6.1
 requests==2.21.0
 six==1.12.0
 sorl-thumbnail==12.5.0
-Twisted==18.9.0
+Twisted==19.2.0
 txaio==18.8.1
 uritemplate==3.0.0
 urllib3==1.24.1
