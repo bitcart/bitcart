@@ -6,7 +6,7 @@ attrs==19.1.0
 autobahn==19.3.3
 Automat==0.7.0
 Babel==2.6.0
-billiard==3.5.0.5
+billiard==3.6.0.0
 bitcart==0.1
 celery==4.2.1
 certifi==2018.11.29
