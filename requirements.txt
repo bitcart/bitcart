@@ -42,7 +42,7 @@ psycopg2-binary==2.8.1
 Pygments==2.3.1
 PyHamcrest==1.9.0
 python-decouple==3.1
-pytz==2018.9
+pytz==2019.1
 qrcode==6.1
 requests==2.21.0
 six==1.12.0
