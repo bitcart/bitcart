@@ -27,7 +27,7 @@ django-phonenumber-field==2.3.1
 django-two-factor-auth==1.8.0
 djangorestframework==3.9.2
 django-qrcode==0.3
-hyperlink==18.0.0
+hyperlink==19.0.0
 idna==2.8
 incremental==17.5.0
 itypes==1.1.0
