@@ -1,28 +1,28 @@
-django
-celery
+django==2.2
+celery==4.3.0
 # .env file reading
-python-decouple
+python-decouple==3.1
 # drf
-django-rest-framework
+django-rest-framework==0.1.0
 # TODO probably remove this dependency
-channels_rabbitmq
+channels_rabbitmq==0.0.11
 # websocket
-channels
+channels==2.2.0
 # 2FA
-django-two-factor-auth
+django-two-factor-auth==1.8.0
 # easy forms
-django-crispy-forms
+django-crispy-forms==1.7.2
 # fast tables
-djangorestframework-datatables
+djangorestframework-datatables==0.5.0
 # postgres connector
-psycopg2-binary
+psycopg2-binary==2.8.1
 # bitcart-sdk
-bitcart
+bitcart==0.1.2
 # thumbnail creation, image field
-Pillow
+Pillow==6.0.0
 # built-in docs support, drf addons
-markdown
+markdown==3.1
 django-filter==2.1.0
-coreapi
+coreapi==2.3.3
 # static files serving
-whitenoise
+whitenoise==4.1.2
