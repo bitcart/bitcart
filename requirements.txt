@@ -25,4 +25,4 @@ markdown
 django-filter
 coreapi
 # static files serving
-whitenoise
+whitenoise==4.1.2
