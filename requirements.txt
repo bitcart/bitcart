@@ -21,7 +21,7 @@ bitcart
 # thumbnail creation, image field
 Pillow
 # built-in docs support, drf addons
-markdown
+markdown==3.1
 django-filter
 coreapi
 # static files serving
