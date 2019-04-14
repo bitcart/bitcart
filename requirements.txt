@@ -1,5 +1,5 @@
 django==2.2
-celery
+celery==4.3.0
 # .env file reading
 python-decouple
 # drf
