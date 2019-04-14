@@ -17,7 +17,7 @@ djangorestframework-datatables==0.5.0
 # postgres connector
 psycopg2-binary==2.8.1
 # bitcart-sdk
-bitcart
+bitcart==0.1.2
 # thumbnail creation, image field
 Pillow
 # built-in docs support, drf addons
