@@ -9,7 +9,7 @@ channels_rabbitmq==0.0.11
 # websocket
 channels==2.2.0
 # 2FA
-django-two-factor-auth
+django-two-factor-auth==1.8.0
 # easy forms
 django-crispy-forms
 # fast tables
