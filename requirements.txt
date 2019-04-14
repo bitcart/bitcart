@@ -3,7 +3,7 @@ celery
 # .env file reading
 python-decouple
 # drf
-django-rest-framework
+django-rest-framework==0.1.0
 # TODO probably remove this dependency
 channels_rabbitmq
 # websocket
