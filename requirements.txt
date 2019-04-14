@@ -19,7 +19,7 @@ psycopg2-binary
 # bitcart-sdk
 bitcart
 # thumbnail creation, image field
-Pillow
+Pillow==6.0.0
 # built-in docs support, drf addons
 markdown
 django-filter
