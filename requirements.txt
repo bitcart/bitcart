@@ -21,7 +21,7 @@ bitcart==0.1.2
 # thumbnail creation, image field
 Pillow==6.0.0
 # built-in docs support, drf addons
-markdown
+markdown==3.1
 django-filter
 coreapi
 # static files serving
