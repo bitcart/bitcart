@@ -15,7 +15,7 @@ django-crispy-forms==1.7.2
 # fast tables
 djangorestframework-datatables==0.5.0
 # postgres connector
-psycopg2-binary
+psycopg2-binary==2.8.1
 # bitcart-sdk
 bitcart
 # thumbnail creation, image field
