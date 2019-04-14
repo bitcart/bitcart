@@ -7,7 +7,7 @@ django-rest-framework==0.1.0
 # TODO probably remove this dependency
 channels_rabbitmq==0.0.11
 # websocket
-channels
+channels==2.2.0
 # 2FA
 django-two-factor-auth
 # easy forms
