@@ -11,7 +11,7 @@ channels
 # 2FA
 django-two-factor-auth
 # easy forms
-django-crispy-forms
+django-crispy-forms==1.7.2
 # fast tables
 djangorestframework-datatables
 # postgres connector
