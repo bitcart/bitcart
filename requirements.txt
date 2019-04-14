@@ -1,4 +1,4 @@
-django
+django==2.2
 celery==4.3.0
 # .env file reading
 python-decouple
