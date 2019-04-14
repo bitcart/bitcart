@@ -22,7 +22,7 @@ bitcart
 Pillow
 # built-in docs support, drf addons
 markdown
-django-filter
+django-filter==2.1.0
 coreapi
 # static files serving
 whitenoise
