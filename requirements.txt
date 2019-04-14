@@ -23,6 +23,6 @@ Pillow
 # built-in docs support, drf addons
 markdown
 django-filter
-coreapi
+coreapi==2.3.3
 # static files serving
 whitenoise
