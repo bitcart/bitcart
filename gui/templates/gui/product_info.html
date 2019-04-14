@@ -1,6 +1,4 @@
 {% extends 'gui/base.html' %}
-{% load thumbnail %}
-{% load embed_video_tags %}
 
 {% block head %}
 <meta name="robots" content="noindex,nofollow">
@@ -45,21 +43,10 @@
         </div>
         <div class="row">
             <div class="col-lg-12 text-center">
-                {% if product.image %}
-                {% thumbnail product.image "200x200" as im %}
-                <img src="{{ im.url }}" width="{{ im.width }}" height="{{ im.height }}">
-                {% endthumbnail %}
-                <hr class="primary">
-                {% endif %}
-
             </div>
         </div>
         <div class="row">
             <div class="col-lg-12 text-center">
-                {% if product.video %}
-                {% video product.video medium %}
-                <hr class="primary">
-                {% endif %}
             </div>
         </div>
 

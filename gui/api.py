@@ -2,6 +2,20 @@
 from . import models
 from . import serializers
 from rest_framework import viewsets, permissions
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from bitcart.coins.btc import BTC
+from django.conf import settings
+import decimal
+
+RPC_USER = settings.RPC_USER
+RPC_PASS = settings.RPC_PASS
+
+RPC_URL = settings.RPC_URL
+
+btc = BTC(RPC_URL)
+
+PRECISION = decimal.Decimal('0.00000001')
 
 
 class StoreViewSet(viewsets.ModelViewSet):
@@ -11,12 +25,43 @@ class StoreViewSet(viewsets.ModelViewSet):
     serializer_class = serializers.StoreSerializer
     permission_classes = [permissions.IsAuthenticated]
 
+    def get_queryset(self):
+        """
+        Optionally restricts the returned purchases to a given user,
+        by filtering against a `domain` query parameter in the URL.
+        """
+        queryset = models.Store.objects.all()
+        domain = self.request.query_params.get('domain', None)
+        if domain is not None:
+            queryset = queryset.filter(domain=domain)
+        return queryset
+
+
 class ProductViewSet(viewsets.ModelViewSet):
     """ViewSet for the Product class"""
 
-    queryset = models.Product.objects.all()
+    queryset = models.Product.objects.all().order_by("-date")
     serializer_class = serializers.ProductSerializer
     permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        """
+        Optionally restricts the returned purchases to a given user,
+        by filtering against a `status` query parameter in the URL.
+        """
+        queryset = models.Product.objects.all().order_by("-date")
+        status = self.request.query_params.get('status', None)
+        if status is not None:
+            queryset = queryset.filter(status=status)
+        currency = self.request.query_params.get('currency', 'BTC')
+        if currency == "USD":
+            exchange_rate = decimal.Decimal(
+                BTC(RPC_URL, rpc_user=RPC_USER, rpc_pass=RPC_PASS).server.exchange_rate())
+            for i in queryset:
+                i.amount = (decimal.Decimal(i.amount) *
+                            exchange_rate).quantize(PRECISION)
+        return queryset
+
 
 class WalletViewSet(viewsets.ModelViewSet):
     """ViewSet for the Product class"""
@@ -24,3 +69,15 @@ class WalletViewSet(viewsets.ModelViewSet):
     queryset = models.Wallet.objects.all()
     serializer_class = serializers.WalletSerializer
     permission_classes = [permissions.IsAuthenticated]
+
+
+class USDPriceView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, format=None):
+        btc_amount = decimal.Decimal(request.query_params.get("btc", 1))
+        usd_price = decimal.Decimal(
+            BTC(RPC_URL, rpc_user=RPC_USER, rpc_pass=RPC_PASS).server.exchange_rate())
+        usd_price = (
+            btc_amount*usd_price).quantize(PRECISION)
+        return Response(usd_price)

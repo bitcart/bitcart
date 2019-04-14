@@ -1,56 +1,28 @@
-aioamqp==0.12.0
-amqp==2.4.2
-asgiref==3.1.1
-async-timeout==3.0.1
-attrs==19.1.0
-autobahn==19.3.3
-Automat==0.7.0
-Babel==2.6.0
-billiard==3.6.0.0
-bitcart==0.1.2
-celery==4.3.0
-certifi==2019.3.9
-channels==2.1.7
-channels-rabbitmq==0.0.11
-chardet==3.0.4
-constantly==15.1.0
-coreapi==2.3.3
-coreschema==0.0.4
-daphne==2.3.0
-Django==2.2
-django-crispy-forms==1.7.2
-django-embed-video==1.2.0
-django-filter==2.1.0
-django-formtools==2.1
-django-otp==0.5.2
-django-phonenumber-field==2.3.1
-django-two-factor-auth==1.8.0
-djangorestframework==3.9.2
-django-qrcode==0.3
-hyperlink==19.0.0
-idna==2.8
-incremental==17.5.0
-itypes==1.1.0
-Jinja2==2.10.1
-kombu==4.5.0
-Markdown==3.1
-MarkupSafe==1.1.1
-msgpack==0.6.1
-phonenumberslite==8.10.9
-Pillow==6.0.0
-psycopg2-binary==2.8.1
-Pygments==2.3.1
-PyHamcrest==1.9.0
-python-decouple==3.1
-pytz==2019.1
-qrcode==6.1
-requests==2.21.0
-six==1.12.0
-sorl-thumbnail==12.5.0
-Twisted==19.2.0
-txaio==18.8.1
-uritemplate==3.0.0
-urllib3==1.24.1
-vine==1.3.0
-whitenoise==4.1.2
-zope.interface==4.6.0
+django
+celery
+# .env file reading
+python-decouple
+# drf
+django-rest-framework
+# TODO probably remove this dependency
+channels_rabbitmq
+# websocket
+channels
+# 2FA
+django-two-factor-auth
+# easy forms
+django-crispy-forms
+# fast tables
+djangorestframework-datatables
+# postgres connector
+psycopg2-binary
+# bitcart-sdk
+bitcart
+# thumbnail creation, image field
+Pillow
+# built-in docs support, drf addons
+markdown
+django-filter
+coreapi
+# static files serving
+whitenoise

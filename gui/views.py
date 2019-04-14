@@ -40,6 +40,7 @@ def main(request):
 def stores(request):
     if request.method == "POST":
         form=forms.StoreForm(json.loads(request.body))
+        form.fields["wallet"].queryset=models.Wallet.objects.filter(user=request.user)
         if form.is_valid():
             form=form.save(commit=False)
             form.id=secrets.token_urlsafe(32)
@@ -51,11 +52,12 @@ def stores(request):
             return JsonResponse({"id":form.id})
         else:
             print(form.errors)
-            return render(request,"gui/create_store.html",{"form":form})
+            return render(request,"gui/stores.html",{"form":form})
     else:
         stores=models.Store.objects.select_related("wallet").filter(wallet__user=request.user)
         #stores=models.Store.objects.filter(wallet__user=request.user)
         form=forms.StoreForm()
+        form.fields["wallet"].queryset=models.Wallet.objects.filter(user=request.user)
         return render(request,"gui/stores.html",{"stores":stores, "stores_active":True, "form":form})
 
 @login_required
@@ -129,7 +131,10 @@ def products(request):
         p_val=request.GET.get("search_term","")
     products=filter_products(p_val,products)
     ok=request.GET.get("ok",False)
-    return render(request,"gui/products.html",{"products":products,"ok":ok, "products_active":True, "form":forms.ProductForm()})
+    form=forms.ProductForm()
+    form.fields["store"].queryset=models.Store.objects.filter(wallet__user=request.user)
+    gen_id=secrets.token_urlsafe(22)
+    return render(request,"gui/products.html",{"products":products,"ok":ok, "products_active":True, "gen_id":gen_id,"form":form})
 
 def invoice_buy(request,invoice):
     obj=get_object_or_404(models.Product,id=invoice)
@@ -164,8 +169,7 @@ def get_product_dict(i):
     "order_id":i.order_id,
     "date":i.date,
     "description":i.description,
-    "image":image,
-    "video":i.video}
+    "image":image}
     return data_dict
 
 @login_required
@@ -180,7 +184,7 @@ def product_export(request):
         return JsonResponse(lst,safe=False)
     elif format_ == "csv":
         result=io.StringIO()
-        fieldnames = ['id', 'amount', 'quantity', 'title', 'status', 'order_id', 'date', 'description', 'image', 'video']
+        fieldnames = ['id', 'amount', 'quantity', 'title', 'status', 'order_id', 'date', 'description', 'image']
         writer = csv.DictWriter(result, fieldnames=fieldnames)
         writer.writeheader()
         for i in products:

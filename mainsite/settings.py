@@ -14,7 +14,7 @@ import os
 import gui
 from decouple import Csv, AutoConfig
 
-config=AutoConfig(search_path="conf")
+config = AutoConfig(search_path="conf")
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -30,12 +30,13 @@ SECRET_KEY = config("SECRET_KEY", default="replaceme")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config("DEBUG", default=False, cast=bool)
 
-ALLOWED_HOSTS_DEFAULT=config("ALLOWED_HOSTS_DEFAULT", default=True, cast=bool)
-ALLOWED_HOSTS=[]
+ALLOWED_HOSTS_DEFAULT = config(
+    "ALLOWED_HOSTS_DEFAULT", default=True, cast=bool)
+ALLOWED_HOSTS = []
 if ALLOWED_HOSTS_DEFAULT:
     ALLOWED_HOSTS.extend(["localhost", "127.0.0.1", "[::1]"])
 
-ALLOWED_HOSTS_ADD = config("ALLOWED_HOSTS",default="",cast=Csv())
+ALLOWED_HOSTS_ADD = config("ALLOWED_HOSTS", default="", cast=Csv())
 ALLOWED_HOSTS.extend(ALLOWED_HOSTS_ADD)
 
 # Application definition
@@ -50,27 +51,36 @@ INSTALLED_APPS = [
     'django.contrib.sites',
     'rest_framework',
     'rest_framework.authtoken',
-    'embed_video',
-    'sorl.thumbnail',
     'channels',
     'django_otp',
     'django_otp.plugins.otp_static',
     'django_otp.plugins.otp_totp',
     'two_factor',
     'crispy_forms',
-    'qrcode',
+    'rest_framework_datatables',
     'gui'
 ]
 
-#custom settings
-INSTALLED_APPS.extend(config("INSTALLED_APPS",default="",cast=Csv()))
+
+# custom settings
+INSTALLED_APPS.extend(config("INSTALLED_APPS", default="", cast=Csv()))
 
 REST_FRAMEWORK = {
+    'DEFAULT_RENDERER_CLASSES': (
+        'rest_framework.renderers.JSONRenderer',
+        'rest_framework.renderers.BrowsableAPIRenderer',
+        'rest_framework_datatables.renderers.DatatablesRenderer',
+    ),
+    'DEFAULT_FILTER_BACKENDS': (
+        'rest_framework_datatables.filters.DatatablesFilterBackend',
+    ),
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework_datatables.pagination.DatatablesPageNumberPagination',
+    'PAGE_SIZE': 50,
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.BasicAuthentication',
         'rest_framework.authentication.SessionAuthentication',
         'rest_framework.authentication.TokenAuthentication',
-        
+
     ],
 }
 
@@ -86,39 +96,40 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-MIDDLEWARE.extend(config("MIDDLEWARE",default="",cast=Csv()))
+MIDDLEWARE.extend(config("MIDDLEWARE", default="", cast=Csv()))
 
-INTERNAL_IPS=['127.0.0.1']
+INTERNAL_IPS = ['127.0.0.1']
 
 if DEBUG:
     INSTALLED_APPS.append("debug_toolbar")
-    MIDDLEWARE=['debug_toolbar.middleware.DebugToolbarMiddleware']+MIDDLEWARE
+    MIDDLEWARE = ['debug_toolbar.middleware.DebugToolbarMiddleware']+MIDDLEWARE
 
-AUTH_USER_MODEL="gui.User"
+AUTH_USER_MODEL = "gui.User"
 
-APPEND_SLASH=config("APPEND_SLASH", default=True, cast=bool)
-SESSION_EXPIRE_AT_BROWSER_CLOSE=config("SESSION_EXPIRE_AT_BROWSER_CLOSE", default=False, cast=bool)
+APPEND_SLASH = config("APPEND_SLASH", default=True, cast=bool)
+SESSION_EXPIRE_AT_BROWSER_CLOSE = config(
+    "SESSION_EXPIRE_AT_BROWSER_CLOSE", default=False, cast=bool)
 LOGIN_REDIRECT_URL = config("LOGIN_REDIRECT_URL", default="/")
-LOGIN_URL=config("LOGIN_URL", default="/account/login")
+LOGIN_URL = config("LOGIN_URL", default="/account/login")
 ASGI_APPLICATION = "mainsite.routing.application"
 ROOT_URLCONF = 'mainsite.urls'
 CRISPY_TEMPLATE_PACK = "bootstrap4"
 
-#rpc
-RPC_USER=config("RPC_USER", default="electrum")
-RPC_PASS=config("RPC_PASS", default="electrumz")
+# rpc
+RPC_USER = config("RPC_USER", default="electrum")
+RPC_PASS = config("RPC_PASS", default="electrumz")
 
-RPC_URL=config("RPC_URL", default="http://localhost:5000/")
-#celery
+RPC_URL = config("RPC_URL", default="http://localhost:5000/")
+# celery
 CELERY_BROKER_URL = config("CELERY_BROKER_URL", default="amqp://localhost")
-CELERY_BROKER_TRANSPORT_OPTIONS = {'visibility_timeout': 3600} 
+CELERY_BROKER_TRANSPORT_OPTIONS = {'visibility_timeout': 3600}
 CELERY_RESULT_BACKEND = CELERY_BROKER_URL
 
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_rabbitmq.core.RabbitmqChannelLayer",
         "CONFIG": {
-            
+
             "host": config("CHANNEL_LAYERS_HOST", default="amqp://localhost"),
         },
     },
@@ -129,8 +140,8 @@ TEST_MEMCACHE = False
 if not DEBUG or TEST_MEMCACHE:
     CACHES = {
         'default': {
-        'BACKEND': 'django.core.cache.backends.memcached.MemcachedCache',
-        'LOCATION': config("MEMCACHED_URL", default="127.0.0.1:11211"),
+            'BACKEND': 'django.core.cache.backends.memcached.MemcachedCache',
+            'LOCATION': config("MEMCACHED_URL", default="127.0.0.1:11211"),
         }
     }
 else:
@@ -138,7 +149,7 @@ else:
         'default': {
             'BACKEND': 'django.core.cache.backends.dummy.DummyCache',
         }
-}
+    }
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -164,12 +175,12 @@ WSGI_APPLICATION = 'mainsite.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE' : 'django.db.backends.postgresql',
+        'ENGINE': 'django.db.backends.postgresql',
         'NAME': config("DB_DATABASE", default="bitcart"),
-        'USER' : config("DB_USER", default="postgres"),
-        'PASSWORD' : config("DB_PASSWORD", default="123@"),
-        'HOST' : config("DB_HOST", default="127.0.0.1"),
-        'PORT' : config("DB_PORT", default="5432"),
+        'USER': config("DB_USER", default="postgres"),
+        'PASSWORD': config("DB_PASSWORD", default="123@"),
+        'HOST': config("DB_HOST", default="127.0.0.1"),
+        'PORT': config("DB_PORT", default="5432"),
     }
 }
 
@@ -212,7 +223,7 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 
-STATIC_ROOT=os.path.join(BASE_DIR, 'static')
+STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 
-MEDIA_ROOT=os.path.join(BASE_DIR, 'media')
-MEDIA_URL='/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+MEDIA_URL = '/media/'

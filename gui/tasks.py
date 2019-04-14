@@ -10,49 +10,51 @@ import time
 import traceback
 
 
-RPC_URL=settings.RPC_URL
-RPC_USER=settings.RPC_USER
-RPC_PASS=settings.RPC_PASS
+RPC_URL = settings.RPC_URL
+RPC_USER = settings.RPC_USER
+RPC_PASS = settings.RPC_PASS
 
-btc=BTC(RPC_URL)
+btc = BTC(RPC_URL)
 channel_layer = get_channel_layer()
+
 
 @shared_task
 def poll_updates(invoice_id):
-    obj=models.Product.objects.get(id=invoice_id)
-    address=obj.bitcoin_address
+    obj = models.Product.objects.get(id=invoice_id)
+    address = obj.bitcoin_address
     if not address:
         raise ValueError('Invoice not active!')
-    btc_instance=BTC(RPC_URL, xpub=obj.store.wallet.xpub, rpc_user=RPC_USER, rpc_pass=RPC_PASS)
+    btc_instance = BTC(RPC_URL, xpub=obj.store.wallet.xpub,
+                       rpc_user=RPC_USER, rpc_pass=RPC_PASS)
     while True:
-        invoice_data=btc_instance.getrequest(address)
+        invoice_data = btc_instance.getrequest(address)
         if invoice_data["status"] != "Pending":
             if invoice_data["status"] == "Unknown":
-                obj.status="invalid"  
+                obj.status = "invalid"
             if invoice_data["status"] == "Expired":
-                obj.status="expired"
+                obj.status = "expired"
             if invoice_data["status"] == "Paid":
-                obj.status="complete"
+                obj.status = "complete"
             obj.save()
             async_to_sync(channel_layer.group_send)(
-            invoice_id, {"type": "notify", "status":obj.status})
+                invoice_id, {"type": "notify", "status": obj.status})
             return
         time.sleep(1)
 
+
 @shared_task
 def sync_wallet(wallet_id, xpub):
-    print("here")
-    print(wallet_id, xpub)
-    model=models.Wallet.objects.get(id=wallet_id)
+    model = models.Wallet.objects.get(id=wallet_id)
     try:
-        balance=BTC(RPC_URL, xpub=xpub, rpc_user=RPC_USER, rpc_pass=RPC_PASS).balance()
-        model.balance=balance["confirmed"] or 0
-        model.updated_time=timezone.now()
+        balance = BTC(RPC_URL, xpub=xpub, rpc_user=RPC_USER,
+                      rpc_pass=RPC_PASS).balance()
+        model.balance = balance["confirmed"] or 0
+        model.updated_time = timezone.now()
         model.save()
         time.sleep(0.5)
-        async_to_sync(channel_layer.group_send)(wallet_id, {"type": "notify", "status":"success","balance":balance["confirmed"] or 0})
+        async_to_sync(channel_layer.group_send)(wallet_id, {
+            "type": "notify", "status": "success", "balance": balance["confirmed"] or 0})
     except Exception:
-        print("noo")
-        print(traceback.format_exc())
         model.delete()
-        async_to_sync(channel_layer.group_send)(wallet_id, {"type": "notify", "status":"error","balance":0})
+        async_to_sync(channel_layer.group_send)(
+            wallet_id, {"type": "notify", "status": "error", "balance": 0})

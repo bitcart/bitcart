@@ -29,7 +29,7 @@
      //$.fn.DataTable.ext.pager.simple_numbers = function (page, pages) {
      //return ["previous", _numbers(page, pages), "next"];
      //};
-     e.fn.DataTable.ext.pager.numbers_length = 5;
+     //e.fn.DataTable.ext.pager.numbers_length = 5;
 
      function i() {
          return t.width();

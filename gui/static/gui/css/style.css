@@ -4992,7 +4992,6 @@ select.select-sm {
     font-size: 20px;
     font-family:"Roboto";
     
-
     font-weight: 700;
     color: #758698;
     letter-spacing: 0.01em;
@@ -5144,7 +5143,6 @@ select.select-sm {
 .card-innr>.card-title {
     padding-bottom: 10px
 }
-
 
 .card-innr>div:last-child:not(.input-item):not(.row):not(.step-head) {
     margin-bottom: 5px
@@ -6734,8 +6732,6 @@ select.select-sm {
     margin: 1px 0 5px
 }
 
-
-
 .token-balance.token-balance-with-icon {
     margin-top: 5px
 }
@@ -6804,7 +6800,6 @@ select.select-sm {
     margin-bottom: -5px
 }
 
-
 .token-sales .countdown-clock:last-child,
 .token-sale-graph .chart-tokensale:last-child {
     margin-bottom: 5px
@@ -6822,13 +6817,10 @@ select.select-sm {
 }
 
 .token-pay-currency {
-    position: absolute;
     right: 0;
     top: 9px;
     transform: translate(0);
     z-index: 1;
-    padding: 0 10px;
-    border-left: 1px solid #d2dde9
 }
 
 .token-pay-currency .input-hint {

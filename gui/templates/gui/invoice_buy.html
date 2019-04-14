@@ -1,7 +1,4 @@
 {% extends 'gui/base.html' %}
-{% load thumbnail %}
-{% load embed_video_tags %}
-{% load qr_tags %}
 
 {% block content %}
 <div role="document" class="modal-dialog open opened">
@@ -11,16 +8,6 @@
             <div class="card-title text-center">Buy {{obj.title}}</div>
             <hr class="primary">
             <div class="text-center">
-            {% if obj.image %}
-            {% thumbnail obj.image "200x200" as im %}
-            <img class="rounded" src="{{ im.url }}" width="{{ im.width }}" height="{{ im.height }}">
-            {% endthumbnail %}
-            <hr class="primary">
-            {% endif %}
-            {% if obj.video %}
-            {% video obj.video tiny %}
-            <hr class="primary">
-            {% endif %}
             </div>
             <div class="row">
                 <div class="col">
@@ -36,7 +23,6 @@
             </p>
             <p class="border">{{obj.description}}</p>
             <a class="btn btn-primary" href="{{obj.bitcoin_url}}">Pay</a><br>
-            {% qr_from_text obj.bitcoin_url %}
             </div>
         </div>
     </div>

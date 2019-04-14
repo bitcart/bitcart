@@ -51,6 +51,7 @@ supported_methods={"get_transaction":get_transaction, "exchange_rate":exchange_r
 
 def start_it():
     global network, fx
+    thread=threading.currentThread()
     asyncio.set_event_loop(asyncio.new_event_loop())
     config = SimpleConfig()
     config.set_key("currency","USD")
@@ -58,10 +59,12 @@ def start_it():
     daemon = Daemon(config, listen_jsonrpc=False)
     network = daemon.network
     fx=daemon.fx
-    while True:
+    while thread.is_running:
         pass
 
-threading.Thread(target=start_it).start()
+thread=threading.Thread(target=start_it)
+thread.is_running=True
+thread.start()
 
 def load_wallet(xpub):
     if xpub in wallets:
@@ -93,7 +96,7 @@ async def xpub_func(request):
     method=data.get("method")
     id=data.get("id",None)
     xpub=data.get("xpub")
-    if not xpub:
+    if not xpub and not method in supported_methods:
         return web.json_response({"jsonrpc": "2.0", "error": {"code": -32601, "message": "Xpub not provided."}, "id": id})
     params=data.get("params",[])
     if not method:
@@ -101,7 +104,8 @@ async def xpub_func(request):
     try:
         wallet=load_wallet(xpub)
     except Exception:
-        return web.json_response({"jsonrpc": "2.0", "error": {"code": -32601, "message": "Error loading wallet"}, "id": id})
+        if not method in supported_methods:
+            return web.json_response({"jsonrpc": "2.0", "error": {"code": -32601, "message": "Error loading wallet"}, "id": id})
     if method in supported_methods:
         exec_method=supported_methods[method]
     else:
@@ -119,6 +123,10 @@ async def xpub_func(request):
     print(result)
     return web.json_response({"jsonrpc": "2.0", "result": result, "error":None, "id": id})
 
+async def on_shutdown(app):
+    thread.is_running=False
+
 app=web.Application()
 app.router.add_post("/",xpub_func)
+app.on_shutdown.append(on_shutdown)
 web.run_app(app, host="0.0.0.0", port=5000)
