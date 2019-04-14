@@ -13,7 +13,7 @@ django-two-factor-auth
 # easy forms
 django-crispy-forms
 # fast tables
-djangorestframework-datatables
+djangorestframework-datatables==0.5.0
 # postgres connector
 psycopg2-binary
 # bitcart-sdk
