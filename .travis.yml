@@ -14,16 +14,13 @@ before_install:
 
 install:
   - pip install -r requirements.txt
-  - pip install python-coveralls pytest-django pytest-cov
+  - pip install codecov pytest-django pytest-cov
   - python manage.py makemigrations
   - python manage.py makemigrations gui
   - python manage.py migrate
 
 script:
   - pytest --cov=.
-
-after_script:
-  - coveralls
 
 after_success:
   - codecov
