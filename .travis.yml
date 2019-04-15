@@ -9,7 +9,6 @@ python:
 before_install:
   - export DEBUG=false
   - export TEST=true
-  - export DJANGO_SETTINGS_MODULE=mainsite.settings
 
 install:
   - pip install -r requirements.txt

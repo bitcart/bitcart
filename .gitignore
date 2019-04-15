@@ -15,7 +15,6 @@ __pycache__/
 #vs code
 .vscode/
 #pytest
-pytest.ini
 #backups
 backups/
 backup/
