@@ -14,7 +14,7 @@ before_install:
 
 install:
   - pip install -r requirements.txt
-  - pip install python-memcached codecov pytest-django pytest-cov
+  - pip install python-memcached python-coveralls pytest-django pytest-cov
   - python manage.py makemigrations
   - python manage.py makemigrations gui
   - python manage.py migrate
@@ -23,4 +23,4 @@ script:
   - pytest --cov=.
 
 after_success:
-  - codecov
+  - coveralls
