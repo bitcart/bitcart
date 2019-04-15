@@ -11,7 +11,7 @@ env:
 
 install:
   - pip install -r requirements.txt
-  - pip install codecov pytest pytest-django pytest-cov
+  - pip install codecov pytest-django pytest-cov
 
 script:
   - PYTHONWARNINGS=all pytest --cov=.
