@@ -3,6 +3,7 @@ sudo: true
 python:
   - "3.6"
   - "3.7"
+  - "3.8-dev"
 
 env:
   - DEBUG=false
@@ -11,9 +12,6 @@ env:
 install:
   - pip install -r requirements.txt
   - pip install codecov pytest pytest-django pytest-cov
-
-before_script:
-  - psql -c 'create database test;' -U postgres
 
 script:
   - PYTHONWARNINGS=all pytest --cov=.
