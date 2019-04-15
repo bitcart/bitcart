@@ -1,6 +1,9 @@
 # Bitcart
 Bitcart is a platform for merchants, users and developers which offers easy setup and use.
 
+[![Build Status](https://travis-ci.org/MrNaif2018/bitcart.svg?branch=master)](https://travis-ci.org/MrNaif2018/bitcart)
+[![Coverage Status](https://coveralls.io/repos/github/MrNaif2018/bitcart/badge.svg?branch=master)](https://coveralls.io/github/MrNaif2018/bitcart?branch=master)
+
 Linked repositories
 -------------------
 Our ecosystem consists of a few packages, this is main web interface.
