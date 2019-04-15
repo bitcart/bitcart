@@ -6,16 +6,17 @@ python:
   - "3.7"
   - "3.8-dev"
 
-env:
-  - DEBUG=false
-  - TEST=true
+before_install:
+  - export DEBUG=false
+  - export TEST=true
+  - export DJANGO_SETTINGS_MODULE=mainsite.settings
 
 install:
   - pip install -r requirements.txt
   - pip install codecov pytest-django pytest-cov
 
 script:
-  - PYTHONWARNINGS=all pytest --cov=.
+  - pytest --cov=.
 
 after_success:
 - codecov
