@@ -1,0 +1,22 @@
+language: python
+sudo: true
+python:
+  - "3.6"
+  - "3.7"
+
+env:
+  - DEBUG=false
+  - TEST=true
+
+install:
+  - pip install -r requirements.txt
+  - pip install codecov pytest pytest-django pytest-cov
+
+before_script:
+  - psql -c 'create database test;' -U postgres
+
+script:
+  - PYTHONWARNINGS=all pytest --cov=.
+
+after_success:
+- codecov

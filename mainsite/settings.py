@@ -134,7 +134,7 @@ CHANNEL_LAYERS = {
         },
     },
 }
-
+TEST = config("TEST", cast=bool, default=False)
 TEST_MEMCACHE = False
 
 if not DEBUG or TEST_MEMCACHE:
@@ -173,17 +173,24 @@ WSGI_APPLICATION = 'mainsite.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/2.1/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': config("DB_DATABASE", default="bitcart"),
-        'USER': config("DB_USER", default="postgres"),
-        'PASSWORD': config("DB_PASSWORD", default="123@"),
-        'HOST': config("DB_HOST", default="127.0.0.1"),
-        'PORT': config("DB_PORT", default="5432"),
+if not TEST:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': config("DB_DATABASE", default="bitcart"),
+            'USER': config("DB_USER", default="postgres"),
+            'PASSWORD': config("DB_PASSWORD", default="123@"),
+            'HOST': config("DB_HOST", default="127.0.0.1"),
+            'PORT': config("DB_PORT", default="5432"),
+        }
     }
-}
-
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': ':memory:',
+        }
+    }
 
 # Password validation
 # https://docs.djangoproject.com/en/2.1/ref/settings/#auth-password-validators
