@@ -1,5 +1,6 @@
 language: python
 sudo: true
+dist: xenial
 python:
   - "3.6"
   - "3.7"
