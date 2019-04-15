@@ -20,8 +20,10 @@ install:
   - python manage.py migrate
 
 script:
-
   - pytest --cov=.
 
+after_script:
+  - coveralls
+
 after_success:
-- codecov
+  - codecov
