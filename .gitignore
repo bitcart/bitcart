@@ -22,8 +22,6 @@ backup/
 locales/
 #logs
 debug.log
-#migrations will be generated on client machines
-migrations/
 #docs builds
 /docs/_build
 /docs/_static
