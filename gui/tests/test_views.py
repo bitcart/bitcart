@@ -1,7 +1,13 @@
+#pylint: disable=no-member
 import pytest
 from gui import views, models
 from django.shortcuts import reverse
 from django.contrib.auth import authenticate
+import urllib
+import json
+# TODO: move secrets to create method
+import secrets
+
 
 pytestmark = pytest.mark.django_db
 
@@ -13,13 +19,37 @@ def user():
     yield user
 
 
+@pytest.fixture
+def wallet(user):
+    wallet = models.Wallet.objects.create(
+        id=secrets.token_urlsafe(44), name="mywallet", user=user)
+    yield wallet
+
+
+def test_truncate():
+    assert views.truncate("abc", 5) == "abc"
+    assert views.truncate("aaaaa", 3) == "aaa.."
+    assert views.truncate("test1", 1, endchar="test2") == "ttest2"
+
+
 def test_main(client, user):
     client.login(username="test", password="test")
     assert client.get(reverse("main")).status_code == 200
 
 
-def test_stores(client):
-    assert True
+def test_noauth(client):
+    url = urllib.parse.urlparse(client.get(
+        reverse("main"), follow=True).redirect_chain[-1][0]).path
+    assert url == reverse("login")
+
+
+def test_stores(client, user, wallet):
+    client.login(username="test", password="test")
+    kwargs = {"name": "test1", "wallet": wallet.pk, "domain": "example.com",
+              "template": "default", "email": "test@example.com"}
+    client.post(reverse("stores"), json.dumps(
+        kwargs), content_type='application/json')
+    models.Store.objects.get(**kwargs)
 
 
 def test_edit_store(client):
