@@ -22,8 +22,6 @@ jobs:
       TEST: true
       DJANGO_SETTINGS_MODULE: mainsite.settings
 
-    context: global
-
     steps:
       - checkout
 
@@ -57,6 +55,7 @@ jobs:
       # https://nose.readthedocs.io
       - run:
           name: run tests
+          context: global
           command: |
             . venv/bin/activate
             pytest -s --cov=.
