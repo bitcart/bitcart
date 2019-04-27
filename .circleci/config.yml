@@ -57,6 +57,7 @@ jobs:
           name: run tests
           context: global
           command: |
+            echo $test
             . venv/bin/activate
             pytest -s --cov=.
             coveralls
