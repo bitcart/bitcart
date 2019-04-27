@@ -49,7 +49,7 @@ def test_stores(client, user, wallet):
               "template": "default", "email": "test@example.com"}
     client.post(reverse("stores"), json.dumps(
         kwargs), content_type='application/json')
-    models.Store.objects.get(**kwargs)
+    assert models.Store.objects.filter(**kwargs).exists()
 
 
 def test_edit_store(client):
