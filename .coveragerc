@@ -1,9 +1,15 @@
 [run]
 omit =
     *apps.py,
+    *routing.py,
+    *urls.py,
+    *celery.py,
     *migrations/*,
     *settings*,
     *tests/*,
     *wsgi.py,
     manage.py,
-    venv/*
+    venv/*,
+    env/*,
+    *__init__.py
+    

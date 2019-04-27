@@ -27,3 +27,7 @@ debug.log
 /docs/_static
 /docs/_templates
 .idea/
+#tests and coverage
+.pytest_cache/
+htmlcov/
+.coverage

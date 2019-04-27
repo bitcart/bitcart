@@ -1,4 +1,3 @@
-#pylint: disable=no-member
 import os
 from electrum.simple_config import SimpleConfig
 from electrum import constants
@@ -17,54 +16,64 @@ import asyncio
 import traceback
 import threading
 
-LOGIN=config("DAEMON_LOGIN",default="electrum")
-PASSWORD=config("DAEMON_PASSWORD",default="electrumz")
+LOGIN = config("DAEMON_LOGIN", default="electrum")
+PASSWORD = config("DAEMON_PASSWORD", default="electrumz")
+
 
 def decode_auth(authstr):
     if not authstr:
-        return None,None
-    authstr = authstr.replace("Basic ","")
+        return None, None
+    authstr = authstr.replace("Basic ", "")
     decoded_str = b64decode(authstr).decode("latin1")
     user, password = decoded_str.split(":")
     return user, password
 
+
 def get_transaction(tx):
-    fut = asyncio.run_coroutine_threadsafe(get_tx_async(tx), network.asyncio_loop)
+    fut = asyncio.run_coroutine_threadsafe(
+        get_tx_async(tx), network.asyncio_loop)
     return fut.result()
+
 
 async def get_tx_async(tx):
     result = await network.interface.session.send_request(
-            "blockchain.transaction.get",
-            [tx, True])
-    result_formatted=Transaction(result).deserialize()
-    result_formatted.update({"confirmations":result["confirmations"]})
+        "blockchain.transaction.get",
+        [tx, True])
+    result_formatted = Transaction(result).deserialize()
+    result_formatted.update({"confirmations": result["confirmations"]})
     return result_formatted
+
 
 def exchange_rate():
     return str(fx.exchange_rate())
-    
-wallets={}
-supported_methods={"get_transaction":get_transaction, "exchange_rate":exchange_rate}
 
-#verbosity level, uncomment for debug info
-#set_verbosity(True)
+
+wallets = {}
+supported_methods = {"get_transaction": get_transaction,
+                     "exchange_rate": exchange_rate}
+
+# verbosity level, uncomment for debug info
+# set_verbosity(True)
+
 
 def start_it():
     global network, fx
-    thread=threading.currentThread()
+    thread = threading.currentThread()
     asyncio.set_event_loop(asyncio.new_event_loop())
     config = SimpleConfig()
-    config.set_key("currency","USD")
+    config.set_key("currency", "USD")
     config.set_key("use_exchange_rate", True)
     daemon = Daemon(config, listen_jsonrpc=False)
     network = daemon.network
-    fx=daemon.fx
+    fx = daemon.fx
     while thread.is_running:
         pass
 
-thread=threading.Thread(target=start_it)
-thread.is_running=True
+
+thread = threading.Thread(target=start_it)
+thread.is_running = True
 thread.start()
+
 
 def load_wallet(xpub):
     if xpub in wallets:
@@ -81,52 +90,54 @@ def load_wallet(xpub):
     wallet = Wallet(storage)
     wallet.start_network(network)
     command_runner.wallet = wallet
-    wallets[xpub]=command_runner
+    wallets[xpub] = command_runner
     return command_runner
 
+
 async def xpub_func(request):
-    auth=request.headers.get("Authorization")
+    auth = request.headers.get("Authorization")
     user, password = decode_auth(auth)
     if not (user == LOGIN and password == PASSWORD):
         return web.json_response({"jsonrpc": "2.0", "error": {"code": -32600, "message": "Unauthorized"}, "id": None})
     if request.content_type == "application/json":
-        data=await request.json()
+        data = await request.json()
     else:
         return web.json_response({"jsonrpc": "2.0", "error": {"code": -32600, "message": "Invalid JSON-RPC."}, "id": None})
-    method=data.get("method")
-    id=data.get("id",None)
-    xpub=data.get("xpub")
+    method = data.get("method")
+    id = data.get("id", None)
+    xpub = data.get("xpub")
     if not xpub and not method in supported_methods:
         return web.json_response({"jsonrpc": "2.0", "error": {"code": -32601, "message": "Xpub not provided."}, "id": id})
-    params=data.get("params",[])
+    params = data.get("params", [])
     if not method:
         return web.json_response({"jsonrpc": "2.0", "error": {"code": -32601, "message": "Procedure not found."}, "id": id})
     try:
-        wallet=load_wallet(xpub)
+        wallet = load_wallet(xpub)
     except Exception:
         if not method in supported_methods:
             return web.json_response({"jsonrpc": "2.0", "error": {"code": -32601, "message": "Error loading wallet"}, "id": id})
     if method in supported_methods:
-        exec_method=supported_methods[method]
+        exec_method = supported_methods[method]
     else:
         try:
-            exec_method=getattr(wallet,method)
+            exec_method = getattr(wallet, method)
         except AttributeError:
             return web.json_response({"jsonrpc": "2.0", "error": {"code": -32601, "message": "Procedure not found."}, "id": id})
     try:
         if type(params) == list:
-            result=exec_method(*params)
+            result = exec_method(*params)
         elif type(params) == dict:
-            result=exec_method(**params)
+            result = exec_method(**params)
     except Exception:
         return web.json_response({"jsonrpc": "2.0", "error": {"code": -32601, "message": traceback.format_exc().splitlines()[-1]}, "id": id})
     print(result)
-    return web.json_response({"jsonrpc": "2.0", "result": result, "error":None, "id": id})
+    return web.json_response({"jsonrpc": "2.0", "result": result, "error": None, "id": id})
+
 
 async def on_shutdown(app):
-    thread.is_running=False
+    thread.is_running = False
 
-app=web.Application()
-app.router.add_post("/",xpub_func)
+app = web.Application()
+app.router.add_post("/", xpub_func)
 app.on_shutdown.append(on_shutdown)
 web.run_app(app, host="0.0.0.0", port=5000)
