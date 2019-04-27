@@ -1,6 +1,6 @@
 language: python
 sudo: true
-dist: xenial
+dist: trusty
 cache: pip
 services:
   - rabbitmq
