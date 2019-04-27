@@ -19,7 +19,7 @@ install:
   - python manage.py migrate
 
 script:
-  - pytest --cov=.
+  - pytest -s --cov=.
 
 after_success:
   - coveralls
