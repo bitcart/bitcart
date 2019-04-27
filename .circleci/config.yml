@@ -18,9 +18,9 @@ jobs:
     working_directory: ~/repo
 
     environment: 
-      DEBUG=false
-      TEST=true
-      DJANGO_SETTINGS_MODULE=mainsite.settings
+      DEBUG: false
+      TEST: true
+      DJANGO_SETTINGS_MODULE: mainsite.settings
 
     steps:
       - checkout
