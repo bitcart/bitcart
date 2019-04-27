@@ -44,14 +44,11 @@ def test_noauth(client):
 
 
 def test_stores(client, user, wallet):
-    print(user)
-    print(wallet)
-    print(client.login(username="test", password="test"))
+    client.login(username="test", password="test")
     kwargs = {"name": "test1", "wallet": wallet.pk, "domain": "example.com",
               "template": "default", "email": "test@example.com"}
-    print("kwargs pass")
-    print(client.post(reverse("stores"), json.dumps(
-        kwargs), content_type='application/json'))
+    client.post(reverse("stores"), json.dumps(
+        kwargs), content_type='application/json')
     assert models.Store.objects.filter(**kwargs).exists()
 
 
