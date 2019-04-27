@@ -25,6 +25,14 @@ def wallet(user):
     yield wallet
 
 
+@pytest.fixture
+def store(wallet):
+    store = models.Store.objects.create(
+        id=secrets.token_urlsafe(44), name="mystore", domain="example.com",
+        template="default", email="test@example.com", wallet=wallet)
+    yield store
+
+
 def test_truncate():
     assert views.truncate("abc", 5) == "abc"
     assert views.truncate("aaaaa", 3) == "aaa.."
@@ -127,15 +135,22 @@ def test_locales(client):
     assert True
 
 
-def test_create_product(client):
-    assert True
+### Не работает ###
+def test_create_product(client, store, wallet):
+    client.login(username='test', password='test')
+    kwargs = {"title": 'test_title',
+              "bitcoin_address": '37eCSgGyN5zeumL2eHaURnC6YNdmLa9TzH',
+              "store": store}
+    client.post(reverse("create_product"), json.dumps(
+        kwargs), content_type='application/json')
+    assert models.Product.objects.filter(**kwargs).exists()
 
 
 def test_invoice_status(client):
     assert True
 
 
-def test_create_wallet(client, user, wallet):
+def test_create_wallet(client, user):
     client.login(username='test', password='test')
     kwargs = {"name": "test1",
               "xpub": 'xpub6DA8GiCH7vK7VZztyyKytrXPbT755MHkwyamN3nace8ubk87ZVvFwakpF66z8AugbNJZhk2ZXSJHSytCeVHVj4pS3jjG7VcAeYzdg3VgvMr'}
@@ -148,5 +163,9 @@ def test_api_wallet_info(client):
     assert True
 
 
-def test_delete_wallet(client, user, wallet):
-    assert True
+### Не работает ###
+def test_delete_wallet(client, wallet):
+    kwargs = {"wallet": wallet.pk}
+    client.post(reverse("delete_wallet", kwargs=kwargs))
+    delete_wallet = models.Wallet.objects.filter(pk=wallet.pk).exists()
+    assert not delete_wallet
