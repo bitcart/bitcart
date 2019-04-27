@@ -1,4 +1,4 @@
-#pylint: disable=no-member
+# pylint: disable=no-member
 import pytest
 from gui import views, models
 from django.shortcuts import reverse
@@ -7,7 +7,6 @@ import urllib
 import json
 # TODO: move secrets to create method
 import secrets
-
 
 pytestmark = pytest.mark.django_db
 
@@ -136,13 +135,18 @@ def test_invoice_status(client):
     assert True
 
 
-def test_create_wallet(client):
-    assert True
+def test_create_wallet(client, user, wallet):
+    client.login(username='test', password='test')
+    kwargs = {"name": "test1",
+              "xpub": 'xpub6DA8GiCH7vK7VZztyyKytrXPbT755MHkwyamN3nace8ubk87ZVvFwakpF66z8AugbNJZhk2ZXSJHSytCeVHVj4pS3jjG7VcAeYzdg3VgvMr'}
+    client.post(reverse("create_wallet"), json.dumps(
+        kwargs), content_type='application/json')
+    assert models.Wallet.objects.filter(**kwargs).exists()
 
 
 def test_api_wallet_info(client):
     assert True
 
 
-def test_delete_wallet(client):
+def test_delete_wallet(client, user, wallet):
     assert True
