@@ -3,7 +3,7 @@ Bitcart is a platform for merchants, users and developers which offers easy setu
 
 [![Docs Status](https://img.shields.io/readthedocs/bitcart.svg)](https://readthedocs.org/projects/bitcart)
 [![CircleCI](https://circleci.com/gh/MrNaif2018/bitcart.svg?style=svg)](https://circleci.com/gh/MrNaif2018/bitcart)
-[![Coverage Status](https://coveralls.io/repos/github/MrNaif2018/bitcart/badge.svg?branch=master)](https://coveralls.io/github/MrNaif2018/bitcart?branch=master)
+[![Coverage Status](https://coveralls.io/repos/github/MrNaif2018/bitcart/badge.svg?branch=master&kill_cache=1)](https://coveralls.io/github/MrNaif2018/bitcart?branch=master)
 
 Linked repositories
 -------------------
