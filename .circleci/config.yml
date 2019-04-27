@@ -22,6 +22,8 @@ jobs:
       TEST: true
       DJANGO_SETTINGS_MODULE: mainsite.settings
 
+    context: global
+
     steps:
       - checkout
 
