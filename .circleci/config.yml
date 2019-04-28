@@ -16,7 +16,7 @@ jobs:
       - image: circleci/rabbitmq:3.7.7
 
       - image: mrnaif/bitcart:latest
-      - expose: 5000
+        expose: 5000
 
     working_directory: ~/repo
 
