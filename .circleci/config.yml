@@ -17,6 +17,7 @@ jobs:
 
       - image: mrnaif/bitcart:latest
         expose: 5000
+        command: python3 daemon.py
 
     working_directory: ~/repo
 
