@@ -1,5 +1,6 @@
 #virtualenv
 env/
+venv
 #old db
 db.sqlite3
 #cache

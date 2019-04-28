@@ -1,4 +1,4 @@
-#pylint: disable=no-member
+# pylint: disable=no-member
 import pytest
 from gui import views, models
 from django.shortcuts import reverse
@@ -8,8 +8,9 @@ import json
 # TODO: move secrets to create method
 import secrets
 
-
 pytestmark = pytest.mark.django_db
+
+TEST_XPUB = "xpub6DA8GiCH7vK7VZztyyKytrXPbT755MHkwyamN3nace8ubk87ZVvFwakpF66z8AugbNJZhk2ZXSJHSytCeVHVj4pS3jjG7VcAeYzdg3VgvMr"
 
 
 @pytest.fixture
@@ -22,8 +23,16 @@ def user():
 @pytest.fixture
 def wallet(user):
     wallet = models.Wallet.objects.create(
-        id=secrets.token_urlsafe(44), name="mywallet", user=user)
+        id=secrets.token_urlsafe(44), name="mywallet", user=user, xpub=TEST_XPUB)
     yield wallet
+
+
+@pytest.fixture
+def store(wallet):
+    store = models.Store.objects.create(
+        id=secrets.token_urlsafe(44), name="mystore", domain="example.com",
+        template="default", email="test@example.com", wallet=wallet)
+    yield store
 
 
 def test_truncate():
@@ -128,21 +137,36 @@ def test_locales(client):
     assert True
 
 
-def test_create_product(client):
-    assert True
+def test_create_product(client, store, wallet):
+    client.login(username='test', password='test')
+    kwargs = {"title": 'test_title',
+              "amount": "0.5",
+              "quantity": "1",
+              "store": store.pk}
+    client.post(reverse("create_product"), kwargs)
+    assert models.Product.objects.filter(**kwargs).exists()
 
 
 def test_invoice_status(client):
     assert True
 
 
-def test_create_wallet(client):
-    assert True
+def test_create_wallet(client, user):
+    client.login(username='test', password='test')
+    kwargs = {"name": "test1",
+              "user": user.pk,
+              "xpub": TEST_XPUB}
+    client.post(reverse("create_wallet"), json.dumps(
+        kwargs), content_type='application/json')
+    assert models.Wallet.objects.filter(**kwargs).exists()
 
 
 def test_api_wallet_info(client):
     assert True
 
 
-def test_delete_wallet(client):
-    assert True
+def test_delete_wallet(client, wallet):
+    client.login(username='test', password='test')
+    kwargs = {"wallet": wallet.pk}
+    client.post(reverse("delete_wallet", kwargs=kwargs))
+    assert not models.Wallet.objects.filter(pk=wallet.pk).exists()

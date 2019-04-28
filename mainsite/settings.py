@@ -123,7 +123,7 @@ RPC_URL = config("RPC_URL", default="http://localhost:5000/")
 # celery
 CELERY_BROKER_URL = config("CELERY_BROKER_URL", default="amqp://localhost")
 CELERY_BROKER_TRANSPORT_OPTIONS = {'visibility_timeout': 3600}
-CELERY_RESULT_BACKEND = CELERY_BROKER_URL
+CELERY_RESULT_BACKEND = "rpc://"
 
 CHANNEL_LAYERS = {
     "default": {
