@@ -43,17 +43,13 @@ class ProductForm(forms.ModelForm):
 
     def clean(self):
         image_field = self.cleaned_data.get('image_field')
-        print(dir(image_field))
-        image_file = io.StringIO(image_field.read())
-        image = Image.open(image_file)
-        w, h = image.size
-
-        image = image.resize((416, 416), Image.ANTIALIAS)
-
-        image_file = io.StringIO()
-        image.save(image_file, 'JPEG', quality=90)
-
-        image_field.file = image_file
+        if image_field:
+            image_file = io.StringIO(image_field.read())
+            image = Image.open(image_file)
+            image = image.resize((416, 416), Image.ANTIALIAS)
+            image_file = io.StringIO()
+            image.save(image_file, 'JPEG', quality=90)
+            image_field.file = image_file
 
 
 class CreateStoreForm(forms.Form):
