@@ -5,7 +5,7 @@ python-decouple==3.1
 # drf
 django-rest-framework==0.1.0
 # TODO probably remove this dependency
-channels_rabbitmq==0.0.11
+channels_rabbitmq==1.0.0
 # websocket
 channels==2.2.0
 # 2FA
