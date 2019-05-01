@@ -370,7 +370,7 @@ def create_product(request):
             form.bitcoin_address = data_got["address"]
             form.bitcoin_url = data_got["URI"]
             form.save()
-            tasks.poll_updates.delay(form.id)
+            tasks.poll_updates.send(form.id)
             return redirect(reverse("products") + "?ok=true")
         else:
             return render(request, "gui/create_product.html", {"form": form})

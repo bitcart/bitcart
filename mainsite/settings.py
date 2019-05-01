@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/2.1/ref/settings/
 import os
 import gui
 from decouple import Csv, AutoConfig
+import redis
 
 config = AutoConfig(search_path="conf")
 
@@ -49,6 +50,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.sites',
+    'django_dramatiq',
     'rest_framework',
     'rest_framework.authtoken',
     'channels',
@@ -125,15 +127,32 @@ CELERY_BROKER_URL = config("CELERY_BROKER_URL", default="amqp://localhost")
 CELERY_BROKER_TRANSPORT_OPTIONS = {'visibility_timeout': 3600}
 CELERY_RESULT_BACKEND = "rpc://"
 
+# dramatiq
+DRAMATIQ_REDIS_URL = config("DRAMATIQ_REDIS_URL", "redis://127.0.0.1:6379")
+DRAMATIQ_BROKER = {
+    "BROKER": "dramatiq.brokers.redis.RedisBroker",
+    "OPTIONS": {
+        "connection_pool": redis.ConnectionPool.from_url(DRAMATIQ_REDIS_URL),
+    },
+    "MIDDLEWARE": [
+        "dramatiq.middleware.AgeLimit",
+        "dramatiq.middleware.TimeLimit",
+        "dramatiq.middleware.Retries",
+        "django_dramatiq.middleware.AdminMiddleware",
+        "django_dramatiq.middleware.DbConnectionsMiddleware",
+    ]
+}
+
+
 CHANNEL_LAYERS = {
     "default": {
-        "BACKEND": "channels_rabbitmq.core.RabbitmqChannelLayer",
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
-
-            "host": config("CHANNEL_LAYERS_HOST", default="amqp://localhost"),
+            "hosts": [config("CHANNEL_LAYERS_HOST", default="redis://localhost")],
         },
     },
 }
+
 TEST = config("TEST", cast=bool, default=False)
 TEST_MEMCACHE = False
 
