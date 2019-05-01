@@ -42,9 +42,6 @@ jobs:
             . venv/bin/activate
             pip install -r requirements.txt
             pip install python-memcached python-coveralls pytest-django "pytest-cov>=2.4.0,<2.6"
-            python manage.py makemigrations
-            python manage.py makemigrations gui
-            python manage.py migrate
 
       - save_cache:
           paths:
