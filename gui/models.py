@@ -87,10 +87,10 @@ def create_auth_token(sender, instance=None, created=False, **kwargs):
 @receiver(post_save, sender=Wallet)
 def create_wallet(sender, instance=None, created=False, **kwargs):
     if created:
-        tasks.sync_wallet.delay(instance.id, instance.xpub)
+        tasks.sync_wallet.send(instance.id, instance.xpub)
 
 
 @receiver(post_save, sender=Product)
 def create_product(sender, instance=None, created=False, **kwargs):
     if created:
-        tasks.poll_updates.delay(instance.id)
+        tasks.poll_updates.send(instance.id)

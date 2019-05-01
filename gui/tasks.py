@@ -2,7 +2,7 @@
 from django.conf import settings
 from django.utils import timezone
 from asgiref.sync import async_to_sync
-from celery import shared_task
+import dramatiq
 from . import models
 from channels.layers import get_channel_layer
 from bitcart.coins.btc import BTC
@@ -18,7 +18,7 @@ btc = BTC(RPC_URL)
 channel_layer = get_channel_layer()
 
 
-@shared_task
+@dramatiq.actor
 def poll_updates(invoice_id):
     obj = models.Product.objects.get(id=invoice_id)
     address = obj.bitcoin_address
@@ -42,7 +42,7 @@ def poll_updates(invoice_id):
         time.sleep(1)
 
 
-@shared_task
+@dramatiq.actor
 def sync_wallet(wallet_id, xpub):
     model = models.Wallet.objects.get(id=wallet_id)
     try:

@@ -1,13 +1,13 @@
 django==2.2
-celery==4.3.0
+django_dramatiq==0.7.0
+dramatiq[redis, watch]
 # .env file reading
 python-decouple==3.1
 # drf
 django-rest-framework==0.1.0
-# TODO probably remove this dependency
-channels_rabbitmq==1.0.0
 # websocket
 channels==2.2.0
+channels_redis==2.4.0
 # 2FA
 django-two-factor-auth==1.8.0
 # easy forms
