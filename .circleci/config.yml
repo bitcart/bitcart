@@ -13,8 +13,7 @@ jobs:
       # Specify service dependencies here if necessary
       # CircleCI maintains a library of pre-built images
       # documented at https://circleci.com/docs/2.0/circleci-images/
-      - image: circleci/rabbitmq:3.7.7
-
+      - image: circleci/redis:latest
       - image: mrnaif/bitcart:latest
         expose: 5000
         command: python3 daemon.py
