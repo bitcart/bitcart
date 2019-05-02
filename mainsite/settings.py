@@ -128,7 +128,8 @@ CELERY_BROKER_TRANSPORT_OPTIONS = {'visibility_timeout': 3600}
 CELERY_RESULT_BACKEND = "rpc://"
 
 # dramatiq
-DRAMATIQ_REDIS_URL = config("DRAMATIQ_REDIS_URL", "redis://127.0.0.1:6379")
+DRAMATIQ_REDIS_URL = config(
+    "DRAMATIQ_REDIS_URL", default="redis://127.0.0.1:6379")
 DRAMATIQ_BROKER = {
     "BROKER": "dramatiq.brokers.redis.RedisBroker",
     "OPTIONS": {
@@ -159,7 +160,7 @@ if not DEBUG:
     CACHES = {
         'default': {
             'BACKEND': 'redis_cache.RedisCache',
-            'LOCATION': 'localhost:6379',
+            'LOCATION': config("CACHE_REDIS_URL", default="redis://127.0.0.1:6379"),
             'OPTIONS': {
                 'DB': 0,
                 'PARSER_CLASS': 'redis.connection.HiredisParser',
