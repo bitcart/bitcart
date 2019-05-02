@@ -154,14 +154,17 @@ CHANNEL_LAYERS = {
 }
 
 TEST = config("TEST", cast=bool, default=False)
-TEST_MEMCACHE = False
 
-if not DEBUG or TEST_MEMCACHE:
+if not DEBUG:
     CACHES = {
         'default': {
-            'BACKEND': 'django.core.cache.backends.memcached.MemcachedCache',
-            'LOCATION': config("MEMCACHED_URL", default="127.0.0.1:11211"),
-        }
+            'BACKEND': 'redis_cache.RedisCache',
+            'LOCATION': 'localhost:6379',
+            'OPTIONS': {
+                'DB': 0,
+                'PARSER_CLASS': 'redis.connection.HiredisParser',
+            }
+        },
     }
 else:
     CACHES = {

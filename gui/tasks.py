@@ -13,12 +13,13 @@ import traceback
 RPC_URL = settings.RPC_URL
 RPC_USER = settings.RPC_USER
 RPC_PASS = settings.RPC_PASS
+MAX_RETRIES = 3
 
 btc = BTC(RPC_URL)
 channel_layer = get_channel_layer()
 
 
-@dramatiq.actor
+@dramatiq.actor(max_retries=MAX_RETRIES)
 def poll_updates(invoice_id):
     obj = models.Product.objects.get(id=invoice_id)
     address = obj.bitcoin_address
@@ -42,7 +43,7 @@ def poll_updates(invoice_id):
         time.sleep(1)
 
 
-@dramatiq.actor
+@dramatiq.actor(max_retries=MAX_RETRIES)
 def sync_wallet(wallet_id, xpub):
     model = models.Wallet.objects.get(id=wallet_id)
     try:
