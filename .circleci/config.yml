@@ -41,7 +41,7 @@ jobs:
             python3 -m venv venv
             . venv/bin/activate
             pip install -r requirements.txt
-            pip install python-memcached python-coveralls pytest-django "pytest-cov>=2.4.0,<2.6"
+            pip install python-coveralls pytest-django "pytest-cov>=2.4.0,<2.6"
 
       - save_cache:
           paths:
