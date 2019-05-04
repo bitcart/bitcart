@@ -30,11 +30,20 @@ def edit_image(validated_data):
     return validated_data
 
 
+class WalletSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = models.Wallet
+        fields = ("id", "name", "xpub", "user")
+
+
 class StoreSerializer(serializers.ModelSerializer):
+    wallet_name = serializers.ReadOnlyField(source="wallet.name")
 
     class Meta:
         model = models.Store
-        fields = ("id", "name", "domain", "template", "email", "wallet")
+        fields = ("id", "name", "domain", "template",
+                  "email", "wallet_name", "wallet")
 
 
 class ProductSerializer(serializers.ModelSerializer):
@@ -61,10 +70,3 @@ class ProductSerializer(serializers.ModelSerializer):
         instance.image = validated_data.get("image")
         instance.save()
         return instance
-
-
-class WalletSerializer(serializers.ModelSerializer):
-
-    class Meta:
-        model = models.Wallet
-        fields = ("id", "name", "xpub", "user")

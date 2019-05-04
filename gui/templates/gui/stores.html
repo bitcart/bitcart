@@ -57,11 +57,59 @@
 {% block last_scripts %}
 <script type="text/javascript">
 $("#add-new-store").on('click', function() {send_data(this,["name","wallet","domain","template","email"],true)});
-$(".btn-set-domain").on('click', function() {send_data(this, ["domain"])});
-$(".btn-set-template").on('click', function() {send_data(this, ["template"])});
-$(".btn-set-email").on('click', function() {send_data(this, ["email"])});
+$("#DataTables_Table_0 tbody").on('click','.btn-set-domain', function() {send_data(this, ["domain"])});
+$("#DataTables_Table_0 tbody").on('click', '.btn-set-template', function() {send_data(this, ["template"])});
+$("#DataTables_Table_0 tbody").on('click', '.btn-set-email', function() {send_data(this, ["email"])});
+function render1(data)
+{
+    if (!data)
+        return `<button class="btn btn-set-domain btn-warning btn-auto bitcart-set-btn">SET</button>`;
+    else
+        return data;
+}
+function render2(data)
+{
+    if (!data)
+        return `<button class="btn btn-set-template btn-warning btn-auto bitcart-set-btn">SET</button>`;
+    else
+        return data;
+}
+function render3(data)
+{
+    if (!data)
+        return `<button class="btn btn-set-email btn-warning btn-auto bitcart-set-btn">SET</button>`;
+    else
+        return data;
+}
+
+let opts={
+        processing: true,
+        serverSide: true,
+        sort:false,
+        ordering: !1,
+        autoWidth: !1,
+        ajax: "/api/v1/store?format=datatables",
+        search: {"regex": true},
+        language: 
+            {
+                search: "",
+                searchPlaceholder: "Search",
+        },
+        deferRender: true,
+        columns: [
+            {"data":"id","className":"hidden"},
+            {"data":"name"},
+            {"data":"wallet_name","name":"wallet.name"},
+            {"data":"domain", "render":render1},
+            {"data":"template", "render":render2},
+            {"data":"email", "render":render3}
+        ]
+    };
 var F = $("#DataTables_Table_0");
 if (F.length > 0) {
+    var O = F.DataTable(opts);
+}
+/*if (F.length > 0) {
     var O = F.DataTable({
         ordering: !1,
         autoWidth: !1,
@@ -88,6 +136,7 @@ if (F.length > 0) {
             ]
     });
 }
+*/
 function pre_confirm()
     {
         return [
@@ -99,12 +148,17 @@ function pre_confirm()
         ];
     }
 async function send_data(obj,names, all=false) {
+  console.log('here');
   if (!all)
   {
     var tr=$(obj).closest("tr");
     var dt=$("#DataTables_Table_0").DataTable();
-    var id = $(dt.row(tr).data()[0]).text();
+    var id = dt.row(tr).data().id;
+    console.log(dt.row(tr).data().id);
+    title="Edit store";
   }
+  else
+    title="Create new store";
   console.log("here");
   console.log(this);
   //console.log(event);
@@ -113,7 +167,7 @@ async function send_data(obj,names, all=false) {
   console.log($(obj).closest("tr"));
   console.log(id);
   const {value: got}= await Swal.fire({
-  title: 'Create new store',
+  title: title,
   html: `{{form|crispy}}`,
   focusConfirm: false,
   onBeforeOpen: function(dom)
@@ -176,8 +230,9 @@ async function send_data(obj,names, all=false) {
                     //console.log(dt.update);
                     console.log(got);
                     console.log(data);
+                    dt.ajax.reload();
                     //console.log([id].concat(got));
-                    if (all)
+                    /*if (all)
                         dt.row.add([data.id].concat(got)).draw(false);
                     else
                         {
@@ -194,6 +249,7 @@ async function send_data(obj,names, all=false) {
                         
                         dt.row(tr).data(got2);
                         }
+                    */
                 }
   });
 }
