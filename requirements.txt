@@ -1,6 +1,6 @@
 django==2.2.1
 django_dramatiq==0.7.0
-dramatiq[redis, watch]
+dramatiq[watch,redis]==1.6.0
 # redis cache
 django-redis-cache
 # .env file reading
