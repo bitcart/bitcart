@@ -1,8 +1,8 @@
-django==2.2
+django==2.2.1
 django_dramatiq==0.7.0
-dramatiq[redis, watch]
+dramatiq[watch,redis]==1.6.0
 # redis cache
-django-redis-cache
+django-redis-cache==2.0.0
 # .env file reading
 python-decouple==3.1
 # drf
