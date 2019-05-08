@@ -130,7 +130,6 @@ async def xpub_func(request):
             result = exec_method(**params)
     except Exception:
         return web.json_response({"jsonrpc": "2.0", "error": {"code": -32601, "message": traceback.format_exc().splitlines()[-1]}, "id": id})
-    print(result)
     return web.json_response({"jsonrpc": "2.0", "result": result, "error": None, "id": id})
 
 
