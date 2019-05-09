@@ -47,6 +47,11 @@ class Store(models.Model):
     domain = models.CharField(max_length=1000, blank=True, default="")
     template = models.CharField(max_length=1000, blank=True, default="")
     email = models.CharField(max_length=1000, blank=True, default="")
+    email_host = models.CharField(max_length=1000, blank=True, default="")
+    email_port = models.IntegerField(blank=True, default=25)
+    email_user = models.CharField(max_length=1000, blank=True, default="")
+    email_password = models.CharField(max_length=1000, blank=True, default="")
+    email_use_ssl = models.BooleanField(blank=True, default=True)
     wallet = models.ForeignKey(Wallet, on_delete=models.CASCADE)
 
     class Meta:
