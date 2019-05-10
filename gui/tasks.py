@@ -43,7 +43,7 @@ def poll_updates(invoice_id):
         time.sleep(1)
 
 
-@dramatiq.actor(max_retries=MAX_RETRIES)
+@dramatiq.actor(max_retries=0)
 def sync_wallet(wallet_id, xpub):
     model = models.Wallet.objects.get(id=wallet_id)
     try:
