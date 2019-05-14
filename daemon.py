@@ -10,11 +10,13 @@ from electrum.logging import configure_logging
 from electrum.transaction import Transaction
 from aiohttp import web
 from base64 import b64encode, b64decode
-from decouple import config
+from decouple import AutoConfig
 
 import asyncio
 import traceback
 import threading
+
+config = AutoConfig(search_path="conf")
 
 LOGIN = config("DAEMON_LOGIN", default="electrum")
 PASSWORD = config("DAEMON_PASSWORD", default="electrumz")
@@ -53,7 +55,7 @@ supported_methods = {"get_transaction": get_transaction,
                      "exchange_rate": exchange_rate}
 
 # verbosity
-VERBOSE = False
+VERBOSE = config("DEBUG", cast=bool, default=False)
 
 electrum_config = SimpleConfig()
 electrum_config.set_key("verbosity", VERBOSE)
