@@ -76,7 +76,7 @@ jobs:
           name: build docker image
           context: global
           command: |
-            docker build -t mrnaif/bitcart:$LATEST_TAG
+            docker build -t $LATEST_TAG
             docker login --username=$DOCKER_USER --password=$DOCKER_PASS
             docker push mrnaif/bitcart:$LATEST_TAG
 workflows: 
