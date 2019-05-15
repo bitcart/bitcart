@@ -76,7 +76,7 @@ jobs:
           name: build docker image
           context: global
           command: |
-            docker build -t mrnaif/bitcart:stable
+            docker build -t mrnaif/bitcart:stable .
             docker login --username=$DOCKER_USER --password=$DOCKER_PASS
             docker push mrnaif/bitcart:stable
 workflows: 
