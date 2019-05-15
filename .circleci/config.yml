@@ -61,8 +61,8 @@ jobs:
           path: test-reports
           destination: test-reports
   deploy:
-    docker:
-      - image: circleci/python:3.6.8
+    machine: 
+      docker_layer_caching: true
     working_directory: ~/repo
     steps:
       - checkout
