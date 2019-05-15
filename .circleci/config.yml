@@ -61,8 +61,7 @@ jobs:
           path: test-reports
           destination: test-reports
   deploy:
-    machine: 
-      docker_layer_caching: true
+    machine: true
     working_directory: ~/repo
     steps:
       - checkout
@@ -85,5 +84,12 @@ workflows:
   build_and_test:
     jobs: 
       - build
-      - deploy
+  publish:
+    jobs:
+      - deploy:
+        filters:
+          branches:
+            ignore: /.*/
+          tags:
+            only: /v[1-9]+(\.[0-9]+)*/
 
