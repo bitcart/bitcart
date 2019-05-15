@@ -76,6 +76,7 @@ jobs:
           name: build docker image
           context: global
           command: |
+            echo $CIRCLE_TAG
             docker build -t $LATEST_TAG
             docker login --username=$DOCKER_USER --password=$DOCKER_PASS
             docker push mrnaif/bitcart:$LATEST_TAG
