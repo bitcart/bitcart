@@ -79,4 +79,10 @@ jobs:
           docker build -t mrnaif/bitcart:$LATEST_TAG
           docker login --username=$DOCKER_USER --password=$DOCKER_PASS
           docker push mrnaif/bitcart:$LATEST_TAG
+workflows: 
+  version: 2 
+  build_and_test:
+    jobs: 
+    - build
+    - deploy
 
