@@ -31,10 +31,14 @@ def edit_image(validated_data):
 
 
 class WalletSerializer(serializers.ModelSerializer):
+    balance = serializers.SerializerMethodField()
 
     class Meta:
         model = models.Wallet
-        fields = ("id", "name", "xpub", "user")
+        fields = ("id", "name", "xpub", "user", "balance")
+
+    def get_balance(self, obj):
+        return BTC(RPC_URL, xpub=obj.xpub, rpc_user=RPC_USER, rpc_pass=RPC_PASS).balance()['confirmed']
 
 
 class StoreSerializer(serializers.ModelSerializer):

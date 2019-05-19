@@ -6,15 +6,17 @@ from electrum.storage import WalletStorage
 from electrum.wallet import Wallet
 from electrum.commands import Commands
 from electrum.synchronizer import Synchronizer
-from electrum.util import set_verbosity
+from electrum.logging import configure_logging
 from electrum.transaction import Transaction
 from aiohttp import web
 from base64 import b64encode, b64decode
-from decouple import config
+from decouple import AutoConfig
 
 import asyncio
 import traceback
 import threading
+
+config = AutoConfig(search_path="conf")
 
 LOGIN = config("DAEMON_LOGIN", default="electrum")
 PASSWORD = config("DAEMON_PASSWORD", default="electrumz")
@@ -52,8 +54,12 @@ wallets = {}
 supported_methods = {"get_transaction": get_transaction,
                      "exchange_rate": exchange_rate}
 
-# verbosity level, uncomment for debug info
-# set_verbosity(True)
+# verbosity
+VERBOSE = config("DEBUG", cast=bool, default=False)
+
+electrum_config = SimpleConfig()
+electrum_config.set_key("verbosity", VERBOSE)
+configure_logging(electrum_config)
 
 
 def start_it():

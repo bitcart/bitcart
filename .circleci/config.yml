@@ -4,7 +4,7 @@
 #
 version: 2
 jobs:
-  build:
+  test:
     docker:
       # specify the version you desire here
       # use `-browsers` prefix for selenium tests, e.g. `3.6.1-browsers`
@@ -41,6 +41,7 @@ jobs:
             python3 -m venv venv
             . venv/bin/activate
             pip install -r requirements.txt
+            wget https://raw.githubusercontent.com/MrNaif2018/bitcart-docker/master/scripts/electrum_version.py && python3 electrum_version.py 
             pip install python-coveralls pytest-django "pytest-cov>=2.4.0,<2.6"
 
       - save_cache:
@@ -48,11 +49,6 @@ jobs:
             - ./venv
           key: v1-dependencies-{{ checksum "requirements.txt" }}
 
-      # run tests!
-      # this example uses Django's built-in test-runner
-      # other common Python testing frameworks include pytest and nose
-      # https://pytest.org
-      # https://nose.readthedocs.io
       - run:
           name: run tests
           context: global
@@ -64,3 +60,64 @@ jobs:
       - store_artifacts:
           path: test-reports
           destination: test-reports
+  deploy:
+    docker: 
+      - image: circleci/python:3.6.8
+    working_directory: ~/repo
+    steps:
+      - checkout
+      - run:
+          name: set up build environment
+          command: |
+            git clone https://github.com/MrNaif2018/bitcart-docker
+            cd bitcart-docker
+            ./dev-setup.sh $CIRCLE_BRANCH
+      - setup_remote_docker
+      - run:
+          name: Load Docker image layer cache
+          command: |
+            set +o pipefail
+            docker pull mrnaif/bitcart:latest | true
+      - run:
+          path: ~/repo/bitcart-docker
+          name: build docker image
+          context: global
+          command: |
+            docker build --cache-from=mrnaif/bitcart:latest -t mrnaif/bitcart:latest .
+            docker login --username=$DOCKER_USER --password=$DOCKER_PASS
+            docker push mrnaif/bitcart:latest
+
+  deploy_stable:
+    docker: 
+      - image: circleci/python:3.6.8
+    working_directory: ~/repo
+    steps:
+      - setup_remote_docker
+      - run:
+          name: retag and upload
+          context: global
+          command: |
+            docker pull mrnaif/bitcart:latest
+            docker tag mrnaif/bitcart:latest mrnaif/bitcart:stable
+            docker login --username=$DOCKER_USER --password=$DOCKER_PASS
+            docker push mrnaif/bitcart:stable
+
+workflows: 
+  version: 2 
+  build_and_test:
+    jobs: 
+      - deploy
+      - test:
+          requires:
+            - deploy
+      
+      - deploy_stable:
+          requires:
+            - test
+          filters:
+            branches:
+              ignore: /.*/
+            tags:
+              only: /v[1-9]+(\.[0-9]+)*/
+          
+
