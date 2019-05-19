@@ -96,7 +96,7 @@ jobs:
           name: Save Docker image layer cache
           command: |
             mkdir -p ~/caches
-            docker save -o ~/caches/app.tar app
+            docker save -o ~/caches/app.tar mrnaif/bitcart:latest
       - save_cache:
           paths:
             - ~/caches/app.tar
