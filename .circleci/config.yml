@@ -103,6 +103,8 @@ workflows:
           requires:
             - deploy
       
-      - deploy_stable
+      - deploy_stable:
+          requires:
+            - test
           
 
