@@ -76,7 +76,19 @@ jobs:
           context: global
           command: |
             cd bitcart-docker
-            docker build -t mrnaif/bitcart:stable .
+            docker build -t mrnaif/bitcart:latest .
+            docker login --username=$DOCKER_USER --password=$DOCKER_PASS
+            docker push mrnaif/bitcart:latest
+  deploy_stable:
+    machine: true
+    working_directory: ~/repo
+    steps:
+      - run:
+          name: retag and upload
+          context: global
+          command: |
+            cd bitcart-docker
+            docker tag mrnaif/bitcart:latest mrnaif/bitcart:stable
             docker login --username=$DOCKER_USER --password=$DOCKER_PASS
             docker push mrnaif/bitcart:stable
 
@@ -85,10 +97,11 @@ workflows:
   build_and_test:
     jobs: 
       - build
+      - deploy
 
   publish:
     jobs:
-      - deploy:
+      - deploy_stable:
           filters:
             branches:
               ignore: /.*/
