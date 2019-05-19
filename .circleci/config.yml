@@ -71,7 +71,7 @@ jobs:
           command: |
             git clone https://github.com/MrNaif2018/bitcart-docker
             cd bitcart-docker
-            ./dev-setup.sh
+            ./dev-setup.sh $CIRCLE_BRANCH
       - setup_remote_docker
       - run:
           name: build docker image
