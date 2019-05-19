@@ -97,10 +97,9 @@ workflows:
   build_and_test:
     jobs: 
       - build
-      - deploy
-
-  publish:
-    jobs:
+      - deploy:
+          requires: 
+            - build
       - deploy_stable:
           filters:
             branches:
