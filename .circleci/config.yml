@@ -82,7 +82,8 @@ jobs:
             docker login --username=$DOCKER_USER --password=$DOCKER_PASS
             docker push mrnaif/bitcart:latest
   deploy_stable:
-    machine: true
+    docker: 
+      - image: circleci/python:3.6.8
     working_directory: ~/repo
     steps:
       - run:
