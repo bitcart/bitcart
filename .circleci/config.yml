@@ -61,7 +61,8 @@ jobs:
           path: test-reports
           destination: test-reports
   deploy:
-    machine: true
+    docker: 
+      - image: circleci/python:3.6.8
     working_directory: ~/repo
     steps:
       - checkout
@@ -71,6 +72,7 @@ jobs:
             git clone https://github.com/MrNaif2018/bitcart-docker
             cd bitcart-docker
             ./dev-setup.sh
+      - setup_remote_docker
       - run:
           name: build docker image
           context: global
