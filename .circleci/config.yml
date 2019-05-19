@@ -73,14 +73,37 @@ jobs:
             cd bitcart-docker
             ./dev-setup.sh $CIRCLE_BRANCH
       - setup_remote_docker
+      - restore_cache:
+          path: ~/repo/bitcart-docker
+          keys:
+            - v1-dependencies-{{ checksum "requirements.txt" }}
+            # fallback to using the latest cache if no exact match is found
+            - v1-dependencies-
+          paths:
+            - /caches/app.tar
       - run:
+          name: Load Docker image layer cache
+          command: |
+            set +o pipefail
+            docker load -i /caches/app.tar | true
+      - run:
+          path: ~/repo/bitcart-docker
           name: build docker image
           context: global
           command: |
-            cd bitcart-docker
-            docker build -t mrnaif/bitcart:latest .
+            docker build --cache-from=app -t mrnaif/bitcart:latest .
             docker login --username=$DOCKER_USER --password=$DOCKER_PASS
             docker push mrnaif/bitcart:latest
+      - run:
+          name: Save Docker image layer cache
+          command: |
+            mkdir -p /caches
+            docker save -o /caches/app.tar app
+      - save_cache:
+          paths:
+            - /caches/app.tar
+          key: v1-dependencies-{{ checksum "requirements.txt" }}
+
   deploy_stable:
     docker: 
       - image: circleci/python:3.6.8
