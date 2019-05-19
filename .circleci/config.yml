@@ -76,16 +76,14 @@ jobs:
       - restore_cache:
           path: ~/repo/bitcart-docker
           keys:
-            - v1-dependencies-{{ checksum "requirements.txt" }}
+            - v1-docker-dependencies-{{ checksum "requirements.txt" }}
             # fallback to using the latest cache if no exact match is found
-            - v1-dependencies-
-          paths:
-            - /caches/app.tar
+            - v1-docker-dependencies-
       - run:
           name: Load Docker image layer cache
           command: |
             set +o pipefail
-            docker load -i /caches/app.tar
+            docker load -i ~/caches/app.tar
       - run:
           path: ~/repo/bitcart-docker
           name: build docker image
@@ -97,12 +95,12 @@ jobs:
       - run:
           name: Save Docker image layer cache
           command: |
-            mkdir -p /caches
-            docker save -o /caches/app.tar app
+            mkdir -p ~/caches
+            docker save -o ~/caches/app.tar app
       - save_cache:
           paths:
-            - /caches/app.tar
-          key: v1-dependencies-{{ checksum "requirements.txt" }}
+            - ~/caches/app.tar
+          key: v1-docker-dependencies-{{ checksum "requirements.txt" }}
 
   deploy_stable:
     docker: 
