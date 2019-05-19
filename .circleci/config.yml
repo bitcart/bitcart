@@ -73,34 +73,18 @@ jobs:
             cd bitcart-docker
             ./dev-setup.sh $CIRCLE_BRANCH
       - setup_remote_docker
-      - restore_cache:
-          path: ~/repo/bitcart-docker
-          keys:
-            - v1-docker-dependencies-{{ checksum "requirements.txt" }}
-            # fallback to using the latest cache if no exact match is found
-            - v1-docker-dependencies-
       - run:
           name: Load Docker image layer cache
           command: |
-            set +o pipefail
-            docker load -i ~/caches/app.tar | true
+            docker pull mrnaif/bitcart:latest
       - run:
           path: ~/repo/bitcart-docker
           name: build docker image
           context: global
           command: |
-            docker build --cache-from=app -t mrnaif/bitcart:latest .
+            docker build --cache-from=mrnaif/bitcart:latest -t mrnaif/bitcart:latest .
             docker login --username=$DOCKER_USER --password=$DOCKER_PASS
             docker push mrnaif/bitcart:latest
-      - run:
-          name: Save Docker image layer cache
-          command: |
-            mkdir -p ~/caches
-            docker save -o ~/caches/app.tar mrnaif/bitcart:latest
-      - save_cache:
-          paths:
-            - ~/caches/app.tar
-          key: v1-docker-dependencies-{{ checksum "requirements.txt" }}
 
   deploy_stable:
     docker: 
