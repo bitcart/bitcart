@@ -86,11 +86,11 @@ jobs:
       - image: circleci/python:3.6.8
     working_directory: ~/repo
     steps:
+      - setup_remote_docker
       - run:
           name: retag and upload
           context: global
           command: |
-            cd bitcart-docker
             docker tag mrnaif/bitcart:latest mrnaif/bitcart:stable
             docker login --username=$DOCKER_USER --password=$DOCKER_PASS
             docker push mrnaif/bitcart:stable
