@@ -76,7 +76,7 @@ jobs:
       - run:
           name: Load Docker image layer cache
           command: |
-            docker pull mrnaif/bitcart:latest
+            docker pull mrnaif/bitcart:latest | true
       - run:
           path: ~/repo/bitcart-docker
           name: build docker image
@@ -113,5 +113,10 @@ workflows:
       - deploy_stable:
           requires:
             - test
+          filters:
+            branches:
+              ignore: /.*/
+            tags:
+              only: /v[1-9]+(\.[0-9]+)*/
           
 
