@@ -104,7 +104,8 @@ INTERNAL_IPS = ['127.0.0.1']
 
 if DEBUG:
     INSTALLED_APPS.append("debug_toolbar")
-    MIDDLEWARE = ['debug_toolbar.middleware.DebugToolbarMiddleware']+MIDDLEWARE
+    MIDDLEWARE = [
+        'debug_toolbar.middleware.DebugToolbarMiddleware'] + MIDDLEWARE
 
 AUTH_USER_MODEL = "gui.User"
 

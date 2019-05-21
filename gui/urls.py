@@ -34,16 +34,25 @@ urlpatterns = [
     path("account/login/", views.login, name="login"),
     path("logout/", views.logout, name='logout'),
     path("account/settings/", views.account_settings, name="account_settings"),
-    path("account/change_password/", views.change_password, name="change_password"),
+    path(
+        "account/change_password/",
+        views.change_password,
+        name="change_password"),
     path("wallets/", views.wallets, name="wallets"),
     path("wallets/create/", views.create_wallet, name="create_wallet"),
-    path("wallets/<wallet>/delete/", views.delete_wallet, name="delete_wallet"),
+    path(
+        "wallets/<wallet>/delete/",
+        views.delete_wallet,
+        name="delete_wallet"),
     path("apps/", views.apps, name="apps"),
     path("wallets/<wallet>/", views.wallet_history, name="wallet_history"),
     path("locales/<path>/", serve, {"document_root": "gui/locales"}),
     path("i/<invoice>/status/", views.invoice_status, name="invoice_status"),
     #path("api/wallets/create/", views.api_create_wallet, name="api_create_wallet"),
-    path("api/wallets/<wallet>/", views.api_wallet_info, name="api_wallet_info"),
+    path(
+        "api/wallets/<wallet>/",
+        views.api_wallet_info,
+        name="api_wallet_info"),
 
 ]
 

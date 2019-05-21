@@ -38,7 +38,8 @@ class WalletSerializer(serializers.ModelSerializer):
         fields = ("id", "name", "xpub", "user", "balance")
 
     def get_balance(self, obj):
-        return BTC(RPC_URL, xpub=obj.xpub, rpc_user=RPC_USER, rpc_pass=RPC_PASS).balance()['confirmed']
+        return BTC(RPC_URL, xpub=obj.xpub, rpc_user=RPC_USER,
+                   rpc_pass=RPC_PASS).balance()['confirmed']
 
 
 class StoreSerializer(serializers.ModelSerializer):

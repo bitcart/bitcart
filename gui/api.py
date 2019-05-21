@@ -81,7 +81,7 @@ class USDPriceView(APIView):
         usd_price = decimal.Decimal(
             BTC(RPC_URL, rpc_user=RPC_USER, rpc_pass=RPC_PASS).server.exchange_rate())
         usd_price = (
-            btc_amount*usd_price).quantize(PRECISION)
+            btc_amount * usd_price).quantize(PRECISION)
         return Response(usd_price)
 
 

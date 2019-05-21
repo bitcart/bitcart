@@ -18,7 +18,7 @@ import secrets
 
 try:
     import ujson as json
-except:
+except BaseException:
     import json
 
 RPC_USER = settings.RPC_USER
@@ -37,14 +37,16 @@ def truncate(text: str, chars: int, endchar=".."):
 # Create your views here.
 @login_required
 def main(request):
-    return render(request, "gui/main.html", {"main_active": "active", "setting_active": "", })
+    return render(request, "gui/main.html",
+                  {"main_active": "active", "setting_active": "", })
 
 
 @login_required
 def stores(request):
     if request.method == "POST":
         form = forms.StoreForm(json.loads(request.body))
-        form.fields["wallet"].queryset = models.Wallet.objects.filter(user=request.user)
+        form.fields["wallet"].queryset = models.Wallet.objects.filter(
+            user=request.user)
         if form.is_valid():
             form = form.save(commit=False)
             form.id = secrets.token_urlsafe(32)
@@ -54,11 +56,14 @@ def stores(request):
             print(form.errors)
             return render(request, "gui/stores.html", {"form": form})
     else:
-        stores = models.Store.objects.select_related("wallet").filter(wallet__user=request.user)
+        stores = models.Store.objects.select_related(
+            "wallet").filter(wallet__user=request.user)
         # stores=models.Store.objects.filter(wallet__user=request.user)
         form = forms.StoreForm()
-        form.fields["wallet"].queryset = models.Wallet.objects.filter(user=request.user)
-        return render(request, "gui/stores.html", {"stores": stores, "stores_active": True, "form": form})
+        form.fields["wallet"].queryset = models.Wallet.objects.filter(
+            user=request.user)
+        return render(request, "gui/stores.html",
+                      {"stores": stores, "stores_active": True, "form": form})
 
 
 @login_required
@@ -82,9 +87,11 @@ def store_settings(request, store):
         print(form.errors)
         if form.is_valid():
             form.save()
-            return redirect(reverse('store_settings', kwargs={"store": store}) + "?ok=True")
+            return redirect(reverse('store_settings', kwargs={
+                            "store": store}) + "?ok=True")
         else:
-            return redirect(reverse('store_settings', kwargs={"store": store}) + "?ok=False")
+            return redirect(reverse('store_settings', kwargs={
+                            "store": store}) + "?ok=False")
     else:
         fee_text = ""
         ok = request.GET.get("ok", False)
@@ -137,7 +144,8 @@ def products(request):
     products = filter_products(p_val, products)
     ok = request.GET.get("ok", False)
     form = forms.ProductForm()
-    form.fields["store"].queryset = models.Store.objects.filter(wallet__user=request.user)
+    form.fields["store"].queryset = models.Store.objects.filter(
+        wallet__user=request.user)
     gen_id = secrets.token_urlsafe(22)
     return render(request, "gui/products.html",
                   {"products": products, "ok": ok, "products_active": True, "gen_id": gen_id, "form": form})
@@ -148,7 +156,10 @@ def invoice_buy(request, invoice):
     obj_j = json.loads(invoice_status(request, invoice).content)
     usd_price = decimal.Decimal(
         BTC(RPC_URL, xpub=obj.store.wallet.xpub, rpc_user=RPC_USER, rpc_pass=RPC_PASS).server.exchange_rate())
-    usd_price = (obj.amount * usd_price).quantize(decimal.Decimal('0.00000001'))
+    usd_price = (
+        obj.amount *
+        usd_price).quantize(
+        decimal.Decimal('0.00000001'))
 
     '''obj=get_object_or_404(models.Product,id=invoice)
     creation_date=obj.date
@@ -197,14 +208,25 @@ def product_export(request):
         return JsonResponse(lst, safe=False)
     elif format_ == "csv":
         result = io.StringIO()
-        fieldnames = ['id', 'amount', 'quantity', 'title', 'status', 'order_id', 'date', 'description', 'image']
+        fieldnames = [
+            'id',
+            'amount',
+            'quantity',
+            'title',
+            'status',
+            'order_id',
+            'date',
+            'description',
+            'image']
         writer = csv.DictWriter(result, fieldnames=fieldnames)
         writer.writeheader()
         for i in products:
             writer.writerow(get_product_dict(i))
         date = datetime.now()
         filename = date.strftime("bitcart-export-%Y%m%d-%H%M%S.csv")
-        response = HttpResponse(result.getvalue(), content_type='application/csv')
+        response = HttpResponse(
+            result.getvalue(),
+            content_type='application/csv')
         response['Content-Type'] = 'application/sv'
         response['Content-Disposition'] = 'attachment; filename=' + filename
         return response
@@ -241,7 +263,8 @@ def delete_store(request, store):
 def register(request):
     if request.method == "POST":
         form = forms.RegisterForm(request.POST)
-        if request.POST.get("password") != request.POST.get("confirm_password"):
+        if request.POST.get("password") != request.POST.get(
+                "confirm_password"):
             form.add_error("confirm_password", "Passwords must match!")
         if form.is_valid():
             User.objects.create_user(request.POST.get("username"), request.POST.get("email"),
@@ -264,13 +287,15 @@ def login(request):
         remember_me = request.POST.get("remember_me", False)
         if form.is_valid():
             print('y')
-            user = authenticate(request, username=request.POST.get("username"), password=request.POST.get("password"))
+            user = authenticate(request, username=request.POST.get(
+                "username"), password=request.POST.get("password"))
             print(user)
             if user is not None:
                 django_login(request, user)
                 if not remember_me:
                     request.session.set_expiry(0)
-                redirect_to = request.POST.get("redirect_to", "account_settings")
+                redirect_to = request.POST.get(
+                    "redirect_to", "account_settings")
                 if not redirect_to:
                     redirect_to = "account_settings"
                 print(redirect_to)
@@ -280,15 +305,18 @@ def login(request):
             else:
                 print(form)
                 print(form.errors)
-                return render(request, "gui/login.html", {"form": form, "error": True})
+                return render(request, "gui/login.html",
+                              {"form": form, "error": True})
 
         else:
             print(form.errors)
-            return render(request, "gui/login.html", {"form": form, "error": False})
+            return render(request, "gui/login.html",
+                          {"form": form, "error": False})
     else:
         redirect_to = request.GET.get("next", "account_settings")
         form = forms.LoginForm()
-        return render(request, "gui/login.html", {"form": form, "error": False, "redirect_to": redirect_to})
+        return render(request, "gui/login.html",
+                      {"form": form, "error": False, "redirect_to": redirect_to})
 
 
 @login_required
@@ -307,7 +335,8 @@ def account_settings(request):
         return redirect(reverse("account_settings") + "?ok=true")
     else:
         ok = request.GET.get("ok", False)
-        return render(request, "gui/account_settings.html", {"ok": ok, "main_active": "", "setting_active": "active"})
+        return render(request, "gui/account_settings.html",
+                      {"ok": ok, "main_active": "", "setting_active": "active"})
 
 
 @login_required
@@ -317,7 +346,8 @@ def change_password(request):
         user = request.user
         if not user.check_password(request.POST.get("old_password")):
             form.add_error("old_password", "Invalid password!")
-        if request.POST.get("new_password") != request.POST.get("confirm_password"):
+        if request.POST.get("new_password") != request.POST.get(
+                "confirm_password"):
             form.add_error("confirm_password", "Passwords must match!")
         if form.is_valid():
             user.set_password(request.POST.get("new_password"))
@@ -334,9 +364,11 @@ def wallets(request):
     wallets = models.Wallet.objects.filter(user=request.user)
     wallets = wallets.exclude(xpub__exact="")
     for i in wallets:
-        i.balance = BTC(RPC_URL, xpub=i.xpub, rpc_user=RPC_USER, rpc_pass=RPC_PASS).balance()['confirmed']
+        i.balance = BTC(RPC_URL, xpub=i.xpub, rpc_user=RPC_USER,
+                        rpc_pass=RPC_PASS).balance()['confirmed']
     ok = request.GET.get("ok", False)
-    return render(request, "gui/wallets.html", {"wallets": wallets, "success": ok, "wallets_active": True})
+    return render(request, "gui/wallets.html",
+                  {"wallets": wallets, "success": ok, "wallets_active": True})
 
 
 @login_required
@@ -347,8 +379,13 @@ def apps(request):
 @login_required
 def wallet_history(request, wallet):
     model = get_object_or_404(models.Wallet, id=wallet)
-    transactions = BTC(RPC_URL, xpub=model.xpub, rpc_user=RPC_USER, rpc_pass=RPC_PASS).server.history()["transactions"]
-    return render(request, "gui/wallet_history.html", {"model": model, "transactions": transactions})
+    transactions = BTC(
+        RPC_URL,
+        xpub=model.xpub,
+        rpc_user=RPC_USER,
+        rpc_pass=RPC_PASS).server.history()["transactions"]
+    return render(request, "gui/wallet_history.html",
+                  {"model": model, "transactions": transactions})
 
 
 def locales(request, path):
@@ -376,7 +413,8 @@ def create_product(request):
             return render(request, "gui/create_product.html", {"form": form})
     else:
         form = forms.ProductForm()
-        form.fields["store"].queryset = models.Store.objects.filter(wallet__user=request.user)
+        form.fields["store"].queryset = models.Store.objects.filter(
+            wallet__user=request.user)
         return render(request, "gui/create_product.html", {"form": form})
 
 
@@ -410,7 +448,8 @@ def create_wallet(request):
 @login_required
 def api_wallet_info(request, wallet):
     model = get_object_or_404(models.Wallet, id=wallet)
-    txes = BTC(RPC_URL, xpub=model.xpub, rpc_user=RPC_USER, rpc_pass=RPC_PASS).server.history()["transactions"]
+    txes = BTC(RPC_URL, xpub=model.xpub, rpc_user=RPC_USER,
+               rpc_pass=RPC_PASS).server.history()["transactions"]
     response = []
     for i in txes:
         response.append([i["date"], truncate(i["txid"], 20), i["value"]])

@@ -17,7 +17,10 @@ btc = BTC(RPC_URL)
 
 
 def provide_stats(request):
-    if request.resolver_match.url_name in EXCLUDE_URLS:
+    try:
+        if request.resolver_match.url_name in EXCLUDE_URLS:
+            return {"is_active": False}
+    except Exception:
         return {"is_active": False}
     if request.user.is_authenticated:
         products = models.Product.objects.filter(
