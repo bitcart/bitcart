@@ -47,8 +47,8 @@ jobs:
           key: v1-dependencies-{{ checksum "requirements.txt" }}
 
       - run:
-        name: prepare daemon
-        command: python3 daemon.py &
+          name: prepare daemon
+          command: python3 daemon.py &
 
       - run:
           name: run tests
