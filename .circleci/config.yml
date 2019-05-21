@@ -48,8 +48,7 @@ jobs:
 
       - run:
         name: prepare daemon
-        command: |
-          python3 daemon.py &
+        command: python3 daemon.py &
 
       - run:
           name: run tests
