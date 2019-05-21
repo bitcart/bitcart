@@ -14,9 +14,6 @@ jobs:
       # CircleCI maintains a library of pre-built images
       # documented at https://circleci.com/docs/2.0/circleci-images/
       - image: circleci/redis:latest
-      - image: mrnaif/bitcart:latest
-        expose: 5000
-        command: python3 daemon.py
 
     working_directory: ~/repo
 
@@ -48,6 +45,11 @@ jobs:
           paths:
             - ./venv
           key: v1-dependencies-{{ checksum "requirements.txt" }}
+
+      - run:
+        name: prepare daemon
+        command: |
+          python3 daemon.py &
 
       - run:
           name: run tests
@@ -106,14 +108,13 @@ workflows:
   version: 2 
   build_and_test:
     jobs: 
-      - deploy
-      - test:
-          requires:
-            - deploy
-      
-      - deploy_stable:
+      - test
+      - deploy:
           requires:
             - test
+      - deploy_stable:
+          requires:
+            - deploy
           filters:
             branches:
               ignore: /.*/
