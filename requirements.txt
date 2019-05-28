@@ -19,11 +19,11 @@ djangorestframework-datatables==0.5.0
 # postgres connector
 psycopg2-binary==2.8.2
 # bitcart-sdk
-bitcart==0.1.2
+bitcart==0.1.3
 # thumbnail creation, image field
 Pillow==6.0.0
 # built-in docs support, drf addons
-markdown==3.1
+markdown==3.1.1
 django-filter==2.1.0
 coreapi==2.3.3
 # static files serving
