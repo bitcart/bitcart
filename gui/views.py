@@ -283,3 +283,23 @@ def invoice_status(request, invoice):
     get_object_or_404(models.Product, id=invoice)
     response_json = {}
     return JsonResponse(response_json)
+
+@login_required
+def create_wallet(request):
+    if request.method == "POST":
+        form = forms.WalletForm(json.loads(request.body))
+        print(request.POST)
+        print(request.body)
+        if form.is_valid():
+            form = form.save(commit=False)
+            form.id = secrets.token_urlsafe(16)
+            form.user = request.user
+            form.save()
+            return JsonResponse({"id": form.id})
+            # return redirect(reverse("wallets")+"?ok=true")
+        else:
+            print(form.errors)
+            return render(request, "gui/create_wallet.html", {"form": form})
+    else:
+        form = forms.WalletForm()
+        return render(request, "gui/create_wallet.html", {"form": form})

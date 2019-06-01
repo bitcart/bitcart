@@ -18,22 +18,24 @@
                     </div>
                 </div>
                 <div id="DataTables_Table_0_wrapper" class="dataTables_wrapper dt-bootstrap4 no-footer">
-                        <div>
-                            <table class="data-table user-tnx dataTable no-footer" id="DataTables_Table_0" role="grid" aria-describedby="DataTables_Table_0_info">
-                                <thead>
-                                    <tr class="data-item data-head" role="row">
-                                        <th class="data-col dt-id sorting_disabled" rowspan="1" colspan="1"></th>
-                                        <th class="data-col dt-wallet sorting_disabled" rowspan="1" colspan="1">Wallet Name</th>
-                                        <th class="data-col dt-balance sorting_disabled" rowspan="1" colspan="1">Amount</th>
-                                        <th class="data-col dt-actions sorting_disabled" rowspan="1" colspan="1"></th>
-                                    </tr>
-                                </thead>
-                                <tbody>  
-                                </tbody>
-                            </table>
-                        </div>
-                        
+                    <div>
+                        <table class="data-table user-tnx dataTable no-footer" id="DataTables_Table_0" role="grid"
+                            aria-describedby="DataTables_Table_0_info">
+                            <thead>
+                                <tr class="data-item data-head" role="row">
+                                    <th class="data-col dt-id sorting_disabled" rowspan="1" colspan="1"></th>
+                                    <th class="data-col dt-wallet sorting_disabled" rowspan="1" colspan="1">Wallet Name
+                                    </th>
+                                    <th class="data-col dt-balance sorting_disabled" rowspan="1" colspan="1">Amount</th>
+                                    <th class="data-col dt-actions sorting_disabled" rowspan="1" colspan="1"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            </tbody>
+                        </table>
                     </div>
+
+                </div>
 
             </div>
         </div>
@@ -44,13 +46,14 @@
                 <h1 id="tx-table-title">Select wallet on the left</h1>
                 <div id="DataTables_Table_1_wrapper" class="dataTables_wrapper dt-bootstrap4 no-footer">
                     <div>
-                        <table class="data-table user-tnx dataTable no-footer" id="DataTables_Table_1" role="grid" aria-describedby="DataTables_Table_0_info">
+                        <table class="data-table user-tnx dataTable no-footer" id="DataTables_Table_1" role="grid"
+                            aria-describedby="DataTables_Table_0_info">
                             <thead>
                                 <tr class="data-item data-head" role="row">
                                     <th class="data-col dt-date sorting_disabled" rowspan="1" colspan="1">Date</th>
                                     <th class="data-col dt-txid sorting_disabled" rowspan="1" colspan="1">Tx Id</th>
                                     <th class="data-col dt-amount sorting_disabled" rowspan="1" colspan="1">Amount</th>
-                                    
+
                                 </tr>
                             </thead>
                             <tbody>
@@ -68,220 +71,217 @@
             <div class="card-innr">
                 <h1>WHAT IS XPUB</h1>
                 <p>Xpub is your wallet 'key' to generate
-                addresses for recieving bitcoin. If someone
-                uses this xpub, he will be able to create your
-                wallet's addresses, but not spend your bitcoin.</p>
+                    addresses for recieving bitcoin. If someone
+                    uses this xpub, he will be able to create your
+                    wallet's addresses, but not spend your bitcoin.</p>
                 <h1>WHAT WILL XPUB DO</h1>
                 <p>It will make your bitcart wallets and
-                associated stores work.</p>
+                    associated stores work.</p>
                 <h1>WHERE CAN I FIND MY XPUB</h1>
                 <p>In your wallet, some section called
-                xpub or extended public key, or
-                wallet info, or similar.</p>
+                    xpub or extended public key, or
+                    wallet info, or similar.</p>
             </div>
         </div>
     </div>
-    
+
 </div>
 {% endblock content %}
 {% block last_scripts %}
 <script type="text/javascript">
-$("#DataTables_Table_0").on('click','tr',function() {
-          var id = $(this).find("td:first-child").text();
-          var wallet_name=$(this).find("td:nth-child(2)").text();
-          console.log(id);
-          var dt=$("#DataTables_Table_1").DataTable();
-          console.log("/api/v1/wallet_history/"+id+"?format=datatables");
-          dt.ajax.url("/api/v1/wallet_history/"+id+"?format=datatables");
-          dt.ajax.reload();
-          $("#tx-table-title").text("Transactions of "+wallet_name);
-});
-let delete_base_url="{% url 'wallets' %}";
-let opts={
+    $("#DataTables_Table_0").on('click', 'tr', function () {
+        var id = $(this).find("td:first-child").text();
+        var wallet_name = $(this).find("td:nth-child(2)").text();
+        console.log(id);
+        var dt = $("#DataTables_Table_1").DataTable();
+        console.log("/api/v1/wallet_history/" + id + "?format=datatables");
+        dt.ajax.url("/api/v1/wallet_history/" + id + "?format=datatables");
+        dt.ajax.reload();
+        $("#tx-table-title").text("Transactions of " + wallet_name);
+    });
+    let delete_base_url = "{% url 'wallets' %}";
+    let opts = {
         processing: true,
         serverSide: true,
         dom: '<"row justify-content-between pdb-1x"<"col-9 col-sm-6 text-left"f><"col-3 text-right"<"data-table-filter relative d-inline-block">>><t><"row justify-content-between"<"col-sm-9 text-left"p><"col-sm-6 text-sm-right"i>>',
-        sort:false,
+        sort: false,
         ordering: !1,
         autoWidth: !1,
         ajax: "/api/v1/wallet?format=datatables",
-        search: {"regex": true},
+        search: { "regex": true },
         pageLength: 5,
         bPaginate: true,
         iDisplayLength: 6,
-        language: 
-            {
-                search: "",
-                searchPlaceholder: "Search",
-                paginate: {
-                    first: "First",
-                    last: "Last",
-                    next: "Next",
-                    previous: "Prev"
-                }
+        language:
+        {
+            search: "",
+            searchPlaceholder: "Search",
+            paginate: {
+                first: "First",
+                last: "Last",
+                next: "Next",
+                previous: "Prev"
+            }
         },
         deferRender: true,
         columns: [
-            {"data":"id","className":"hidden"},
-            {"data":"name"},
-            {"data":"balance"},
-            {"data":null, "render": function(data,type,row)
+            { "data": "id", "className": "hidden" },
+            { "data": "name" },
+            { "data": "balance" },
             {
-                let url=delete_base_url+row.id+"/delete/";
-                return `<a href="`+url+`" class="btn btn-auto btn-danger btn-xs"><span>Delete wallet</span></a>`   
-            }
+                "data": null, "render": function (data, type, row) {
+                    let url = delete_base_url + row.id + "/delete/";
+                    return `<a href="` + url + `" class="btn btn-auto btn-danger btn-xs"><span>Delete wallet</span></a>`
+                }
             }
         ],
         pagingType: "simple"
 
     };
-var F = $("#DataTables_Table_0");
-if (F.length > 0) {
-    var O = F.DataTable(opts);
-}
-var A = $("#DataTables_Table_1");
-let opts2={
-dom: '<"row justify-content-between pdb-1x"<"col-9 col-sm-6 text-left"f><"col-3 text-right"<"data-table-filter relative d-inline-block">>><t><"row justify-content-between"<"col-sm-9 text-left"p><"col-sm-6 text-sm-right"i>>',
-ajax:"/api/v1/wallet_history/0?format=datatables",
-columns:[
-    {"data":"date"},
-    {"data":"txid"},
-    {"data":"amount"}
-],
-pageLength:5,
-sort:false,
-ordering:false,
-deferRender:true,
-search: {"regex": true},
-language: 
-    {
-        search: "",
-        searchPlaceholder: "Search",
-},
-};
-console.log(opts2);
-A.length > 0 && A.DataTable(opts2);
-function delete_wallet_url(id){
-    return "{% url 'wallets' %}"+id+"/delete/";
-}
-$("#add-new-wallet").on('click', async function() {
-  const {value: got}= await Swal.fire({
-  title: 'Create new wallet',
-  html:
-    '<label for="swal-input1">Name:</label>' +
-    '<input id="swal-input1" class="swal2-input">' +
-    '<label for="swal-input2">Xpub:</label>' +
-    '<input id="swal-input2" class="swal2-input">',
-  focusConfirm: false,
-  preConfirm: () => {
-    return [
-      document.getElementById('swal-input1').value,
-      document.getElementById('swal-input2').value
-    ];
-  }
-});
-    if (typeof got == 'undefined')
-        return;
-    if (got[0] == "")
+    var F = $("#DataTables_Table_0");
+    if (F.length > 0) {
+        var O = F.DataTable(opts);
+    }
+    var A = $("#DataTables_Table_1");
+    let opts2 = {
+        dom: '<"row justify-content-between pdb-1x"<"col-9 col-sm-6 text-left"f><"col-3 text-right"<"data-table-filter relative d-inline-block">>><t><"row justify-content-between"<"col-sm-9 text-left"p><"col-sm-6 text-sm-right"i>>',
+        ajax: "/api/v1/wallet_history/0?format=datatables",
+        columns: [
+            { "data": "date" },
+            { "data": "txid" },
+            { "data": "amount" }
+        ],
+        pageLength: 5,
+        sort: false,
+        ordering: false,
+        deferRender: true,
+        search: { "regex": true },
+        language:
         {
-        Swal.fire({
-            type: "error",
-            title: "Error",
-            text: "Name must not be empty!"
-        });
-        return;
-        }
-    if (got[1] == "")
-        {
-        Swal.fire({
-            type: "error",
-            title: "Error",
-            text: "Xpub must not be empty!"
-        });
-        return;
-        }
-    var csrftoken = getCookie('csrftoken');
-    var to_send={"name":got[0], "xpub":got[1]};
-    $.ajax({
-        type: "POST",
-        url: "/wallets/create/",
-        // The key needs to match your method's input parameter (case-sensitive).
-        data: JSON.stringify(to_send),
-        contentType: "application/json; charset=utf-8",
-        beforeSend: function(xhr) {
-            xhr.setRequestHeader('X-CSRFToken', csrftoken);
+            search: "",
+            searchPlaceholder: "Search",
         },
-        dataType: "json",
-        success: function(data) {
-            try {
-                n=window.location;
-                t = n.protocol === "https:" ? "wss:" : "ws:";
-                t += "/" + n.host;
-                t += n.pathname + "ws/?wallet="+data.id;
-                t=decode(t);
-                u = new WebSocket(t);
-                u.onmessage = function (data2) {
-                    console.log("here");
-                    console.log(data2);
-                    data2=JSON.parse(data2.data);
-                    if (data2.status == "success")
-                        {
-                        text='<em class="ti ti-check toast-message-icon"></em> Your wallet is now active';
-                        dt=$("#DataTables_Table_0").DataTable();
-                        dt.ajax.reload();
+    };
+    console.log(opts2);
+    A.length > 0 && A.DataTable(opts2);
+    function delete_wallet_url(id) {
+        return "{% url 'wallets' %}" + id + "/delete/";
+    }
+    $("#add-new-wallet").on('click', async function () {
+        const { value: got } = await Swal.fire({
+            title: 'Create new wallet',
+            html:
+                '<label for="swal-input1">Name:</label>' +
+                '<input id="swal-input1" class="swal2-input">' +
+                '<label for="swal-input2">Xpub:</label>' +
+                '<input id="swal-input2" class="swal2-input">',
+            focusConfirm: false,
+            preConfirm: () => {
+                return [
+                    document.getElementById('swal-input1').value,
+                    document.getElementById('swal-input2').value
+                ];
+            }
+        });
+        if (typeof got == 'undefined')
+            return;
+        if (got[0] == "") {
+            Swal.fire({
+                type: "error",
+                title: "Error",
+                text: "Name must not be empty!"
+            });
+            return;
+        }
+        if (got[1] == "") {
+            Swal.fire({
+                type: "error",
+                title: "Error",
+                text: "Xpub must not be empty!"
+            });
+            return;
+        }
+        var csrftoken = getCookie('csrftoken');
+        var to_send = { "name": got[0], "xpub": got[1] };
+        $.ajax({
+            type: "POST",
+            url: "/wallets/create/",
+            // The key needs to match your method's input parameter (case-sensitive).
+            data: JSON.stringify(to_send),
+            contentType: "application/json; charset=utf-8",
+            beforeSend: function (xhr) {
+                xhr.setRequestHeader('X-CSRFToken', csrftoken);
+            },
+            dataType: "json",
+            success: function (data) {
+                try {
+                    n = window.location;
+                    t = n.protocol === "https:" ? "wss:" : "ws:";
+                    t += "/" + n.host;
+                    t += n.pathname + "ws/?wallet=" + data.id;
+                    t = decode(t);
+                    u = new WebSocket(t);
+                    u.onmessage = function (data2) {
+                        console.log("here");
+                        console.log(data2);
+                        data2 = JSON.parse(data2.data);
+                        if (data2.status == "success") {
+                            text = '<em class="ti ti-check toast-message-icon"></em> Your wallet is now active';
+                            dt = $("#DataTables_Table_0").DataTable();
+                            dt.ajax.reload();
                         }
-                    if (data2.status == "error")
-                        text='<em class="ti ti-na toast-message-icon"></em> Invalid xpub!';
-                    function toast() {
-                        toastr.clear(),
-                        toastr.options = {
-                        closeButton: !0,
-                        debug: !1,
-                        newestOnTop: !1,
-                        progressBar: !1,
-                        positionClass: 'toast-top-right',
-                        preventDuplicates: !0,
-                        showDuration: '3000',
-                        hideDuration: '10000',
-                        timeOut: '2000',
-                        extendedTimeOut: '1000'
-                        },
-                        toastr.info(text);
+                        if (data2.status == "error")
+                            text = '<em class="ti ti-na toast-message-icon"></em> Invalid xpub!';
+                        function toast() {
+                            toastr.clear(),
+                                toastr.options = {
+                                    closeButton: !0,
+                                    debug: !1,
+                                    newestOnTop: !1,
+                                    progressBar: !1,
+                                    positionClass: 'toast-top-right',
+                                    preventDuplicates: !0,
+                                    showDuration: '3000',
+                                    hideDuration: '10000',
+                                    timeOut: '2000',
+                                    extendedTimeOut: '1000'
+                                },
+                                toastr.info(text);
+                        };
+                        toast();
                     };
-                    toast();
-                };
-                u.onerror = function () {
-                    console.error("Error while connecting to websocket for invoice notifications (callback)")
-                };
+                    u.onerror = function () {
+                        console.error("Error while connecting to websocket for invoice notifications (callback)")
+                    };
+                }
+                catch (p) {
+                    console.error("Error while connecting to websocket");
+                }
+            },
+            error: function (err) {
+                console.log("err nooo");
+                console.log(err);
             }
-            catch (p) {
-                console.error("Error while connecting to websocket");
-            }
-        },
-        error: function(err) {
-            console.log("err nooo");
-            console.log(err);
-        }
+        });
     });
-});
-{% if success %}
-function toast() {
+    {% if success %}
+    function toast() {
         toastr.clear(),
-        toastr.options = {
-          closeButton: !0,
-          debug: !1,
-          newestOnTop: !1,
-          progressBar: !1,
-          positionClass: 'toast-top-right',
-          preventDuplicates: !0,
-          showDuration: '1000',
-          hideDuration: '10000',
-          timeOut: '2000',
-          extendedTimeOut: '1000'
-        },
-        toastr.info('<em class="ti ti-check toast-message-icon"></em> Your wallet is now active');
-};
-toast();
-{% endif %}
+            toastr.options = {
+                closeButton: !0,
+                debug: !1,
+                newestOnTop: !1,
+                progressBar: !1,
+                positionClass: 'toast-top-right',
+                preventDuplicates: !0,
+                showDuration: '1000',
+                hideDuration: '10000',
+                timeOut: '2000',
+                extendedTimeOut: '1000'
+            },
+            toastr.info('<em class="ti ti-check toast-message-icon"></em> Your wallet is now active');
+    };
+    toast();
+    {% endif %}
 </script>
 {% endblock last_scripts %}
