@@ -1,4 +1,4 @@
-django==2.2.1
+django==2.2.2
 django_dramatiq==0.7.0
 dramatiq[watch,redis]==1.6.0
 # redis cache
