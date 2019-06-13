@@ -1,5 +1,5 @@
 django==2.2.2
-django_dramatiq==0.7.0
+django_dramatiq==0.7.1
 dramatiq[watch,redis]==1.6.0
 # redis cache
 django-redis-cache==2.0.0
