@@ -60,9 +60,9 @@ INSTALLED_APPS = [
     'two_factor',
     'crispy_forms',
     'rest_framework_datatables',
+    'corsheaders',
     'gui'
 ]
-
 
 # custom settings
 INSTALLED_APPS.extend(config("INSTALLED_APPS", default="", cast=Csv()))
@@ -86,10 +86,16 @@ REST_FRAMEWORK = {
     ],
 }
 
+CORS_ORIGIN_WHITELIST = (
+    'http://localhost:3000',
+    'http://127.0.0.1:3000'
+)
+
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
