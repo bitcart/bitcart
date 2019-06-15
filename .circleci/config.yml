@@ -111,6 +111,9 @@ workflows:
       - deploy:
           requires:
             - test
+          filters:
+            branches:
+              only: master
       - deploy_stable:
           requires:
             - deploy

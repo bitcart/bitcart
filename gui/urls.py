@@ -1,8 +1,8 @@
 from django.contrib import admin
-from django.urls import path, include
+from django.urls import path, include, re_path
 from django.contrib.staticfiles.urls import static, staticfiles_urlpatterns
 from django.conf import settings
-from rest_framework import routers
+from rest_framework import routers, permissions
 from rest_framework.authtoken import views as rest_views
 from rest_framework.documentation import include_docs_urls
 from django.views.static import serve
@@ -10,6 +10,19 @@ from . import views
 from . import api
 from two_factor.urls import urlpatterns as tf_urls
 from rest_framework.urlpatterns import format_suffix_patterns
+from drf_yasg.views import get_schema_view
+from drf_yasg import openapi
+
+schema_view = get_schema_view(
+    openapi.Info(
+        title="Bitcart API",
+        default_version='v1',
+        description="Bitcart api",
+        license=openapi.License(name="MIT License"),
+    ),
+    public=True,
+    permission_classes=(permissions.AllowAny,),
+)
 
 
 router = routers.DefaultRouter()
@@ -52,13 +65,30 @@ if settings.DEBUG:
 
 urlpatterns += staticfiles_urlpatterns()
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
-urlpatterns += (
+urlpatterns += [
     # urls for Django Rest Framework API
     path("api/v1/token/", rest_views.obtain_auth_token),
     path('api/v1/', include(router.urls)),
     path('api/v1/rate', api.USDPriceView.as_view()),
     path('api/v1/wallet_history/<wallet>', api.WalletHistoryView.as_view()),
-    path('api/docs', include_docs_urls(title="Bitcart docs"))
-)
+]
 
-#urlpatterns = format_suffix_patterns(urlpatterns)
+urlpatterns += [
+    re_path(
+        "^swagger(?P<format>.json|.yaml)$",
+        schema_view.without_ui(
+            cache_timeout=0),
+        name='schema-json'),
+    path(
+        "swagger/",
+        schema_view.with_ui(
+            'swagger',
+            cache_timeout=0),
+        name='schema-swagger-ui'),
+    path(
+        "redoc/",
+        schema_view.with_ui(
+            'redoc',
+            cache_timeout=0),
+        name='schema-redoc'),
+]

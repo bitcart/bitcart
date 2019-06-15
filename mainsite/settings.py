@@ -61,6 +61,7 @@ INSTALLED_APPS = [
     'crispy_forms',
     'rest_framework_datatables',
     'corsheaders',
+    'drf_yasg',
     'gui'
 ]
 
