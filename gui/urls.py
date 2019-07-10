@@ -29,6 +29,7 @@ router = routers.DefaultRouter()
 router.register('product', api.ProductViewSet)
 router.register('store', api.StoreViewSet)
 router.register('wallet', api.WalletViewSet)
+router.register('invoice', api.InvoiceViewSet)
 
 urlpatterns = [
     path("", views.main, name="main"),

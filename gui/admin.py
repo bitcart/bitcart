@@ -22,4 +22,5 @@ class CustomUserAdmin(UserAdmin):
 admin.site.register(models.User, CustomUserAdmin)
 admin.site.register(models.Store)
 admin.site.register(models.Product)
+admin.site.register(models.Invoice)
 admin.site.register(models.Wallet)

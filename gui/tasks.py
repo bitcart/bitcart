@@ -21,11 +21,11 @@ channel_layer = get_channel_layer()
 
 @dramatiq.actor(max_retries=MAX_RETRIES)
 def poll_updates(invoice_id):
-    obj = models.Product.objects.get(id=invoice_id)
+    obj = models.Invoice.objects.get(id=invoice_id)
     address = obj.bitcoin_address
     if not address:
         raise ValueError('Invoice not active!')
-    btc_instance = BTC(RPC_URL, xpub=obj.store.wallet.xpub,
+    btc_instance = BTC(RPC_URL, xpub=obj.product.store.wallet.xpub,
                        rpc_user=RPC_USER, rpc_pass=RPC_PASS)
     while True:
         invoice_data = btc_instance.getrequest(address)
