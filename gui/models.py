@@ -116,7 +116,7 @@ def create_wallet(sender, instance=None, created=False, **kwargs):
         tasks.sync_wallet.send(instance.id, instance.xpub)
 
 
-@receiver(post_save, sender=Product)
+@receiver(post_save, sender=Invoice)
 def create_product(sender, instance=None, created=False, **kwargs):
     if created:
         tasks.poll_updates.send(instance.id)

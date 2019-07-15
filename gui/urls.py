@@ -70,7 +70,7 @@ urlpatterns += [
     # urls for Django Rest Framework API
     path("api/v1/token/", rest_views.obtain_auth_token),
     path('api/v1/', include(router.urls)),
-    path('api/v1/rate', api.USDPriceView.as_view()),
+    path('api/v1/rate/', api.USDPriceView.as_view()),
     path('api/v1/wallet_history/<wallet>', api.WalletHistoryView.as_view()),
 ]
 
