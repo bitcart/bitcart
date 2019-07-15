@@ -32,8 +32,9 @@ def test_create_store(client, wallet):
 def test_create_product(client, store):
     product = models.Product.objects.create(
         id=secrets.token_urlsafe(44), amount=1.2, quantity=1,
-        title='test_title', bitcoin_address='37eCSgGyN5zeumL2eHaURnC6YNdmLa9TzH',
+        title='test_title',
         store=store
     )
     assert product.title == 'test_title'
-    assert product.bitcoin_address == '37eCSgGyN5zeumL2eHaURnC6YNdmLa9TzH'
+    assert product.amount == 1.2
+    assert product.quantity == 1

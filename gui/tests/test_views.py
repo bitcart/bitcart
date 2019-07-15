@@ -59,7 +59,6 @@ def test_get_product_dict(product):
     assert data['amount'] == 5.5
     assert data['quantity'] == 3
     assert data['title'] == 'product'
-    assert data['status'] == 'active'
     assert data['description'] == 'Nice!'
 
 
