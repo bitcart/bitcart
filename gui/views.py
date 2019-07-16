@@ -106,8 +106,6 @@ def get_product_dict(i):
                  "amount": i.amount,
                  "quantity": i.quantity,
                  "title": i.title,
-                 "status": i.status,
-                 "order_id": i.order_id,
                  "date": i.date,
                  "description": i.description,
                  "image": image}

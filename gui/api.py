@@ -46,12 +46,16 @@ class ProductViewSet(viewsets.ModelViewSet):
     serializer_class = serializers.ProductSerializer
     permission_classes = [permissions.IsAuthenticated]
 
+
+class InvoiceViewSet(viewsets.ModelViewSet):
+    """ViewSet for the Invoice class"""
+
+    queryset = models.Invoice.objects.all().order_by("-date")
+    serializer_class = serializers.InvoiceSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
     def get_queryset(self):
-        """
-        Optionally restricts the returned purchases to a given user,
-        by filtering against a `status` query parameter in the URL.
-        """
-        queryset = models.Product.objects.all().order_by("-date")
+        queryset = models.Invoice.objects.all().order_by("-date")
         status = self.request.query_params.get('status', None)
         if status is not None:
             queryset = queryset.filter(status=status)

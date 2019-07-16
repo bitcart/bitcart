@@ -12,7 +12,7 @@ import time
 class InvoiceConsumer(WebsocketConsumer):
     def connect(self):
         self.invoice_id = self.scope["url_route"]["kwargs"]["invoice"]
-        self.invoice = get_object_or_404(models.Product, id=self.invoice_id)
+        self.invoice = get_object_or_404(models.Invoice, id=self.invoice_id)
         async_to_sync(self.channel_layer.group_add)(
             self.invoice_id, self.channel_name)
         self.accept()

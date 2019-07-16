@@ -29,6 +29,7 @@ router = routers.DefaultRouter()
 router.register('product', api.ProductViewSet)
 router.register('store', api.StoreViewSet)
 router.register('wallet', api.WalletViewSet)
+router.register('invoice', api.InvoiceViewSet)
 
 urlpatterns = [
     path("", views.main, name="main"),
@@ -69,7 +70,7 @@ urlpatterns += [
     # urls for Django Rest Framework API
     path("api/v1/token/", rest_views.obtain_auth_token),
     path('api/v1/', include(router.urls)),
-    path('api/v1/rate', api.USDPriceView.as_view()),
+    path('api/v1/rate/', api.USDPriceView.as_view()),
     path('api/v1/wallet_history/<wallet>', api.WalletHistoryView.as_view()),
 ]
 

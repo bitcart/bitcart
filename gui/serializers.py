@@ -54,14 +54,39 @@ class StoreSerializer(serializers.ModelSerializer):
 class ProductSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.Product
-        fields = ("id", "amount", "quantity", "title", "description",
-                  "date", "status", "order_id", "date", "image", "store")
+        fields = "__all__"
         datatables_always_serialize = ('status')
 
     def create(self, validated_data):
         # validated_data["id"]=secrets.token_urlsafe(22)
         data_got = BTC(RPC_URL, xpub=validated_data["store"].wallet.xpub, rpc_user=RPC_USER, rpc_pass=RPC_PASS).addrequest(
             validated_data["amount"], description=validated_data["description"])
+        print(data_got)
+        validated_data["bitcoin_address"] = data_got["address"]
+        validated_data["bitcoin_url"] = data_got["URI"]
+        validated_data = edit_image(validated_data)
+        return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        for i in validated_data:
+            instance.__dict__[i] = validated_data[i]
+        validated_data = edit_image(validated_data)
+        instance.image = validated_data.get("image")
+        instance.save()
+        return instance
+
+
+class InvoiceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.Invoice
+        fields = "__all__"
+        datatables_always_serialize = ('status')
+
+    def create(self, validated_data):
+        # validated_data["id"]=secrets.token_urlsafe(22)
+        print(validated_data)
+        data_got = BTC(RPC_URL, xpub=validated_data["products"][0].store.wallet.xpub, rpc_user=RPC_USER, rpc_pass=RPC_PASS).addrequest(
+            validated_data["amount"], description=validated_data["products"][0].description)
         print(data_got)
         validated_data["bitcoin_address"] = data_got["address"]
         validated_data["bitcoin_url"] = data_got["URI"]

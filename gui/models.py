@@ -75,13 +75,9 @@ class Product(models.Model):
     amount = models.DecimalField(max_digits=16, decimal_places=8)
     quantity = models.DecimalField(max_digits=16, decimal_places=8)
     title = models.CharField(max_length=1000)
-    status = models.CharField(max_length=1000, default="active")
-    order_id = models.CharField(max_length=255, blank=True, default="")
     date = models.DateTimeField(default=timezone.now)
     description = models.TextField(blank=True, null=True)
     image = models.ImageField(blank=True, null=True)
-    bitcoin_address = models.CharField(max_length=255, default="")
-    bitcoin_url = models.CharField(max_length=255, default="")
     store = models.ForeignKey(Store, on_delete=models.CASCADE)
 
     class Meta:
@@ -90,6 +86,21 @@ class Product(models.Model):
 
     def __str__(self):
         return self.title
+
+
+class Invoice(models.Model):
+    id = models.CharField(max_length=255, primary_key=True, default=product_id)
+    amount = models.DecimalField(max_digits=16, decimal_places=8)
+    status = models.CharField(max_length=1000, default="active")
+    date = models.DateTimeField(default=timezone.now)
+    bitcoin_address = models.CharField(max_length=255, default="")
+    bitcoin_url = models.CharField(max_length=255, default="")
+    products = models.ManyToManyField(Product)
+
+    class Meta:
+        managed = True
+        db_table = 'invoices'
+
 
 # This code is triggered whenever a new user has been created and saved to
 # the database
@@ -105,7 +116,7 @@ def create_wallet(sender, instance=None, created=False, **kwargs):
         tasks.sync_wallet.send(instance.id, instance.xpub)
 
 
-@receiver(post_save, sender=Product)
+@receiver(post_save, sender=Invoice)
 def create_product(sender, instance=None, created=False, **kwargs):
     if created:
         tasks.poll_updates.send(instance.id)
