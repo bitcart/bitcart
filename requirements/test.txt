@@ -1,5 +1,5 @@
 -r web.txt
 pytest
 pytest-django
-pytest-cov>=2.4.0,<2.6 # python-coveralls issue
+pytest-cov
 python-coveralls
