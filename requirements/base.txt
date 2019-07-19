@@ -1,0 +1,4 @@
+# electrum, main dependency for daemon
+https://github.com/spesmilo/electrum/archive/3.3.8.zip
+# .env file reading
+python-decouple==3.1

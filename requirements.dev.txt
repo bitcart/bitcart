@@ -1,1 +1,1 @@
-django-debug-toolbar==2.0
+-r requirements/dev.txt
