@@ -17,11 +17,11 @@ import functools
 import traceback
 import threading
 
-config = AutoConfig(search_path="conf")
+config = AutoConfig(search_path="../conf")
 
-LOGIN = config("DAEMON_LOGIN", default="electrum")
-PASSWORD = config("DAEMON_PASSWORD", default="electrumz")
-
+LOGIN = config("BTC_LOGIN", default="electrum")
+PASSWORD = config("BTC_PASSWORD", default="electrumz")
+TESTNET = config("BTC_TESTNET", cast=bool, default=False)
 
 def decode_auth(authstr):
     if not authstr:
@@ -74,7 +74,10 @@ supported_methods = {"get_transaction": get_transaction,
                      "register_notify": register_notify}
 
 # verbosity
-VERBOSE = config("DEBUG", cast=bool, default=False)
+VERBOSE = config("BTC_DEBUG", cast=bool, default=False)
+# testnet
+if TESTNET:
+    constants.set_testnet()
 
 electrum_config = SimpleConfig()
 electrum_config.set_key("verbosity", VERBOSE)
