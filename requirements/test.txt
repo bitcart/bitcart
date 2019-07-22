@@ -1,5 +1,5 @@
 -r web.txt
-pytest
+pytest==5.0.1
 pytest-django
 pytest-cov
 python-coveralls
