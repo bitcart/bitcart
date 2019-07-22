@@ -23,6 +23,7 @@ LOGIN = config("BTC_LOGIN", default="electrum")
 PASSWORD = config("BTC_PASSWORD", default="electrumz")
 TESTNET = config("BTC_TESTNET", cast=bool, default=False)
 
+
 def decode_auth(authstr):
     if not authstr:
         return None, None
@@ -144,6 +145,8 @@ def load_wallet(xpub):
         return wallets[xpub]
     config = SimpleConfig()
     command_runner = Commands(config, wallet=None, network=network)
+    if not xpub:
+        return command_runner
     # get wallet on disk
     wallet_dir = os.path.dirname(config.get_wallet_path())
     wallet_path = os.path.join(wallet_dir, xpub)
@@ -172,9 +175,6 @@ async def xpub_func(request):
     method = data.get("method")
     id = data.get("id", None)
     xpub = data.get("xpub")
-    if not xpub and not method in supported_methods:
-        return web.json_response({"jsonrpc": "2.0", "error": {
-                                 "code": -32601, "message": "Xpub not provided."}, "id": id})
     params = data.get("params", [])
     if not method:
         return web.json_response({"jsonrpc": "2.0", "error": {
