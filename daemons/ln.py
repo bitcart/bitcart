@@ -157,7 +157,10 @@ def load_wallet(xpub):
         command_runner.restore(xpub)
     storage = WalletStorage(wallet_path)
     wallet = Wallet(storage)
-    wallet.start_network(network)
+    # some monkey patching here probably
+    wallet.lnworker.start_network(network)
+    # temporary disabled for lightning
+    # wallet.start_network(network)
     command_runner.wallet = wallet
     # lightning worker
     command_runner.lnworker = wallet.lnworker
@@ -186,6 +189,7 @@ async def xpub_func(request):
     try:
         wallet = load_wallet(xpub)
     except Exception:
+        print(traceback.format_exc())
         if not method in supported_methods:
             return web.json_response({"jsonrpc": "2.0", "error": {
                                      "code": -32601, "message": "Error loading wallet"}, "id": id})
@@ -209,6 +213,7 @@ async def xpub_func(request):
     except Exception:
         return web.json_response({"jsonrpc": "2.0", "error": {
                                  "code": -32601, "message": traceback.format_exc().splitlines()[-1]}, "id": id})
+    #print(await result)
     return web.json_response(
         {"jsonrpc": "2.0", "result": result, "error": None, "id": id})
 
