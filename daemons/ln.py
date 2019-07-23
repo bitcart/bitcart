@@ -12,6 +12,7 @@ from electrum.transaction import Transaction
 from aiohttp import web
 from base64 import b64encode, b64decode
 from decouple import AutoConfig
+import inspect
 import asyncio
 import functools
 import traceback
@@ -213,7 +214,13 @@ async def xpub_func(request):
     except Exception:
         return web.json_response({"jsonrpc": "2.0", "error": {
                                  "code": -32601, "message": traceback.format_exc().splitlines()[-1]}, "id": id})
-    #print(await result)
+    if inspect.isawaitable(result):
+        result = await result
+    #from electrum.util import json_decode
+    #print(json_decode(result))
+    if hasattr(result, '__dict__'):
+        result = result.__dict__
+    #print(result)
     return web.json_response(
         {"jsonrpc": "2.0", "result": result, "error": None, "id": id})
 
