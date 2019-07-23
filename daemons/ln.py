@@ -45,7 +45,7 @@ async def get_tx_async(tx: str, wallet=None) -> dict:
         "blockchain.transaction.get",
         [tx, True])
     result_formatted = Transaction(result).deserialize()
-    result_formatted.update({"confirmations": result["confirmations"]})
+    result_formatted.update({"confirmations": result.get("confirmations", 0)})
     return result_formatted
 
 
@@ -216,11 +216,6 @@ async def xpub_func(request):
                                  "code": -32601, "message": traceback.format_exc().splitlines()[-1]}, "id": id})
     if inspect.isawaitable(result):
         result = await result
-    #from electrum.util import json_decode
-    #print(json_decode(result))
-    if hasattr(result, '__dict__'):
-        result = result.__dict__
-    #print(result)
     return web.json_response(
         {"jsonrpc": "2.0", "result": result, "error": None, "id": id})
 

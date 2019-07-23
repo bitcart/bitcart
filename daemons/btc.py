@@ -44,7 +44,7 @@ async def get_tx_async(tx: str, wallet=None) -> dict:
         "blockchain.transaction.get",
         [tx, True])
     result_formatted = Transaction(result).deserialize()
-    result_formatted.update({"confirmations": result["confirmations"]})
+    result_formatted.update({"confirmations": result.get("confirmations", 0))
     return result_formatted
 
 
