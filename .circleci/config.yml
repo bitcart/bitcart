@@ -39,6 +39,7 @@ jobs:
             . venv/bin/activate
             pip install -r requirements.txt
             pip install -r requirements/test.txt
+            pip install -r requirements/daemons/btc.txt
 
       - save_cache:
           paths:
@@ -47,7 +48,7 @@ jobs:
 
       - run:
           name: prepare daemon
-          command: python3 daemon.py &
+          command: python3 daemons/btc.py &
 
       - run:
           name: run tests
