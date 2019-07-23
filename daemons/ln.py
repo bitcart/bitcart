@@ -12,15 +12,17 @@ from electrum.transaction import Transaction
 from aiohttp import web
 from base64 import b64encode, b64decode
 from decouple import AutoConfig
+import inspect
 import asyncio
 import functools
 import traceback
 import threading
 
-config = AutoConfig(search_path="conf")
+config = AutoConfig(search_path="../conf")
 
-LOGIN = config("DAEMON_LOGIN", default="electrum")
-PASSWORD = config("DAEMON_PASSWORD", default="electrumz")
+LOGIN = config("LN_LOGIN", default="electrum")
+PASSWORD = config("LN_PASSWORD", default="electrumz")
+TESTNET = config("LN_TESTNET", cast=bool, default=False)
 
 
 def decode_auth(authstr):
@@ -43,7 +45,7 @@ async def get_tx_async(tx: str, wallet=None) -> dict:
         "blockchain.transaction.get",
         [tx, True])
     result_formatted = Transaction(result).deserialize()
-    result_formatted.update({"confirmations": result["confirmations"]})
+    result_formatted.update({"confirmations": result.get("confirmations", 0)})
     return result_formatted
 
 
@@ -74,10 +76,15 @@ supported_methods = {"get_transaction": get_transaction,
                      "register_notify": register_notify}
 
 # verbosity
-VERBOSE = config("DEBUG", cast=bool, default=False)
+VERBOSE = config("LN_DEBUG", cast=bool, default=False)
+# testnet
+if TESTNET:
+    constants.set_testnet()
 
 electrum_config = SimpleConfig()
 electrum_config.set_key("verbosity", VERBOSE)
+# to enable lightning worker
+electrum_config.set_key("lightning", True)
 configure_logging(electrum_config)
 
 
@@ -141,6 +148,8 @@ def load_wallet(xpub):
         return wallets[xpub]
     config = SimpleConfig()
     command_runner = Commands(config, wallet=None, network=network)
+    if not xpub:
+        return command_runner
     # get wallet on disk
     wallet_dir = os.path.dirname(config.get_wallet_path())
     wallet_path = os.path.join(wallet_dir, xpub)
@@ -149,8 +158,13 @@ def load_wallet(xpub):
         command_runner.restore(xpub)
     storage = WalletStorage(wallet_path)
     wallet = Wallet(storage)
-    wallet.start_network(network)
+    # some monkey patching here probably
+    wallet.lnworker.start_network(network)
+    # temporary disabled for lightning
+    # wallet.start_network(network)
     command_runner.wallet = wallet
+    # lightning worker
+    command_runner.lnworker = wallet.lnworker
     wallets[xpub] = command_runner
     return command_runner
 
@@ -169,9 +183,6 @@ async def xpub_func(request):
     method = data.get("method")
     id = data.get("id", None)
     xpub = data.get("xpub")
-    if not xpub and not method in supported_methods:
-        return web.json_response({"jsonrpc": "2.0", "error": {
-                                 "code": -32601, "message": "Xpub not provided."}, "id": id})
     params = data.get("params", [])
     if not method:
         return web.json_response({"jsonrpc": "2.0", "error": {
@@ -179,6 +190,7 @@ async def xpub_func(request):
     try:
         wallet = load_wallet(xpub)
     except Exception:
+        print(traceback.format_exc())
         if not method in supported_methods:
             return web.json_response({"jsonrpc": "2.0", "error": {
                                      "code": -32601, "message": "Error loading wallet"}, "id": id})
@@ -202,6 +214,8 @@ async def xpub_func(request):
     except Exception:
         return web.json_response({"jsonrpc": "2.0", "error": {
                                  "code": -32601, "message": traceback.format_exc().splitlines()[-1]}, "id": id})
+    if inspect.isawaitable(result):
+        result = await result
     return web.json_response(
         {"jsonrpc": "2.0", "result": result, "error": None, "id": id})
 
@@ -212,4 +226,4 @@ async def on_shutdown(app):
 app = web.Application()
 app.router.add_post("/", xpub_func)
 app.on_shutdown.append(on_shutdown)
-web.run_app(app, host="0.0.0.0", port=5000)
+web.run_app(app, host="0.0.0.0", port=5001)
