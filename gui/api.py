@@ -15,8 +15,6 @@ RPC_PASS = settings.RPC_PASS
 
 RPC_URL = settings.RPC_URL
 
-btc = BTC(RPC_URL)
-
 PRECISION = decimal.Decimal('0.00000001')
 
 

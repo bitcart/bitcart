@@ -1,2 +1,3 @@
 -r web.txt
 django-debug-toolbar==2.0
+dramatiq[watch]

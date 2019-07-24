@@ -26,9 +26,6 @@ RPC_PASS = settings.RPC_PASS
 
 RPC_URL = settings.RPC_URL
 
-btc = BTC(RPC_URL)
-
-
 # misc
 def truncate(text: str, chars: int, endchar=".."):
     return (text[:chars] + endchar) if len(text) > chars else text

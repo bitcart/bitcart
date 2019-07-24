@@ -11,9 +11,6 @@ RPC_PASS = settings.RPC_PASS
 
 RPC_URL = settings.RPC_URL
 
-btc = BTC(RPC_URL)
-
-
 def edit_image(validated_data):
     image_field = validated_data.get('image')
     if image_field:

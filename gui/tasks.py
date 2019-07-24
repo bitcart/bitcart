@@ -15,7 +15,6 @@ RPC_USER = settings.RPC_USER
 RPC_PASS = settings.RPC_PASS
 MAX_RETRIES = 3
 
-btc = BTC(RPC_URL)
 channel_layer = get_channel_layer()
 
 

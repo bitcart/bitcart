@@ -13,8 +13,6 @@ RPC_PASS = settings.RPC_PASS
 
 RPC_URL = settings.RPC_URL
 
-btc = BTC(RPC_URL)
-
 
 def provide_stats(request):
     try:
