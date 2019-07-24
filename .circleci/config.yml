@@ -66,11 +66,15 @@ jobs:
     <<: *test-template
     docker:
       - image: circleci/python:3.7
+      - image: circleci/redis:latest
+    <<: *test-template
 
   test-3.8:
     <<: *test-template
     docker:
       - image: circleci/python:3.8.0b2-buster-node-browsers-legacy
+      - image: circleci/redis:latest
+    
 
   deploy:
     docker: 
