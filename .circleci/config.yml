@@ -70,7 +70,7 @@ jobs:
   test-3.8:
     <<: *test-template
     docker:
-      - image: circleci/python:3.8
+      - image: circleci/python:3.8.0b2-buster-node-browsers-legacy
 
   deploy:
     docker: 
