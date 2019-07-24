@@ -4,11 +4,11 @@
 #
 version: 2
 jobs:
-  test:
+  test-3.6: &test-template
     docker:
       # specify the version you desire here
       # use `-browsers` prefix for selenium tests, e.g. `3.6.1-browsers`
-      - image: circleci/python:3.6.8
+      - image: circleci/python:3.6
 
       # Specify service dependencies here if necessary
       # CircleCI maintains a library of pre-built images
@@ -21,6 +21,7 @@ jobs:
       DEBUG: false
       TEST: true
       DJANGO_SETTINGS_MODULE: mainsite.settings
+      PYTHONWARNINGS: DeprecationWarning
 
     steps:
       - checkout
@@ -52,7 +53,6 @@ jobs:
 
       - run:
           name: run tests
-          context: global
           command: |
             . venv/bin/activate
             pytest --cov=.
@@ -61,6 +61,17 @@ jobs:
       - store_artifacts:
           path: test-reports
           destination: test-reports
+
+  test-3.7:
+    <<: *test-template
+    docker:
+      - image: circleci/python:3.7
+
+  test-3.8:
+    <<: *test-template
+    docker:
+      - image: circleci/python:3.8
+
   deploy:
     docker: 
       - image: circleci/python:3.6.8
@@ -82,7 +93,6 @@ jobs:
       - run:
           path: ~/repo/bitcart-docker
           name: build docker image
-          context: global
           command: |
             docker build --cache-from=mrnaif/bitcart:latest -t mrnaif/bitcart:latest .
             docker login --username=$DOCKER_USER --password=$DOCKER_PASS
@@ -96,7 +106,6 @@ jobs:
       - setup_remote_docker
       - run:
           name: retag and upload
-          context: global
           command: |
             docker pull mrnaif/bitcart:latest
             docker tag mrnaif/bitcart:latest mrnaif/bitcart:stable
@@ -107,14 +116,23 @@ workflows:
   version: 2 
   build_and_test:
     jobs: 
-      - test
+      - test-3.6:
+          context: global
+      - test-3.7:
+          context: global
+      - test-3.8:
+          context: global
       - deploy:
+          context: global
           requires:
-            - test
+            - test-3.6
+            - test-3.7
+            - test-3.8
           filters:
             branches:
               only: master
       - deploy_stable:
+          context: global
           requires:
             - deploy
           filters:
