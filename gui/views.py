@@ -2,6 +2,7 @@
 from django.shortcuts import render, get_object_or_404, redirect, reverse
 from django.conf import settings
 from django.core.mail import send_mail
+from django.core import serializers
 from . import models, forms, tasks
 from django import forms as django_forms
 from django.http import JsonResponse, HttpResponse
@@ -27,6 +28,8 @@ RPC_PASS = settings.RPC_PASS
 RPC_URL = settings.RPC_URL
 
 # misc
+
+
 def truncate(text: str, chars: int, endchar=".."):
     return (text[:chars] + endchar) if len(text) > chars else text
 
@@ -275,26 +278,7 @@ def delete_wallet(request, wallet):
 
 
 def invoice_status(request, invoice):
-    get_object_or_404(models.Product, id=invoice)
-    response_json = {}
+    model = get_object_or_404(models.Invoice, id=invoice)
+    d=serializers.serialize("json",[model])
+    response_json = json.loads(d)[0]["fields"]
     return JsonResponse(response_json)
-
-@login_required
-def create_wallet(request):
-    if request.method == "POST":
-        form = forms.WalletForm(json.loads(request.body))
-        print(request.POST)
-        print(request.body)
-        if form.is_valid():
-            form = form.save(commit=False)
-            form.id = secrets.token_urlsafe(16)
-            form.user = request.user
-            form.save()
-            return JsonResponse({"id": form.id})
-            # return redirect(reverse("wallets")+"?ok=true")
-        else:
-            print(form.errors)
-            return render(request, "gui/create_wallet.html", {"form": form})
-    else:
-        form = forms.WalletForm()
-        return render(request, "gui/create_wallet.html", {"form": form})

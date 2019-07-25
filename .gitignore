@@ -32,3 +32,4 @@ debug.log
 .pytest_cache/
 htmlcov/
 .coverage
+.mypy_cache
