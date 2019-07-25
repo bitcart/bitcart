@@ -72,6 +72,7 @@ class Store(models.Model):
 
 class Product(models.Model):
     id = models.CharField(max_length=255, primary_key=True, default=product_id)
+    status = models.CharField(max_length=1000, default="active")
     amount = models.DecimalField(max_digits=16, decimal_places=8)
     quantity = models.DecimalField(max_digits=16, decimal_places=8)
     title = models.CharField(max_length=1000)

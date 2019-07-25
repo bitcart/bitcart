@@ -44,6 +44,13 @@ class ProductViewSet(viewsets.ModelViewSet):
     serializer_class = serializers.ProductSerializer
     permission_classes = [permissions.IsAuthenticated]
 
+    def get_queryset(self):
+        queryset = models.Product.objects.all()
+        status = self.request.query_params.get('status', None)
+        if status is not None:
+            queryset = queryset.filter(status=status)
+        return queryset
+
 
 class InvoiceViewSet(viewsets.ModelViewSet):
     """ViewSet for the Invoice class"""
