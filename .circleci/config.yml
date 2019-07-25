@@ -98,7 +98,8 @@ jobs:
           path: ~/repo/bitcart-docker
           name: build docker image
           command: |
-            docker build --cache-from=mrnaif/bitcart:latest -t mrnaif/bitcart:latest .
+            cd compose
+            docker build --cache-from=mrnaif/bitcart:latest -t mrnaif/bitcart:latest -f backend.Dockerfile .
             docker login --username=$DOCKER_USER --password=$DOCKER_PASS
             docker push mrnaif/bitcart:latest
 
