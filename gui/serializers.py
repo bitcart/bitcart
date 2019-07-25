@@ -11,7 +11,9 @@ RPC_PASS = settings.RPC_PASS
 
 RPC_URL = settings.RPC_URL
 
+
 def edit_image(validated_data):
+    # TODO: remove
     image_field = validated_data.get('image')
     if image_field:
         image_file = io.BytesIO(image_field.read())
@@ -55,12 +57,6 @@ class ProductSerializer(serializers.ModelSerializer):
         datatables_always_serialize = ('status')
 
     def create(self, validated_data):
-        # validated_data["id"]=secrets.token_urlsafe(22)
-        data_got = BTC(RPC_URL, xpub=validated_data["store"].wallet.xpub, rpc_user=RPC_USER, rpc_pass=RPC_PASS).addrequest(
-            validated_data["amount"], description=validated_data["description"])
-        print(data_got)
-        validated_data["bitcoin_address"] = data_got["address"]
-        validated_data["bitcoin_url"] = data_got["URI"]
         validated_data = edit_image(validated_data)
         return super().create(validated_data)
 
@@ -80,11 +76,8 @@ class InvoiceSerializer(serializers.ModelSerializer):
         datatables_always_serialize = ('status')
 
     def create(self, validated_data):
-        # validated_data["id"]=secrets.token_urlsafe(22)
-        print(validated_data)
         data_got = BTC(RPC_URL, xpub=validated_data["products"][0].store.wallet.xpub, rpc_user=RPC_USER, rpc_pass=RPC_PASS).addrequest(
             validated_data["amount"], description=validated_data["products"][0].description)
-        print(data_got)
         validated_data["bitcoin_address"] = data_got["address"]
         validated_data["bitcoin_url"] = data_got["URI"]
         validated_data = edit_image(validated_data)

@@ -15,8 +15,6 @@ class StoreForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         for visible in self.visible_fields():
             visible.field.widget.attrs['class'] = 'form-control'
-        #self.fields["wallet"].widget.attrs['class'] = 'form-check'
-        # self.fields["id"].widget.attrs["readonly"]=True
 
 
 class UpdateStoreForm(forms.ModelForm):
@@ -29,10 +27,6 @@ class UpdateStoreForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         for visible in self.visible_fields():
             visible.field.widget.attrs['class'] = 'form-control'
-            # visible.field.required=False
-        # print(self.visible_fields())
-        #self.fields["wallet"].widget.attrs['class'] = 'form-check'
-        # self.fields["id"].widget.attrs["readonly"]=True
 
 
 class ProductForm(forms.ModelForm):
@@ -44,6 +38,7 @@ class ProductForm(forms.ModelForm):
     def clean(self):
         image_field = self.cleaned_data.get('image_field')
         if image_field:
+            # TODO: remove
             image_file = io.StringIO(image_field.read())
             image = Image.open(image_file)
             image = image.resize((416, 416), Image.ANTIALIAS)

@@ -91,7 +91,6 @@ def get_wallet_history(model, response):
     txes = BTC(RPC_URL, xpub=model.xpub, rpc_user=RPC_USER,
                rpc_pass=RPC_PASS).server.history()["transactions"]
     for i in txes:
-            #response.append([i["date"], truncate(i["txid"], 20), i["value"]])
         response.append({
             "date": i["date"],
             "txid": truncate(i["txid"], 20),
