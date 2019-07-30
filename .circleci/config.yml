@@ -90,18 +90,29 @@ jobs:
             ./dev-setup.sh $CIRCLE_BRANCH
       - setup_remote_docker
       - run:
-          name: Load Docker image layer cache
-          command: |
-            set +o pipefail
-            docker pull mrnaif/bitcart:latest | true
-      - run:
           path: ~/repo/bitcart-docker
           name: build docker image
           command: |
             cd compose
-            docker build --cache-from=mrnaif/bitcart:latest -t mrnaif/bitcart:latest -f backend.Dockerfile .
+            docker build -t mrnaif/bitcart:latest -f backend.Dockerfile .
             docker login --username=$DOCKER_USER --password=$DOCKER_PASS
             docker push mrnaif/bitcart:latest
+      - run:
+          path: ~/repo/bitcart-docker
+          name: build btc daemon
+          command: |
+            cd compose
+            docker build -t mrnaif/bitcart-btc:latest -f btc.Dockerfile .
+            docker login --username=$DOCKER_USER --password=$DOCKER_PASS
+            docker push mrnaif/bitcart-btc:latest
+      - run:
+          path: ~/repo/bitcart-docker
+          name: build ln daemon
+          command: |
+            cd compose
+            docker build -t mrnaif/bitcart-ln:latest -f ln.Dockerfile .
+            docker login --username=$DOCKER_USER --password=$DOCKER_PASS
+            docker push mrnaif/bitcart-ln:latest
 
   deploy_stable:
     docker: 
@@ -112,10 +123,16 @@ jobs:
       - run:
           name: retag and upload
           command: |
-            docker pull mrnaif/bitcart:latest
-            docker tag mrnaif/bitcart:latest mrnaif/bitcart:stable
             docker login --username=$DOCKER_USER --password=$DOCKER_PASS
+            docker pull mrnaif/bitcart:latest
+            docker pull mrnaif/bitcart-btc:latest
+            docker pull mrnaif/bitcart-ln:latest
+            docker tag mrnaif/bitcart:latest mrnaif/bitcart:stable
+            docker tag mrnaif/bitcart-btc:latest mrnaif/bitcart-btc:stable
+            docker tag mrnaif/bitcart-ln:latest mrnaif/bitcart-ln:stable
             docker push mrnaif/bitcart:stable
+            docker push mrnaif/bitcart-btc:stable
+            docker push mrnaif/bitcart-ln:stable
 
 workflows: 
   version: 2 

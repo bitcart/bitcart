@@ -215,6 +215,6 @@ async def on_shutdown(app):
 app = web.Application()
 app.router.add_post("/", xpub_func)
 app.on_shutdown.append(on_shutdown)
-host = config("BTC_HOST", default="127.0.0.1")
+host = config("BTC_HOST", default="0.0.0.0" if os.getenv("IN_DOCKER") else "127.0.0.1")
 port = config("BTC_PORT", cast=int, default=5000)
 web.run_app(app, host=host, port=port)
