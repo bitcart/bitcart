@@ -113,7 +113,7 @@ class Notifier(SynchronizerBase):
                     if wallets_config[i]["skip"]:
                         for k in result[:]:
                             if k["height"] < self.network.get_local_height(
-                            ) and k["height"] != 0:
+                            ) and k["height"] > 0:
                                 result.remove(k)
                     if result:
                         wallets_updates[i].append(
