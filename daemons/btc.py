@@ -53,9 +53,10 @@ def exchange_rate(wallet=None) -> str:
 
 
 def register_notify(wallet, skip):
-    for i in wallets[wallet].listaddresses():
-        asyncio.run_coroutine_threadsafe(notifier.watch_queue.put(i), loop)
-    wallets_updates[wallet] = []
+    if not wallets_config.get(wallet):
+        for i in wallets[wallet].listaddresses():
+            asyncio.run_coroutine_threadsafe(notifier.watch_queue.put(i), loop)
+        wallets_updates[wallet] = []
     wallets_config[wallet] = {"skip": skip}
 
 
