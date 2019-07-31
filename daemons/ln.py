@@ -114,7 +114,8 @@ class Notifier(SynchronizerBase):
                     result = await self.network.get_history_for_scripthash(h)
                     if wallets_config[i]["skip"]:
                         for k in result[:]:
-                            if k["height"] < self.network.get_local_height():
+                            if k["height"] < self.network.get_local_height(
+                            ) and k["height"] != 0:
                                 result.remove(k)
                     if result:
                         wallets_updates[i].append(
@@ -226,6 +227,7 @@ async def on_shutdown(app):
 app = web.Application()
 app.router.add_post("/", xpub_func)
 app.on_shutdown.append(on_shutdown)
-host = config("LN_HOST", default="0.0.0.0" if os.getenv("IN_DOCKER") else "127.0.0.1")
+host = config("LN_HOST", default="0.0.0.0" if os.getenv(
+    "IN_DOCKER") else "127.0.0.1")
 port = config("LN_PORT", cast=int, default=5001)
 web.run_app(app, host=host, port=port)
