@@ -133,6 +133,9 @@ def start_it():
     config.set_key("use_exchange_rate", True)
     daemon = Daemon(config, listen_jsonrpc=False)
     network = daemon.network
+    # as said in electrum daemon code, this is ugly 
+    config.fee_estimates = network.config.fee_estimates.copy()
+    config.mempool_fees  = network.config.mempool_fees.copy()
     fx = daemon.fx
     loop = asyncio.get_event_loop()
     notifier = Notifier(network)
@@ -149,6 +152,9 @@ def load_wallet(xpub):
     if xpub in wallets:
         return wallets[xpub]
     config = SimpleConfig()
+    # as said in electrum daemon code, this is ugly 
+    config.fee_estimates = network.config.fee_estimates.copy()
+    config.mempool_fees  = network.config.mempool_fees.copy()
     command_runner = Commands(config, wallet=None, network=network)
     if not xpub:
         return command_runner
