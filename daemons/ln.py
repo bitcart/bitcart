@@ -10,6 +10,7 @@ from electrum.synchronizer import Synchronizer, SynchronizerBase
 from electrum.logging import configure_logging
 from electrum.transaction import Transaction
 from aiohttp import web
+import time
 from base64 import b64encode, b64decode
 from decouple import AutoConfig
 import inspect
@@ -140,7 +141,7 @@ def start_it():
     loop = asyncio.get_event_loop()
     notifier = Notifier(network)
     while thread.is_running:
-        pass
+        time.sleep(1)
 
 
 thread = threading.Thread(target=start_it)
