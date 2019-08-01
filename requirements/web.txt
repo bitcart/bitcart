@@ -29,7 +29,3 @@ coreapi==2.3.3
 whitenoise==4.1.3
 # CORS
 django-cors-headers==3.0.2
-# Swagger generation
-drf-yasg==1.16.1
-# TODO: remove
-packaging

@@ -10,20 +10,6 @@ from . import views
 from . import api
 from two_factor.urls import urlpatterns as tf_urls
 from rest_framework.urlpatterns import format_suffix_patterns
-from drf_yasg.views import get_schema_view
-from drf_yasg import openapi
-
-schema_view = get_schema_view(
-    openapi.Info(
-        title="Bitcart API",
-        default_version='v1',
-        description="Bitcart api",
-        license=openapi.License(name="MIT License"),
-    ),
-    public=True,
-    permission_classes=(permissions.AllowAny,),
-)
-
 
 router = routers.DefaultRouter()
 router.register('product', api.ProductViewSet)
@@ -70,24 +56,4 @@ urlpatterns += [
     path('api/v1/', include(router.urls)),
     path('api/v1/rate/', api.USDPriceView.as_view()),
     path('api/v1/wallet_history/<wallet>', api.WalletHistoryView.as_view()),
-]
-
-urlpatterns += [
-    re_path(
-        "^swagger(?P<format>.json|.yaml)$",
-        schema_view.without_ui(
-            cache_timeout=0),
-        name='schema-json'),
-    path(
-        "swagger/",
-        schema_view.with_ui(
-            'swagger',
-            cache_timeout=0),
-        name='schema-swagger-ui'),
-    path(
-        "redoc/",
-        schema_view.with_ui(
-            'redoc',
-            cache_timeout=0),
-        name='schema-redoc'),
 ]
