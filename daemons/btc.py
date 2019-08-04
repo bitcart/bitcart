@@ -18,7 +18,7 @@ import functools
 import traceback
 import threading
 
-config = AutoConfig(search_path="../conf")
+config = AutoConfig(search_path="conf")
 
 LOGIN = config("BTC_LOGIN", default="electrum")
 PASSWORD = config("BTC_PASSWORD", default="electrumz")

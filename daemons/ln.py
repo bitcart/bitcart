@@ -19,7 +19,7 @@ import functools
 import traceback
 import threading
 
-config = AutoConfig(search_path="../conf")
+config = AutoConfig(search_path="conf")
 
 LOGIN = config("LN_LOGIN", default="electrum")
 PASSWORD = config("LN_PASSWORD", default="electrumz")
