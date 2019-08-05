@@ -23,6 +23,7 @@ config = AutoConfig(search_path="conf")
 LOGIN = config("BTC_LOGIN", default="electrum")
 PASSWORD = config("BTC_PASSWORD", default="electrumz")
 TESTNET = config("BTC_TESTNET", cast=bool, default=False)
+DEFAULT_CURRENCY = config("BTC_FIAT_CURRENCY", default="USD")
 
 
 def decode_auth(authstr):
@@ -49,8 +50,14 @@ async def get_tx_async(tx: str, wallet=None) -> dict:
     return result_formatted
 
 
-def exchange_rate(wallet=None) -> str:
+def exchange_rate(currency=DEFAULT_CURRENCY, wallet=None) -> str:
+    if fx.get_currency() != currency:
+        fx.set_currency(currency)
     return str(fx.exchange_rate())
+
+
+def list_currencies(wallet=None) -> list:
+    return fx.get_currencies(True)
 
 
 def register_notify(wallet, skip):
@@ -74,7 +81,8 @@ wallets_config = {}
 supported_methods = {"get_transaction": get_transaction,
                      "exchange_rate": exchange_rate,
                      "notify_tx": notify_tx,
-                     "register_notify": register_notify}
+                     "register_notify": register_notify,
+                     "list_currencies": list_currencies}
 
 # verbosity
 VERBOSE = config("BTC_DEBUG", cast=bool, default=False)
@@ -127,13 +135,13 @@ def start_it():
     thread = threading.currentThread()
     asyncio.set_event_loop(asyncio.new_event_loop())
     config = SimpleConfig()
-    config.set_key("currency", "USD")
+    config.set_key("currency", DEFAULT_CURRENCY)
     config.set_key("use_exchange_rate", True)
     daemon = Daemon(config, listen_jsonrpc=False)
     network = daemon.network
-    # as said in electrum daemon code, this is ugly 
+    # as said in electrum daemon code, this is ugly
     config.fee_estimates = network.config.fee_estimates.copy()
-    config.mempool_fees  = network.config.mempool_fees.copy()
+    config.mempool_fees = network.config.mempool_fees.copy()
     fx = daemon.fx
     loop = asyncio.get_event_loop()
     notifier = Notifier(network)
@@ -150,9 +158,9 @@ def load_wallet(xpub):
     if xpub in wallets:
         return wallets[xpub]
     config = SimpleConfig()
-    # as said in electrum daemon code, this is ugly 
+    # as said in electrum daemon code, this is ugly
     config.fee_estimates = network.config.fee_estimates.copy()
-    config.mempool_fees  = network.config.mempool_fees.copy()
+    config.mempool_fees = network.config.mempool_fees.copy()
     command_runner = Commands(config, wallet=None, network=network)
     if not xpub:
         return command_runner
