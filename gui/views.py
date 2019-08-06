@@ -17,3 +17,22 @@ utils.model_view(
     models.Wallet,
     schemes.Wallet,
     schemes.CreateWallet)
+utils.model_view(
+    router,
+    "/stores",
+    models.Store,
+    schemes.Store,
+    schemes.CreateStore)
+utils.model_view(
+    router,
+    "/products",
+    models.Product,
+    schemes.Product,
+    schemes.CreateProduct)
+utils.model_view(
+    router,
+    "/invoices",
+    models.Invoice,
+    schemes.Invoice,
+    schemes.CreateInvoice, custom_methods={
+        "post": crud.create_invoice})

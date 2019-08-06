@@ -12,7 +12,7 @@ def now():
 
 
 class User(BaseModel):
-    id: Optional[int]
+    id: int
     username: str
     email: Optional[EmailStr] = ""
 
@@ -34,17 +34,17 @@ class CreateWallet(BaseModel):
     name: str
     xpub: str = ""
     balance: Decimal = Decimal(0)
-    user: Union[int, User]
+    user_id: Union[int, User]
 
     class Config:
         orm_mode = True
 
 
 class Wallet(CreateWallet):
-    id: Optional[int]
+    id: int
 
 
-class Store(BaseModel):
+class CreateStore(BaseModel):
     name: str
     domain: str = ""
     template: str = ""
@@ -53,32 +53,56 @@ class Store(BaseModel):
     email_port: int = 25
     email_user: str = ""
     email_password: str = ""
-    wallet: Wallet
+    wallet_id: int
+
+    @validator('email', pre=True, always=False)
+    def validate_email(cls, val):
+        if val == "":
+            return None
+        return val
+
+    class Config:
+        orm_mode = True
 
 
-class Product(BaseModel):
+class Store(CreateStore):
+    id: int
+
+
+class CreateProduct(BaseModel):
     status: str = "active"
     amount: Decimal
     quantity: Decimal
     title: str
-    date: datetime
+    date: Optional[datetime]
     description: str = ""
-    image: UploadFile = File(...)
-    store: Store
+    image: Optional[UploadFile] = File(...)
+    store_id: int
 
-    @validator("date", pre=True)
+    @validator("date", pre=True, always=True)
     def set_date(cls, v):
         return v or now()
 
+    class Config:
+        orm_mode = True
 
-class Invoice(BaseModel):
+
+class Product(CreateProduct):
+    id: int
+
+
+class CreateInvoice(BaseModel):
     amount: Decimal
     status: str = "active"
-    date: datetime = now()
+    date: Optional[datetime] = now()
     bitcoin_address: str = ""
     bitcoin_url: str = ""
-    products: List[Product]
+    products: List[int]
 
-    @validator("date", pre=True)
+    @validator("date", pre=True, always=True)
     def set_date(cls, v):
         return v or now()
+
+
+class Invoice(CreateInvoice):
+    id: int

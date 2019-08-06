@@ -1,6 +1,6 @@
 from os.path import join as path_join
 from typing import Callable, Dict, List, Type, Union
-
+from gino.loader import ModelLoader
 from fastapi import APIRouter, HTTPException
 from passlib.context import CryptContext
 
@@ -46,6 +46,20 @@ def model_view(router: APIRouter,
                         "delete": item_path}
 
     async def get():
+        query = orm_model.query
+        parent = orm_model.parent()
+        print(parent)
+        parents = await query.gino.load(parent.distinct(parent.id).load(add_child=orm_model.distinct(orm_model.id))).all()
+        # print(help(orm_model.query.gino.load))
+        # orm_model.
+        #query = orm_model.query
+        #query = query.execution_options(loader=orm_model)
+        # items = await query.gino.all()
+        # print(items)
+        # print((await items[0].load().gino.all())[0].user)
+        # return items
+        # print(itemsuser)
+        print("X", parents)
         return await orm_model.query.gino.all()
 
     async def get_one(model_id: Union[int, str]):
@@ -57,6 +71,7 @@ def model_view(router: APIRouter,
         return item
 
     async def post(model: create_model):  # type: ignore
+        print(model.dict())
         return await orm_model.create(**model.dict())  # type: ignore
 
     async def put(model_id: Union[int, str], model: pydantic_model):  # type: ignore
