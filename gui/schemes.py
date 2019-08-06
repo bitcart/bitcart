@@ -1,9 +1,10 @@
 from datetime import datetime
 from decimal import Decimal
-from typing import List, Optional
-from pytz import utc
+from typing import List, Optional, Union
+
 from fastapi import File, UploadFile
 from pydantic import BaseModel, EmailStr, validator
+from pytz import utc
 
 
 def now():
@@ -11,16 +12,36 @@ def now():
 
 
 class User(BaseModel):
+    id: Optional[int]
     username: str
-    password: str
     email: Optional[EmailStr] = ""
 
+    @validator('email', pre=True, always=False)
+    def validate_email(cls, val):
+        if val == "":
+            return None
+        return val
 
-class Wallet(BaseModel):
+    class Config:
+        orm_mode = True
+
+
+class CreateUser(User):
+    password: str
+
+
+class CreateWallet(BaseModel):
     name: str
     xpub: str = ""
     balance: Decimal = Decimal(0)
-    user: User
+    user: Union[int, User]
+
+    class Config:
+        orm_mode = True
+
+
+class Wallet(CreateWallet):
+    id: Optional[int]
 
 
 class Store(BaseModel):
