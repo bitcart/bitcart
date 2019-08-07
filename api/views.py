@@ -1,4 +1,6 @@
 from fastapi import APIRouter
+from starlette.websockets import WebSocket
+from . import tasks
 
 from . import crud, models, schemes, utils
 
@@ -38,3 +40,9 @@ utils.model_view(
         "get": crud.get_invoices,
         "get_one": crud.get_invoice,
         "post": crud.create_invoice})
+
+
+@router.get("/")
+async def x():
+    # await tasks.sync_wallet(2)
+    await tasks.poll_updates(1)

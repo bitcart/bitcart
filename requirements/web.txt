@@ -4,4 +4,5 @@ email-validator
 pytz
 gino
 passlib[bcrypt]
+bitcart-async
 uvicorn

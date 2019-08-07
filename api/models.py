@@ -30,7 +30,7 @@ class Wallet(db.Model):
     name = Column(String(length=1000))
     xpub = Column(String(length=1000))
     balance = Column(Numeric(16, 8))
-    user_id = Column(Integer, ForeignKey(User.id))
+    user_id = Column(Integer, ForeignKey(User.id, ondelete="SET NULL"))
     user = relationship(User, backref="wallets")
 
 
@@ -46,8 +46,8 @@ class Store(db.Model):
         ForeignKey(
             'wallets.id',
             deferrable=True,
-            initially='DEFERRED'),
-        nullable=False,
+            initially='DEFERRED',
+            ondelete="SET NULL"),
         index=True)
     email_host = Column(String(1000))
     email_password = Column(String(1000))
@@ -72,8 +72,8 @@ class Product(db.Model):
         ForeignKey(
             'stores.id',
             deferrable=True,
-            initially='DEFERRED'),
-        nullable=False,
+            initially='DEFERRED',
+            ondelete="SET NULL"),
         index=True)
     status = Column(String(1000), nullable=False)
 
@@ -83,8 +83,16 @@ class Product(db.Model):
 class ProductxInvoice(db.Model):
     __tablename__ = 'productsxinvoices'
 
-    product_id = Column(Integer, ForeignKey('products.id'))
-    invoice_id = Column(Integer, ForeignKey('invoices.id'))
+    product_id = Column(
+        Integer,
+        ForeignKey(
+            'products.id',
+            ondelete="SET NULL"))
+    invoice_id = Column(
+        Integer,
+        ForeignKey(
+            'invoices.id',
+            ondelete="SET NULL"))
 
 
 class Invoice(db.Model):

@@ -75,11 +75,10 @@ def model_view(router: APIRouter,
         item = await get_one(model_id)
         await item.delete()
         return item
-
     for method in allowed_methods:
         method_name = method.lower()
         router.add_api_route(  # type: ignore
             paths.get(method_name),
             custom_methods.get(method_name) or locals()[method_name],
-            methods=[method_name if method_name in HTTP_METHODS else "get"],
+            methods=[method_name if method in HTTP_METHODS else "get"],
             response_model=response_models.get(method_name))
