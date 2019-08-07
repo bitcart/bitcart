@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 
-from gui.db import CONNECTION_STR, db
-from gui.views import router
+from api.db import CONNECTION_STR, db
+from api.views import router
 
 app = FastAPI(title="Bitcart", version="1.0")
 app.include_router(router)
