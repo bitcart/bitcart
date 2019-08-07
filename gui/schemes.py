@@ -1,6 +1,7 @@
+# pylint: disable=no-name-in-module, no-self-argument
 from datetime import datetime
 from decimal import Decimal
-from typing import List, Optional, Union
+from typing import List, Optional
 
 from fastapi import File, UploadFile
 from pydantic import BaseModel, EmailStr, validator
@@ -11,10 +12,9 @@ def now():
     return datetime.utcnow().replace(tzinfo=utc)
 
 
-class User(BaseModel):
-    id: int
+class BaseUser(BaseModel):
     username: str
-    email: Optional[EmailStr] = ""
+    email: Optional[EmailStr] = ""  # type: ignore
 
     @validator('email', pre=True, always=False)
     def validate_email(cls, val):
@@ -26,15 +26,19 @@ class User(BaseModel):
         orm_mode = True
 
 
-class CreateUser(User):
+class CreateUser(BaseUser):
     password: str
+
+
+class User(BaseUser):
+    id: int
 
 
 class CreateWallet(BaseModel):
     name: str
     xpub: str = ""
     balance: Decimal = Decimal(0)
-    user_id: Union[int, User]
+    user_id: int
 
     class Config:
         orm_mode = True
@@ -48,7 +52,7 @@ class CreateStore(BaseModel):
     name: str
     domain: str = ""
     template: str = ""
-    email: Optional[EmailStr] = ""
+    email: Optional[EmailStr] = ""  # type: ignore
     email_host: str = ""
     email_port: int = 25
     email_user: str = ""
@@ -102,6 +106,9 @@ class CreateInvoice(BaseModel):
     @validator("date", pre=True, always=True)
     def set_date(cls, v):
         return v or now()
+
+    class Config:
+        orm_mode = True
 
 
 class Invoice(CreateInvoice):

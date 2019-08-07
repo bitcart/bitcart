@@ -1,11 +1,8 @@
-# coding: utf-8
-# from sqlalchemy import BigInteger, Boolean, CheckConstraint, Column, DateTime, ForeignKey, Integer, LargeBinary, Numeric, SmallInteger, String, Text, UniqueConstraint, text
-# from sqlalchemy.dialects.postgresql import UUID
+# pylint: disable=no-member
 from sqlalchemy.orm import relationship
 from .db import db
 
 # shortcuts
-Model = db.Model
 Column = db.Column
 Integer = db.Integer
 String = db.String
@@ -16,7 +13,7 @@ Text = db.Text
 ForeignKey = db.ForeignKey
 
 
-class User(Model):
+class User(db.Model):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -26,7 +23,7 @@ class User(Model):
     is_superuser = Column(Boolean(), default=False)
 
 
-class Wallet(Model):
+class Wallet(db.Model):
     __tablename__ = "wallets"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -37,7 +34,7 @@ class Wallet(Model):
     user = relationship(User, backref="wallets")
 
 
-class Store(Model):
+class Store(db.Model):
     __tablename__ = 'stores'
 
     id = Column(Integer, primary_key=True, index=True)
@@ -61,7 +58,7 @@ class Store(Model):
     wallet = relationship('Wallet')
 
 
-class Product(Model):
+class Product(db.Model):
     __tablename__ = 'products'
 
     id = Column(Integer, primary_key=True, index=True)
@@ -83,14 +80,14 @@ class Product(Model):
     store = relationship('Store')
 
 
-class ParentXChild(db.Model):
-    __tablename__ = 'invoicesxproducts'
+class ProductxInvoice(db.Model):
+    __tablename__ = 'productsxinvoices'
 
-    product_id = db.Column(db.Integer, db.ForeignKey('products.id'))
-    invoice_id = db.Column(db.Integer, db.ForeignKey('invoices.id'))
+    product_id = Column(Integer, ForeignKey('products.id'))
+    invoice_id = Column(Integer, ForeignKey('invoices.id'))
 
 
-class Invoice(Model):
+class Invoice(db.Model):
     __tablename__ = 'invoices'
 
     id = Column(Integer, primary_key=True, index=True)
@@ -99,8 +96,4 @@ class Invoice(Model):
     date = Column(DateTime(True), nullable=False)
     bitcoin_address = Column(String(255), nullable=False)
     bitcoin_url = Column(String(255), nullable=False)
-    products = relationship("Product", secondary=ParentXChild)
-
-    @classmethod
-    def parent(cls):
-        return Product
+    products = relationship("Product", secondary=ProductxInvoice)

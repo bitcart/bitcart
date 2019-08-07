@@ -35,4 +35,6 @@ utils.model_view(
     models.Invoice,
     schemes.Invoice,
     schemes.CreateInvoice, custom_methods={
+        "get": crud.get_invoices,
+        "get_one": crud.get_invoice,
         "post": crud.create_invoice})

@@ -1,7 +1,6 @@
 from fastapi import FastAPI
 
 from gui.db import CONNECTION_STR, db
-from gui.models import User, Wallet
 from gui.views import router
 
 app = FastAPI(title="Bitcart", version="1.0")
