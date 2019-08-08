@@ -1,8 +1,11 @@
 from os.path import join as path_join
 from typing import Callable, Dict, List, Type, Union
 
+from bitcart_async import BTC
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 from passlib.context import CryptContext
+
+from . import settings
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -87,3 +90,14 @@ def model_view(router: APIRouter,
             custom_methods.get(method_name) or locals()[method_name],
             methods=[method_name if method in HTTP_METHODS else "get"],
             response_model=response_models.get(method_name))
+
+
+async def get_wallet_history(model, response):
+    txes = (await BTC(settings.RPC_URL, xpub=model.xpub, rpc_user=settings.RPC_USER,
+                      rpc_pass=settings.RPC_PASS).history())["transactions"]
+    for i in txes:
+        response.append({
+            "date": i["date"],
+            "txid": i["txid"],
+            "amount": i["value"]
+        })

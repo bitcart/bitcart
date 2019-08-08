@@ -1,4 +1,6 @@
-from fastapi import APIRouter
+from typing import List
+
+from fastapi import APIRouter, HTTPException
 from starlette.websockets import WebSocket
 
 from . import crud, models, schemes, settings, tasks, utils
@@ -45,3 +47,19 @@ utils.model_view(
 @router.get("/rate")
 async def rate():
     return await settings.btc.rate()
+
+
+@router.get("/wallet_history/{wallet}",
+            response_model=List[schemes.TxResponse])
+async def wallet_history(wallet: int):
+    response: List[schemes.TxResponse] = []
+    if wallet == 0:
+        for model in await models.Wallet.query.gino.all():
+            await utils.get_wallet_history(model, response)
+    else:
+        model = await models.Wallet.get(wallet)
+        if not model:
+            raise HTTPException(
+                404, f"Wallet with id {wallet} does not exist!")
+        await utils.get_wallet_history(model, response)
+    return response

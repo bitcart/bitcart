@@ -112,3 +112,9 @@ class CreateInvoice(BaseModel):
 
 class Invoice(CreateInvoice):
     id: int
+
+
+class TxResponse(BaseModel):
+    date: datetime
+    txid: str
+    amount: str
