@@ -63,3 +63,12 @@ async def wallet_history(wallet: int):
                 404, f"Wallet with id {wallet} does not exist!")
         await utils.get_wallet_history(model, response)
     return response
+
+
+@router.post("/token")
+async def create_token(input_token: schemes.CreateToken):
+    user = await utils.authenticate_user(input_token.username, input_token.password)
+    if not user:
+        raise HTTPException(400, "Unauthorized")
+    token = await models.Token.create(user)
+    return {"token": token.key}

@@ -1,9 +1,11 @@
 # pylint: disable=no-member
+import os
+
 from bitcart_async import BTC
 from fastapi import HTTPException
 from sqlalchemy.orm import relationship
 
-from . import settings
+from . import settings, utils
 from .db import db
 
 # shortcuts
@@ -28,6 +30,22 @@ class User(db.Model):
     email = Column(String, index=True)
     hashed_password = Column(String)
     is_superuser = Column(Boolean(), default=False)
+    token = relationship("Token", uselist=False, back_populates="users")
+
+
+class Token(db.Model):
+    __tablename__ = "tokens"
+    key = Column(String(length=40), primary_key=True)
+    user_id = Column(Integer, ForeignKey('users.id', ondelete="CASCADE"))
+    user = relationship("User", back_populates="tokens")
+    created = Column(DateTime(True))
+
+    @classmethod
+    async def create(cls, user: User):
+        user_id = user.id
+        key = os.urandom(20).hex()
+        created = utils.now()
+        return await super().create(user_id=user_id, key=key, created=created)
 
 
 class Wallet(db.Model):

@@ -5,11 +5,8 @@ from typing import List, Optional
 
 from fastapi import File, UploadFile
 from pydantic import BaseModel, EmailStr, validator
-from pytz import utc
 
-
-def now():
-    return datetime.utcnow().replace(tzinfo=utc)
+from .utils import now
 
 
 class BaseUser(BaseModel):
@@ -32,6 +29,11 @@ class CreateUser(BaseUser):
 
 class User(BaseUser):
     id: int
+
+
+class CreateToken(BaseModel):
+    username: str
+    password: str
 
 
 class CreateWallet(BaseModel):

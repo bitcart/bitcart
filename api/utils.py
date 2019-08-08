@@ -1,11 +1,18 @@
+from datetime import datetime
 from os.path import join as path_join
 from typing import Callable, Dict, List, Type, Union
 
 from bitcart_async import BTC
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 from passlib.context import CryptContext
+from pytz import utc
 
-from . import settings
+from . import models, settings
+
+
+def now():
+    return datetime.utcnow().replace(tzinfo=utc)
+
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -16,6 +23,15 @@ def verify_password(plain_password, hashed_password):
 
 def get_password_hash(password):
     return pwd_context.hash(password)
+
+
+async def authenticate_user(username: str, password: str):
+    user = await models.User.query.where(models.User.username == username).gino.first()
+    if not user:
+        return False
+    if not verify_password(password, user.hashed_password):
+        return False
+    return user
 
 
 HTTP_METHODS: List[str] = ["GET",
