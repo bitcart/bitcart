@@ -34,8 +34,8 @@ class Wallet(db.Model):
     __tablename__ = "wallets"
 
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(length=1000))
-    xpub = Column(String(length=1000))
+    name = Column(String(length=1000), unique=True, index=True)
+    xpub = Column(String(length=1000), unique=True, index=True)
     balance = Column(Numeric(16, 8))
     user_id = Column(Integer, ForeignKey(User.id, ondelete="SET NULL"))
     user = relationship(User, backref="wallets")
@@ -45,10 +45,10 @@ class Store(db.Model):
     __tablename__ = 'stores'
 
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(1000))
-    domain = Column(String(1000))
+    name = Column(String(1000), unique=True, index=True)
+    domain = Column(String(1000), unique=True, index=True)
     template = Column(String(1000))
-    email = Column(String(1000))
+    email = Column(String(1000), unique=True, index=True)
     wallet_id = Column(
         ForeignKey(
             'wallets.id',
