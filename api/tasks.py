@@ -1,4 +1,7 @@
+import asyncio
+
 from bitcart_async import BTC
+
 from . import models, schemes, settings
 
 RPC_URL = settings.RPC_URL
@@ -6,17 +9,27 @@ RPC_USER = settings.RPC_USER
 RPC_PASS = settings.RPC_PASS
 
 
-async def poll_updates(invoice_id: int):
-    obj = await models.Invoice.get(invoice_id)
+async def poll_updates(obj: models.Invoice, xpub: str):
     address = obj.bitcoin_address
     if not address:
         return
-    btc_instance = BTC(RPC_URL, xpub=obj.products.all()[0].store.wallet.xpub,
+    btc_instance = BTC(RPC_URL, xpub=xpub,
                        rpc_user=RPC_USER, rpc_pass=RPC_PASS)
+    while True:
+        invoice_data = await btc_instance.getrequest(address)
+        if invoice_data["status"] != "Pending":
+            if invoice_data["status"] == "Unknown":
+                status = "invalid"
+            if invoice_data["status"] == "Expired":
+                status = "expired"
+            if invoice_data["status"] == "Paid":
+                status = "complete"
+            await obj.update(status=status).apply()
+            return
+        await asyncio.sleep(1)
 
 
-async def sync_wallet(wallet_id: int):
-    model = await models.Wallet.get(wallet_id)
+async def sync_wallet(model: models.Wallet):
     try:
         balance = await BTC(
             RPC_URL,

@@ -80,7 +80,6 @@ class CreateProduct(BaseModel):
     title: str
     date: Optional[datetime]
     description: str = ""
-    image: Optional[UploadFile] = File(...)
     store_id: int
 
     @validator("date", pre=True, always=True)

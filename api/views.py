@@ -1,8 +1,7 @@
 from fastapi import APIRouter
 from starlette.websockets import WebSocket
-from . import tasks
 
-from . import crud, models, schemes, utils
+from . import crud, models, schemes, settings, tasks, utils
 
 router = APIRouter()
 
@@ -18,7 +17,8 @@ utils.model_view(
     "/wallets",
     models.Wallet,
     schemes.Wallet,
-    schemes.CreateWallet)
+    schemes.CreateWallet,
+    background_tasks_mapping={"post": tasks.sync_wallet})
 utils.model_view(
     router,
     "/stores",
@@ -42,7 +42,6 @@ utils.model_view(
         "post": crud.create_invoice})
 
 
-@router.get("/")
-async def x():
-    # await tasks.sync_wallet(2)
-    await tasks.poll_updates(1)
+@router.get("/rate")
+async def rate():
+    return await settings.btc.rate()

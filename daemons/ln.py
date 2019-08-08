@@ -207,7 +207,6 @@ async def xpub_func(request):
     try:
         wallet = load_wallet(xpub)
     except Exception:
-        print(traceback.format_exc())
         if not method in supported_methods:
             return web.json_response({"jsonrpc": "2.0", "error": {
                                      "code": -32601, "message": "Error loading wallet"}, "id": id})

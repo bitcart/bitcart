@@ -1,6 +1,8 @@
-from . import models, schemes, utils
 from typing import Union
-from fastapi import HTTPException
+
+from fastapi import BackgroundTasks, HTTPException
+
+from . import models, schemes, tasks, utils
 from .db import db
 
 
@@ -17,15 +19,15 @@ async def create_user(user: schemes.CreateUser):
         is_superuser=True if count == 0 else False)
 
 
-async def create_invoice(invoice: schemes.CreateInvoice):
+async def create_invoice(invoice: schemes.CreateInvoice, background_tasks: BackgroundTasks):
     d = invoice.dict()
     products = d.get("products")
-    del d["products"]
-    obj = await models.Invoice.create(**d)
+    obj, xpub = await models.Invoice.create(**d)
     created = []
     for i in products:  # type: ignore
         created.append((await models.ProductxInvoice.create(invoice_id=obj.id, product_id=i)).product_id)
     obj.products = created
+    background_tasks.add_task(tasks.poll_updates, obj, xpub)
     return obj
 
 

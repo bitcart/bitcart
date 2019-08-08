@@ -1,6 +1,7 @@
 from os.path import join as path_join
 from typing import Callable, Dict, List, Type, Union
-from fastapi import APIRouter, HTTPException
+
+from fastapi import APIRouter, BackgroundTasks, HTTPException
 from passlib.context import CryptContext
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -27,7 +28,8 @@ def model_view(router: APIRouter,
                pydantic_model,
                create_model=None,
                allowed_methods: List[str] = ["GET_ONE"] + HTTP_METHODS,
-               custom_methods: Dict[str, Callable] = {}):
+               custom_methods: Dict[str, Callable] = {},
+               background_tasks_mapping: Dict[str, Callable] = {}):
     if not create_model:
         create_model = pydantic_model
     response_models: Dict[str, Type] = {
@@ -58,8 +60,11 @@ def model_view(router: APIRouter,
                 detail=f"Object with id {model_id} does not exist!")
         return item
 
-    async def post(model: create_model):  # type: ignore
-        return await orm_model.create(**model.dict())  # type: ignore
+    async def post(model: create_model, background_tasks: BackgroundTasks):  # type: ignore
+        obj = await orm_model.create(**model.dict())  # type: ignore
+        if background_tasks_mapping.get("post"):
+            background_tasks.add_task(background_tasks_mapping["post"], obj)
+        return obj
 
     async def put(model_id: Union[int, str], model: pydantic_model):  # type: ignore
         item = await get_one(model_id)
