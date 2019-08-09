@@ -72,3 +72,10 @@ async def create_token(input_token: schemes.CreateToken):
         raise HTTPException(400, "Unauthorized")
     token = await models.Token.create(user)
     return {"token": token.key}
+
+
+@router.websocket_route("/ws/wallets")
+class TestRedis(utils.RedisWebSocketEndPoint):
+    async def on_receive(self, ws, data):
+        await self.channel_layer.publish_to_redis(data)
+        print(data)

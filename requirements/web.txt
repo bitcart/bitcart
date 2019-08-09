@@ -5,4 +5,6 @@ pytz
 gino
 passlib[bcrypt]
 bitcart-async
+aioredis
+nejma
 uvicorn
