@@ -23,7 +23,7 @@ config = AutoConfig(search_path="conf")
 
 LOGIN = config("LN_LOGIN", default="electrum")
 PASSWORD = config("LN_PASSWORD", default="electrumz")
-TESTNET = config("LN_TESTNET", cast=bool, default=False)
+NET = config("LN_NETWORK", default="mainnet")
 DEFAULT_CURRENCY = config("LN_FIAT_CURRENCY", default="USD")
 
 
@@ -87,9 +87,16 @@ supported_methods = {"get_transaction": get_transaction,
 
 # verbosity
 VERBOSE = config("LN_DEBUG", cast=bool, default=False)
-# testnet
-if TESTNET:
-    constants.set_testnet()
+NETWORK_MAPPING = {"mainnet": constants.set_mainnet,
+                   "testnet": constants.set_testnet,
+                   "regtest": constants.set_regtest,
+                   "simnet": constants.set_simnet}
+activate_selected_network = NETWORK_MAPPING.get(NET.lower())
+if not activate_selected_network:
+    raise ValueError(
+        f"Invalid network passed: {NET}. Valid choices are mainnet, testnet, regtest and simnet.")
+# activate selected network
+activate_selected_network()
 
 electrum_config = SimpleConfig()
 electrum_config.set_key("verbosity", VERBOSE)
