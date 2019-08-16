@@ -1,6 +1,7 @@
 import warnings
 
 from bitcart_async import BTC
+from nejma.layers import RedisLayer
 from starlette.config import Config
 
 config = Config("conf/.env")
@@ -24,3 +25,5 @@ DB_PORT = config("DB_PORT", default="5432")
 with warnings.catch_warnings():  # it is supposed
     warnings.simplefilter("ignore")
     btc = BTC(RPC_URL, rpc_user=RPC_USER, rpc_pass=RPC_PASS)
+# initialize redis layer
+layer = RedisLayer(REDIS_HOST)

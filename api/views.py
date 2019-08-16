@@ -1,7 +1,7 @@
 from typing import List
 
 from fastapi import APIRouter, HTTPException
-from starlette.websockets import WebSocket
+from nejma.ext.starlette import WebSocketEndpoint
 
 from . import crud, models, schemes, settings, tasks, utils
 
@@ -75,7 +75,6 @@ async def create_token(input_token: schemes.CreateToken):
 
 
 @router.websocket_route("/ws/wallets")
-class TestRedis(utils.RedisWebSocketEndPoint):
+class WalletNotify(WebSocketEndPoint):
     async def on_receive(self, ws, data):
-        await self.channel_layer.publish_to_redis(data)
         print(data)

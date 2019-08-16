@@ -6,5 +6,6 @@ gino
 passlib[bcrypt]
 bitcart-async
 aioredis
-nejma
+# we should wait for pull #3 to get merged
+https://github.com/MrNaif2018/nejma/archive/master.zip
 uvicorn
