@@ -2,7 +2,9 @@ from typing import List
 
 from fastapi import APIRouter, HTTPException
 from nejma.ext.starlette import WebSocketEndpoint
-
+from nejma.layers import Channel
+import secrets
+from starlette.status import WS_1003_UNSUPPORTED_DATA
 from . import crud, models, schemes, settings, tasks, utils
 
 router = APIRouter()
@@ -74,7 +76,46 @@ async def create_token(input_token: schemes.CreateToken):
     return {"token": token.key}
 
 
-@router.websocket_route("/ws/wallets")
-class WalletNotify(WebSocketEndPoint):
-    async def on_receive(self, ws, data):
-        print(data)
+@router.websocket_route("/ws/wallets/{wallet}")
+class WalletNotify(WebSocketEndpoint):
+    channel_layer = settings.layer
+
+    async def on_connect(self, websocket, **kwargs):
+        await websocket.accept()
+        self.channel_name = secrets.token_urlsafe(32)
+        try:
+            self.wallet_id = int(websocket.path_params["wallet"])
+        except ValueError:
+            await websocket.close(code=WS_1008_POLICY_VIOLATION)
+            return
+        self.wallet = await models.Wallet.get(self.wallet_id)
+        if not self.wallet:
+            await websocket.close(code=WS_1008_POLICY_VIOLATION)
+            return
+        await self.channel_layer.add(self.wallet_id, self.channel_name)
+        self.channel_layer.send = websocket.send_json
+
+    async def on_disconnect(self, websocket, close_code):
+        await self.channel_layer.remove_channel(self.channel_name)
+
+@router.websocket_route("/ws/invoices/{invoice}")
+class InvoiceNotify(WebSocketEndpoint):
+    channel_layer = settings.layer
+
+    async def on_connect(self, websocket, **kwargs):
+        await websocket.accept()
+        self.channel_name = secrets.token_urlsafe(32)
+        try:
+            self.invoice_id = int(websocket.path_params["invoice"])
+        except ValueError:
+            await websocket.close(code=WS_1008_POLICY_VIOLATION)
+            return
+        self.invoice = await models.Invoice.get(self.invoice_id)
+        if not self.invoice:
+            await websocket.close(code=WS_1008_POLICY_VIOLATION)
+            return
+        await self.channel_layer.add(self.invoice_id, self.channel_name)
+        self.channel_layer.send = websocket.send_json
+
+    async def on_disconnect(self, websocket, close_code):
+        await self.channel_layer.remove_channel(self.channel_name)
