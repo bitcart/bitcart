@@ -25,6 +25,12 @@ PASSWORD = config("BTC_PASSWORD", default="electrumz")
 NET = config("BTC_NETWORK", default="mainnet")
 DEFAULT_CURRENCY = config("BTC_FIAT_CURRENCY", default="USD")
 
+# events
+AVAILABLE_EVENTS = ["blockchain_updated", "new_transaction"]
+EVENT_MAPPING = {
+    "blockchain_updated": "new_block",
+    "new_transaction": "new_transaction"}
+
 
 def decode_auth(authstr):
     if not authstr:
@@ -60,29 +66,47 @@ def list_currencies(wallet=None) -> list:
     return fx.get_currencies(True)
 
 
-def register_notify(wallet, skip):
-    if not wallets_config.get(wallet):
-        for i in wallets[wallet].listaddresses():
-            asyncio.run_coroutine_threadsafe(notifier.watch_queue.put(i), loop)
-        wallets_updates[wallet] = []
-    wallets_config[wallet] = {"skip": skip}
-
-
-def notify_tx(wallet):
+def get_updates(wallet):
     global wallets_updates
     updates = wallets_updates[wallet]
     wallets_updates[wallet] = []
     return updates
 
 
+def subscribe(events, wallet=None):
+    wallets_config[wallet]["events"].update(events)
+
+
+def unsubscribe(events=EVENT_MAPPING.keys(), wallet=None):
+    wallets_config[wallet]["events"] = set(
+        i for i in wallets_config[wallet]["events"] if i not in events)
+
+
+async def process_events(event, *args):
+    data = {"event": EVENT_MAPPING.get(event)}
+    wallet_only = False
+    if event == "blockchain_updated":
+        data["height"] = network.get_local_height()
+    elif event == "new_transaction":
+        wallet, tx = args
+        wallet_only = True
+        data["tx"] = tx.txid()
+    else:
+        return
+    for i in wallets_config:
+        if EVENT_MAPPING.get(event) in wallets_config[i]["events"]:
+            if not wallet_only or wallet == wallets[i].wallet:
+                wallets_updates[i].append(data)
+
 wallets = {}
 wallets_updates = {}
 wallets_config = {}
 supported_methods = {"get_transaction": get_transaction,
                      "exchange_rate": exchange_rate,
-                     "notify_tx": notify_tx,
-                     "register_notify": register_notify,
-                     "list_currencies": list_currencies}
+                     "get_updates": get_updates,
+                     "list_currencies": list_currencies,
+                     "subscribe": subscribe,
+                     "unsubscribe": unsubscribe}
 
 # verbosity
 VERBOSE = config("BTC_DEBUG", cast=bool, default=False)
@@ -102,43 +126,8 @@ electrum_config.set_key("verbosity", VERBOSE)
 configure_logging(electrum_config)
 
 
-class Notifier(SynchronizerBase):
-    def __init__(self, network):
-        SynchronizerBase.__init__(self, network)
-        self.watched_addresses = set()
-        self.watch_queue = asyncio.Queue()
-
-    async def main(self):
-        # resend existing subscriptions if we were restarted
-        for addr in self.watched_addresses:
-            await self._add_address(addr)
-        # main loop
-        while True:
-            addr = await self.watch_queue.get()
-            self.watched_addresses.add(addr)
-            await self._add_address(addr)
-
-    async def _on_address_status(self, addr, status):
-        if not status:
-            return
-        for i in wallets:
-            for j in wallets[i].listaddresses():
-                if j == addr:
-                    h = address_to_scripthash(addr)
-                    result = await self.network.get_history_for_scripthash(h)
-                    if wallets_config[i]["skip"]:
-                        for k in result[:]:
-                            if k["height"] < self.network.get_local_height(
-                            ) and k["height"] > 0:
-                                result.remove(k)
-                    if result:
-                        wallets_updates[i].append(
-                            {"address": addr, "txes": result})
-                    return
-
-
 def start_it():
-    global network, fx, loop, notifier
+    global network, fx, loop
     thread = threading.currentThread()
     asyncio.set_event_loop(asyncio.new_event_loop())
     config = SimpleConfig()
@@ -146,12 +135,12 @@ def start_it():
     config.set_key("use_exchange_rate", True)
     daemon = Daemon(config, listen_jsonrpc=False)
     network = daemon.network
+    network.register_callback(process_events, AVAILABLE_EVENTS)
     # as said in electrum daemon code, this is ugly
     config.fee_estimates = network.config.fee_estimates.copy()
     config.mempool_fees = network.config.mempool_fees.copy()
     fx = daemon.fx
     loop = asyncio.get_event_loop()
-    notifier = Notifier(network)
     while thread.is_running:
         time.sleep(1)
 
@@ -182,6 +171,8 @@ def load_wallet(xpub):
     wallet.start_network(network)
     command_runner.wallet = wallet
     wallets[xpub] = command_runner
+    wallets_config[xpub] = {"events": set()}
+    wallets_updates[xpub] = []
     return command_runner
 
 
