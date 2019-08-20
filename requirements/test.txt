@@ -1,5 +1,4 @@
 -r web.txt
 pytest
-pytest-django
 pytest-cov
 python-coveralls
