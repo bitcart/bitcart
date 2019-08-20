@@ -2,6 +2,7 @@ from datetime import datetime
 from os.path import join as path_join
 from typing import Callable, Dict, List, Type, Union
 
+import asyncpg
 from bitcart_async import BTC
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 from passlib.context import CryptContext
@@ -80,7 +81,10 @@ def model_view(router: APIRouter,
         return item
 
     async def post(model: create_model, background_tasks: BackgroundTasks):  # type: ignore
-        obj = await orm_model.create(**model.dict())  # type: ignore
+        try:
+            obj = await orm_model.create(**model.dict())  # type: ignore
+        except asyncpg.exceptions.UniqueViolationError as e:
+            raise HTTPException(400, e.detail)
         if background_tasks_mapping.get("post"):
             background_tasks.add_task(background_tasks_mapping["post"], obj)
         return obj
