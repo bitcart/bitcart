@@ -25,7 +25,7 @@ async def poll_updates(obj: models.Invoice, xpub: str):
             if invoice_data["status"] == "Paid":
                 status = "complete"
             await obj.update(status=status).apply()
-            await settings.layer.group_send(obj.id, {"status":status})
+            await settings.layer.group_send(obj.id, {"status": status})
             return
         await asyncio.sleep(1)
 
@@ -41,4 +41,4 @@ async def sync_wallet(model: models.Wallet):
         await settings.layer.group_send(model.id, {"status": "success", "balance": balance["confirmed"]})
     except ValueError:  # wallet loading error
         await model.delete()
-        await settings.layer.group_send(model.id, {"status": "error", "balance": balance})
+        await settings.layer.group_send(model.id, {"status": "error", "balance": 0})

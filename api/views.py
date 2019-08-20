@@ -1,10 +1,11 @@
+import secrets
 from typing import List
 
 from fastapi import APIRouter, HTTPException
 from nejma.ext.starlette import WebSocketEndpoint
 from nejma.layers import Channel
-import secrets
-from starlette.status import WS_1003_UNSUPPORTED_DATA
+from starlette.status import WS_1008_POLICY_VIOLATION
+
 from . import crud, models, schemes, settings, tasks, utils
 
 router = APIRouter()
@@ -92,11 +93,12 @@ class WalletNotify(WebSocketEndpoint):
         if not self.wallet:
             await websocket.close(code=WS_1008_POLICY_VIOLATION)
             return
-        await self.channel_layer.add(self.wallet_id, self.channel_name)
+        await self.channel_layer.add(str(self.wallet_id), self.channel_name)
         self.channel_layer.send = websocket.send_json
 
     async def on_disconnect(self, websocket, close_code):
         await self.channel_layer.remove_channel(self.channel_name)
+
 
 @router.websocket_route("/ws/invoices/{invoice}")
 class InvoiceNotify(WebSocketEndpoint):
@@ -114,7 +116,7 @@ class InvoiceNotify(WebSocketEndpoint):
         if not self.invoice:
             await websocket.close(code=WS_1008_POLICY_VIOLATION)
             return
-        await self.channel_layer.add(self.invoice_id, self.channel_name)
+        await self.channel_layer.add(str(self.invoice_id), self.channel_name)
         self.channel_layer.send = websocket.send_json
 
     async def on_disconnect(self, websocket, close_code):
