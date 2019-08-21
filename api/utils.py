@@ -35,21 +35,19 @@ async def authenticate_user(username: str, password: str):
     return user
 
 
-HTTP_METHODS: List[str] = ["GET",
-                           "POST",
-                           "PUT",
-                           "PATCH",
-                           "DELETE"]
+HTTP_METHODS: List[str] = ["GET", "POST", "PUT", "PATCH", "DELETE"]
 
 
-def model_view(router: APIRouter,
-               path: str,
-               orm_model,
-               pydantic_model,
-               create_model=None,
-               allowed_methods: List[str] = ["GET_ONE"] + HTTP_METHODS,
-               custom_methods: Dict[str, Callable] = {},
-               background_tasks_mapping: Dict[str, Callable] = {}):
+def model_view(
+    router: APIRouter,
+    path: str,
+    orm_model,
+    pydantic_model,
+    create_model=None,
+    allowed_methods: List[str] = ["GET_ONE"] + HTTP_METHODS,
+    custom_methods: Dict[str, Callable] = {},
+    background_tasks_mapping: Dict[str, Callable] = {},
+):
     if not create_model:
         create_model = pydantic_model
     response_models: Dict[str, Type] = {
@@ -58,16 +56,18 @@ def model_view(router: APIRouter,
         "post": pydantic_model,
         "put": pydantic_model,
         "patch": pydantic_model,
-        "delete": pydantic_model}
+        "delete": pydantic_model,
+    }
 
     item_path = path_join(path, "{model_id}")
-    paths: Dict[str,
-                str] = {"get": path,
-                        "get_one": item_path,
-                        "post": path,
-                        "put": item_path,
-                        "patch": item_path,
-                        "delete": item_path}
+    paths: Dict[str, str] = {
+        "get": path,
+        "get_one": item_path,
+        "post": path,
+        "put": item_path,
+        "patch": item_path,
+        "delete": item_path,
+    }
 
     async def get():
         return await orm_model.query.gino.all()
@@ -76,14 +76,19 @@ def model_view(router: APIRouter,
         item = await orm_model.get(model_id)
         if not item:
             raise HTTPException(
-                status_code=404,
-                detail=f"Object with id {model_id} does not exist!")
+                status_code=404, detail=f"Object with id {model_id} does not exist!"
+            )
         return item
 
-    async def post(model: create_model, background_tasks: BackgroundTasks):  # type: ignore
+    async def post(
+        model: create_model, background_tasks: BackgroundTasks  # type: ignore
+    ):
         try:
             obj = await orm_model.create(**model.dict())  # type: ignore
-        except (asyncpg.exceptions.UniqueViolationError, asyncpg.exceptions.NotNullViolationError) as e:
+        except (
+            asyncpg.exceptions.UniqueViolationError,
+            asyncpg.exceptions.NotNullViolationError,
+        ) as e:
             raise HTTPException(422, e.message)
         if background_tasks_mapping.get("post"):
             background_tasks.add_task(background_tasks_mapping["post"], obj)
@@ -93,15 +98,23 @@ def model_view(router: APIRouter,
         item = await get_one(model_id)
         try:
             await item.update(**model.dict()).apply()  # type: ignore
-        except (asyncpg.exceptions.UniqueViolationError, asyncpg.exceptions.NotNullViolationError) as e:
+        except (
+            asyncpg.exceptions.UniqueViolationError,
+            asyncpg.exceptions.NotNullViolationError,
+        ) as e:
             raise HTTPException(422, e.message)
         return item
 
     async def patch(model_id: int, model: pydantic_model):  # type: ignore
         item = await get_one(model_id)
         try:
-            await item.update(**model.dict(skip_defaults=True)).apply()  # type: ignore # noqa
-        except (asyncpg.exceptions.UniqueViolationError, asyncpg.exceptions.NotNullViolationError) as e:
+            await item.update(
+                **model.dict(skip_defaults=True)  # type: ignore
+            ).apply()
+        except (
+            asyncpg.exceptions.UniqueViolationError,
+            asyncpg.exceptions.NotNullViolationError,
+        ) as e:
             raise HTTPException(422, e.message)
         return item
 
@@ -109,21 +122,25 @@ def model_view(router: APIRouter,
         item = await get_one(model_id)
         await item.delete()
         return item
+
     for method in allowed_methods:
         method_name = method.lower()
         router.add_api_route(  # type: ignore
             paths.get(method_name),
             custom_methods.get(method_name) or locals()[method_name],
             methods=[method_name if method in HTTP_METHODS else "get"],
-            response_model=response_models.get(method_name))
+            response_model=response_models.get(method_name),
+        )
 
 
 async def get_wallet_history(model, response):
-    txes = (await BTC(settings.RPC_URL, xpub=model.xpub, rpc_user=settings.RPC_USER,
-                      rpc_pass=settings.RPC_PASS).history())["transactions"]
+    txes = (
+        await BTC(
+            settings.RPC_URL,
+            xpub=model.xpub,
+            rpc_user=settings.RPC_USER,
+            rpc_pass=settings.RPC_PASS,
+        ).history()
+    )["transactions"]
     for i in txes:
-        response.append({
-            "date": i["date"],
-            "txid": i["txid"],
-            "amount": i["value"]
-        })
+        response.append({"date": i["date"], "txid": i["txid"], "amount": i["value"]})

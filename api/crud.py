@@ -7,7 +7,9 @@ from .db import db
 
 
 async def user_count():
-    return await db.func.count(models.User.id).gino.scalar()  # pylint: disable=no-member
+    return await db.func.count(
+        models.User.id
+    ).gino.scalar()  # pylint: disable=no-member
 
 
 async def create_user(user: schemes.CreateUser):
@@ -16,16 +18,23 @@ async def create_user(user: schemes.CreateUser):
         username=user.username,
         hashed_password=utils.get_password_hash(user.password),
         email=user.email,
-        is_superuser=True if count == 0 else False)
+        is_superuser=True if count == 0 else False,
+    )
 
 
-async def create_invoice(invoice: schemes.CreateInvoice, background_tasks: BackgroundTasks):
+async def create_invoice(
+    invoice: schemes.CreateInvoice, background_tasks: BackgroundTasks
+):
     d = invoice.dict()
     products = d.get("products")
     obj, xpub = await models.Invoice.create(**d)
     created = []
     for i in products:  # type: ignore
-        created.append((await models.ProductxInvoice.create(invoice_id=obj.id, product_id=i)).product_id)
+        created.append(
+            (
+                await models.ProductxInvoice.create(invoice_id=obj.id, product_id=i)
+            ).product_id
+        )
     obj.products = created
     background_tasks.add_task(tasks.poll_updates, obj, xpub)
     return obj
@@ -33,7 +42,11 @@ async def create_invoice(invoice: schemes.CreateInvoice, background_tasks: Backg
 
 async def invoice_add_related(item: models.Invoice):
     # add related products
-    result = await models.ProductxInvoice.select("product_id").where(models.ProductxInvoice.invoice_id == item.id).gino.all()
+    result = (
+        await models.ProductxInvoice.select("product_id")
+        .where(models.ProductxInvoice.invoice_id == item.id)
+        .gino.all()
+    )
     item.products = [product_id for product_id, in result]
 
 
@@ -41,8 +54,8 @@ async def get_invoice(model_id: Union[int, str]):
     item = await models.Invoice.get(model_id)
     if not item:
         raise HTTPException(
-            status_code=404,
-            detail=f"Object with id {model_id} does not exist!")
+            status_code=404, detail=f"Object with id {model_id} does not exist!"
+        )
     await invoice_add_related(item)
     return item
 

@@ -13,7 +13,7 @@ class BaseUser(BaseModel):
     username: str
     email: Optional[EmailStr] = ""  # type: ignore
 
-    @validator('email', pre=True, always=False)
+    @validator("email", pre=True, always=False)
     def validate_email(cls, val):
         if val == "":
             return None
@@ -61,7 +61,7 @@ class CreateStore(BaseModel):
     email_password: str = ""
     wallet_id: int
 
-    @validator('email', pre=True, always=False)
+    @validator("email", pre=True, always=False)
     def validate_email(cls, val):
         if val == "":
             return None

@@ -15,36 +15,32 @@ utils.model_view(
     "/users",
     models.User,
     schemes.User,
-    custom_methods={
-        "post": crud.create_user})
+    custom_methods={"post": crud.create_user},
+)
 utils.model_view(
     router,
     "/wallets",
     models.Wallet,
     schemes.Wallet,
     schemes.CreateWallet,
-    background_tasks_mapping={"post": tasks.sync_wallet})
+    background_tasks_mapping={"post": tasks.sync_wallet},
+)
+utils.model_view(router, "/stores", models.Store, schemes.Store, schemes.CreateStore)
 utils.model_view(
-    router,
-    "/stores",
-    models.Store,
-    schemes.Store,
-    schemes.CreateStore)
-utils.model_view(
-    router,
-    "/products",
-    models.Product,
-    schemes.Product,
-    schemes.CreateProduct)
+    router, "/products", models.Product, schemes.Product, schemes.CreateProduct
+)
 utils.model_view(
     router,
     "/invoices",
     models.Invoice,
     schemes.Invoice,
-    schemes.CreateInvoice, custom_methods={
+    schemes.CreateInvoice,
+    custom_methods={
         "get": crud.get_invoices,
         "get_one": crud.get_invoice,
-        "post": crud.create_invoice})
+        "post": crud.create_invoice,
+    },
+)
 
 
 @router.get("/rate")
@@ -52,8 +48,7 @@ async def rate():
     return await settings.btc.rate()
 
 
-@router.get("/wallet_history/{wallet}",
-            response_model=List[schemes.TxResponse])
+@router.get("/wallet_history/{wallet}", response_model=List[schemes.TxResponse])
 async def wallet_history(wallet: int):
     response: List[schemes.TxResponse] = []
     if wallet == 0:
@@ -62,8 +57,7 @@ async def wallet_history(wallet: int):
     else:
         model = await models.Wallet.get(wallet)
         if not model:
-            raise HTTPException(
-                404, f"Wallet with id {wallet} does not exist!")
+            raise HTTPException(404, f"Wallet with id {wallet} does not exist!")
         await utils.get_wallet_history(model, response)
     return response
 

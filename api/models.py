@@ -36,7 +36,7 @@ class User(db.Model):
 class Token(db.Model):
     __tablename__ = "tokens"
     key = Column(String(length=40), primary_key=True)
-    user_id = Column(Integer, ForeignKey('users.id', ondelete="CASCADE"))
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
     user = relationship("User", back_populates="tokens")
     created = Column(DateTime(True))
 
@@ -60,7 +60,7 @@ class Wallet(db.Model):
 
 
 class Store(db.Model):
-    __tablename__ = 'stores'
+    __tablename__ = "stores"
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(1000), unique=True, index=True)
@@ -69,22 +69,21 @@ class Store(db.Model):
     email = Column(String(1000), unique=True, index=True)
     wallet_id = Column(
         ForeignKey(
-            'wallets.id',
-            deferrable=True,
-            initially='DEFERRED',
-            ondelete="SET NULL"),
-        index=True)
+            "wallets.id", deferrable=True, initially="DEFERRED", ondelete="SET NULL"
+        ),
+        index=True,
+    )
     email_host = Column(String(1000))
     email_password = Column(String(1000))
     email_port = Column(Integer)
     email_use_ssl = Column(Boolean)
     email_user = Column(String(1000))
 
-    wallet = relationship('Wallet')
+    wallet = relationship("Wallet")
 
 
 class Product(db.Model):
-    __tablename__ = 'products'
+    __tablename__ = "products"
 
     id = Column(Integer, primary_key=True, index=True)
     amount = Column(Numeric(16, 8), nullable=False)
@@ -95,33 +94,24 @@ class Product(db.Model):
     image = Column(String(100))
     store_id = Column(
         ForeignKey(
-            'stores.id',
-            deferrable=True,
-            initially='DEFERRED',
-            ondelete="SET NULL"),
-        index=True)
+            "stores.id", deferrable=True, initially="DEFERRED", ondelete="SET NULL"
+        ),
+        index=True,
+    )
     status = Column(String(1000), nullable=False)
 
-    store = relationship('Store')
+    store = relationship("Store")
 
 
 class ProductxInvoice(db.Model):
-    __tablename__ = 'productsxinvoices'
+    __tablename__ = "productsxinvoices"
 
-    product_id = Column(
-        Integer,
-        ForeignKey(
-            'products.id',
-            ondelete="SET NULL"))
-    invoice_id = Column(
-        Integer,
-        ForeignKey(
-            'invoices.id',
-            ondelete="SET NULL"))
+    product_id = Column(Integer, ForeignKey("products.id", ondelete="SET NULL"))
+    invoice_id = Column(Integer, ForeignKey("invoices.id", ondelete="SET NULL"))
 
 
 class Invoice(db.Model):
-    __tablename__ = 'invoices'
+    __tablename__ = "invoices"
 
     id = Column(Integer, primary_key=True, index=True)
     amount = Column(Numeric(16, 8), nullable=False)
@@ -141,14 +131,14 @@ class Invoice(db.Model):
             raise HTTPException(422, f"Product {products[0]} doesn't exist!")
         store = await Store.get(product.store_id)
         if not store:
-            raise HTTPException(
-                422, f"Store {product.store_id} doesn't exist!")
+            raise HTTPException(422, f"Store {product.store_id} doesn't exist!")
         wallet = await Wallet.get(store.wallet_id)
         if not wallet:
             raise HTTPException(422, "No wallet linked")
         xpub = wallet.xpub
-        data_got = await BTC(RPC_URL, rpc_user=RPC_USER, rpc_pass=RPC_PASS, xpub=xpub).addrequest(
-            kwargs["amount"], description=product.description)
+        data_got = await BTC(
+            RPC_URL, rpc_user=RPC_USER, rpc_pass=RPC_PASS, xpub=xpub
+        ).addrequest(kwargs["amount"], description=product.description)
         kwargs["bitcoin_address"] = data_got["address"]
         kwargs["bitcoin_url"] = data_got["URI"]
         kwargs.pop("products")
