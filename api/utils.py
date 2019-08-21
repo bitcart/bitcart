@@ -88,6 +88,7 @@ def model_view(
         except (
             asyncpg.exceptions.UniqueViolationError,
             asyncpg.exceptions.NotNullViolationError,
+            asyncpg.exceptions.ForeignKeyViolationError,
         ) as e:
             raise HTTPException(422, e.message)
         if background_tasks_mapping.get("post"):
@@ -101,6 +102,7 @@ def model_view(
         except (
             asyncpg.exceptions.UniqueViolationError,
             asyncpg.exceptions.NotNullViolationError,
+            asyncpg.exceptions.ForeignKeyViolationError,
         ) as e:
             raise HTTPException(422, e.message)
         return item
@@ -114,6 +116,7 @@ def model_view(
         except (
             asyncpg.exceptions.UniqueViolationError,
             asyncpg.exceptions.NotNullViolationError,
+            asyncpg.exceptions.ForeignKeyViolationError,
         ) as e:
             raise HTTPException(422, e.message)
         return item

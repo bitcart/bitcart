@@ -53,7 +53,7 @@ jobs:
 
       - run:
           name: prepare daemon
-          command: python3 daemons/btc.py &
+          command: BTC_NETWORK=testnet python3 daemons/btc.py &
 
       - run:
           name: run tests

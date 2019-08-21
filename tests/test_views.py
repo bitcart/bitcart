@@ -2,6 +2,8 @@ from typing import Dict, List, Union
 
 from starlette.testclient import TestClient
 
+TEST_XPUB = "tpubDC9zYPoSZUk5W8Rfaex3k324fi1hDLHapbSjPd4gbr7AE8MLSGEy76fNp5m6sVLBy9p2iTjRkiguVyb8iEHCdUBC7SXnhHdHMpXwFcrVMyA"
+
 
 class ViewTestMixin:
     """Base class for all modelview tests, as they mostly don't differ
@@ -46,21 +48,21 @@ class ViewTestMixin:
 
     def test_partial_update(self, client: TestClient):
         for test in self.tests["partial_update"]:
-            resp = client.patch(f"/users/{test['obj_id']}", json=test["data"])
+            resp = client.patch(f"/{self.name}/{test['obj_id']}", json=test["data"])
             self.process_resp(resp, test)
 
     def test_full_update(self, client: TestClient):
         for test in self.tests["full_update"]:
-            resp = client.put(f"/users/{test['obj_id']}", json=test["data"])
+            resp = client.put(f"/{self.name}/{test['obj_id']}", json=test["data"])
             self.process_resp(resp, test)
 
     def test_delete(self, client: TestClient):
         for test in self.tests["delete"]:
-            resp = client.delete(f"/users/{test['obj_id']}")
+            resp = client.delete(f"/{self.name}/{test['obj_id']}")
             self.process_resp(resp, test)
 
 
-class TestUser(ViewTestMixin):
+class TestUsers(ViewTestMixin):
     name = "users"
     tests = {
         "create": [
@@ -69,6 +71,11 @@ class TestUser(ViewTestMixin):
                 "status": "good",
                 "return_data": {"email": None, "username": "test", "id": 1},
             },
+            {
+                "data": {"username": "test", "password": 12345},
+                "status": "good",
+                "return_data": {"email": None, "username": "test", "id": 2},
+            },
             {"data": {}, "status": "bad"},
             {"data": {"username": "test"}, "status": "bad"},
             {"data": {"password": "test"}, "status": "bad"},
@@ -76,7 +83,10 @@ class TestUser(ViewTestMixin):
         "get_all": [
             {
                 "status": "good",
-                "return_data": [{"email": None, "username": "test", "id": 1}],
+                "return_data": [
+                    {"email": None, "username": "test", "id": 1},
+                    {"email": None, "username": "test", "id": 2},
+                ],
             }
         ],
         "get_one": [
@@ -86,7 +96,7 @@ class TestUser(ViewTestMixin):
                 "return_data": {"email": None, "username": "test", "id": 1},
             },
             {"obj_id": "x", "status": "bad"},
-            {"obj_id": 2, "status": "not found"},
+            {"obj_id": 3, "status": "not found"},
         ],
         "partial_update": [
             {
@@ -123,13 +133,128 @@ class TestUser(ViewTestMixin):
             },
         ],
         "delete": [
-            {"obj_id": 2, "status": "not found"},
+            {"obj_id": 3, "status": "not found"},
             {
                 "obj_id": 1,
                 "status": "good",
                 "return_data": {"email": None, "username": "test", "id": 1},
             },
             {"obj_id": 1, "status": "not found"},
+        ],
+    }
+
+
+class TestWallets(ViewTestMixin):
+    name = "wallets"
+    tests = {
+        "create": [
+            {
+                "data": {"name": "test", "user_id": 2, "xpub": ""},
+                "status": "good",
+                "return_data": {
+                    "id": 1,
+                    "name": "test",
+                    "user_id": 2,
+                    "xpub": "",
+                    "balance": 0,
+                },
+            },
+            {
+                "data": {"name": "test1", "user_id": 2, "xpub": TEST_XPUB},
+                "status": "good",
+                "return_data": {
+                    "id": 2,
+                    "name": "test1",
+                    "user_id": 2,
+                    "xpub": TEST_XPUB,
+                    "balance": 0,
+                },
+            },
+            {
+                "data": {"name": "test1", "user_id": 2, "xpub": TEST_XPUB},
+                "status": "bad",
+            },
+            {"data": {}, "status": "bad"},
+            {"data": {"name": "test"}, "status": "bad"},
+            {"data": {"xpub": "test"}, "status": "bad"},
+            {"data": {"user_id": "test"}, "status": "bad"},
+        ],
+        "get_all": [
+            {
+                "status": "good",
+                "return_data": [
+                    {
+                        "name": "test1",
+                        "user_id": 2,
+                        "xpub": TEST_XPUB,
+                        "balance": 0.0,
+                        "id": 2,
+                    }
+                ],
+            }
+        ],
+        "get_one": [
+            {"obj_id": 1, "status": "not found"},
+            {
+                "obj_id": 2,
+                "status": "good",
+                "return_data": {
+                    "name": "test1",
+                    "user_id": 2,
+                    "xpub": TEST_XPUB,
+                    "balance": 0.0,
+                    "id": 2,
+                },
+            },
+            {"obj_id": "x", "status": "bad"},
+        ],
+        "partial_update": [
+            {
+                "obj_id": 2,
+                "data": {"name": "test2", "user_id": 2},
+                "status": "good",
+                "return_data": {
+                    "name": "test2",
+                    "user_id": 2,
+                    "xpub": TEST_XPUB,
+                    "balance": 0.0,
+                    "id": 2,
+                },
+            },
+            {"obj_id": 2, "data": {"name": "test3"}, "status": "bad"},
+            {"obj_id": 2, "data": {"user_id": 2}, "status": "bad"},
+        ],
+        "full_update": [
+            {"obj_id": 2, "data": {"name": "test"}, "status": "bad"},
+            {"obj_id": 2, "data": {"id": None}, "status": "bad"},
+            {"obj_id": 2, "data": {"id": None, "name": "test"}, "status": "bad"},
+            {
+                "obj_id": 2,
+                "data": {"id": 2, "name": "test1", "user_id": 2, "xpub": TEST_XPUB},
+                "status": "good",
+                "return_data": {
+                    "name": "test1",
+                    "user_id": 2,
+                    "xpub": TEST_XPUB,
+                    "balance": 0.0,
+                    "id": 2,
+                },
+            },
+        ],
+        "delete": [
+            {"obj_id": 1, "status": "not found"},
+            {
+                "obj_id": 2,
+                "status": "good",
+                "return_data": {
+                    "name": "test1",
+                    "user_id": 2,
+                    "xpub": TEST_XPUB,
+                    "balance": 0.0,
+                    "id": 2,
+                },
+            },
+            {"obj_id": 2, "status": "not found"},
         ],
     }
 
