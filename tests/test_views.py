@@ -3,6 +3,7 @@ from typing import Dict, List, Union
 from starlette.testclient import TestClient
 
 TEST_XPUB = "tpubDC9zYPoSZUk5W8Rfaex3k324fi1hDLHapbSjPd4gbr7AE8MLSGEy76fNp5m6sVLBy9p2iTjRkiguVyb8iEHCdUBC7SXnhHdHMpXwFcrVMyA"
+TEST_XPUB2 = "tpubDD1g867nDN1JyfNAjHNWrL2XNg98y6gM1W82C4nxqxGq5QPEFCtxYLFGgi7GrBwu4TczHRnwXic81BZ2FKBwmKvQdRJpNdfXPtAmtzBkD1A"
 
 
 class ViewTestMixin:
@@ -171,6 +172,17 @@ class TestWallets(ViewTestMixin):
                 },
             },
             {
+                "data": {"name": "test5", "user_id": 2, "xpub": TEST_XPUB2},
+                "status": "good",
+                "return_data": {
+                    "id": 3,
+                    "name": "test5",
+                    "user_id": 2,
+                    "xpub": TEST_XPUB2,
+                    "balance": 0,
+                },
+            },
+            {
                 "data": {"name": "test1", "user_id": 2, "xpub": TEST_XPUB},
                 "status": "bad",
             },
@@ -189,7 +201,14 @@ class TestWallets(ViewTestMixin):
                         "xpub": TEST_XPUB,
                         "balance": 0.0,
                         "id": 2,
-                    }
+                    },
+                    {
+                        "id": 3,
+                        "name": "test5",
+                        "user_id": 2,
+                        "xpub": TEST_XPUB2,
+                        "balance": 0,
+                    },
                 ],
             }
         ],
@@ -222,7 +241,7 @@ class TestWallets(ViewTestMixin):
                 },
             },
             {"obj_id": 2, "data": {"name": "test3"}, "status": "bad"},
-            {"obj_id": 2, "data": {"user_id": 2}, "status": "bad"},
+            {"obj_id": 2, "data": {"name": "test2", "user_id": 3}, "status": "bad"},
         ],
         "full_update": [
             {"obj_id": 2, "data": {"name": "test"}, "status": "bad"},
@@ -255,6 +274,158 @@ class TestWallets(ViewTestMixin):
                 },
             },
             {"obj_id": 2, "status": "not found"},
+        ],
+    }
+
+
+class TestStores(ViewTestMixin):
+    name = "stores"
+    tests = {
+        "create": [
+            {
+                "data": {"name": "test", "wallet_id": 3},
+                "status": "good",
+                "return_data": {
+                    "domain": "",
+                    "email": None,
+                    "email_host": "",
+                    "email_password": "",
+                    "email_port": 25,
+                    "email_user": "",
+                    "id": 1,
+                    "name": "test",
+                    "template": "",
+                    "wallet_id": 3,
+                },
+            },
+            {"data": {}, "status": "bad"},
+            {"data": {"name": "test"}, "status": "bad"},
+            {"data": {"wallet_id": 3}, "status": "bad"},
+            {"data": {"email": "test"}, "status": "bad"},
+        ],
+        "get_all": [
+            {
+                "status": "good",
+                "return_data": [
+                    {
+                        "domain": "",
+                        "email": None,
+                        "email_host": "",
+                        "email_password": "",
+                        "email_port": 25,
+                        "email_user": "",
+                        "id": 1,
+                        "name": "test",
+                        "template": "",
+                        "wallet_id": 3,
+                    }
+                ],
+            }
+        ],
+        "get_one": [
+            {"obj_id": 2, "status": "not found"},
+            {
+                "obj_id": 1,
+                "status": "good",
+                "return_data": {
+                    "domain": "",
+                    "email": None,
+                    "email_host": "",
+                    "email_password": "",
+                    "email_port": 25,
+                    "email_user": "",
+                    "id": 1,
+                    "name": "test",
+                    "template": "",
+                    "wallet_id": 3,
+                },
+            },
+            {"obj_id": "x", "status": "bad"},
+        ],
+        "partial_update": [
+            {
+                "obj_id": 1,
+                "data": {"name": "test2", "wallet_id": 3},
+                "status": "good",
+                "return_data": {
+                    "domain": "",
+                    "email": None,
+                    "email_host": "",
+                    "email_password": "",
+                    "email_port": 25,
+                    "email_user": "",
+                    "id": 1,
+                    "name": "test2",
+                    "template": "",
+                    "wallet_id": 3,
+                },
+            },
+            {
+                "obj_id": 1,
+                "data": {"name": "test2", "wallet_id": 3, "email": "test@example.com"},
+                "status": "good",
+                "return_data": {
+                    "domain": "",
+                    "email": "test@example.com",
+                    "email_host": "",
+                    "email_password": "",
+                    "email_port": 25,
+                    "email_user": "",
+                    "id": 1,
+                    "name": "test2",
+                    "template": "",
+                    "wallet_id": 3,
+                },
+            },
+            {
+                "obj_id": 1,
+                "data": {"name": "test2", "wallet_id": 3, "email": "test"},
+                "status": "bad",
+            },
+            {"obj_id": 1, "data": {"name": "test3"}, "status": "bad"},
+            {"obj_id": 1, "data": {"name": "test2", "user_id": 3}, "status": "bad"},
+        ],
+        "full_update": [
+            {"obj_id": 1, "data": {"name": "test"}, "status": "bad"},
+            {"obj_id": 1, "data": {"id": None}, "status": "bad"},
+            {"obj_id": 1, "data": {"id": None, "name": "test"}, "status": "bad"},
+            {
+                "obj_id": 1,
+                "data": {"id": 1, "name": "test", "wallet_id": 3},
+                "status": "good",
+                "return_data": {
+                    "domain": "",
+                    "email": None,
+                    "email_host": "",
+                    "email_password": "",
+                    "email_port": 25,
+                    "email_user": "",
+                    "id": 1,
+                    "name": "test",
+                    "template": "",
+                    "wallet_id": 3,
+                },
+            },
+        ],
+        "delete": [
+            {"obj_id": 2, "status": "not found"},
+            {
+                "obj_id": 1,
+                "status": "good",
+                "return_data": {
+                    "domain": "",
+                    "email": None,
+                    "email_host": "",
+                    "email_password": "",
+                    "email_port": 25,
+                    "email_user": "",
+                    "id": 1,
+                    "name": "test",
+                    "template": "",
+                    "wallet_id": 3,
+                },
+            },
+            {"obj_id": 1, "status": "not found"},
         ],
     }
 
