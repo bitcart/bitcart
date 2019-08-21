@@ -70,6 +70,8 @@ jobs:
     <<: *test-template
     docker:
       - image: circleci/python:3.7
+        environment:
+          TEST: true
       - image: circleci/redis:latest
       - image: circleci/postgres:9-alpine-ram
         environment:
@@ -82,6 +84,8 @@ jobs:
     <<: *test-template
     docker:
       - image: circleci/python:3.8.0b2-buster-node-browsers-legacy
+        environment:
+          TEST: true
       - image: circleci/redis:latest
       - image: circleci/postgres:9-alpine-ram
         environment:
