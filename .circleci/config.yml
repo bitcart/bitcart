@@ -59,7 +59,7 @@ jobs:
 
       - run:
           name: prepare daemon
-          command: BTC_TESTNET=true python3 daemons/btc.py &
+          command: BTC_TESTNET=true python3 daemons/btc.py
         
       - run:
           name: Wait for db
