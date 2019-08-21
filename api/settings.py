@@ -14,12 +14,17 @@ RPC_URL = config("RPC_URL", default="http://localhost:5000/")
 # redis
 REDIS_HOST = config("REDIS_HOST", default="redis://localhost")
 
+# testing
+TEST = config("TEST", cast=bool, default=False)
+
 # database
 DB_NAME = config("DB_DATABASE", default="bitcart")
 DB_USER = config("DB_USER", default="postgres")
 DB_PASSWORD = config("DB_PASSWORD", default="123@")
 DB_HOST = config("DB_HOST", default="127.0.0.1")
 DB_PORT = config("DB_PORT", default="5432")
+if TEST:
+    DB_NAME = "bitcart_test"
 
 # initialize bitcart instance
 with warnings.catch_warnings():  # it is supposed
