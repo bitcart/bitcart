@@ -52,8 +52,20 @@ jobs:
           key: v2-dependencies-{{ checksum "requirements/web.txt" }}-{{ checksum "requirements/test.txt" }}
 
       - run:
+          name: install dockerize
+          command: wget https://github.com/jwilder/dockerize/releases/download/$DOCKERIZE_VERSION/dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz && sudo tar -C /usr/local/bin -xzvf dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz && rm dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz
+          environment:
+            DOCKERIZE_VERSION: v0.3.0
+
+      - run:
           name: prepare daemon
           command: BTC_TESTNET=true python3 daemons/btc.py &
+        
+      - run:
+          name: Wait for db
+          command: dockerize -wait tcp://localhost:5000 -timeout 1m
+
+      
 
       - run:
           name: run tests
