@@ -14,6 +14,11 @@ jobs:
       # CircleCI maintains a library of pre-built images
       # documented at https://circleci.com/docs/2.0/circleci-images/
       - image: circleci/redis:latest
+      - image: circleci/postgres:9-alpine
+        environment:
+          POSTGRES_DB: bitcart_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: 123@
 
     working_directory: ~/repo
 
