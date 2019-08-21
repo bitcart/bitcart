@@ -24,9 +24,6 @@ jobs:
 
     working_directory: ~/repo
 
-    environment: 
-      PYTHONWARNINGS: DeprecationWarning
-
     steps:
       - checkout
 
