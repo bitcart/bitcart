@@ -11,6 +11,7 @@ jobs:
       - image: circleci/python:3.6
         environment:
           TEST: true
+          BTC_TESTNET: true
 
       # Specify service dependencies here if necessary
       # CircleCI maintains a library of pre-built images
@@ -53,20 +54,10 @@ jobs:
           key: v2-dependencies-{{ checksum "requirements/web.txt" }}-{{ checksum "requirements/test.txt" }}-{{ checksum "requirements/daemons/btc.txt" }}
 
       - run:
-          name: install dockerize
-          command: wget https://github.com/jwilder/dockerize/releases/download/$DOCKERIZE_VERSION/dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz && sudo tar -C /usr/local/bin -xzvf dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz && rm dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz
-          environment:
-            DOCKERIZE_VERSION: v0.3.0
-
-      - run:
           name: prepare daemon
           command: |
             . venv/bin/activate
-            BTC_TESTNET=true python3 daemons/btc.py &
-
-      - run:
-          name: Wait for daemon
-          command: dockerize -wait tcp://localhost:5000 -timeout 1m
+            python3 daemons/btc.py &
 
       - run:
           name: run tests
@@ -85,6 +76,7 @@ jobs:
       - image: circleci/python:3.7
         environment:
           TEST: true
+          BTC_TESTNET: true
       - image: circleci/redis:latest
       - image: circleci/postgres:9-alpine-ram
         environment:
@@ -99,6 +91,7 @@ jobs:
       - image: circleci/python:3.8.0b2-buster-node-browsers-legacy
         environment:
           TEST: true
+          BTC_TESTNET: true
       - image: circleci/redis:latest
       - image: circleci/postgres:9-alpine-ram
         environment:
