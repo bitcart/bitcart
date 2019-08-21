@@ -33,7 +33,7 @@ jobs:
       # Download and cache dependencies
       - restore_cache:
           keys:
-            - v2-dependencies-{{ checksum "requirements/web.txt" }}-{{ checksum "requirements/test.txt" }}
+            - v2-dependencies-{{ checksum "requirements/web.txt" }}-{{ checksum "requirements/test.txt" }}-{{ checksum "requirements/daemons/btc.txt" }}
             # fallback to using the latest cache if no exact match is found
             - v2-dependencies-
 
@@ -43,13 +43,14 @@ jobs:
             python3 -m venv venv
             . venv/bin/activate
             pip install -r requirements.txt
-            pip install -r requirements/test.txt
             pip install -r requirements/daemons/btc.txt
+            pip install -r requirements/test.txt
+            
 
       - save_cache:
           paths:
             - ./venv
-          key: v2-dependencies-{{ checksum "requirements/web.txt" }}-{{ checksum "requirements/test.txt" }}
+          key: v2-dependencies-{{ checksum "requirements/web.txt" }}-{{ checksum "requirements/test.txt" }}-{{ checksum "requirements/daemons/btc.txt" }}
 
       - run:
           name: install dockerize
