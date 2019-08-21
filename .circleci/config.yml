@@ -151,14 +151,11 @@ workflows:
           context: global
       - test-3.7:
           context: global
-      - test-3.8:
-          context: global
       - deploy:
           context: global
           requires:
             - test-3.6
             - test-3.7
-            - test-3.8
           filters:
             branches:
               only: master
