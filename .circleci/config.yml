@@ -57,7 +57,7 @@ jobs:
           name: prepare daemon
           command: |
             . venv/bin/activate
-            python3 daemons/btc.py &
+            python3 daemons/btc.py
 
       - run:
           name: run tests
