@@ -83,20 +83,26 @@ def model_view(router: APIRouter,
     async def post(model: create_model, background_tasks: BackgroundTasks):  # type: ignore
         try:
             obj = await orm_model.create(**model.dict())  # type: ignore
-        except asyncpg.exceptions.UniqueViolationError as e:
-            raise HTTPException(400, e.detail)
+        except (asyncpg.exceptions.UniqueViolationError, asyncpg.exceptions.NotNullViolationError) as e:
+            raise HTTPException(422, e.message)
         if background_tasks_mapping.get("post"):
             background_tasks.add_task(background_tasks_mapping["post"], obj)
         return obj
 
     async def put(model_id: int, model: pydantic_model):  # type: ignore
         item = await get_one(model_id)
-        await item.update(**model.dict()).apply()  # type: ignore
+        try:
+            await item.update(**model.dict()).apply()  # type: ignore
+        except (asyncpg.exceptions.UniqueViolationError, asyncpg.exceptions.NotNullViolationError) as e:
+            raise HTTPException(422, e.message)
         return item
 
     async def patch(model_id: int, model: pydantic_model):  # type: ignore
         item = await get_one(model_id)
-        await item.update(**model.dict(skip_defaults=True)).apply()  # type: ignore # noqa
+        try:
+            await item.update(**model.dict(skip_defaults=True)).apply()  # type: ignore # noqa
+        except (asyncpg.exceptions.UniqueViolationError, asyncpg.exceptions.NotNullViolationError) as e:
+            raise HTTPException(422, e.message)
         return item
 
     async def delete(model_id: int):

@@ -28,7 +28,7 @@ class CreateUser(BaseUser):
 
 
 class User(BaseUser):
-    id: int
+    id: Optional[int]
 
 
 class CreateToken(BaseModel):
@@ -47,7 +47,7 @@ class CreateWallet(BaseModel):
 
 
 class Wallet(CreateWallet):
-    id: int
+    id: Optional[int]
 
 
 class CreateStore(BaseModel):
@@ -72,7 +72,7 @@ class CreateStore(BaseModel):
 
 
 class Store(CreateStore):
-    id: int
+    id: Optional[int]
 
 
 class CreateProduct(BaseModel):
@@ -93,7 +93,7 @@ class CreateProduct(BaseModel):
 
 
 class Product(CreateProduct):
-    id: int
+    id: Optional[int]
 
 
 class CreateInvoice(BaseModel):
@@ -113,7 +113,7 @@ class CreateInvoice(BaseModel):
 
 
 class Invoice(CreateInvoice):
-    id: int
+    id: Optional[int]
 
 
 class TxResponse(BaseModel):
