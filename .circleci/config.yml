@@ -83,19 +83,6 @@ jobs:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: 123@
     <<: *test-template
-
-  test-3.8:
-    <<: *test-template
-    docker:
-      - image: circleci/python:3.8.0b2-buster-node-browsers-legacy
-        environment:
-          TEST: true
-      - image: circleci/redis:latest
-      - image: circleci/postgres:9-alpine-ram
-        environment:
-          POSTGRES_DB: bitcart_test
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: 123@
     
 
   deploy:
