@@ -35,6 +35,7 @@ class ViewTestMixin:
     def test_create(self, client: TestClient):
         for test in self.tests["create"]:
             resp = client.post(f"/{self.name}", json=test["data"])
+            print(resp.json())
             self.process_resp(resp, test)
 
     def test_get_all(self, client: TestClient):
@@ -280,6 +281,186 @@ class TestWallets(ViewTestMixin):
 
 class TestStores(ViewTestMixin):
     name = "stores"
+    tests = {
+        "create": [
+            {
+                "data": {"name": "test", "wallet_id": 3},
+                "status": "good",
+                "return_data": {
+                    "domain": "",
+                    "email": None,
+                    "email_host": "",
+                    "email_password": "",
+                    "email_port": 25,
+                    "email_user": "",
+                    "id": 1,
+                    "name": "test",
+                    "template": "",
+                    "wallet_id": 3,
+                },
+            },
+            {
+                "data": {"name": "test5", "wallet_id": 3, "domain":"example.com", "email":"test@example.com"},
+                "status": "good",
+                "return_data": {
+                    "domain": "example.com",
+                    "email": "test@example.com",
+                    "email_host": "",
+                    "email_password": "",
+                    "email_port": 25,
+                    "email_user": "",
+                    "id": 2,
+                    "name": "test5",
+                    "template": "",
+                    "wallet_id": 3,
+                },
+            },
+            {"data": {}, "status": "bad"},
+            {"data": {"name": "test"}, "status": "bad"},
+            {"data": {"wallet_id": 3}, "status": "bad"},
+            {"data": {"email": "test"}, "status": "bad"},
+        ],
+        "get_all": [
+            {
+                "status": "good",
+                "return_data": [
+                    {
+                        "domain": "",
+                        "email": None,
+                        "email_host": "",
+                        "email_password": "",
+                        "email_port": 25,
+                        "email_user": "",
+                        "id": 1,
+                        "name": "test",
+                        "template": "",
+                        "wallet_id": 3,
+                    },
+                    {
+                        "domain": "example.com",
+                        "email": "test@example.com",
+                        "email_host": "",
+                        "email_password": "",
+                        "email_port": 25,
+                        "email_user": "",
+                        "id": 2,
+                        "name": "test5",
+                        "template": "",
+                        "wallet_id": 3,
+                    },
+                ],
+            }
+        ],
+        "get_one": [
+            {"obj_id": 3, "status": "not found"},
+            {
+                "obj_id": 1,
+                "status": "good",
+                "return_data": {
+                    "domain": "",
+                    "email": None,
+                    "email_host": "",
+                    "email_password": "",
+                    "email_port": 25,
+                    "email_user": "",
+                    "id": 1,
+                    "name": "test",
+                    "template": "",
+                    "wallet_id": 3,
+                },
+            },
+            {"obj_id": "x", "status": "bad"},
+        ],
+        "partial_update": [
+            {
+                "obj_id": 1,
+                "data": {"name": "test2", "wallet_id": 3},
+                "status": "good",
+                "return_data": {
+                    "domain": "",
+                    "email": None,
+                    "email_host": "",
+                    "email_password": "",
+                    "email_port": 25,
+                    "email_user": "",
+                    "id": 1,
+                    "name": "test2",
+                    "template": "",
+                    "wallet_id": 3,
+                },
+            },
+            {
+                "obj_id": 1,
+                "data": {"name": "test2", "wallet_id": 3, "email": "test1@example.com"},
+                "status": "good",
+                "return_data": {
+                    "domain": "",
+                    "email": "test1@example.com",
+                    "email_host": "",
+                    "email_password": "",
+                    "email_port": 25,
+                    "email_user": "",
+                    "id": 1,
+                    "name": "test2",
+                    "template": "",
+                    "wallet_id": 3,
+                },
+            },
+            {
+                "obj_id": 1,
+                "data": {"name": "test2", "wallet_id": 3, "email": "test"},
+                "status": "bad",
+            },
+            {"obj_id": 1, "data": {"name": "test3"}, "status": "bad"},
+            {"obj_id": 1, "data": {"name": "test2", "user_id": 3}, "status": "bad"},
+        ],
+        "full_update": [
+            {"obj_id": 1, "data": {"name": "test"}, "status": "bad"},
+            {"obj_id": 1, "data": {"id": None}, "status": "bad"},
+            {"obj_id": 1, "data": {"id": None, "name": "test"}, "status": "bad"},
+            {
+                "obj_id": 1,
+                "data": {"id": 1, "name": "test", "wallet_id": 3},
+                "status": "good",
+                "return_data": {
+                    "domain": "",
+                    "email": None,
+                    "email_host": "",
+                    "email_password": "",
+                    "email_port": 25,
+                    "email_user": "",
+                    "id": 1,
+                    "name": "test",
+                    "template": "",
+                    "wallet_id": 3,
+                },
+            },
+        ],
+        "delete": [
+            {"obj_id": 3, "status": "not found"},
+            {
+                "obj_id": 1,
+                "status": "good",
+                "return_data": {
+                    "domain": "",
+                    "email": None,
+                    "email_host": "",
+                    "email_password": "",
+                    "email_port": 25,
+                    "email_user": "",
+                    "id": 1,
+                    "name": "test",
+                    "template": "",
+                    "wallet_id": 3,
+                },
+            },
+            {"obj_id": 1, "status": "not found"},
+        ],
+    }
+
+
+class TestProducts(ViewTestMixin):
+    name = "products"
     tests = {
         "create": [
             {
