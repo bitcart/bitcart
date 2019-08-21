@@ -58,15 +58,6 @@ class ViewTestMixin:
         for test in self.tests["delete"]:
             resp = client.delete(f"/users/{test['obj_id']}")
             self.process_resp(resp, test)
-        """assert client.delete("/users/2").status_code == 404
-        resp = client.delete("/users/1")
-        assert resp.status_code == 200
-        assert resp.json() == {
-            "email": None,
-            "username": "test",
-            "id": 1}
-        assert client.get("/users").json() == []
-        assert client.get("/users/1").status_code == 404"""
 
 
 class TestUser(ViewTestMixin):
