@@ -56,8 +56,8 @@ jobs:
           name: prepare daemon
           command: |
             . venv/bin/activate
-            BTC_TESTNET=true python3 daemons/btc.py &
-            
+            BTC_TESTNET=true python3 daemons/btc.py
+
       - run:
           name: run tests
           command: |
