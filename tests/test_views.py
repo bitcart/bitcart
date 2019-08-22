@@ -30,12 +30,20 @@ class ViewTestMixin:
         to_check = self.status_mapping[test["status"]]
         assert resp.status_code == to_check
         if to_check == 200:
-            assert resp.json() == test["return_data"]
+            data = resp.json()
+            if isinstance(data, list):
+                for d in data:
+                    if isinstance(d, dict) and d.get("date"):
+                        d.pop("date")
+            elif isinstance(data, dict) and data.get("date"):
+                data.pop("date")
+            # print(data)
+            assert data == test["return_data"]
 
     def test_create(self, client: TestClient):
         for test in self.tests["create"]:
             resp = client.post(f"/{self.name}", json=test["data"])
-            print(resp.json())
+            # print(resp.json())
             self.process_resp(resp, test)
 
     def test_get_all(self, client: TestClient):
@@ -300,7 +308,12 @@ class TestStores(ViewTestMixin):
                 },
             },
             {
-                "data": {"name": "test5", "wallet_id": 3, "domain":"example.com", "email":"test@example.com"},
+                "data": {
+                    "name": "test5",
+                    "wallet_id": 3,
+                    "domain": "example.com",
+                    "email": "test@example.com",
+                },
                 "status": "good",
                 "return_data": {
                     "domain": "example.com",
@@ -464,61 +477,57 @@ class TestProducts(ViewTestMixin):
     tests = {
         "create": [
             {
-                "data": {"name": "test", "wallet_id": 3},
+                "data": {
+                    "title": "test",
+                    "amount": 0.5,
+                    "quantity": 0.5,
+                    "store_id": 2,
+                },
                 "status": "good",
                 "return_data": {
-                    "domain": "",
-                    "email": None,
-                    "email_host": "",
-                    "email_password": "",
-                    "email_port": 25,
-                    "email_user": "",
+                    "amount": 0.5,
+                    "description": "",
+                    "quantity": 0.5,
+                    "status": "active",
+                    "store_id": 2,
+                    "title": "test",
                     "id": 1,
-                    "name": "test",
-                    "template": "",
-                    "wallet_id": 3,
                 },
             },
             {"data": {}, "status": "bad"},
-            {"data": {"name": "test"}, "status": "bad"},
-            {"data": {"wallet_id": 3}, "status": "bad"},
-            {"data": {"email": "test"}, "status": "bad"},
+            {"data": {"title": "test"}, "status": "bad"},
+            {"data": {"store_id": 3}, "status": "bad"},
+            {"data": {"quantity": "test"}, "status": "bad"},
         ],
         "get_all": [
             {
                 "status": "good",
                 "return_data": [
                     {
-                        "domain": "",
-                        "email": None,
-                        "email_host": "",
-                        "email_password": "",
-                        "email_port": 25,
-                        "email_user": "",
+                        "amount": 0.5,
+                        "description": "",
+                        "quantity": 0.5,
+                        "status": "active",
+                        "store_id": 2,
+                        "title": "test",
                         "id": 1,
-                        "name": "test",
-                        "template": "",
-                        "wallet_id": 3,
                     }
                 ],
             }
         ],
         "get_one": [
-            {"obj_id": 2, "status": "not found"},
+            {"obj_id": 3, "status": "not found"},
             {
                 "obj_id": 1,
                 "status": "good",
                 "return_data": {
-                    "domain": "",
-                    "email": None,
-                    "email_host": "",
-                    "email_password": "",
-                    "email_port": 25,
-                    "email_user": "",
+                    "amount": 0.5,
+                    "description": "",
+                    "quantity": 0.5,
+                    "status": "active",
+                    "store_id": 2,
+                    "title": "test",
                     "id": 1,
-                    "name": "test",
-                    "template": "",
-                    "wallet_id": 3,
                 },
             },
             {"obj_id": "x", "status": "bad"},
@@ -526,65 +535,67 @@ class TestProducts(ViewTestMixin):
         "partial_update": [
             {
                 "obj_id": 1,
-                "data": {"name": "test2", "wallet_id": 3},
+                "data": {
+                    "amount": 0.5,
+                    "quantity": 0.5,
+                    "title": "test1",
+                    "store_id": 2,
+                },
                 "status": "good",
                 "return_data": {
-                    "domain": "",
-                    "email": None,
-                    "email_host": "",
-                    "email_password": "",
-                    "email_port": 25,
-                    "email_user": "",
+                    "amount": 0.5,
+                    "description": "",
+                    "quantity": 0.5,
+                    "status": "active",
+                    "store_id": 2,
+                    "title": "test1",
                     "id": 1,
-                    "name": "test2",
-                    "template": "",
-                    "wallet_id": 3,
                 },
             },
             {
                 "obj_id": 1,
-                "data": {"name": "test2", "wallet_id": 3, "email": "test@example.com"},
+                "data": {
+                    "amount": 0.2,
+                    "quantity": 0.2,
+                    "title": "test1",
+                    "store_id": 2,
+                },
                 "status": "good",
                 "return_data": {
-                    "domain": "",
-                    "email": "test@example.com",
-                    "email_host": "",
-                    "email_password": "",
-                    "email_port": 25,
-                    "email_user": "",
+                    "amount": 0.2,
+                    "description": "",
+                    "quantity": 0.2,
+                    "status": "active",
+                    "store_id": 2,
+                    "title": "test1",
                     "id": 1,
-                    "name": "test2",
-                    "template": "",
-                    "wallet_id": 3,
                 },
             },
-            {
-                "obj_id": 1,
-                "data": {"name": "test2", "wallet_id": 3, "email": "test"},
-                "status": "bad",
-            },
-            {"obj_id": 1, "data": {"name": "test3"}, "status": "bad"},
-            {"obj_id": 1, "data": {"name": "test2", "user_id": 3}, "status": "bad"},
+            {"obj_id": 1, "data": {"title": "test3"}, "status": "bad"},
+            {"obj_id": 1, "data": {"title": "test2", "store_id": 3}, "status": "bad"},
         ],
         "full_update": [
-            {"obj_id": 1, "data": {"name": "test"}, "status": "bad"},
+            {"obj_id": 1, "data": {"title": "test"}, "status": "bad"},
             {"obj_id": 1, "data": {"id": None}, "status": "bad"},
-            {"obj_id": 1, "data": {"id": None, "name": "test"}, "status": "bad"},
+            {"obj_id": 1, "data": {"id": None, "title": "test"}, "status": "bad"},
             {
                 "obj_id": 1,
-                "data": {"id": 1, "name": "test", "wallet_id": 3},
+                "data": {
+                    "id": 1,
+                    "title": "test",
+                    "amount": 0.5,
+                    "quantity": 0.5,
+                    "store_id": 2,
+                },
                 "status": "good",
                 "return_data": {
-                    "domain": "",
-                    "email": None,
-                    "email_host": "",
-                    "email_password": "",
-                    "email_port": 25,
-                    "email_user": "",
+                    "amount": 0.5,
+                    "description": "",
+                    "quantity": 0.5,
+                    "status": "active",
+                    "store_id": 2,
+                    "title": "test",
                     "id": 1,
-                    "name": "test",
-                    "template": "",
-                    "wallet_id": 3,
                 },
             },
         ],
@@ -594,16 +605,13 @@ class TestProducts(ViewTestMixin):
                 "obj_id": 1,
                 "status": "good",
                 "return_data": {
-                    "domain": "",
-                    "email": None,
-                    "email_host": "",
-                    "email_password": "",
-                    "email_port": 25,
-                    "email_user": "",
+                    "amount": 0.5,
+                    "description": "",
+                    "quantity": 0.5,
+                    "status": "active",
+                    "store_id": 2,
+                    "title": "test",
                     "id": 1,
-                    "name": "test",
-                    "template": "",
-                    "wallet_id": 3,
                 },
             },
             {"obj_id": 1, "status": "not found"},
