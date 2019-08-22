@@ -110,8 +110,29 @@ class ProductxInvoice(db.Model):
     invoice_id = Column(Integer, ForeignKey("invoices.id", ondelete="SET NULL"))
 
 
+from gino.crud import UpdateRequest
+
+
+class MyUpdateRequest(UpdateRequest):
+    def update(self, **kwargs):
+        self.products = kwargs.get("products")
+        if self.products:
+            kwargs.pop("products")
+        return super().update(**kwargs)
+
+    async def apply(self):
+        await ProductxInvoice.delete.where(
+            ProductxInvoice.invoice_id == self._instance.id
+        ).gino.status()
+        for i in self.products:
+            await ProductxInvoice.create(invoice_id=self._instance.id, product_id=i)
+        self._instance.products = self.products
+        return await super().apply()
+
+
 class Invoice(db.Model):
     __tablename__ = "invoices"
+    _update_request_cls = MyUpdateRequest
 
     id = Column(Integer, primary_key=True, index=True)
     amount = Column(Numeric(16, 8), nullable=False)
@@ -144,3 +165,4 @@ class Invoice(db.Model):
         kwargs["bitcoin_url"] = data_got["URI"]
         kwargs.pop("products")
         return await super().create(**kwargs), xpub
+

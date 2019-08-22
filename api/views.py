@@ -39,6 +39,7 @@ utils.model_view(
         "get": crud.get_invoices,
         "get_one": crud.get_invoice,
         "post": crud.create_invoice,
+        "delete": crud.delete_invoice,
     },
 )
 

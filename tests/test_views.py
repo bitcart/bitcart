@@ -36,17 +36,19 @@ class ViewTestMixin:
                     if isinstance(d, dict):
                         if d.get("date"):
                             d.pop("date")
-                        if d.get("bitcoin_address"):
+                        try:
                             d.pop("bitcoin_address")
-                        if d.get("bitcoin_url"):
                             d.pop("bitcoin_url")
+                        except KeyError:
+                            pass
             elif isinstance(data, dict):
                 if data.get("date"):
                     data.pop("date")
-                if data.get("bitcoin_address"):
+                try:
                     data.pop("bitcoin_address")
-                if data.get("bitcoin_url"):
                     data.pop("bitcoin_url")
+                except KeyError:
+                    pass
             assert data == test["return_data"]
 
     def test_create(self, client: TestClient):
@@ -664,70 +666,30 @@ class TestInvoices(ViewTestMixin):
                 "return_data": {
                     "amount": 0.5,
                     "status": "active",
-                    "products":[2],
+                    "products": [2],
                     "id": 1,
                 },
             },
-            {
-                "data": {
-                    "title": "test",
-                    "amount": 0.5,
-                    "quantity": 0.5,
-                    "store_id": 2,
-                },
-                "status": "good",
-                "return_data": {
-                    "amount": 0.5,
-                    "description": "",
-                    "quantity": 0.5,
-                    "status": "active",
-                    "store_id": 2,
-                    "title": "test",
-                    "id": 2,
-                },
-            },
             {"data": {}, "status": "bad"},
-            {"data": {"title": "test"}, "status": "bad"},
-            {"data": {"store_id": 3}, "status": "bad"},
-            {"data": {"quantity": "test"}, "status": "bad"},
+            {"data": {"amount": 0.2}, "status": "bad"},
         ],
         "get_all": [
             {
                 "status": "good",
                 "return_data": [
-                    {
-                        "amount": 0.5,
-                        "description": "",
-                        "quantity": 0.5,
-                        "status": "active",
-                        "store_id": 2,
-                        "title": "test",
-                        "id": 1,
-                    },
-                    {
-                        "amount": 0.5,
-                        "description": "",
-                        "quantity": 0.5,
-                        "status": "active",
-                        "store_id": 2,
-                        "title": "test",
-                        "id": 2,
-                    },
+                    {"amount": 0.5, "status": "active", "products": [2], "id": 1}
                 ],
             }
         ],
         "get_one": [
-            {"obj_id": 3, "status": "not found"},
+            {"obj_id": 2, "status": "not found"},
             {
                 "obj_id": 1,
                 "status": "good",
                 "return_data": {
                     "amount": 0.5,
-                    "description": "",
-                    "quantity": 0.5,
                     "status": "active",
-                    "store_id": 2,
-                    "title": "test",
+                    "products": [2],
                     "id": 1,
                 },
             },
@@ -736,82 +698,43 @@ class TestInvoices(ViewTestMixin):
         "partial_update": [
             {
                 "obj_id": 1,
-                "data": {
-                    "amount": 0.5,
-                    "quantity": 0.5,
-                    "title": "test1",
-                    "store_id": 2,
-                },
-                "status": "good",
-                "return_data": {
-                    "amount": 0.5,
-                    "description": "",
-                    "quantity": 0.5,
-                    "status": "active",
-                    "store_id": 2,
-                    "title": "test1",
-                    "id": 1,
-                },
-            },
-            {
-                "obj_id": 1,
-                "data": {
-                    "amount": 0.2,
-                    "quantity": 0.2,
-                    "title": "test1",
-                    "store_id": 2,
-                },
+                "data": {"amount": 0.2, "products": [2]},
                 "status": "good",
                 "return_data": {
                     "amount": 0.2,
-                    "description": "",
-                    "quantity": 0.2,
                     "status": "active",
-                    "store_id": 2,
-                    "title": "test1",
+                    "products": [2],
                     "id": 1,
                 },
             },
-            {"obj_id": 1, "data": {"title": "test3"}, "status": "bad"},
-            {"obj_id": 1, "data": {"title": "test2", "store_id": 3}, "status": "bad"},
+            {"obj_id": 1, "data": {"amount": "test3"}, "status": "bad"},
+            {"obj_id": 1, "data": {"amount": "test2"}, "status": "bad"},
         ],
         "full_update": [
-            {"obj_id": 1, "data": {"title": "test"}, "status": "bad"},
+            {"obj_id": 1, "data": {"amount": 0.5}, "status": "bad"},
             {"obj_id": 1, "data": {"id": None}, "status": "bad"},
-            {"obj_id": 1, "data": {"id": None, "title": "test"}, "status": "bad"},
+            {"obj_id": 1, "data": {"id": None, "amount": 0.5}, "status": "bad"},
             {
                 "obj_id": 1,
-                "data": {
-                    "id": 1,
-                    "title": "test",
-                    "amount": 0.5,
-                    "quantity": 0.5,
-                    "store_id": 2,
-                },
+                "data": {"id": 1, "amount": 0.5, "products": [2]},
                 "status": "good",
                 "return_data": {
                     "amount": 0.5,
-                    "description": "",
-                    "quantity": 0.5,
                     "status": "active",
-                    "store_id": 2,
-                    "title": "test",
+                    "products": [2],
                     "id": 1,
                 },
             },
         ],
         "delete": [
-            {"obj_id": 3, "status": "not found"},
+            {"obj_id": 2, "status": "not found"},
             {
                 "obj_id": 1,
                 "status": "good",
                 "return_data": {
                     "amount": 0.5,
-                    "description": "",
-                    "quantity": 0.5,
                     "status": "active",
-                    "store_id": 2,
-                    "title": "test",
+                    "products": [2],
                     "id": 1,
                 },
             },

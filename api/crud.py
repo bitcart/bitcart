@@ -1,5 +1,6 @@
 from typing import Union
 
+import asyncpg
 from fastapi import BackgroundTasks, HTTPException
 
 from . import models, schemes, tasks, utils
@@ -51,7 +52,10 @@ async def invoice_add_related(item: models.Invoice):
 
 
 async def get_invoice(model_id: Union[int, str]):
-    item = await models.Invoice.get(model_id)
+    try:
+        item = await models.Invoice.get(model_id)
+    except asyncpg.exceptions.DataError as e:
+        raise HTTPException(422, e.message)
     if not item:
         raise HTTPException(
             status_code=404, detail=f"Object with id {model_id} does not exist!"
@@ -65,3 +69,13 @@ async def get_invoices():
     for i in items:
         await invoice_add_related(i)
     return items
+
+
+async def delete_invoice(model_id: int):
+    item = await get_invoice(model_id)
+    await invoice_add_related(item)
+    await models.ProductxInvoice.delete.where(
+        models.ProductxInvoice.invoice_id == item.id
+    ).gino.status()
+    await item.delete()
+    return item
