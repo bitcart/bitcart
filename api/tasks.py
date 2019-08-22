@@ -10,7 +10,7 @@ RPC_USER = settings.RPC_USER
 RPC_PASS = settings.RPC_PASS
 
 
-async def poll_updates(obj: models.Invoice, xpub: str):
+async def poll_updates(obj: models.Invoice, xpub: str, test: bool = False):
     address = obj.bitcoin_address
     if not address:
         return
@@ -18,6 +18,8 @@ async def poll_updates(obj: models.Invoice, xpub: str):
     async with btc_instance as btc:
         while True:
             invoice_data = await btc.getrequest(address)
+            if test:
+                return
             if invoice_data["status"] != "Pending":
                 if invoice_data["status"] == "Unknown":
                     status = "invalid"

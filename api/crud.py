@@ -36,7 +36,7 @@ async def create_invoice(
             ).product_id
         )
     obj.products = created
-    background_tasks.add_task(tasks.poll_updates, obj, xpub)
+    background_tasks.add_task(tasks.poll_updates, obj, xpub, True)
     return obj
 
 
