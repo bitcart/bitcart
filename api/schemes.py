@@ -117,6 +117,6 @@ class Invoice(CreateInvoice):
 
 
 class TxResponse(BaseModel):
-    date: datetime
+    date: Optional[datetime]
     txid: str
     amount: str

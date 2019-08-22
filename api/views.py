@@ -67,7 +67,7 @@ async def wallet_history(wallet: int):
 async def create_token(input_token: schemes.CreateToken):
     user = await utils.authenticate_user(input_token.username, input_token.password)
     if not user:
-        raise HTTPException(400, "Unauthorized")
+        raise HTTPException(401, "Unauthorized")
     token = await models.Token.create(user)
     return {"token": token.key}
 

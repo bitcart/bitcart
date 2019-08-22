@@ -143,6 +143,6 @@ async def get_wallet_history(model, response):
         rpc_user=settings.RPC_USER,
         rpc_pass=settings.RPC_PASS,
     ) as btc:
-        txes = await btc.history()["transactions"]
+        txes = (await btc.history())["transactions"]
     for i in txes:
         response.append({"date": i["date"], "txid": i["txid"], "amount": i["value"]})

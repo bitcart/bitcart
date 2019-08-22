@@ -4,7 +4,7 @@ from starlette.testclient import TestClient
 
 TEST_XPUB = "tpubDC9zYPoSZUk5W8Rfaex3k324fi1hDLHapbSjPd4gbr7AE8MLSGEy76fNp5m6sVLBy9p2iTjRkiguVyb8iEHCdUBC7SXnhHdHMpXwFcrVMyA"
 TEST_XPUB2 = "tpubDD1g867nDN1JyfNAjHNWrL2XNg98y6gM1W82C4nxqxGq5QPEFCtxYLFGgi7GrBwu4TczHRnwXic81BZ2FKBwmKvQdRJpNdfXPtAmtzBkD1A"
-
+TEST_XPUB3 = "tpubDD5MNJWw35y3eoJA7m3kFWsyX5SaUgx2Y3AaGwFk1pjYsHvpgDwRhrStRbCGad8dYzZCkLCvbGKfPuBiG7BabswmLofb7c2yfQFhjqSjaGi"
 
 class ViewTestMixin:
     """Base class for all modelview tests, as they mostly don't differ
@@ -746,3 +746,44 @@ class TestInvoices(ViewTestMixin):
 def test_no_root(client: TestClient):
     response = client.get("/")
     assert response.status_code == 404
+
+
+def test_rate(client: TestClient):
+    resp = client.get("/rate")
+    data = resp.json()
+    assert resp.status_code == 200
+    assert isinstance(data, float)
+    assert data > 0
+
+
+def test_wallet_history(client: TestClient):
+    assert client.get("/wallet_history/1").status_code == 404
+    assert client.get("/wallet_history/2").status_code == 404
+    resp = client.get("/wallet_history/3")
+    client.post("/wallets",json={"name": "test7", "user_id": 2, "xpub": TEST_XPUB3})
+    assert resp.status_code == 200
+    assert resp.json() == []
+    resp1 = client.get("/wallet_history/5")
+    assert resp1.status_code == 200
+    data2 = resp1.json()
+    assert len(data2) == 1
+    assert data2[0]['amount'] == '0.01'
+    assert data2[0]['txid'] == 'ee4f0c4405f9ba10443958f5c6f6d4552a69a80f3ec3bed1c3d4c98d65abe8f3'
+    resp2 = client.get("/wallet_history/0")
+    assert resp2.status_code == 200
+    assert len(resp2.json()) == 1
+
+
+
+def test_create_token(client: TestClient):
+    assert (
+        client.post("/token", json={"username": "test", "password": 123456}).status_code
+        == 401
+    )
+    assert (
+        client.post("/token", json={"username": "test1", "password": 123456}).status_code
+        == 401
+    )
+    resp = client.post("/token", json={"username": "test", "password": 12345})
+    assert resp.status_code == 200
+    assert resp.json().get("token")
