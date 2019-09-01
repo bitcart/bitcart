@@ -1,1 +1,1 @@
-https://github.com/spesmilo/electrum/archive/3.3.8.zip
+https://github.com/spesmilo/electrum/archive/3902d774f7ced2311ab07e5309dac2eeff2af0c7.zip # TODO: refer back to stable release when out
