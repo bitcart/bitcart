@@ -1,6 +1,6 @@
 -r base.txt
 django==2.2.3
-django_dramatiq==0.7.1
+django_dramatiq==0.8.0
 dramatiq[redis]==1.6.1
 # redis cache
 django-redis-cache==2.0.0
