@@ -18,7 +18,6 @@ from electrum.simple_config import SimpleConfig
 from electrum.storage import WalletStorage
 from electrum.synchronizer import Synchronizer, SynchronizerBase
 from electrum.transaction import Transaction
-from electrum.util import create_and_start_event_loop
 from electrum.wallet import Wallet
 
 config = AutoConfig(search_path="conf")
@@ -70,31 +69,8 @@ def list_currencies(wallet=None) -> list:
     return fx.get_currencies(True)
 
 
-def pay_to(
-    destination,
-    amount,
-    fee=None,
-    from_addr=None,
-    change_addr=None,
-    nocheck=False,
-    unsigned=False,
-    rbf=None,
-    password=None,
-    locktime=None,
-    wallet=None,
-):
-    return wallets[wallet].payto(
-        destination,
-        amount,
-        fee,
-        from_addr,
-        change_addr,
-        nocheck,
-        unsigned,
-        rbf,
-        password,
-        locktime,
-    )
+def get_tx_size(raw_tx: dict, wallet=None) -> int:
+    return Transaction(raw_tx).estimated_size()
 
 
 def get_updates(wallet):
@@ -140,6 +116,7 @@ supported_methods = {
     "get_updates": get_updates,
     "list_currencies": list_currencies,
     "subscribe": subscribe,
+    "get_tx_size": get_tx_size,
     "unsubscribe": unsubscribe,
 }
 
@@ -165,33 +142,7 @@ electrum_config.set_key("lightning", LIGHTNING)
 configure_logging(electrum_config)
 
 
-def start_it():
-    global network, fx, loop
-    asyncio.set_event_loop(asyncio.new_event_loop())
-    loop, stop_loop, loop_thread = create_and_start_event_loop()
-    thread = threading.currentThread()
-    config = SimpleConfig()
-    config.set_key("currency", DEFAULT_CURRENCY)
-    config.set_key("use_exchange_rate", True)
-    daemon = Daemon(config, listen_jsonrpc=False)
-    network = daemon.network
-    network.register_callback(process_events, AVAILABLE_EVENTS)
-    # as said in electrum daemon code, this is ugly
-    config.fee_estimates = network.config.fee_estimates.copy()
-    config.mempool_fees = network.config.mempool_fees.copy()
-    fx = daemon.fx
-    while thread.is_running:
-        time.sleep(1)
-    loop.call_soon_threadsafe(stop_loop.set_result, 1)
-    loop_thread.join(timeout=1)
-
-
-thread = threading.Thread(target=start_it)
-thread.is_running = True
-thread.start()
-
-
-def load_wallet(xpub):
+async def load_wallet(xpub):
     if xpub in wallets:
         return wallets[xpub]
     config = SimpleConfig()
@@ -206,7 +157,7 @@ def load_wallet(xpub):
     wallet_path = os.path.join(wallet_dir, xpub)
     if not os.path.exists(wallet_path):
         config.set_key("wallet_path", wallet_path)
-        command_runner.restore(xpub)
+        await command_runner.restore(xpub)
     storage = WalletStorage(wallet_path)
     wallet = Wallet(storage)
     wallet.start_network(network)
@@ -253,7 +204,7 @@ async def xpub_func(request):
             }
         )
     try:
-        wallet = load_wallet(xpub)
+        wallet = await load_wallet(xpub)
     except Exception:
         if not method in supported_methods:
             return web.json_response(
@@ -303,13 +254,23 @@ async def xpub_func(request):
     )
 
 
-async def on_shutdown(app):
-    thread.is_running = False
+async def on_startup(app):
+    global network, fx, loop
+    config = SimpleConfig()
+    config.set_key("currency", DEFAULT_CURRENCY)
+    config.set_key("use_exchange_rate", True)
+    daemon = Daemon(config, listen_jsonrpc=False)
+    network = daemon.network
+    network.register_callback(process_events, AVAILABLE_EVENTS)
+    # as said in electrum daemon code, this is ugly
+    config.fee_estimates = network.config.fee_estimates.copy()
+    config.mempool_fees = network.config.mempool_fees.copy()
+    fx = daemon.fx
 
 
 app = web.Application()
 app.router.add_post("/", xpub_func)
-app.on_shutdown.append(on_shutdown)
+app.on_startup.append(on_startup)
 host = config("BTC_HOST", default="0.0.0.0" if os.getenv("IN_DOCKER") else "127.0.0.1")
 port = config("BTC_PORT", cast=int, default=5000)
 web.run_app(app, host=host, port=port)
