@@ -9,19 +9,20 @@ jobs:
       # specify the version you desire here
       # use `-browsers` prefix for selenium tests, e.g. `3.6.1-browsers`
       - image: circleci/python:3.6
+        environment:
+          TEST: true
 
       # Specify service dependencies here if necessary
       # CircleCI maintains a library of pre-built images
       # documented at https://circleci.com/docs/2.0/circleci-images/
       - image: circleci/redis:latest
+      - image: circleci/postgres:9-alpine-ram
+        environment:
+          POSTGRES_DB: bitcart_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: 123@
 
     working_directory: ~/repo
-
-    environment: 
-      DEBUG: false
-      TEST: true
-      DJANGO_SETTINGS_MODULE: mainsite.settings
-      PYTHONWARNINGS: DeprecationWarning
 
     steps:
       - checkout
@@ -29,9 +30,9 @@ jobs:
       # Download and cache dependencies
       - restore_cache:
           keys:
-            - v1-dependencies-{{ checksum "requirements.txt" }}
+            - v2-dependencies-{{ checksum "requirements/web.txt" }}-{{ checksum "requirements/test.txt" }}-{{ checksum "requirements/daemons/btc.txt" }}
             # fallback to using the latest cache if no exact match is found
-            - v1-dependencies-
+            - v2-dependencies-
 
       - run:
           name: install dependencies
@@ -39,24 +40,27 @@ jobs:
             python3 -m venv venv
             . venv/bin/activate
             pip install -r requirements.txt
-            pip install -r requirements/test.txt
             pip install -r requirements/daemons/btc.txt
+            pip install -r requirements/test.txt
 
       - save_cache:
           paths:
             - ./venv
-          key: v1-dependencies-{{ checksum "requirements.txt" }}
+          key: v2-dependencies-{{ checksum "requirements/web.txt" }}-{{ checksum "requirements/test.txt" }}-{{ checksum "requirements/daemons/btc.txt" }}
 
       - run:
           name: prepare daemon
-          command: python3 daemons/btc.py &
+          command: |
+            . venv/bin/activate
+            BTC_TESTNET=true python3 daemons/btc.py
+          background: true
 
       - run:
           name: run tests
           command: |
             . venv/bin/activate
             pytest --cov=.
-            coveralls
+            codecov
 
       - store_artifacts:
           path: test-reports
@@ -66,18 +70,18 @@ jobs:
     <<: *test-template
     docker:
       - image: circleci/python:3.7
+        environment:
+          TEST: true
       - image: circleci/redis:latest
+      - image: circleci/postgres:9-alpine-ram
+        environment:
+          POSTGRES_DB: bitcart_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: 123@
     <<: *test-template
-
-  test-3.8:
-    <<: *test-template
-    docker:
-      - image: circleci/python:3.8.0b2-buster-node-browsers-legacy
-      - image: circleci/redis:latest
-    
 
   deploy:
-    docker: 
+    docker:
       - image: circleci/python:3.6.8
     working_directory: ~/repo
     steps:
@@ -115,7 +119,7 @@ jobs:
             docker push mrnaif/bitcart-ln:latest
 
   deploy_stable:
-    docker: 
+    docker:
       - image: circleci/python:3.6.8
     working_directory: ~/repo
     steps:
@@ -134,22 +138,19 @@ jobs:
             docker push mrnaif/bitcart-btc:stable
             docker push mrnaif/bitcart-ln:stable
 
-workflows: 
-  version: 2 
+workflows:
+  version: 2
   build_and_test:
-    jobs: 
+    jobs:
       - test-3.6:
           context: global
       - test-3.7:
-          context: global
-      - test-3.8:
           context: global
       - deploy:
           context: global
           requires:
             - test-3.6
             - test-3.7
-            - test-3.8
           filters:
             branches:
               only: master
@@ -162,5 +163,3 @@ workflows:
               ignore: /.*/
             tags:
               only: /v[1-9]+(\.[0-9]+)*/
-          
-
