@@ -1,7 +1,7 @@
 import asyncio
 import warnings
 
-from bitcart_async import BTC
+from bitcart import BTC
 
 from . import models, schemes, settings
 

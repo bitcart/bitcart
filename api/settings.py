@@ -1,6 +1,6 @@
 import warnings
 
-from bitcart_async import BTC
+from bitcart import BTC
 from nejma.layers import RedisLayer
 from starlette.config import Config
 

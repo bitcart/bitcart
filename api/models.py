@@ -1,7 +1,7 @@
 # pylint: disable=no-member
 import os
 
-from bitcart_async import BTC
+from bitcart import BTC
 from fastapi import HTTPException
 from sqlalchemy.orm import relationship
 

@@ -3,7 +3,7 @@ from os.path import join as path_join
 from typing import Callable, Dict, List, Type, Union
 
 import asyncpg
-from bitcart_async import BTC
+from bitcart import BTC
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 from passlib.context import CryptContext
 from pytz import utc
@@ -145,4 +145,4 @@ async def get_wallet_history(model, response):
     ) as btc:
         txes = (await btc.history())["transactions"]
     for i in txes:
-        response.append({"date": i["date"], "txid": i["txid"], "amount": i["value"]})
+        response.append({"date": i["date"], "txid": i["txid"], "amount": i["bc_value"]})

@@ -52,7 +52,7 @@ jobs:
           name: prepare daemon
           command: |
             . venv/bin/activate
-            BTC_TESTNET=true python3 daemons/btc.py
+            BTC_NETWORK=testnet python3 daemons/btc.py
           background: true
 
       - run:
@@ -109,14 +109,6 @@ jobs:
             docker build -t mrnaif/bitcart-btc:latest -f btc.Dockerfile .
             docker login --username=$DOCKER_USER --password=$DOCKER_PASS
             docker push mrnaif/bitcart-btc:latest
-      - run:
-          path: ~/repo/bitcart-docker
-          name: build ln daemon
-          command: |
-            cd compose
-            docker build -t mrnaif/bitcart-ln:latest -f ln.Dockerfile .
-            docker login --username=$DOCKER_USER --password=$DOCKER_PASS
-            docker push mrnaif/bitcart-ln:latest
 
   deploy_stable:
     docker:
