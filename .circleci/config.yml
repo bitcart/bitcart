@@ -39,6 +39,7 @@ jobs:
           command: |
             python3 -m venv venv
             . venv/bin/activate
+            apt install libsecp256k1-dev
             pip install -r requirements.txt
             pip install -r requirements/daemons/btc.txt
             pip install -r requirements/test.txt
