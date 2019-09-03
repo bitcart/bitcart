@@ -42,7 +42,6 @@ jobs:
             pip install -r requirements.txt
             pip install -r requirements/daemons/btc.txt
             pip install -r requirements/test.txt
-            
 
       - save_cache:
           paths:
@@ -61,7 +60,7 @@ jobs:
           command: |
             . venv/bin/activate
             pytest --cov=.
-            coveralls
+            codecov
 
       - store_artifacts:
           path: test-reports
@@ -80,10 +79,9 @@ jobs:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: 123@
     <<: *test-template
-    
 
   deploy:
-    docker: 
+    docker:
       - image: circleci/python:3.6.8
     working_directory: ~/repo
     steps:
@@ -121,7 +119,7 @@ jobs:
             docker push mrnaif/bitcart-ln:latest
 
   deploy_stable:
-    docker: 
+    docker:
       - image: circleci/python:3.6.8
     working_directory: ~/repo
     steps:
@@ -140,10 +138,10 @@ jobs:
             docker push mrnaif/bitcart-btc:stable
             docker push mrnaif/bitcart-ln:stable
 
-workflows: 
-  version: 2 
+workflows:
+  version: 2
   build_and_test:
-    jobs: 
+    jobs:
       - test-3.6:
           context: global
       - test-3.7:
@@ -165,5 +163,3 @@ workflows:
               ignore: /.*/
             tags:
               only: /v[1-9]+(\.[0-9]+)*/
-          
-
