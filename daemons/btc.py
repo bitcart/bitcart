@@ -164,6 +164,8 @@ async def load_wallet(xpub):
     command_runner.wallet = wallet
     # lightning worker
     command_runner.lnworker = wallet.lnworker
+    while not wallet.is_up_to_date():
+        await asyncio.sleep(0.1)
     wallets[xpub] = command_runner
     wallets_config[xpub] = {"events": set()}
     wallets_updates[xpub] = []
