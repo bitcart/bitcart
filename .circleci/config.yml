@@ -30,9 +30,9 @@ jobs:
       # Download and cache dependencies
       - restore_cache:
           keys:
-            - v3-dependencies-{{ checksum "requirements/web.txt" }}-{{ checksum "requirements/test.txt" }}-{{ checksum "requirements/daemons/btc.txt" }}
+            - v4-dependencies-{{ checksum "requirements/web.txt" }}-{{ checksum "requirements/test.txt" }}-{{ checksum "requirements/daemons/btc.txt" }}
             # fallback to using the latest cache if no exact match is found
-            - v3-dependencies-
+            - v4-dependencies-
 
       - run:
           name: install dependencies
@@ -40,14 +40,14 @@ jobs:
             python3 -m venv venv
             . venv/bin/activate
             sudo apt install libsecp256k1-dev
-            pip install -r requirements.txt
-            pip install -r requirements/daemons/btc.txt
-            pip install -r requirements/test.txt
+            pip install -U -r requirements.txt
+            pip install -U -r requirements/daemons/btc.txt
+            pip install -U -r requirements/test.txt
 
       - save_cache:
           paths:
             - ./venv
-          key: v3-dependencies-{{ checksum "requirements/web.txt" }}-{{ checksum "requirements/test.txt" }}-{{ checksum "requirements/daemons/btc.txt" }}
+          key: v4-dependencies-{{ checksum "requirements/web.txt" }}-{{ checksum "requirements/test.txt" }}-{{ checksum "requirements/daemons/btc.txt" }}
 
       - run:
           name: prepare daemon
