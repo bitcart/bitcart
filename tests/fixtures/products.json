@@ -1,0 +1,232 @@
+{
+    "create": [
+        {
+            "data": {
+                "title": "test",
+                "amount": 0.5,
+                "quantity": 0.5,
+                "store_id": 2
+            },
+            "status": "good",
+            "return_data": {
+                "amount": 0.5,
+                "description": "",
+                "quantity": 0.5,
+                "status": "active",
+                "store_id": 2,
+                "title": "test",
+                "id": 1
+            }
+        },
+        {
+            "data": {
+                "title": "test",
+                "amount": 0.5,
+                "quantity": 0.5,
+                "store_id": 2
+            },
+            "status": "good",
+            "return_data": {
+                "amount": 0.5,
+                "description": "",
+                "quantity": 0.5,
+                "status": "active",
+                "store_id": 2,
+                "title": "test",
+                "id": 2
+            }
+        },
+        {
+            "data": {},
+            "status": "bad"
+        },
+        {
+            "data": {
+                "title": "test"
+            },
+            "status": "bad"
+        },
+        {
+            "data": {
+                "store_id": 3
+            },
+            "status": "bad"
+        },
+        {
+            "data": {
+                "quantity": "test"
+            },
+            "status": "bad"
+        }
+    ],
+    "get_all": [
+        {
+            "status": "good",
+            "return_data": [
+                {
+                    "amount": 0.5,
+                    "description": "",
+                    "quantity": 0.5,
+                    "status": "active",
+                    "store_id": 2,
+                    "title": "test",
+                    "id": 1
+                },
+                {
+                    "amount": 0.5,
+                    "description": "",
+                    "quantity": 0.5,
+                    "status": "active",
+                    "store_id": 2,
+                    "title": "test",
+                    "id": 2
+                }
+            ]
+        }
+    ],
+    "get_one": [
+        {
+            "obj_id": 3,
+            "status": "not found"
+        },
+        {
+            "obj_id": 1,
+            "status": "good",
+            "return_data": {
+                "amount": 0.5,
+                "description": "",
+                "quantity": 0.5,
+                "status": "active",
+                "store_id": 2,
+                "title": "test",
+                "id": 1
+            }
+        },
+        {
+            "obj_id": "x",
+            "status": "bad"
+        }
+    ],
+    "partial_update": [
+        {
+            "obj_id": 1,
+            "data": {
+                "amount": 0.5,
+                "quantity": 0.5,
+                "title": "test1",
+                "store_id": 2
+            },
+            "status": "good",
+            "return_data": {
+                "amount": 0.5,
+                "description": "",
+                "quantity": 0.5,
+                "status": "active",
+                "store_id": 2,
+                "title": "test1",
+                "id": 1
+            }
+        },
+        {
+            "obj_id": 1,
+            "data": {
+                "amount": 0.2,
+                "quantity": 0.2,
+                "title": "test1",
+                "store_id": 2
+            },
+            "status": "good",
+            "return_data": {
+                "amount": 0.2,
+                "description": "",
+                "quantity": 0.2,
+                "status": "active",
+                "store_id": 2,
+                "title": "test1",
+                "id": 1
+            }
+        },
+        {
+            "obj_id": 1,
+            "data": {
+                "title": "test3"
+            },
+            "status": "bad"
+        },
+        {
+            "obj_id": 1,
+            "data": {
+                "title": "test2",
+                "store_id": 3
+            },
+            "status": "bad"
+        }
+    ],
+    "full_update": [
+        {
+            "obj_id": 1,
+            "data": {
+                "title": "test"
+            },
+            "status": "bad"
+        },
+        {
+            "obj_id": 1,
+            "data": {
+                "id": null
+            },
+            "status": "bad"
+        },
+        {
+            "obj_id": 1,
+            "data": {
+                "id": null,
+                "title": "test"
+            },
+            "status": "bad"
+        },
+        {
+            "obj_id": 1,
+            "data": {
+                "id": 1,
+                "title": "test",
+                "amount": 0.5,
+                "quantity": 0.5,
+                "store_id": 2
+            },
+            "status": "good",
+            "return_data": {
+                "amount": 0.5,
+                "description": "",
+                "quantity": 0.5,
+                "status": "active",
+                "store_id": 2,
+                "title": "test",
+                "id": 1
+            }
+        }
+    ],
+    "delete": [
+        {
+            "obj_id": 3,
+            "status": "not found"
+        },
+        {
+            "obj_id": 1,
+            "status": "good",
+            "return_data": {
+                "amount": 0.5,
+                "description": "",
+                "quantity": 0.5,
+                "status": "active",
+                "store_id": 2,
+                "title": "test",
+                "id": 1
+            }
+        },
+        {
+            "obj_id": 1,
+            "status": "not found"
+        }
+    ]
+}

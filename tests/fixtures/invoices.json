@@ -1,0 +1,167 @@
+{
+    "create": [
+        {
+            "data": {
+                "amount": 0.5,
+                "products": [
+                    2
+                ]
+            },
+            "status": "good",
+            "return_data": {
+                "amount": 0.5,
+                "status": "active",
+                "products": [
+                    2
+                ],
+                "id": 1
+            }
+        },
+        {
+            "data": {},
+            "status": "bad"
+        },
+        {
+            "data": {
+                "amount": 0.2
+            },
+            "status": "bad"
+        }
+    ],
+    "get_all": [
+        {
+            "status": "good",
+            "return_data": [
+                {
+                    "amount": 0.5,
+                    "status": "active",
+                    "products": [
+                        2
+                    ],
+                    "id": 1
+                }
+            ]
+        }
+    ],
+    "get_one": [
+        {
+            "obj_id": 2,
+            "status": "not found"
+        },
+        {
+            "obj_id": 1,
+            "status": "good",
+            "return_data": {
+                "amount": 0.5,
+                "status": "active",
+                "products": [
+                    2
+                ],
+                "id": 1
+            }
+        },
+        {
+            "obj_id": "x",
+            "status": "bad"
+        }
+    ],
+    "partial_update": [
+        {
+            "obj_id": 1,
+            "data": {
+                "amount": 0.2,
+                "products": [
+                    2
+                ]
+            },
+            "status": "good",
+            "return_data": {
+                "amount": 0.2,
+                "status": "active",
+                "products": [
+                    2
+                ],
+                "id": 1
+            }
+        },
+        {
+            "obj_id": 1,
+            "data": {
+                "amount": "test3"
+            },
+            "status": "bad"
+        },
+        {
+            "obj_id": 1,
+            "data": {
+                "amount": "test2"
+            },
+            "status": "bad"
+        }
+    ],
+    "full_update": [
+        {
+            "obj_id": 1,
+            "data": {
+                "amount": 0.5
+            },
+            "status": "bad"
+        },
+        {
+            "obj_id": 1,
+            "data": {
+                "id": null
+            },
+            "status": "bad"
+        },
+        {
+            "obj_id": 1,
+            "data": {
+                "id": null,
+                "amount": 0.5
+            },
+            "status": "bad"
+        },
+        {
+            "obj_id": 1,
+            "data": {
+                "id": 1,
+                "amount": 0.5,
+                "products": [
+                    2
+                ]
+            },
+            "status": "good",
+            "return_data": {
+                "amount": 0.5,
+                "status": "active",
+                "products": [
+                    2
+                ],
+                "id": 1
+            }
+        }
+    ],
+    "delete": [
+        {
+            "obj_id": 2,
+            "status": "not found"
+        },
+        {
+            "obj_id": 1,
+            "status": "good",
+            "return_data": {
+                "amount": 0.5,
+                "status": "active",
+                "products": [
+                    2
+                ],
+                "id": 1
+            }
+        },
+        {
+            "obj_id": 1,
+            "status": "not found"
+        }
+    ]
+}

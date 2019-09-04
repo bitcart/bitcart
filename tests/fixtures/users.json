@@ -1,0 +1,171 @@
+{
+    "create": [
+        {
+            "data": {
+                "username": "test",
+                "password": 12345
+            },
+            "status": "good",
+            "return_data": {
+                "email": null,
+                "username": "test",
+                "id": 1
+            }
+        },
+        {
+            "data": {
+                "username": "test",
+                "password": 12345
+            },
+            "status": "good",
+            "return_data": {
+                "email": null,
+                "username": "test",
+                "id": 2
+            }
+        },
+        {
+            "data": {},
+            "status": "bad"
+        },
+        {
+            "data": {
+                "username": "test"
+            },
+            "status": "bad"
+        },
+        {
+            "data": {
+                "password": "test"
+            },
+            "status": "bad"
+        }
+    ],
+    "get_all": [
+        {
+            "status": "good",
+            "return_data": [
+                {
+                    "email": null,
+                    "username": "test",
+                    "id": 1
+                },
+                {
+                    "email": null,
+                    "username": "test",
+                    "id": 2
+                }
+            ]
+        }
+    ],
+    "get_one": [
+        {
+            "obj_id": 1,
+            "status": "good",
+            "return_data": {
+                "email": null,
+                "username": "test",
+                "id": 1
+            }
+        },
+        {
+            "obj_id": "x",
+            "status": "bad"
+        },
+        {
+            "obj_id": 3,
+            "status": "not found"
+        }
+    ],
+    "partial_update": [
+        {
+            "obj_id": 1,
+            "data": {
+                "username": "test1"
+            },
+            "status": "good",
+            "return_data": {
+                "email": null,
+                "username": "test1",
+                "id": 1
+            }
+        },
+        {
+            "obj_id": 1,
+            "data": {
+                "username": "test1",
+                "email": "test@example.com"
+            },
+            "status": "good",
+            "return_data": {
+                "email": "test@example.com",
+                "username": "test1",
+                "id": 1
+            }
+        },
+        {
+            "obj_id": 1,
+            "data": {
+                "username": "test1",
+                "email": "test"
+            },
+            "status": "bad"
+        }
+    ],
+    "full_update": [
+        {
+            "obj_id": 1,
+            "data": {
+                "username": "test"
+            },
+            "status": "bad"
+        },
+        {
+            "obj_id": 1,
+            "data": {
+                "id": null
+            },
+            "status": "bad"
+        },
+        {
+            "obj_id": 1,
+            "data": {
+                "id": null,
+                "username": "test"
+            },
+            "status": "bad"
+        },
+        {
+            "obj_id": 1,
+            "data": {
+                "id": 1,
+                "username": "test"
+            },
+            "status": "good",
+            "return_data": {
+                "email": null,
+                "username": "test",
+                "id": 1
+            }
+        }
+    ],
+    "delete": [
+        {
+            "obj_id": 3,
+            "status": "not found"
+        },
+        {
+            "obj_id": 1,
+            "status": "good",
+            "return_data": {
+                "email": null,
+                "username": "test",
+                "id": 1
+            }
+        },
+        {
+            "obj_id": 1,
+            "status": "not found"
+        }
+    ]
+}
