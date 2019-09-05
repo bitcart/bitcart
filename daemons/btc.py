@@ -45,12 +45,7 @@ def decode_auth(authstr):
     return user, password
 
 
-def get_transaction(tx, wallet=None):
-    fut = asyncio.run_coroutine_threadsafe(get_tx_async(tx), network.asyncio_loop)
-    return fut.result()
-
-
-async def get_tx_async(tx: str, wallet=None) -> dict:
+async def get_transaction(tx, wallet=None):
     result = await network.interface.session.send_request(
         "blockchain.transaction.get", [tx, True]
     )
