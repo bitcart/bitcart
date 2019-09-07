@@ -4,17 +4,10 @@ import inspect
 import os
 import traceback
 from base64 import b64decode
+from types import ModuleType
 
 from aiohttp import web
 from decouple import AutoConfig
-from electrum import constants
-from electrum.commands import Commands, known_commands
-from electrum.daemon import Daemon
-from electrum.logging import configure_logging
-from electrum.simple_config import SimpleConfig
-from electrum.storage import WalletStorage
-from electrum.util import standardize_path
-from electrum.wallet import Wallet
 
 
 def rpc(f):
@@ -25,14 +18,15 @@ def rpc(f):
 class BaseDaemon:
     # initialize coin specific things here
     name: str
+    # specify the module in subclass to use features from
+    electrum: ModuleType
+    # whether wallet loading by wallet_path is needed(new) or attribute setting(old)
+    NEW_ELECTRUM = True
+    # default port, must differ between daemons
+    DEFAULT_PORT = 5000
     AVAILABLE_EVENTS: list = []
     EVENT_MAPPING: dict = {}
-    NETWORK_MAPPING = {
-        "mainnet": constants.set_mainnet,
-        "testnet": constants.set_testnet,
-        "regtest": constants.set_regtest,
-        "simnet": constants.set_simnet,
-    }
+    NETWORK_MAPPING: dict = {}
 
     def __init__(self):
         # load env variables
@@ -52,7 +46,7 @@ class BaseDaemon:
             f"{self.env_name}_HOST",
             default="0.0.0.0" if os.getenv("IN_DOCKER") else "127.0.0.1",
         )
-        self.PORT = self.config(f"{self.env_name}_PORT", cast=int, default=5000)
+        self.PORT = self.config(f"{self.env_name}_PORT", cast=int, default=self.DEFAULT_PORT)
         self.base_methods = {
             "get_updates": self.get_updates,
             "subscribe": self.subscribe,
@@ -63,6 +57,12 @@ class BaseDaemon:
             for func in (getattr(self, name) for name in dir(self))
             if getattr(func, "is_handler", False)
         }
+        self.NETWORK_MAPPING = self.NETWORK_MAPPING or {
+            "mainnet": self.electrum.constants.set_mainnet,
+            "testnet": self.electrum.constants.set_testnet,
+            "regtest": self.electrum.constants.set_regtest,
+            "simnet": self.electrum.constants.set_simnet,
+        }
         # activate network and configure logging
         activate_selected_network = self.NETWORK_MAPPING.get(self.NET.lower())
         if not activate_selected_network:
@@ -70,10 +70,11 @@ class BaseDaemon:
                 f"Invalid network passed: {self.NET}. Valid choices are {', '.join(self.NETWORK_MAPPING.keys())}."
             )
         activate_selected_network()
-        electrum_config = SimpleConfig()
+        electrum_config = self.electrum.simple_config.SimpleConfig()
         electrum_config.set_key("verbosity", self.VERBOSE)
         electrum_config.set_key("lightning", self.LIGHTNING)
-        configure_logging(electrum_config)
+        self.configure_logging(electrum_config)
+
         # initialize wallet storages
         self.wallets = {}
         self.wallets_config = {}
@@ -83,11 +84,14 @@ class BaseDaemon:
         self.fx = None
         self.daemon = None
 
+    def configure_logging(self, electrum_config):
+        self.electrum.logging.configure_logging(electrum_config)
+
     async def on_startup(self, app):
-        config = SimpleConfig()
+        config = self.electrum.simple_config.SimpleConfig()
         config.set_key("currency", self.DEFAULT_CURRENCY)
         config.set_key("use_exchange_rate", True)
-        self.daemon = Daemon(config, listen_jsonrpc=False)
+        self.daemon = self.electrum.daemon.Daemon(config, listen_jsonrpc=False)
         self.network = self.daemon.network
         self.network.register_callback(self._process_events, self.AVAILABLE_EVENTS)
         # as said in electrum daemon code, this is ugly
@@ -95,17 +99,26 @@ class BaseDaemon:
         config.mempool_fees = self.network.config.mempool_fees.copy()
         self.fx = self.daemon.fx
 
+    def create_commands(self, config):
+        return self.electrum.commands.Commands(
+            config=config, network=self.network, daemon=self.daemon
+        )
+
+    async def restore_wallet(self, command_runner, xpub, config):
+        await command_runner.restore(xpub, wallet_path=config.get_wallet_path())
+
+    def load_cmd_wallet(self, cmd, wallet, wallet_path):
+        self.daemon.wallets[self.electrum.util.standardize_path(wallet_path)] = wallet
+
     async def load_wallet(self, xpub):
         if xpub in self.wallets:
             wallet_data = self.wallets[xpub]
             return wallet_data["wallet"], wallet_data["cmd"], wallet_data["config"]
-        config = SimpleConfig()
+        config = self.electrum.simple_config.SimpleConfig()
         # as said in electrum daemon code, this is ugly
         config.fee_estimates = self.network.config.fee_estimates.copy()
         config.mempool_fees = self.network.config.mempool_fees.copy()
-        command_runner = Commands(
-            config=config, network=self.network, daemon=self.daemon
-        )
+        command_runner = self.create_commands(config)
         if not xpub:
             return None, command_runner, config
         # get wallet on disk
@@ -113,16 +126,16 @@ class BaseDaemon:
         wallet_path = os.path.join(wallet_dir, xpub)
         if not os.path.exists(wallet_path):
             config.set_key("wallet_path", wallet_path)
-            await command_runner.restore(xpub, wallet_path=config.get_wallet_path())
-        storage = WalletStorage(wallet_path)
-        wallet = Wallet(storage)
+            await self.restore_wallet(command_runner, xpub, config)
+        storage = self.electrum.storage.WalletStorage(wallet_path)
+        wallet = self.electrum.wallet.Wallet(storage)
         wallet.start_network(self.network)
+        self.load_cmd_wallet(command_runner, wallet, wallet_path)
         while not wallet.is_up_to_date():
             await asyncio.sleep(0.1)
         self.wallets[xpub] = {"wallet": wallet, "cmd": command_runner, "config": config}
         self.wallets_config[xpub] = {"events": set()}
         self.wallets_updates[xpub] = []
-        self.daemon.wallets[standardize_path(wallet_path)] = wallet
         return wallet, command_runner, config
 
     def decode_auth(self, authstr):
@@ -169,6 +182,7 @@ class BaseDaemon:
         try:
             wallet, cmd, config = await self.load_wallet(xpub)
         except Exception:
+            print(traceback.format_exc())
             if not method in self.supported_methods and not method in self.base_methods:
                 return web.json_response(
                     {
@@ -199,7 +213,7 @@ class BaseDaemon:
             if custom:
                 exec_method = functools.partial(exec_method, wallet=xpub)
             else:
-                if known_commands[method].requires_wallet:
+                if self.electrum.commands.known_commands[method].requires_wallet and self.NEW_ELECTRUM:
                     exec_method = functools.partial(
                         exec_method, wallet_path=wallet.storage.path if wallet else None
                     )
@@ -253,3 +267,28 @@ class BaseDaemon:
         self.wallets_config[wallet]["events"] = set(
             i for i in self.wallets_config[wallet]["events"] if i not in events
         )
+
+    @rpc
+    async def get_transaction(self, tx, wallet=None):
+        result = await self.network.interface.session.send_request(
+            "blockchain.transaction.get", [tx, True]
+        )
+        result_formatted = self.electrum.transaction.Transaction(result).deserialize()
+        result_formatted.update({"confirmations": result.get("confirmations", 0)})
+        return result_formatted
+
+    @rpc
+    def exchange_rate(self, currency=None, wallet=None) -> str:
+        if currency is None:
+            currency = self.DEFAULT_CURRENCY
+        if self.fx.get_currency() != currency:
+            self.fx.set_currency(currency)
+        return str(self.fx.exchange_rate())
+
+    @rpc
+    def list_currencies(self, wallet=None) -> list:
+        return self.fx.get_currencies(True)
+
+    @rpc
+    def get_tx_size(self, raw_tx: dict, wallet=None) -> int:
+        return self.electrum.transaction.Transaction(raw_tx).estimated_size()
