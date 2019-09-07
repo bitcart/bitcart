@@ -110,6 +110,14 @@ jobs:
             docker build -t mrnaif/bitcart-btc:latest -f btc.Dockerfile .
             docker login --username=$DOCKER_USER --password=$DOCKER_PASS
             docker push mrnaif/bitcart-btc:latest
+      - run:
+          path: ~/repo/bitcart-docker
+          name: build ltc daemon
+          command: |
+            cd compose
+            docker build -t mrnaif/bitcart-ltc:latest -f ltc.Dockerfile .
+            docker login --username=$DOCKER_USER --password=$DOCKER_PASS
+            docker push mrnaif/bitcart-ltc:latest
 
   deploy_stable:
     docker:
@@ -123,13 +131,13 @@ jobs:
             docker login --username=$DOCKER_USER --password=$DOCKER_PASS
             docker pull mrnaif/bitcart:latest
             docker pull mrnaif/bitcart-btc:latest
-            docker pull mrnaif/bitcart-ln:latest
+            docker pull mrnaif/bitcart-ltc:latest
             docker tag mrnaif/bitcart:latest mrnaif/bitcart:stable
             docker tag mrnaif/bitcart-btc:latest mrnaif/bitcart-btc:stable
-            docker tag mrnaif/bitcart-ln:latest mrnaif/bitcart-ln:stable
+            docker tag mrnaif/bitcart-ltc:latest mrnaif/bitcart-ltc:stable
             docker push mrnaif/bitcart:stable
             docker push mrnaif/bitcart-btc:stable
-            docker push mrnaif/bitcart-ln:stable
+            docker push mrnaif/bitcart-ltc:stable
 
 workflows:
   version: 2
