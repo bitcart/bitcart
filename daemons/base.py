@@ -199,7 +199,7 @@ class BaseDaemon:
             if custom:
                 exec_method = functools.partial(exec_method, wallet=xpub)
             else:
-                if "wallet_path" in known_commands[method].options:
+                if known_commands[method].requires_wallet:
                     exec_method = functools.partial(
                         exec_method, wallet_path=wallet.storage.path if wallet else None
                     )
