@@ -12,7 +12,7 @@ class BTCDaemon(BaseDaemon):
         "new_transaction": "new_transaction",
     }
 
-    def _process_events(self, event, *args):
+    async def process_events(self, event, *args):
         wallet = None
         data = {}
         if event == "blockchain_updated":

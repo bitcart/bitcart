@@ -89,7 +89,7 @@ class BaseDaemon:
         config.set_key("use_exchange_rate", True)
         self.daemon = Daemon(config, listen_jsonrpc=False)
         self.network = self.daemon.network
-        self.network.register_callback(self.process_events, self.AVAILABLE_EVENTS)
+        self.network.register_callback(self._process_events, self.AVAILABLE_EVENTS)
         # as said in electrum daemon code, this is ugly
         config.fee_estimates = self.network.config.fee_estimates.copy()
         config.mempool_fees = self.network.config.mempool_fees.copy()
@@ -224,11 +224,11 @@ class BaseDaemon:
             {"jsonrpc": "2.0", "result": result, "error": None, "id": id}
         )
 
-    async def process_events(self, event, *args):
+    async def _process_events(self, event, *args):
         mapped_event = self.EVENT_MAPPING.get(event)
         data = {"event": mapped_event}
         try:
-            data_got, wallet = self._process_events(mapped_event, *args)
+            data_got, wallet = await self.process_events(mapped_event, *args)
         except Exception:
             return
         if data_got is None:
@@ -236,7 +236,7 @@ class BaseDaemon:
         data.update(data_got)
         for i in self.wallets_config:
             if mapped_event in self.wallets_config[i]["events"]:
-                if not wallet or wallet == self.wallets[i].wallet:
+                if not wallet or wallet == self.wallets[i]["wallet"]:
                     self.wallets_updates[i].append(data)
 
     def get_updates(self, wallet):
