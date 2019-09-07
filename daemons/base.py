@@ -8,7 +8,7 @@ from base64 import b64decode
 from aiohttp import web
 from decouple import AutoConfig
 from electrum import constants
-from electrum.commands import Commands
+from electrum.commands import Commands, known_commands
 from electrum.daemon import Daemon
 from electrum.logging import configure_logging
 from electrum.simple_config import SimpleConfig
@@ -181,7 +181,7 @@ class BaseDaemon:
         if method in self.base_methods:
             exec_method = self.base_methods[method]
             custom = True
-        if method in self.supported_methods:
+        elif method in self.supported_methods:
             exec_method = self.supported_methods[method]
             custom = True
         else:
@@ -199,9 +199,10 @@ class BaseDaemon:
             if custom:
                 exec_method = functools.partial(exec_method, wallet=xpub)
             else:
-                exec_method = functools.partial(
-                    exec_method, wallet_path=wallet.storage.path if wallet else None
-                )
+                if "wallet_path" in known_commands[method].options:
+                    exec_method = functools.partial(
+                        exec_method, wallet_path=wallet.storage.path if wallet else None
+                    )
             if isinstance(params, list):
                 result = exec_method(*params)
             elif isinstance(params, dict):
