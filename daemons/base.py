@@ -68,9 +68,11 @@ class BaseDaemon:
                 f"Invalid network passed: {self.NET}. Valid choices are {', '.join(self.NETWORK_MAPPING.keys())}."
             )
         activate_selected_network()
-        electrum_config = self.electrum.simple_config.SimpleConfig()
-        electrum_config.set_key("verbosity", self.VERBOSE)
-        electrum_config.set_key("lightning", self.LIGHTNING)
+        self.electrum_config = self.electrum.simple_config.SimpleConfig()
+        self.electrum_config.set_key("verbosity", self.VERBOSE)
+        self.electrum_config.set_key("lightning", self.LIGHTNING)
+        self.electrum_config.set_key("currency", self.DEFAULT_CURRENCY)
+        self.electrum_config.set_key("use_exchange_rate", True)
         self.configure_logging(electrum_config)
 
         # initialize wallet storages
@@ -86,15 +88,14 @@ class BaseDaemon:
         self.electrum.logging.configure_logging(electrum_config)
 
     async def on_startup(self, app):
-        config = self.electrum.simple_config.SimpleConfig()
-        config.set_key("currency", self.DEFAULT_CURRENCY)
-        config.set_key("use_exchange_rate", True)
-        self.daemon = self.electrum.daemon.Daemon(config, listen_jsonrpc=False)
+        self.daemon = self.electrum.daemon.Daemon(
+            self.electrum_config, listen_jsonrpc=False
+        )
         self.network = self.daemon.network
         self.network.register_callback(self._process_events, self.AVAILABLE_EVENTS)
         # as said in electrum daemon code, this is ugly
-        config.fee_estimates = self.network.config.fee_estimates.copy()
-        config.mempool_fees = self.network.config.mempool_fees.copy()
+        # config.fee_estimates = self.network.config.fee_estimates.copy()
+        # config.mempool_fees = self.network.config.mempool_fees.copy()
         self.fx = self.daemon.fx
 
     def create_commands(self, config):
@@ -112,29 +113,33 @@ class BaseDaemon:
         if xpub in self.wallets:
             wallet_data = self.wallets[xpub]
             return wallet_data["wallet"], wallet_data["cmd"], wallet_data["config"]
-        config = self.electrum.simple_config.SimpleConfig()
+        # config = self.electrum.simple_config.SimpleConfig()
         # as said in electrum daemon code, this is ugly
-        config.fee_estimates = self.network.config.fee_estimates.copy()
-        config.mempool_fees = self.network.config.mempool_fees.copy()
-        command_runner = self.create_commands(config)
+        # config.fee_estimates = self.network.config.fee_estimates.copy()
+        # config.mempool_fees = self.network.config.mempool_fees.copy()
+        command_runner = self.create_commands(self.electrum_config)
         if not xpub:
-            return None, command_runner, config
+            return None, command_runner, self.electrum_config
         # get wallet on disk
-        wallet_dir = os.path.dirname(config.get_wallet_path())
+        wallet_dir = os.path.dirname(self.electrum_config.get_wallet_path())
         wallet_path = os.path.join(wallet_dir, xpub)
         if not os.path.exists(wallet_path):
-            config.set_key("wallet_path", wallet_path)
-            await self.restore_wallet(command_runner, xpub, config)
+            self.electrum_config.set_key("wallet_path", wallet_path)
+            await self.restore_wallet(command_runner, xpub, self.electrum_config)
         storage = self.electrum.storage.WalletStorage(wallet_path)
         wallet = self.electrum.wallet.Wallet(storage)
         wallet.start_network(self.network)
         self.load_cmd_wallet(command_runner, wallet, wallet_path)
         while not wallet.is_up_to_date():
             await asyncio.sleep(0.1)
-        self.wallets[xpub] = {"wallet": wallet, "cmd": command_runner, "config": config}
+        self.wallets[xpub] = {
+            "wallet": wallet,
+            "cmd": command_runner,
+            "config": self.electrum_config,
+        }
         self.wallets_config[xpub] = {"events": set()}
         self.wallets_updates[xpub] = []
-        return wallet, command_runner, config
+        return wallet, command_runner, self.electrum_config
 
     def decode_auth(self, authstr):
         if not authstr:
@@ -295,5 +300,7 @@ class BaseDaemon:
 
     @rpc
     def get_default_fee(self, tx: Union[dict, int], wallet=None) -> float:
-        config = self.electrum.simple_config.SimpleConfig()
-        return config.estimate_fee(self.get_tx_size(tx) if isinstance(tx, dict) else tx)
+        return self.electrum_config.estimate_fee(
+            self.get_tx_size(tx) if isinstance(tx, dict) else tx
+        )
+
