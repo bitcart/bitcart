@@ -47,11 +47,6 @@ class BaseDaemon:
             default="0.0.0.0" if os.getenv("IN_DOCKER") else "127.0.0.1",
         )
         self.PORT = self.config(f"{self.env_name}_PORT", cast=int, default=self.DEFAULT_PORT)
-        self.base_methods = {
-            "get_updates": self.get_updates,
-            "subscribe": self.subscribe,
-            "unsubscribe": self.unsubscribe,
-        }
         self.supported_methods = {
             func.__name__: func
             for func in (getattr(self, name) for name in dir(self))
@@ -180,10 +175,9 @@ class BaseDaemon:
                 }
             )
         try:
-            wallet, cmd, config = await self.load_wallet(xpub)
+            wallet, cmd, _ = await self.load_wallet(xpub)
         except Exception:
-            print(traceback.format_exc())
-            if not method in self.supported_methods and not method in self.base_methods:
+            if not method in self.supported_methods:
                 return web.json_response(
                     {
                         "jsonrpc": "2.0",
@@ -192,10 +186,7 @@ class BaseDaemon:
                     }
                 )
         custom = False
-        if method in self.base_methods:
-            exec_method = self.base_methods[method]
-            custom = True
-        elif method in self.supported_methods:
+        if method in self.supported_methods:
             exec_method = self.supported_methods[method]
             custom = True
         else:
@@ -253,14 +244,17 @@ class BaseDaemon:
                 if not wallet or wallet == self.wallets[i]["wallet"]:
                     self.wallets_updates[i].append(data)
 
+    @rpc
     def get_updates(self, wallet):
         updates = self.wallets_updates[wallet]
         self.wallets_updates[wallet] = []
         return updates
 
+    @rpc
     def subscribe(self, events, wallet=None):
         self.wallets_config[wallet]["events"].update(events)
 
+    @rpc
     def unsubscribe(self, events=None, wallet=None):
         if events is None:
             events = self.EVENT_MAPPING.keys()
@@ -292,3 +286,8 @@ class BaseDaemon:
     @rpc
     def get_tx_size(self, raw_tx: dict, wallet=None) -> int:
         return self.electrum.transaction.Transaction(raw_tx).estimated_size()
+
+    @rpc
+    def get_default_fee(self, raw_tx:dict, wallet=None) -> float:
+        config = self.electrum.simple_config.SimpleConfig()
+        return config.estimate_fee(self.get_tx_size(raw_tx))
