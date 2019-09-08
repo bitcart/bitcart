@@ -5,6 +5,7 @@ import os
 import traceback
 from base64 import b64decode
 from types import ModuleType
+from typing import Union
 
 from aiohttp import web
 from decouple import AutoConfig
@@ -46,7 +47,9 @@ class BaseDaemon:
             f"{self.env_name}_HOST",
             default="0.0.0.0" if os.getenv("IN_DOCKER") else "127.0.0.1",
         )
-        self.PORT = self.config(f"{self.env_name}_PORT", cast=int, default=self.DEFAULT_PORT)
+        self.PORT = self.config(
+            f"{self.env_name}_PORT", cast=int, default=self.DEFAULT_PORT
+        )
         self.supported_methods = {
             func.__name__: func
             for func in (getattr(self, name) for name in dir(self))
@@ -204,7 +207,10 @@ class BaseDaemon:
             if custom:
                 exec_method = functools.partial(exec_method, wallet=xpub)
             else:
-                if self.electrum.commands.known_commands[method].requires_wallet and self.NEW_ELECTRUM:
+                if (
+                    self.electrum.commands.known_commands[method].requires_wallet
+                    and self.NEW_ELECTRUM
+                ):
                     exec_method = functools.partial(
                         exec_method, wallet_path=wallet.storage.path if wallet else None
                     )
@@ -288,6 +294,6 @@ class BaseDaemon:
         return self.electrum.transaction.Transaction(raw_tx).estimated_size()
 
     @rpc
-    def get_default_fee(self, raw_tx:dict, tx_size: int = None, wallet=None) -> float:
+    def get_default_fee(self, tx: Union[dict, int], wallet=None) -> float:
         config = self.electrum.simple_config.SimpleConfig()
-        return config.estimate_fee(self.get_tx_size(raw_tx) if not tx_size else tx_size)
+        return config.estimate_fee(self.get_tx_size(tx) if isinstance(tx, dict) else tx)
