@@ -73,7 +73,7 @@ class BaseDaemon:
         self.electrum_config.set_key("lightning", self.LIGHTNING)
         self.electrum_config.set_key("currency", self.DEFAULT_CURRENCY)
         self.electrum_config.set_key("use_exchange_rate", True)
-        self.configure_logging(electrum_config)
+        self.configure_logging(self.electrum_config)
 
         # initialize wallet storages
         self.wallets = {}
