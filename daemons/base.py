@@ -93,9 +93,6 @@ class BaseDaemon:
         )
         self.network = self.daemon.network
         self.network.register_callback(self._process_events, self.AVAILABLE_EVENTS)
-        # as said in electrum daemon code, this is ugly
-        # config.fee_estimates = self.network.config.fee_estimates.copy()
-        # config.mempool_fees = self.network.config.mempool_fees.copy()
         self.fx = self.daemon.fx
 
     def create_commands(self, config):
@@ -113,10 +110,6 @@ class BaseDaemon:
         if xpub in self.wallets:
             wallet_data = self.wallets[xpub]
             return wallet_data["wallet"], wallet_data["cmd"], wallet_data["config"]
-        # config = self.electrum.simple_config.SimpleConfig()
-        # as said in electrum daemon code, this is ugly
-        # config.fee_estimates = self.network.config.fee_estimates.copy()
-        # config.mempool_fees = self.network.config.mempool_fees.copy()
         command_runner = self.create_commands(self.electrum_config)
         if not xpub:
             return None, command_runner, self.electrum_config
