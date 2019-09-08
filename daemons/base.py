@@ -288,6 +288,6 @@ class BaseDaemon:
         return self.electrum.transaction.Transaction(raw_tx).estimated_size()
 
     @rpc
-    def get_default_fee(self, raw_tx:dict, wallet=None) -> float:
+    def get_default_fee(self, raw_tx:dict, tx_size: int = None, wallet=None) -> float:
         config = self.electrum.simple_config.SimpleConfig()
-        return config.estimate_fee(self.get_tx_size(raw_tx))
+        return config.estimate_fee(self.get_tx_size(raw_tx) if not tx_size else tx_size)
