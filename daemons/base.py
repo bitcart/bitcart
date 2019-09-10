@@ -104,7 +104,7 @@ class BaseDaemon:
         await command_runner.restore(xpub, wallet_path=config.get_wallet_path())
 
     def load_cmd_wallet(self, cmd, wallet, wallet_path):
-        self.daemon.wallets[self.electrum.util.standardize_path(wallet_path)] = wallet
+        self.daemon.add_wallet(wallet)
 
     async def load_wallet(self, xpub):
         if xpub in self.wallets:
