@@ -1,1 +1,1 @@
-https://github.com/pooler/electrum-ltc/archive/3.3.8.1.zip
+https://github.com/pooler/electrum-ltc/archive/d6ea2ef840be6357ee7ddd80ef966ac7257d4dc8.zip
