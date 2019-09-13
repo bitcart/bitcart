@@ -1,1 +1,1 @@
-https://github.com/GZR0/electrum/archive/54211cc2e00af2ab3b232714166ae86f5beb3879.zip
+https://github.com/GZR0/electrum/archive/ffc062262e592f2df96a79d65940aab78678e70f.zip
