@@ -119,6 +119,15 @@ jobs:
             docker login --username=$DOCKER_USER --password=$DOCKER_PASS
             docker push mrnaif/bitcart-ltc:latest
 
+      - run:
+          path: ~/repo/bitcart-docker
+          name: build gzro daemon
+          command: |
+            cd compose
+            docker build -t mrnaif/bitcart-gzro:latest -f gzro.Dockerfile .
+            docker login --username=$DOCKER_USER --password=$DOCKER_PASS
+            docker push mrnaif/bitcart-gzro:latest
+
   deploy_stable:
     docker:
       - image: circleci/python:3.6.8
@@ -132,12 +141,15 @@ jobs:
             docker pull mrnaif/bitcart:latest
             docker pull mrnaif/bitcart-btc:latest
             docker pull mrnaif/bitcart-ltc:latest
+            docker pull mrnaif/bitcart-gzro:latest
             docker tag mrnaif/bitcart:latest mrnaif/bitcart:stable
             docker tag mrnaif/bitcart-btc:latest mrnaif/bitcart-btc:stable
             docker tag mrnaif/bitcart-ltc:latest mrnaif/bitcart-ltc:stable
+            docker tag mrnaif/bitcart-gzro:latest mrnaif/bitcart-gzro:stable
             docker push mrnaif/bitcart:stable
             docker push mrnaif/bitcart-btc:stable
             docker push mrnaif/bitcart-ltc:stable
+            docker push mrnaif/bitcart-gzro:stable
 
 workflows:
   version: 2
