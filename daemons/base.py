@@ -120,7 +120,7 @@ class BaseDaemon:
             self.electrum_config.set_key("wallet_path", wallet_path)
             await self.restore_wallet(command_runner, xpub, self.electrum_config)
         storage = self.electrum.storage.WalletStorage(wallet_path)
-        wallet = self.electrum.wallet.Wallet(storage)
+        wallet = self.electrum.wallet.Wallet(storage, config=self.electrum_config)
         wallet.start_network(self.network)
         self.load_cmd_wallet(command_runner, wallet, wallet_path)
         while not wallet.is_up_to_date():
@@ -178,6 +178,7 @@ class BaseDaemon:
         try:
             wallet, cmd, _ = await self.load_wallet(xpub)
         except Exception:
+            print(traceback.format_exc())
             if not method in self.supported_methods:
                 return web.json_response(
                     {
