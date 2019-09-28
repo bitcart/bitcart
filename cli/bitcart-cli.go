@@ -17,6 +17,7 @@ func main() {
 		"ltc":  "http://localhost:5001",
 		"gzro": "http://localhost:5002",
 		"bsty": "http://localhost:5003",
+		"bch":  "http://localhost:5004",
 	}
 	app := cli.NewApp()
 	app.Name = "Bitcart CLI"

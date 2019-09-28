@@ -27,6 +27,9 @@ class BaseDaemon:
     name: str
     # specify the module in subclass to use features from
     electrum: ModuleType
+    # whether wallet loading by wallet_path is needed(new) or attribute setting(old)
+    NEW_ELECTRUM = True
+    HAS_FEE_ESTIMATES = True
     # lightning support
     LIGHTNING_SUPPORTED = True
     # default port, must differ between daemons
@@ -67,8 +70,10 @@ class BaseDaemon:
         self.PORT = self.config(
             f"{self.env_name}_PORT", cast=int, default=self.DEFAULT_PORT
         )
-        self.SERVER = self.config(f"{self.env_name}_SERVER",default="")
-        self.ONESERVER = self.config(f"{self.env_name}_ONESERVER",cast=bool,default=False)
+        self.SERVER = self.config(f"{self.env_name}_SERVER", default="")
+        self.ONESERVER = self.config(
+            f"{self.env_name}_ONESERVER", cast=bool, default=False
+        )
         self.supported_methods = {
             func.__name__: func
             for func in (getattr(self, name) for name in dir(self))
@@ -96,6 +101,7 @@ class BaseDaemon:
         self.wallets_config = {}
         self.wallets_updates = {}
         # initialize not yet created network
+        self.loop = asyncio.get_event_loop()
         self.network = None
         self.fx = None
         self.daemon = None
@@ -136,11 +142,11 @@ class BaseDaemon:
         config.set_key("verbosity", self.VERBOSE)
         config.set_key("lightning", self.LIGHTNING)
         config.set_key("currency", self.DEFAULT_CURRENCY)
-        config.set_key("server",self.SERVER)
-        config.set_key("oneserver",self.ONESERVER)
-        
+        config.set_key("server", self.SERVER)
+        config.set_key("oneserver", self.ONESERVER)
+
         config.set_key("use_exchange_rate", True)
-        if per_wallet:
+        if self.HAS_FEE_ESTIMATES and per_wallet:
             config.fee_estimates = self.network.config.fee_estimates.copy() or {
                 25: 1000,
                 10: 1000,
@@ -258,7 +264,10 @@ class BaseDaemon:
             if custom:
                 exec_method = functools.partial(exec_method, wallet=xpub)
             else:
-                if self.electrum.commands.known_commands[method].requires_wallet:
+                if (
+                    self.NEW_ELECTRUM
+                    and self.electrum.commands.known_commands[method].requires_wallet
+                ):
                     cmd_name = self.electrum.commands.known_commands[method].name
                     need_path = cmd_name == "create" or cmd_name == "restore"
                     path = (
@@ -278,7 +287,7 @@ class BaseDaemon:
             result = exec_method(*args, **kwargs)
             if inspect.isawaitable(result):
                 result = await result
-        except Exception:
+        except BaseException:
             return web.json_response(
                 {
                     "jsonrpc": "2.0",
@@ -337,7 +346,18 @@ class BaseDaemon:
         for i in self.wallets_config:
             if mapped_event in self.wallets_config[i]["events"]:
                 if not wallet or wallet == self.wallets[i]["wallet"]:
-                    self.wallets_updates[i].append(data)
+                    if (
+                        self.wallets_config[i]["notification_url"]
+                        and asyncio.run_coroutine_threadsafe(
+                            self.send_notification(
+                                data, self.wallets_config[i]["notification_url"]
+                            ),
+                            self.loop,
+                        ).result()
+                    ):
+                        pass
+                    else:
+                        self.wallets_updates[i].append(data)
 
     def process_events(self, event, *args):
         """Override in your subclass if needed"""
