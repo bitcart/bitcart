@@ -33,3 +33,6 @@ debug.log
 htmlcov/
 .coverage
 .mypy_cache
+# CLI builds
+bitcart-cli
+bitcart-cli-*

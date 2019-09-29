@@ -1,1 +1,1 @@
-https://github.com/spesmilo/electrum/archive/d6c7dee547c844ecac6a5879721ae767efe4b9bd.zip # TODO: refer back to stable release when out
+https://github.com/spesmilo/electrum/archive/1773bd6cd6b9aaa693c6c1cb865f88fc3597e09f.zip # TODO: refer back to stable release when out

@@ -21,23 +21,33 @@ class BaseDaemon:
     name: str
     # specify the module in subclass to use features from
     electrum: ModuleType
-    # whether wallet loading by wallet_path is needed(new) or attribute setting(old)
-    NEW_ELECTRUM = True
+    # lightning support
+    LIGHTNING_SUPPORTED = True
     # default port, must differ between daemons
+    # whether client is using asyncio or is synchronous
+    ASYNC_CLIENT = True
     DEFAULT_PORT = 5000
-    AVAILABLE_EVENTS: list = []
-    EVENT_MAPPING: dict = {}
+    AVAILABLE_EVENTS = ["blockchain_updated", "new_transaction"]
+    EVENT_MAPPING = {
+        "blockchain_updated": "new_block",
+        "new_transaction": "new_transaction",
+    }
     NETWORK_MAPPING: dict = {}
 
     def __init__(self):
+        # if client is sync, use sync _process_events
+        if not self.ASYNC_CLIENT:
+            self._process_events = self._process_events_sync
         # load env variables
         self.env_name = self.name.upper()
         self.config = AutoConfig(search_path="conf")
         self.LOGIN = self.config(f"{self.env_name}_LOGIN", default="electrum")
         self.PASSWORD = self.config(f"{self.env_name}_PASSWORD", default="electrumz")
         self.NET = self.config(f"{self.env_name}_NETWORK", default="mainnet")
-        self.LIGHTNING = self.config(
-            f"{self.env_name}_LIGHTNING", cast=bool, default=True
+        self.LIGHTNING = (
+            self.config(f"{self.env_name}_LIGHTNING", cast=bool, default=True)
+            if self.LIGHTNING_SUPPORTED
+            else False
         )
         self.DEFAULT_CURRENCY = self.config(
             f"{self.env_name}_FIAT_CURRENCY", default="USD"
@@ -87,10 +97,11 @@ class BaseDaemon:
     def configure_logging(self, electrum_config):
         self.electrum.logging.configure_logging(electrum_config)
 
+    def create_daemon(self):
+        return self.electrum.daemon.Daemon(self.electrum_config, listen_jsonrpc=False)
+
     async def on_startup(self, app):
-        self.daemon = self.electrum.daemon.Daemon(
-            self.electrum_config, listen_jsonrpc=False
-        )
+        self.daemon = self.create_daemon()
         self.network = self.daemon.network
         self.network.register_callback(self._process_events, self.AVAILABLE_EVENTS)
         self.fx = self.daemon.fx
@@ -106,13 +117,18 @@ class BaseDaemon:
     def load_cmd_wallet(self, cmd, wallet, wallet_path):
         self.daemon.add_wallet(wallet)
 
+    def create_wallet(self, storage):
+        wallet = self.electrum.wallet.Wallet(storage, config=self.electrum_config)
+        wallet.start_network(self.network)
+        return wallet
+
     async def load_wallet(self, xpub):
-        if xpub in self.wallets:
-            wallet_data = self.wallets[xpub]
-            return wallet_data["wallet"], wallet_data["cmd"], wallet_data["config"]
         command_runner = self.create_commands(self.electrum_config)
         if not xpub:
             return None, command_runner, self.electrum_config
+        if xpub in self.wallets:
+            wallet_data = self.wallets[xpub]
+            return wallet_data["wallet"], wallet_data["cmd"], wallet_data["config"]
         # get wallet on disk
         wallet_dir = os.path.dirname(self.electrum_config.get_wallet_path())
         wallet_path = os.path.join(wallet_dir, xpub)
@@ -120,8 +136,7 @@ class BaseDaemon:
             self.electrum_config.set_key("wallet_path", wallet_path)
             await self.restore_wallet(command_runner, xpub, self.electrum_config)
         storage = self.electrum.storage.WalletStorage(wallet_path)
-        wallet = self.electrum.wallet.Wallet(storage, config=self.electrum_config)
-        wallet.start_network(self.network)
+        wallet = self.create_wallet(storage)
         self.load_cmd_wallet(command_runner, wallet, wallet_path)
         while not wallet.is_up_to_date():
             await asyncio.sleep(0.1)
@@ -178,7 +193,6 @@ class BaseDaemon:
         try:
             wallet, cmd, _ = await self.load_wallet(xpub)
         except Exception:
-            print(traceback.format_exc())
             if not method in self.supported_methods:
                 return web.json_response(
                     {
@@ -206,13 +220,23 @@ class BaseDaemon:
             if custom:
                 exec_method = functools.partial(exec_method, wallet=xpub)
             else:
-                if (
-                    self.electrum.commands.known_commands[method].requires_wallet
-                    and self.NEW_ELECTRUM
-                ):
-                    exec_method = functools.partial(
-                        exec_method, wallet_path=wallet.storage.path if wallet else None
+                if self.electrum.commands.known_commands[method].requires_wallet:
+                    cmd_name = self.electrum.commands.known_commands[method].name
+                    need_path = cmd_name == "create" or cmd_name == "restore"
+                    path = (
+                        wallet.storage.path
+                        if wallet
+                        else (self.electrum_config.get_wallet_path() if need_path else None)
                     )
+                    if need_path:
+                        if isinstance(params, dict) and params.get("wallet_path"):
+                            params["wallet_path"] = os.path.join(
+                                self.electrum_config.electrum_path(),
+                                "wallets",
+                                params.get("wallet_path"),
+                            )
+                    exec_method = functools.partial(exec_method, wallet_path=path)
+
             if isinstance(params, list):
                 result = exec_method(*params)
             elif isinstance(params, dict):
@@ -238,7 +262,10 @@ class BaseDaemon:
         mapped_event = self.EVENT_MAPPING.get(event)
         data = {"event": mapped_event}
         try:
-            data_got, wallet = await self.process_events(mapped_event, *args)
+            result = self.process_events(mapped_event, *args)
+            if inspect.isawaitable(result):
+                result = await result
+            data_got, wallet = result
         except Exception:
             return
         if data_got is None:
@@ -248,6 +275,35 @@ class BaseDaemon:
             if mapped_event in self.wallets_config[i]["events"]:
                 if not wallet or wallet == self.wallets[i]["wallet"]:
                     self.wallets_updates[i].append(data)
+
+    def _process_events_sync(self, event, *args):
+        """For non-asyncio clients"""
+        mapped_event = self.EVENT_MAPPING.get(event)
+        data = {"event": mapped_event}
+        try:
+            data_got, wallet = self.process_events(mapped_event, *args)
+        except Exception:
+            pass
+        if data_got is None:
+            return
+        data.update(data_got)
+        for i in self.wallets_config:
+            if mapped_event in self.wallets_config[i]["events"]:
+                if not wallet or wallet == self.wallets[i]["wallet"]:
+                    self.wallets_updates[i].append(data)
+
+    def process_events(self, event, *args):
+        """Override in your subclass if needed"""
+        wallet = None
+        data = {}
+        if event == "blockchain_updated":
+            data["height"] = self.network.get_local_height()
+        elif event == "new_transaction":
+            wallet, tx = args
+            data["tx"] = tx.txid()
+        else:
+            return None, None
+        return data, wallet
 
     @rpc
     def get_updates(self, wallet):
