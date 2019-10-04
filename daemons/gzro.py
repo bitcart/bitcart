@@ -1,4 +1,4 @@
-import electrum
+import electrum_gzro
 from aiohttp import web
 
 from base import BaseDaemon, rpc
@@ -6,7 +6,7 @@ from base import BaseDaemon, rpc
 
 class GZRODaemon(BaseDaemon):
     name = "GZRO"
-    electrum = electrum
+    electrum = electrum_gzro
     DEFAULT_PORT = 5002
 
 
