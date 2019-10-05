@@ -226,7 +226,11 @@ class BaseDaemon:
                     path = (
                         wallet.storage.path
                         if wallet
-                        else (self.electrum_config.get_wallet_path() if need_path else None)
+                        else (
+                            self.electrum_config.get_wallet_path()
+                            if need_path
+                            else None
+                        )
                     )
                     if need_path:
                         if isinstance(params, dict) and params.get("wallet_path"):
@@ -296,7 +300,7 @@ class BaseDaemon:
         """Override in your subclass if needed"""
         wallet = None
         data = {}
-        if event == "blockchain_updated":
+        if event == "new_block":
             data["height"] = self.network.get_local_height()
         elif event == "new_transaction":
             wallet, tx = args
