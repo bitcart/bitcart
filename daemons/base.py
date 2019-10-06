@@ -243,7 +243,7 @@ class BaseDaemon:
 
             if isinstance(params, list):
                 kwargs = {}
-                if isinstance(params[-1], dict) and len(params) > 1:
+                if len(params) > 1 and isinstance(params[-1], dict):
                     kwargs = params.pop()
                 result = exec_method(*params, **kwargs)
             elif isinstance(params, dict):
