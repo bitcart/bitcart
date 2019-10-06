@@ -242,7 +242,10 @@ class BaseDaemon:
                     exec_method = functools.partial(exec_method, wallet_path=path)
 
             if isinstance(params, list):
-                result = exec_method(*params)
+                kwargs = {}
+                if isinstance(params[-1], dict) and len(params) > 1:
+                    kwargs = params.pop()
+                result = exec_method(*params, **kwargs)
             elif isinstance(params, dict):
                 result = exec_method(**params)
             if inspect.isawaitable(result):
