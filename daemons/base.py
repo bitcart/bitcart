@@ -27,10 +27,11 @@ class BaseDaemon:
     # whether client is using asyncio or is synchronous
     ASYNC_CLIENT = True
     DEFAULT_PORT = 5000
-    AVAILABLE_EVENTS = ["blockchain_updated", "new_transaction"]
+    AVAILABLE_EVENTS = ["blockchain_updated", "new_transaction", "payment_received"]
     EVENT_MAPPING = {
         "blockchain_updated": "new_block",
         "new_transaction": "new_transaction",
+        "payment_received": "new_payment",
     }
     NETWORK_MAPPING: dict = {}
 
@@ -308,6 +309,13 @@ class BaseDaemon:
         elif event == "new_transaction":
             wallet, tx = args
             data["tx"] = tx.txid()
+        elif event == "new_payment":
+            wallet, address, status = args
+            data = {
+                "address": address,
+                "status": status,
+                "status_str": self.electrum.util.pr_tooltips[status],
+            }
         else:
             return None, None
         return data, wallet
