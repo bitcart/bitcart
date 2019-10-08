@@ -7,7 +7,7 @@ from base64 import b64decode
 from types import ModuleType
 from typing import Union
 
-from aiohttp import web
+from aiohttp import web, ClientSession
 from decouple import AutoConfig
 
 
@@ -102,10 +102,14 @@ class BaseDaemon:
         return self.electrum.daemon.Daemon(self.electrum_config, listen_jsonrpc=False)
 
     async def on_startup(self, app):
+        self.client_session = ClientSession()
         self.daemon = self.create_daemon()
         self.network = self.daemon.network
         self.network.register_callback(self._process_events, self.AVAILABLE_EVENTS)
         self.fx = self.daemon.fx
+
+    async def on_shutdown(self, app):
+        await self.client_session.close()
 
     def create_commands(self, config):
         return self.electrum.commands.Commands(
@@ -146,7 +150,7 @@ class BaseDaemon:
             "cmd": command_runner,
             "config": self.electrum_config,
         }
-        self.wallets_config[xpub] = {"events": set()}
+        self.wallets_config[xpub] = {"events": set(), "notification_url": None}
         self.wallets_updates[xpub] = []
         return wallet, command_runner, self.electrum_config
 
@@ -282,7 +286,17 @@ class BaseDaemon:
         for i in self.wallets_config:
             if mapped_event in self.wallets_config[i]["events"]:
                 if not wallet or wallet == self.wallets[i]["wallet"]:
-                    self.wallets_updates[i].append(data)
+                    if self.wallets_config[i]["notification_url"] and await self.send_notification(data, self.wallets_config[i]["notification_url"]):
+                        pass
+                    else:
+                        self.wallets_updates[i].append(data)
+
+    async def send_notification(self, data, notification_url):
+        try:
+            await self.client_session.post(notification_url, json=data)
+            return True
+        except Exception:
+            return False
 
     def _process_events_sync(self, event, *args):
         """For non-asyncio clients"""
@@ -368,4 +382,8 @@ class BaseDaemon:
         return self.electrum_config.estimate_fee(
             self.get_tx_size(tx) if isinstance(tx, dict) else tx
         )
+
+    @rpc
+    def configure_notifications(self, notification_url, wallet=None):
+        self.wallets_config[wallet]["notification_url"] = notification_url
 
