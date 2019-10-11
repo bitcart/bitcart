@@ -173,16 +173,7 @@ class BaseDaemon:
                     "id": None,
                 }
             )
-        if request.content_type == "application/json":
-            data = await request.json()
-        else:
-            return web.json_response(
-                {
-                    "jsonrpc": "2.0",
-                    "error": {"code": -32600, "message": "Invalid JSON-RPC."},
-                    "id": None,
-                }
-            )
+        data = await request.json()
         method = data.get("method")
         id = data.get("id", None)
         xpub = data.get("xpub")
@@ -267,7 +258,7 @@ class BaseDaemon:
                 }
             )
         return web.json_response(
-            {"jsonrpc": "2.0", "result": result, "error": None, "id": id}
+            {"jsonrpc": "2.0", "result": result, "id": id}
         )
 
     async def _process_events(self, event, *args):
