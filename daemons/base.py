@@ -124,20 +124,26 @@ class BaseDaemon:
         wallet.start_network(self.network)
         return wallet
 
-    def copy_config_settings(self, config):
+    def copy_config_settings(self, config, per_wallet=False):
         config.set_key("verbosity", self.VERBOSE)
         config.set_key("lightning", self.LIGHTNING)
         config.set_key("currency", self.DEFAULT_CURRENCY)
         config.set_key("use_exchange_rate", True)
+        if per_wallet:
+            config.fee_estimates = self.network.config.fee_estimates.copy() or {25: 1000, 10: 1000, 5: 1000, 2: 1000}
+            config.mempool_fees = self.network.config.mempool_fees.copy() or {25: 1000, 10: 1000, 5: 1000, 2: 1000}
+
 
     async def load_wallet(self, xpub):
-        config = self.electrum.simple_config.SimpleConfig()
-        command_runner = self.create_commands(config)
-        if not xpub:
-            return None, command_runner, config
         if xpub in self.wallets:
             wallet_data = self.wallets[xpub]
             return wallet_data["wallet"], wallet_data["cmd"], wallet_data["config"]
+        config = self.electrum.simple_config.SimpleConfig()
+        self.copy_config_settings(config, True)
+        command_runner = self.create_commands(config)
+        if not xpub:
+            return None, command_runner, config
+        
         # get wallet on disk
         wallet_dir = os.path.dirname(config.get_wallet_path())
         wallet_path = os.path.join(wallet_dir, xpub)
