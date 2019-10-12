@@ -80,10 +80,7 @@ class BaseDaemon:
             )
         activate_selected_network()
         self.electrum_config = self.electrum.simple_config.SimpleConfig()
-        self.electrum_config.set_key("verbosity", self.VERBOSE)
-        self.electrum_config.set_key("lightning", self.LIGHTNING)
-        self.electrum_config.set_key("currency", self.DEFAULT_CURRENCY)
-        self.electrum_config.set_key("use_exchange_rate", True)
+        self.copy_config_settings(self.electrum_config)
         self.configure_logging(self.electrum_config)
 
         # initialize wallet storages
@@ -122,37 +119,40 @@ class BaseDaemon:
     def load_cmd_wallet(self, cmd, wallet, wallet_path):
         self.daemon.add_wallet(wallet)
 
-    def create_wallet(self, storage):
-        wallet = self.electrum.wallet.Wallet(storage, config=self.electrum_config)
+    def create_wallet(self, storage, config):
+        wallet = self.electrum.wallet.Wallet(storage, config=config)
         wallet.start_network(self.network)
         return wallet
 
+    def copy_config_settings(self, config):
+        config.set_key("verbosity", self.VERBOSE)
+        config.set_key("lightning", self.LIGHTNING)
+        config.set_key("currency", self.DEFAULT_CURRENCY)
+        config.set_key("use_exchange_rate", True)
+
     async def load_wallet(self, xpub):
-        command_runner = self.create_commands(self.electrum_config)
+        config = self.electrum.simple_config.SimpleConfig()
+        command_runner = self.create_commands(config)
         if not xpub:
-            return None, command_runner, self.electrum_config
+            return None, command_runner, config
         if xpub in self.wallets:
             wallet_data = self.wallets[xpub]
             return wallet_data["wallet"], wallet_data["cmd"], wallet_data["config"]
         # get wallet on disk
-        wallet_dir = os.path.dirname(self.electrum_config.get_wallet_path())
+        wallet_dir = os.path.dirname(config.get_wallet_path())
         wallet_path = os.path.join(wallet_dir, xpub)
         if not os.path.exists(wallet_path):
-            self.electrum_config.set_key("wallet_path", wallet_path)
-            await self.restore_wallet(command_runner, xpub, self.electrum_config)
+            config.set_key("wallet_path", wallet_path)
+            await self.restore_wallet(command_runner, xpub, config)
         storage = self.electrum.storage.WalletStorage(wallet_path)
-        wallet = self.create_wallet(storage)
+        wallet = self.create_wallet(storage, config)
         self.load_cmd_wallet(command_runner, wallet, wallet_path)
         while not wallet.is_up_to_date():
             await asyncio.sleep(0.1)
-        self.wallets[xpub] = {
-            "wallet": wallet,
-            "cmd": command_runner,
-            "config": self.electrum_config,
-        }
+        self.wallets[xpub] = {"wallet": wallet, "cmd": command_runner, "config": config}
         self.wallets_config[xpub] = {"events": set(), "notification_url": None}
         self.wallets_updates[xpub] = []
-        return wallet, command_runner, self.electrum_config
+        return wallet, command_runner, config
 
     def decode_auth(self, authstr):
         if not authstr:
@@ -161,6 +161,17 @@ class BaseDaemon:
         decoded_str = b64decode(authstr).decode("latin1")
         user, password = decoded_str.split(":")
         return user, password
+
+    def parse_params(self, params):
+        args = params
+        kwargs = {}
+        if isinstance(params, list):
+            if len(params) > 1 and isinstance(params[-1], dict):
+                kwargs = params.pop()
+        elif isinstance(params, dict):
+            kwargs = params
+            args = ()
+        return args, kwargs
 
     async def handle_request(self, request):
         auth = request.headers.get("Authorization")
@@ -176,8 +187,9 @@ class BaseDaemon:
         data = await request.json()
         method = data.get("method")
         id = data.get("id", None)
-        xpub = data.get("xpub")
         params = data.get("params", [])
+        args, kwargs = self.parse_params(params)
+        xpub = kwargs.pop("xpub", None)
         if not method:
             return web.json_response(
                 {
@@ -187,7 +199,7 @@ class BaseDaemon:
                 }
             )
         try:
-            wallet, cmd, _ = await self.load_wallet(xpub)
+            wallet, cmd, config = await self.load_wallet(xpub)
         except Exception:
             if not method in self.supported_methods:
                 return web.json_response(
@@ -222,11 +234,7 @@ class BaseDaemon:
                     path = (
                         wallet.storage.path
                         if wallet
-                        else (
-                            self.electrum_config.get_wallet_path()
-                            if need_path
-                            else None
-                        )
+                        else (config.get_wallet_path() if need_path else None)
                     )
                     if need_path:
                         if isinstance(params, dict) and params.get("wallet_path"):
@@ -237,13 +245,7 @@ class BaseDaemon:
                             )
                     exec_method = functools.partial(exec_method, wallet_path=path)
 
-            if isinstance(params, list):
-                kwargs = {}
-                if len(params) > 1 and isinstance(params[-1], dict):
-                    kwargs = params.pop()
-                result = exec_method(*params, **kwargs)
-            elif isinstance(params, dict):
-                result = exec_method(**params)
+            result = exec_method(*args, **kwargs)
             if inspect.isawaitable(result):
                 result = await result
         except Exception:
@@ -257,9 +259,7 @@ class BaseDaemon:
                     "id": id,
                 }
             )
-        return web.json_response(
-            {"jsonrpc": "2.0", "result": result, "id": id}
-        )
+        return web.json_response({"jsonrpc": "2.0", "result": result, "id": id})
 
     async def _process_events(self, event, *args):
         mapped_event = self.EVENT_MAPPING.get(event)
@@ -277,7 +277,11 @@ class BaseDaemon:
         for i in self.wallets_config:
             if mapped_event in self.wallets_config[i]["events"]:
                 if not wallet or wallet == self.wallets[i]["wallet"]:
-                    if self.wallets_config[i]["notification_url"] and await self.send_notification(data, self.wallets_config[i]["notification_url"]):
+                    if self.wallets_config[i][
+                        "notification_url"
+                    ] and await self.send_notification(
+                        data, self.wallets_config[i]["notification_url"]
+                    ):
                         pass
                     else:
                         self.wallets_updates[i].append(data)
