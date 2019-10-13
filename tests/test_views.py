@@ -26,11 +26,17 @@ class ViewTestMixin:
     is good, obj_id if function requires it, and data if function sends it
     """
 
-    def process_resp(self, resp, test):
+    def process_resp(self, resp, test, get_all=False):
         to_check = self.status_mapping[test["status"]]
         assert resp.status_code == to_check
         if to_check == 200:
             data = resp.json()
+            if get_all:
+                assert data["count"] == len(test["return_data"])
+                assert not data["previous"]
+                assert not data["next"]
+                assert isinstance(data["result"], list)
+                data = data["result"]
             if isinstance(data, list):
                 for d in data:
                     if isinstance(d, dict):
@@ -59,7 +65,7 @@ class ViewTestMixin:
     def test_get_all(self, client: TestClient):
         for test in self.tests["get_all"]:
             resp = client.get(f"/{self.name}")
-            self.process_resp(resp, test)
+            self.process_resp(resp, test, True)
 
     def test_get_one(self, client: TestClient):
         for test in self.tests["get_one"]:

@@ -1,16 +1,15 @@
-from typing import Union
+# pylint: disable=no-member
+from typing import Iterable, Union
 
 import asyncpg
-from fastapi import BackgroundTasks, HTTPException
+from fastapi import BackgroundTasks, Depends, HTTPException
 
-from . import models, schemes, tasks, utils
+from . import models, pagination, schemes, tasks, utils
 from .db import db
 
 
 async def user_count():
-    return await db.func.count(
-        models.User.id
-    ).gino.scalar()  # pylint: disable=no-member
+    return await db.func.count(models.User.id).gino.scalar()
 
 
 async def create_user(user: schemes.CreateUser):
@@ -48,7 +47,13 @@ async def invoice_add_related(item: models.Invoice):
         .where(models.ProductxInvoice.invoice_id == item.id)
         .gino.all()
     )
-    item.products = [product_id for product_id, in result]
+    item.products = [product_id for product_id, in result if product_id]
+
+
+async def invoices_add_related(items: Iterable[models.Invoice]):
+    for item in items:
+        await invoice_add_related(item)
+    return items
 
 
 async def get_invoice(model_id: Union[int, str]):
@@ -64,11 +69,8 @@ async def get_invoice(model_id: Union[int, str]):
     return item
 
 
-async def get_invoices():
-    items = await models.Invoice.query.gino.all()
-    for i in items:
-        await invoice_add_related(i)
-    return items
+async def get_invoices(pagination: pagination.Pagination = Depends()):
+    return await pagination.paginate(models.Invoice, postprocess=invoices_add_related)
 
 
 async def delete_invoice(model_id: int):

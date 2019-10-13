@@ -1,14 +1,17 @@
+# pylint: disable=no-member
 from datetime import datetime
 from os.path import join as path_join
-from typing import Callable, Dict, List, Type, Union
+from typing import Callable, Dict, List, Optional, Type, Union
 
 import asyncpg
-from bitcart import BTC
-from fastapi import APIRouter, BackgroundTasks, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from passlib.context import CryptContext
+from pydantic import BaseModel
 from pytz import utc
 
-from . import models, settings
+from bitcart import BTC
+
+from . import models, pagination, settings
 
 
 def now():
@@ -48,10 +51,16 @@ def model_view(
     custom_methods: Dict[str, Callable] = {},
     background_tasks_mapping: Dict[str, Callable] = {},
 ):
+    class PaginationResponse(BaseModel):
+        count: int
+        next: Optional[str]
+        previous: Optional[str]
+        result: List[pydantic_model]  # type: ignore
+
     if not create_model:
         create_model = pydantic_model
     response_models: Dict[str, Type] = {
-        "get": List[pydantic_model],  # type: ignore
+        "get": PaginationResponse,
         "get_one": pydantic_model,
         "post": pydantic_model,
         "put": pydantic_model,
@@ -69,8 +78,8 @@ def model_view(
         "delete": item_path,
     }
 
-    async def get():
-        return await orm_model.query.gino.all()
+    async def get(pagination: pagination.Pagination = Depends()):
+        return await pagination.paginate(orm_model)
 
     async def get_one(model_id: int):
         item = await orm_model.get(model_id)
@@ -128,8 +137,8 @@ def model_view(
 
     for method in allowed_methods:
         method_name = method.lower()
-        router.add_api_route(  # type: ignore
-            paths.get(method_name),
+        router.add_api_route(
+            paths.get(method_name),  # type: ignore
             custom_methods.get(method_name) or locals()[method_name],
             methods=[method_name if method in HTTP_METHODS else "get"],
             response_model=response_models.get(method_name),
