@@ -1,31 +1,21 @@
 # pylint: disable=no-member
 import asyncio
-from typing import Callable, Optional, Union
+from typing import TYPE_CHECKING, Callable, Optional, Union
 
 from fastapi import Query
+from sqlalchemy import Text, and_, or_, select, text
+from sqlalchemy.sql import select as sql_select, join
 from starlette.requests import Request
+import asyncpg
 
 from .db import db
+from . import models
+
+if TYPE_CHECKING:
+    from gino.declarative import ModelType
 
 
-class PaginationMeta(type):
-    def __new__(mcs, name, bases, namespace, *args, **kwargs):
-        cls = super(PaginationMeta, mcs).__new__(mcs, name, bases, namespace)
-        _cls__init__ = cls.__init__
-
-        def __init__(
-            self,
-            request: Request,
-            offset: int = Query(default=cls.default_offset, ge=0, le=cls.max_offset),
-            limit: int = Query(default=cls.default_limit, ge=1, le=cls.max_limit),
-        ):
-            _cls__init__(self, request, offset, limit)
-
-        setattr(cls, "__init__", __init__)
-        return cls
-
-
-class Pagination(metaclass=PaginationMeta):
+class Pagination:
     default_offset = 0
     default_limit = 5
     max_offset = None
@@ -35,18 +25,29 @@ class Pagination(metaclass=PaginationMeta):
         self,
         request: Request,
         offset: int = Query(default=default_offset, ge=0, le=max_offset),
-        limit: int = Query(default=default_limit, ge=1, le=max_limit),
+        limit: int = Query(default=default_limit, ge=-1, le=max_limit),
+        query: str = Query(default=""),
+        sort: str = Query(default=""),
+        desc: bool = Query(default=True),
     ):
         self.request = request
         self.offset = offset
         self.limit = limit
-        self.model = None
+        self.query = query
+        self.sort = sort
+        self.desc = desc
+        self.desc_s = "desc" if desc else ""
+        self.model: Optional["ModelType"] = None
 
-    async def get_count(self) -> int:
-        return await db.func.count(self.model.id).gino.scalar()  # type: ignore
+    async def get_count(self, query) -> int:
+        query = query.with_only_columns(
+            [db.func.count(self.model.id)]  # type: ignore
+        ).order_by(None)
+
+        return await query.gino.scalar()
 
     def get_next_url(self, count) -> Union[None, str]:
-        if self.offset + self.limit >= count:
+        if self.offset + self.limit >= count or self.limit == -1:
             return None
         return str(
             self.request.url.include_query_params(
@@ -67,16 +68,41 @@ class Pagination(metaclass=PaginationMeta):
             )
         )
 
-    async def get_list(self) -> list:
-        return (
-            await self.model.query.limit(self.limit)  # type: ignore
-            .offset(self.offset)
-            .gino.all()
+    async def get_list(self, query) -> list:
+        if self.limit != -1:
+            query = query.limit(self.limit)
+        if self.sort:
+            query = query.order_by(text(f"{self.sort} {self.desc_s}"))
+        try:
+            return await query.offset(self.offset).gino.all()
+        except asyncpg.exceptions.UndefinedColumnError:
+            return []
+
+    def search(self, models):
+        if not self.query:
+            return []
+        return or_(
+            *[
+                getattr(model, m.key).cast(Text).ilike(f"%{self.query}%")
+                for model in models
+                for m in model.__table__.columns
+            ]
         )
 
     async def paginate(self, model, postprocess: Optional[Callable] = None) -> dict:
         self.model = model
-        count, data = await asyncio.gather(self.get_count(), self.get_list())
+        select_from = model
+        models_l = [model]
+        for field in self.model.__table__.c:
+            if field.key.endswith("_id"):
+                modelx = getattr(models, field.key[:-3].capitalize())
+                select_from = select_from.join(modelx)
+                models_l.append(modelx)
+        query = model.query.select_from(select_from)
+        queries = self.search(models_l)
+        if queries != []:
+            query = query.where(queries)
+        count, data = await asyncio.gather(self.get_count(query), self.get_list(query))
         if postprocess:
             data = await postprocess(data)
         return {

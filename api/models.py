@@ -78,7 +78,6 @@ class Store(db.Model):
     email_port = Column(Integer)
     email_use_ssl = Column(Boolean)
     email_user = Column(String(1000))
-
     wallet = relationship("Wallet")
 
 
@@ -93,6 +92,7 @@ class Product(db.Model):
     description = Column(Text)
     image = Column(String(100))
     store_id = Column(
+        Integer,
         ForeignKey(
             "stores.id", deferrable=True, initially="DEFERRED", ondelete="SET NULL"
         ),
@@ -100,7 +100,7 @@ class Product(db.Model):
     )
     status = Column(String(1000), nullable=False)
 
-    store = relationship("Store")
+    store = relationship("Store", back_populates="products")
 
 
 class ProductxInvoice(db.Model):
