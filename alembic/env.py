@@ -18,7 +18,9 @@ fileConfig(config.config_file_name)
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
 # target_metadata = None
-from main import db, CONNECTION_STR
+import sys
+sys.path.insert(0, '.')
+from api.db import db, CONNECTION_STR
 target_metadata = db
 
 # other values from the config, defined by the needs of env.py,
