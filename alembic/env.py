@@ -18,10 +18,8 @@ fileConfig(config.config_file_name)
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
 # target_metadata = None
-from api.models import db
+from main import db, CONNECTION_STR
 target_metadata = db
-
-from main import CONNECTION_STR
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
