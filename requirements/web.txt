@@ -9,3 +9,5 @@ aioredis
 # we should wait for pull #3 to get merged
 https://github.com/MrNaif2018/nejma/archive/master.zip
 uvicorn
+alembic==1.2.1
+psycopg2-binary==2.8.3

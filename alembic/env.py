@@ -20,8 +20,8 @@ fileConfig(config.config_file_name)
 # target_metadata = None
 from api.models import db
 target_metadata = db
-#from api.models import User
-from api.db import CONNECTION_STR
+
+from main import CONNECTION_STR
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
@@ -41,6 +41,9 @@ def run_migrations_offline():
     script output.
 
     """
+    alembic_config = config.get_section(config.config_ini_section)
+    alembic_config['sqlalchemy.url'] = CONNECTION_STR
+
     url = config.get_main_option("sqlalchemy.url")
     context.configure(
         url=url,
@@ -60,7 +63,6 @@ def run_migrations_online():
     and associate a connection with the context.
 
     """
-    #import pdb; pdb.set_trace()
     alembic_config = config.get_section(config.config_ini_section)
     alembic_config['sqlalchemy.url'] = CONNECTION_STR
 
