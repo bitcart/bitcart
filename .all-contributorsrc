@@ -1,0 +1,25 @@
+{
+  "files": [
+    "README.md"
+  ],
+  "imageSize": 100,
+  "commit": false,
+  "contributors": [
+    {
+      "login": "MrNaif2018",
+      "name": "MrNaif2018",
+      "avatar_url": "https://avatars3.githubusercontent.com/u/39452697?v=4",
+      "profile": "https://github.com/MrNaif2018",
+      "contributions": [
+        "maintenance",
+        "code",
+        "doc"
+      ]
+    }
+  ],
+  "contributorsPerLine": 7,
+  "projectName": "bitcart",
+  "projectOwner": "MrNaif2018",
+  "repoType": "github",
+  "repoHost": "https://github.com"
+}
