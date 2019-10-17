@@ -26,4 +26,3 @@ async def startup():
 async def shutdown():
     if settings.TEST:
         await db.gino.drop_all()
-    await settings.btc.close()

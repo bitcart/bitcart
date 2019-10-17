@@ -157,10 +157,10 @@ class Invoice(db.Model):
         if not wallet:
             raise HTTPException(422, "No wallet linked")
         xpub = wallet.xpub
-        async with BTC(RPC_URL, rpc_user=RPC_USER, rpc_pass=RPC_PASS, xpub=xpub) as btc:
-            data_got = await btc.addrequest(
-                str(kwargs["amount"]), description=product.description
-            )
+        btc = BTC(RPC_URL, rpc_user=RPC_USER, rpc_pass=RPC_PASS, xpub=xpub)
+        data_got = await btc.addrequest(
+            str(kwargs["amount"]), description=product.description
+        )
         kwargs["bitcoin_address"] = data_got["address"]
         kwargs["bitcoin_url"] = data_got["URI"]
         kwargs.pop("products")
