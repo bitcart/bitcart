@@ -60,6 +60,7 @@ jobs:
           name: run tests
           command: |
             . venv/bin/activate
+            alembic upgrade head
             pytest --cov=.
             codecov
 

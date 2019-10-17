@@ -19,7 +19,6 @@ app.add_middleware(
 @app.on_event("startup")
 async def startup():
     await db.set_bind(CONNECTION_STR)
-    await db.gino.create_all()
 
 
 @app.on_event("shutdown")
