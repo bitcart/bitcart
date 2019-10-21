@@ -10,4 +10,4 @@ aioredis
 https://github.com/MrNaif2018/nejma/archive/master.zip
 uvicorn
 alembic==1.2.1
-psycopg2-binary==2.8.3
+psycopg2-binary==2.8.4
