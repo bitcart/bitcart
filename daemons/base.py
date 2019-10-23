@@ -46,7 +46,7 @@ class BaseDaemon:
         self.PASSWORD = self.config(f"{self.env_name}_PASSWORD", default="electrumz")
         self.NET = self.config(f"{self.env_name}_NETWORK", default="mainnet")
         self.LIGHTNING = (
-            self.config(f"{self.env_name}_LIGHTNING", cast=bool, default=True)
+            self.config(f"{self.env_name}_LIGHTNING", cast=bool, default=False)
             if self.LIGHTNING_SUPPORTED
             else False
         )
