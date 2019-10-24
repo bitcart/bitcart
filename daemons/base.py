@@ -113,8 +113,8 @@ class BaseDaemon:
             config=config, network=self.network, daemon=self.daemon
         )
 
-    async def restore_wallet(self, command_runner, xpub, config):
-        await command_runner.restore(xpub, wallet_path=config.get_wallet_path())
+    async def restore_wallet(self, command_runner, xpub, config, wallet_path):
+        await command_runner.restore(xpub, wallet_path=wallet_path)
 
     def load_cmd_wallet(self, cmd, wallet, wallet_path):
         self.daemon.add_wallet(wallet)
@@ -130,9 +130,18 @@ class BaseDaemon:
         config.set_key("currency", self.DEFAULT_CURRENCY)
         config.set_key("use_exchange_rate", True)
         if per_wallet:
-            config.fee_estimates = self.network.config.fee_estimates.copy() or {25: 1000, 10: 1000, 5: 1000, 2: 1000}
-            config.mempool_fees = self.network.config.mempool_fees.copy() or {25: 1000, 10: 1000, 5: 1000, 2: 1000}
-
+            config.fee_estimates = self.network.config.fee_estimates.copy() or {
+                25: 1000,
+                10: 1000,
+                5: 1000,
+                2: 1000,
+            }
+            config.mempool_fees = self.network.config.mempool_fees.copy() or {
+                25: 1000,
+                10: 1000,
+                5: 1000,
+                2: 1000,
+            }
 
     async def load_wallet(self, xpub):
         if xpub in self.wallets:
@@ -148,8 +157,7 @@ class BaseDaemon:
         wallet_dir = os.path.dirname(config.get_wallet_path())
         wallet_path = os.path.join(wallet_dir, xpub)
         if not os.path.exists(wallet_path):
-            config.set_key("wallet_path", wallet_path)
-            await self.restore_wallet(command_runner, xpub, config)
+            await self.restore_wallet(command_runner, xpub, config, wallet_path=wallet_path)
         storage = self.electrum.storage.WalletStorage(wallet_path)
         wallet = self.create_wallet(storage, config)
         self.load_cmd_wallet(command_runner, wallet, wallet_path)
