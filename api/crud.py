@@ -4,7 +4,7 @@ from typing import Iterable, Union
 import asyncpg
 from fastapi import BackgroundTasks, Depends, HTTPException
 
-from . import models, pagination, schemes, tasks, utils
+from . import models, pagination, schemes, tasks, utils, settings
 from .db import db
 
 
@@ -36,7 +36,7 @@ async def create_invoice(
             ).product_id
         )
     obj.products = created
-    background_tasks.add_task(tasks.poll_updates, obj, xpub, True)
+    background_tasks.add_task(tasks.poll_updates, obj, xpub, settings.TEST)
     return obj
 
 

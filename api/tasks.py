@@ -9,6 +9,15 @@ RPC_URL = settings.RPC_URL
 RPC_USER = settings.RPC_USER
 RPC_PASS = settings.RPC_PASS
 
+STATUS_MAPPING = {
+    0: "Pending",
+    3: "complete",
+    2: "invalid",
+    1: "expired",
+    4: "In progress",
+    5: "Failed",
+}
+
 
 async def poll_updates(obj: models.Invoice, xpub: str, test: bool = False):
     address = obj.bitcoin_address
@@ -19,13 +28,8 @@ async def poll_updates(obj: models.Invoice, xpub: str, test: bool = False):
         invoice_data = await btc.getrequest(address)
         if test:
             return
-        if invoice_data["status"] != "Pending":
-            if invoice_data["status"] == "Unknown":
-                status = "invalid"
-            if invoice_data["status"] == "Expired":
-                status = "expired"
-            if invoice_data["status"] == "Paid":
-                status = "complete"
+        if invoice_data["status"] != 0:
+            status = STATUS_MAPPING[invoice_data["status"]]
             await obj.update(status=status).apply()
             await settings.layer.group_send(obj.id, {"status": status})
             return

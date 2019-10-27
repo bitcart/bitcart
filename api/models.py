@@ -124,6 +124,8 @@ class MyUpdateRequest(UpdateRequest):
         await ProductxInvoice.delete.where(
             ProductxInvoice.invoice_id == self._instance.id
         ).gino.status()
+        if self.products is None:
+            self.products = self._instance.products
         for i in self.products:
             await ProductxInvoice.create(invoice_id=self._instance.id, product_id=i)
         self._instance.products = self.products
