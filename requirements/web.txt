@@ -4,7 +4,7 @@ email-validator
 pytz
 gino
 passlib[bcrypt]
-bitcart-async==0.8.0.post4
+bitcart-async==0.8.1
 aioredis
 # we should wait for pull #3 to get merged
 https://github.com/MrNaif2018/nejma/archive/master.zip
