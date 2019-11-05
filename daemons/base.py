@@ -1,3 +1,4 @@
+# pylint: disable=method-hidden
 import asyncio
 import functools
 import inspect
@@ -7,8 +8,13 @@ from base64 import b64decode
 from types import ModuleType
 from typing import Union
 
-from aiohttp import web, ClientSession
+from aiohttp import ClientSession
+from aiohttp import __version__ as aiohttp_version
+from aiohttp import web
 from decouple import AutoConfig
+from pkg_resources import parse_version
+
+LEGACY_AIOHTTP = parse_version(aiohttp_version) < parse_version("4.0.0a0")
 
 
 def rpc(f):
@@ -152,12 +158,14 @@ class BaseDaemon:
         command_runner = self.create_commands(config)
         if not xpub:
             return None, command_runner, config
-        
+
         # get wallet on disk
         wallet_dir = os.path.dirname(config.get_wallet_path())
         wallet_path = os.path.join(wallet_dir, xpub)
         if not os.path.exists(wallet_path):
-            await self.restore_wallet(command_runner, xpub, config, wallet_path=wallet_path)
+            await self.restore_wallet(
+                command_runner, xpub, config, wallet_path=wallet_path
+            )
         storage = self.electrum.storage.WalletStorage(wallet_path)
         wallet = self.create_wallet(storage, config)
         self.load_cmd_wallet(command_runner, wallet, wallet_path)
@@ -198,7 +206,10 @@ class BaseDaemon:
                     "id": None,
                 }
             )
-        data = await request.json()
+        if not LEGACY_AIOHTTP:
+            data = await request.json(content_type=None)  # aiohttp 4.0
+        else:
+            data = await request.json()
         method = data.get("method")
         id = data.get("id", None)
         params = data.get("params", [])
@@ -384,7 +395,9 @@ class BaseDaemon:
 
     @rpc
     def get_tx_size(self, raw_tx: dict, wallet=None) -> int:
-        return self.electrum.transaction.Transaction(raw_tx).estimated_size()
+        return self.electrum.transaction.Transaction(
+            raw_tx
+        ).estimated_size()  # type: ignore
 
     @rpc
     def get_default_fee(self, tx: Union[dict, int], wallet=None) -> float:
@@ -395,4 +408,3 @@ class BaseDaemon:
     @rpc
     def configure_notifications(self, notification_url, wallet=None):
         self.wallets_config[wallet]["notification_url"] = notification_url
-
