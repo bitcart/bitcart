@@ -1,9 +1,11 @@
 # pylint: disable=no-member
 import os
 
-from bitcart import BTC
 from fastapi import HTTPException
+from gino.crud import UpdateRequest
 from sqlalchemy.orm import relationship
+
+from bitcart import BTC
 
 from . import settings, utils
 from .db import db
@@ -58,6 +60,15 @@ class Wallet(db.Model):
     user_id = Column(Integer, ForeignKey(User.id, ondelete="SET NULL"))
     user = relationship(User, backref="wallets")
 
+    @classmethod
+    async def create(cls, **kwargs):
+        if await BTC(RPC_URL, rpc_user=RPC_USER, rpc_pass=RPC_PASS).validate_key(
+            kwargs.get("xpub")
+        ):
+            return await super().create(**kwargs)
+        else:
+            raise HTTPException(422, "Wallet key invalid")
+
 
 class Store(db.Model):
     __tablename__ = "stores"
@@ -110,9 +121,6 @@ class ProductxInvoice(db.Model):
     invoice_id = Column(Integer, ForeignKey("invoices.id", ondelete="SET NULL"))
 
 
-from gino.crud import UpdateRequest
-
-
 class MyUpdateRequest(UpdateRequest):
     def update(self, **kwargs):
         self.products = kwargs.get("products")
@@ -125,7 +133,7 @@ class MyUpdateRequest(UpdateRequest):
             ProductxInvoice.invoice_id == self._instance.id
         ).gino.status()
         if self.products is None:
-            self.products = self._instance.products
+            self.products = []
         for i in self.products:
             await ProductxInvoice.create(invoice_id=self._instance.id, product_id=i)
         self._instance.products = self.products
@@ -167,4 +175,3 @@ class Invoice(db.Model):
         kwargs["bitcoin_url"] = data_got["URI"]
         kwargs.pop("products")
         return await super().create(**kwargs), xpub
-

@@ -1,8 +1,13 @@
+import asyncio
 import warnings
 
-from bitcart import BTC
+import dramatiq
+import redis
+from dramatiq.brokers.redis import RedisBroker
 from nejma.layers import RedisLayer
 from starlette.config import Config
+
+from bitcart import BTC
 
 config = Config("conf/.env")
 
@@ -32,3 +37,30 @@ with warnings.catch_warnings():  # it is supposed
     btc = BTC(RPC_URL, rpc_user=RPC_USER, rpc_pass=RPC_PASS)
 # initialize redis layer
 layer = RedisLayer(REDIS_HOST)
+loop = asyncio.get_event_loop()
+
+
+def run_sync(f):
+    def wrapper(*args, **kwargs):
+        return loop.run_until_complete(f(*args, **kwargs))
+
+    return wrapper
+
+
+shutdown = asyncio.Event(loop=loop)
+
+
+class InitDB(dramatiq.Middleware):
+    @run_sync
+    async def before_worker_boot(self, broker, worker):
+        from . import db
+
+        await db.db.set_bind(db.CONNECTION_STR)
+
+    def before_worker_shutdown(self, broker, worker):
+        shutdown.set()
+
+
+redis_broker = RedisBroker(connection_pool=redis.ConnectionPool.from_url(REDIS_HOST))
+redis_broker.add_middleware(InitDB())
+dramatiq.set_broker(redis_broker)

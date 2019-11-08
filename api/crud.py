@@ -2,7 +2,7 @@
 from typing import Iterable, Union
 
 import asyncpg
-from fastapi import BackgroundTasks, Depends, HTTPException
+from fastapi import Depends, HTTPException
 
 from . import models, pagination, schemes, tasks, utils, settings
 from .db import db
@@ -22,9 +22,7 @@ async def create_user(user: schemes.CreateUser):
     )
 
 
-async def create_invoice(
-    invoice: schemes.CreateInvoice, background_tasks: BackgroundTasks
-):
+async def create_invoice(invoice: schemes.CreateInvoice):
     d = invoice.dict()
     products = d.get("products")
     obj, xpub = await models.Invoice.create(**d)
@@ -36,7 +34,7 @@ async def create_invoice(
             ).product_id
         )
     obj.products = created
-    background_tasks.add_task(tasks.poll_updates, obj, xpub, settings.TEST)
+    tasks.poll_updates.send(obj.id, xpub, settings.TEST)
     return obj
 
 

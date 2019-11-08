@@ -169,7 +169,7 @@ class BaseDaemon:
         storage = self.electrum.storage.WalletStorage(wallet_path)
         wallet = self.create_wallet(storage, config)
         self.load_cmd_wallet(command_runner, wallet, wallet_path)
-        while not wallet.is_up_to_date():
+        while self.network.is_connected() and not wallet.is_up_to_date():
             await asyncio.sleep(0.1)
         self.wallets[xpub] = {"wallet": wallet, "cmd": command_runner, "config": config}
         self.wallets_config[xpub] = {"events": set(), "notification_url": None}
@@ -353,6 +353,12 @@ class BaseDaemon:
         else:
             return None, None
         return data, wallet
+
+    @rpc
+    def validatekey(self, key, wallet=None):
+        return self.electrum.keystore.is_master_key(
+            key
+        ) or self.electrum.keystore.is_seed(key)
 
     @rpc
     def get_updates(self, wallet):

@@ -4,7 +4,7 @@ from os.path import join as path_join
 from typing import Callable, Dict, List, Optional, Type, Union
 
 import asyncpg
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from passlib.context import CryptContext
 from pydantic import BaseModel
 from pytz import utc
@@ -90,7 +90,7 @@ def model_view(
         return item
 
     async def post(
-        model: create_model, background_tasks: BackgroundTasks  # type: ignore
+        model: create_model  # type: ignore
     ):
         try:
             obj = await orm_model.create(**model.dict())  # type: ignore
@@ -101,7 +101,7 @@ def model_view(
         ) as e:
             raise HTTPException(422, e.message)
         if background_tasks_mapping.get("post"):
-            background_tasks.add_task(background_tasks_mapping["post"], obj)
+            background_tasks_mapping["post"].send(obj.id)
         return obj
 
     async def put(model_id: int, model: pydantic_model):  # type: ignore
