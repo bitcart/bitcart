@@ -1,16 +1,16 @@
-import electrum
+import electrum_bsty
 from aiohttp import web
 
 from base import BaseDaemon
 
 
-class BTCDaemon(BaseDaemon):
-    name = "BTC"
-    electrum = electrum
-    DEFAULT_PORT = 5000
+class BSTYDaemon(BaseDaemon):
+    name = "BSTY"
+    electrum = electrum_bsty
+    DEFAULT_PORT = 5003
 
 
-daemon = BTCDaemon()
+daemon = BSTYDaemon()
 
 app = web.Application()
 app.router.add_post("/", daemon.handle_request)

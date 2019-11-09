@@ -1,7 +1,7 @@
 import electrum_gzro
 from aiohttp import web
 
-from base import BaseDaemon, rpc
+from base import BaseDaemon
 
 
 class GZRODaemon(BaseDaemon):
