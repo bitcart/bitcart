@@ -67,6 +67,8 @@ class BaseDaemon:
         self.PORT = self.config(
             f"{self.env_name}_PORT", cast=int, default=self.DEFAULT_PORT
         )
+        self.SERVER = self.config(f"{self.env_name}_SERVER",default="")
+        self.ONESERVER = self.config(f"{self.env_name}_ONESERVER",cast=bool,default=False)
         self.supported_methods = {
             func.__name__: func
             for func in (getattr(self, name) for name in dir(self))
@@ -134,6 +136,9 @@ class BaseDaemon:
         config.set_key("verbosity", self.VERBOSE)
         config.set_key("lightning", self.LIGHTNING)
         config.set_key("currency", self.DEFAULT_CURRENCY)
+        config.set_key("server",self.SERVER)
+        config.set_key("oneserver",self.ONESERVER)
+        
         config.set_key("use_exchange_rate", True)
         if per_wallet:
             config.fee_estimates = self.network.config.fee_estimates.copy() or {
