@@ -128,12 +128,12 @@ def test_rate(client: TestClient):
 
 def test_wallet_history(client: TestClient):
     assert client.get("/wallet_history/1").status_code == 404
-    assert client.get("/wallet_history/2").status_code == 404
-    resp = client.get("/wallet_history/3")
+    assert client.get("/wallet_history/3").status_code == 404
+    resp = client.get("/wallet_history/2")
     client.post("/wallets", json={"name": "test7", "user_id": 2, "xpub": TEST_XPUB})
     assert resp.status_code == 200
     assert resp.json() == []
-    resp1 = client.get("/wallet_history/5")
+    resp1 = client.get("/wallet_history/4")
     assert resp1.status_code == 200
     data2 = resp1.json()
     assert len(data2) == 1
