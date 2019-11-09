@@ -61,6 +61,7 @@ jobs:
           command: |
             . venv/bin/activate
             alembic upgrade head
+            sleep 2s
             pytest --cov=.
             codecov
 
