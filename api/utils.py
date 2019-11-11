@@ -120,7 +120,7 @@ def model_view(
         result: List[display_model]  # type: ignore
 
     if not create_model:
-        create_model = pydantic_model
+        create_model = pydantic_model  # pragma: no cover
     response_models: Dict[str, Type] = {
         "get": PaginationResponse,
         "get_one": display_model,
@@ -195,7 +195,7 @@ def model_view(
         item = await get_one(model_id)
         try:
             if custom_methods.get("put"):
-                await custom_methods["put"](item, model, user)
+                await custom_methods["put"](item, model, user)  # pragma: no cover
             else:
                 await item.update(**model.dict()).apply()  # type: ignore
         except (
@@ -214,17 +214,17 @@ def model_view(
         item = await get_one(model_id)
         try:
             if custom_methods.get("patch"):
-                await custom_methods["patch"](item, model, user)
+                await custom_methods["patch"](item, model, user)  # pragma: no cover
             else:
                 await item.update(
                     **model.dict(skip_defaults=True)  # type: ignore
                 ).apply()
-        except (
+        except (  # pragma: no cover
             asyncpg.exceptions.UniqueViolationError,
             asyncpg.exceptions.NotNullViolationError,
             asyncpg.exceptions.ForeignKeyViolationError,
         ) as e:
-            raise HTTPException(422, e.message)
+            raise HTTPException(422, e.message)  # pragma: no cover
         return item
 
     async def delete(

@@ -1,7 +1,11 @@
 import json
+from datetime import datetime, timedelta
 from typing import Dict, List, Union
 
+import jwt
 from starlette.testclient import TestClient
+
+from api.settings import ALGORITHM, SECRET_KEY
 
 TEST_XPUB = "tpubDD5MNJWw35y3eoJA7m3kFWsyX5SaUgx2Y3AaGwFk1pjYsHvpgDwRhrStRbCGad8dYzZCkLCvbGKfPuBiG7BabswmLofb7c2yfQFhjqSjaGi"
 
@@ -237,3 +241,42 @@ def test_superuseronly(client: TestClient, token: str):
         == 200
     )
 
+
+def test_invalidjwt(client: TestClient, token: str):
+    assert (
+        client.get(
+            "/wallets", headers={"Authorization": f"Bearer {token[0:5]}"}
+        ).status_code
+        == 401
+    )
+    invalid_username_jwt = jwt.encode(
+        {"sub": "wronguser", "exp": datetime.utcnow() + timedelta(minutes=10)},
+        SECRET_KEY,
+        algorithm=ALGORITHM,
+    ).decode()
+    assert (
+        client.get(
+            "/wallets", headers={"Authorization": f"Bearer {invalid_username_jwt}"}
+        ).status_code
+        == 401
+    )
+    no_username_jwt = jwt.encode(
+        {"sub": None, "exp": datetime.utcnow() + timedelta(minutes=10)},
+        SECRET_KEY,
+        algorithm=ALGORITHM,
+    ).decode()
+    assert (
+        client.get(
+            "/wallets", headers={"Authorization": f"Bearer {no_username_jwt}"}
+        ).status_code
+        == 401
+    )
+    expired_jwt = jwt.encode(
+        {"sub": "testauth", "exp": -999}, SECRET_KEY, algorithm=ALGORITHM
+    ).decode()
+    assert (
+        client.get(
+            "/wallets", headers={"Authorization": f"Bearer {expired_jwt}"}
+        ).status_code
+        == 401
+    )

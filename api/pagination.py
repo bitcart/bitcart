@@ -12,7 +12,7 @@ from .db import db
 from . import models
 
 if TYPE_CHECKING:
-    from gino.declarative import ModelType
+    from gino.declarative import ModelType  # pragma: no cover
 
 
 class Pagination:

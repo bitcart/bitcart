@@ -11,5 +11,6 @@ omit =
     manage.py,
     venv/*,
     env/*,
+    ~/envs/bitcart/*
     *__init__.py
     
