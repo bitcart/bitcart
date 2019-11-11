@@ -59,8 +59,9 @@ def create_access_token(
 
 
 class AuthDependency:
-    def __init__(self, enabled: bool = True):
+    def __init__(self, enabled: bool = True, superuser_only: bool = False):
         self.enabled = enabled
+        self.superuser_only = superuser_only
 
     async def __call__(self, request: Request):
         if not self.enabled:
@@ -87,6 +88,8 @@ class AuthDependency:
             models.User.username == token_data.username
         ).gino.first()
         if user is None:
+            raise credentials_exception
+        if self.superuser_only and not user.is_superuser:
             raise credentials_exception
         return user
 
@@ -137,7 +140,7 @@ def model_view(
         "delete": item_path,
     }
 
-    auth_dependency = AuthDependency(auth)
+    auth_dependency = AuthDependency(auth, create_model == schemes.CreateUser)
 
     async def get(
         pagination: pagination.Pagination = Depends(),

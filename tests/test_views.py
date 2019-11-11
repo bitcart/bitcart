@@ -200,3 +200,40 @@ def test_create_token(client: TestClient):
     j = resp.json()
     assert j.get("access_token")
     assert j["token_type"] == "bearer"
+
+
+def test_noauth(client: TestClient):
+    assert client.get("/users").status_code == 401
+    assert client.get("/wallets").status_code == 401
+    assert client.get("/stores").status_code == 401
+    assert client.get("/products").status_code == 401
+    assert client.get("/invoices").status_code == 401
+    assert (
+        client.post(
+            "/users", json={"username": "noauth", "password": "noauth"}
+        ).status_code
+        == 200
+    )
+    assert (
+        client.post(
+            "/token", json={"username": "noauth", "password": "noauth"}
+        ).status_code
+        == 200
+    )
+
+
+def test_superuseronly(client: TestClient, token: str):
+    token_usual = client.post(
+        "/token", json={"username": "noauth", "password": "noauth"}
+    ).json()["access_token"]
+    assert (
+        client.get(
+            "/users", headers={"Authorization": f"Bearer {token_usual}"}
+        ).status_code
+        == 401
+    )
+    assert (
+        client.get("/users", headers={"Authorization": f"Bearer {token}"}).status_code
+        == 200
+    )
+
