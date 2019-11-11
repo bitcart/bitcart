@@ -3,7 +3,6 @@
         {
             "data": {
                 "name": "test",
-                "user_id": 2,
                 "xpub": ""
             },
             "status": "bad"
@@ -11,14 +10,13 @@
         {
             "data": {
                 "name": "test1",
-                "user_id": 2,
                 "xpub": "tpubDC9zYPoSZUk5W8Rfaex3k324fi1hDLHapbSjPd4gbr7AE8MLSGEy76fNp5m6sVLBy9p2iTjRkiguVyb8iEHCdUBC7SXnhHdHMpXwFcrVMyA"
             },
             "status": "good",
             "return_data": {
                 "id": 1,
                 "name": "test1",
-                "user_id": 2,
+                "user_id": 1,
                 "xpub": "tpubDC9zYPoSZUk5W8Rfaex3k324fi1hDLHapbSjPd4gbr7AE8MLSGEy76fNp5m6sVLBy9p2iTjRkiguVyb8iEHCdUBC7SXnhHdHMpXwFcrVMyA",
                 "balance": 0
             }
@@ -26,14 +24,13 @@
         {
             "data": {
                 "name": "test5",
-                "user_id": 2,
                 "xpub": "tpubDD1g867nDN1JyfNAjHNWrL2XNg98y6gM1W82C4nxqxGq5QPEFCtxYLFGgi7GrBwu4TczHRnwXic81BZ2FKBwmKvQdRJpNdfXPtAmtzBkD1A"
             },
             "status": "good",
             "return_data": {
                 "id": 2,
                 "name": "test5",
-                "user_id": 2,
+                "user_id": 1,
                 "xpub": "tpubDD1g867nDN1JyfNAjHNWrL2XNg98y6gM1W82C4nxqxGq5QPEFCtxYLFGgi7GrBwu4TczHRnwXic81BZ2FKBwmKvQdRJpNdfXPtAmtzBkD1A",
                 "balance": 0
             }
@@ -41,7 +38,6 @@
         {
             "data": {
                 "name": "test1",
-                "user_id": 2,
                 "xpub": "tpubDC9zYPoSZUk5W8Rfaex3k324fi1hDLHapbSjPd4gbr7AE8MLSGEy76fNp5m6sVLBy9p2iTjRkiguVyb8iEHCdUBC7SXnhHdHMpXwFcrVMyA"
             },
             "status": "bad"
@@ -75,7 +71,7 @@
             "return_data": [
                 {
                     "name": "test1",
-                    "user_id": 2,
+                    "user_id": 1,
                     "xpub": "tpubDC9zYPoSZUk5W8Rfaex3k324fi1hDLHapbSjPd4gbr7AE8MLSGEy76fNp5m6sVLBy9p2iTjRkiguVyb8iEHCdUBC7SXnhHdHMpXwFcrVMyA",
                     "balance": 0.0,
                     "id": 1
@@ -83,7 +79,7 @@
                 {
                     "id": 2,
                     "name": "test5",
-                    "user_id": 2,
+                    "user_id": 1,
                     "xpub": "tpubDD1g867nDN1JyfNAjHNWrL2XNg98y6gM1W82C4nxqxGq5QPEFCtxYLFGgi7GrBwu4TczHRnwXic81BZ2FKBwmKvQdRJpNdfXPtAmtzBkD1A",
                     "balance": 0
                 }
@@ -96,7 +92,7 @@
             "status": "good",
             "return_data": {
                 "name": "test1",
-                "user_id": 2,
+                "user_id": 1,
                 "xpub": "tpubDC9zYPoSZUk5W8Rfaex3k324fi1hDLHapbSjPd4gbr7AE8MLSGEy76fNp5m6sVLBy9p2iTjRkiguVyb8iEHCdUBC7SXnhHdHMpXwFcrVMyA",
                 "balance": 0.0,
                 "id": 1
@@ -115,13 +111,12 @@
         {
             "obj_id": 1,
             "data": {
-                "name": "test2",
-                "user_id": 2
+                "name": "test2"
             },
             "status": "good",
             "return_data": {
                 "name": "test2",
-                "user_id": 2,
+                "user_id": 1,
                 "xpub": "tpubDC9zYPoSZUk5W8Rfaex3k324fi1hDLHapbSjPd4gbr7AE8MLSGEy76fNp5m6sVLBy9p2iTjRkiguVyb8iEHCdUBC7SXnhHdHMpXwFcrVMyA",
                 "balance": 0.0,
                 "id": 1
@@ -132,13 +127,13 @@
             "data": {
                 "name": "test3"
             },
-            "status": "bad"
+            "status": "not found"
         },
         {
             "obj_id": 3,
             "data": {
                 "name": "test2",
-                "user_id": 3
+                "user_id": 4
             },
             "status": "not found"
         }
@@ -149,7 +144,14 @@
             "data": {
                 "name": "test"
             },
-            "status": "bad"
+            "status": "good",
+            "return_data": {
+                "name": "test",
+                "user_id": 1,
+                "xpub": "",
+                "balance": 0.0,
+                "id": 1
+            }
         },
         {
             "obj_id": 1,
@@ -164,20 +166,26 @@
                 "id": null,
                 "name": "test"
             },
-            "status": "bad"
+            "status": "good",
+            "return_data": {
+                "name": "test",
+                "user_id": 1,
+                "xpub": "",
+                "balance": 0.0,
+                "id": 1
+            }
         },
         {
             "obj_id": 1,
             "data": {
                 "id": 1,
                 "name": "test1",
-                "user_id": 2,
                 "xpub": "tpubDC9zYPoSZUk5W8Rfaex3k324fi1hDLHapbSjPd4gbr7AE8MLSGEy76fNp5m6sVLBy9p2iTjRkiguVyb8iEHCdUBC7SXnhHdHMpXwFcrVMyA"
             },
             "status": "good",
             "return_data": {
                 "name": "test1",
-                "user_id": 2,
+                "user_id": 1,
                 "xpub": "tpubDC9zYPoSZUk5W8Rfaex3k324fi1hDLHapbSjPd4gbr7AE8MLSGEy76fNp5m6sVLBy9p2iTjRkiguVyb8iEHCdUBC7SXnhHdHMpXwFcrVMyA",
                 "balance": 0.0,
                 "id": 1
@@ -194,7 +202,7 @@
             "status": "good",
             "return_data": {
                 "name": "test1",
-                "user_id": 2,
+                "user_id": 1,
                 "xpub": "tpubDC9zYPoSZUk5W8Rfaex3k324fi1hDLHapbSjPd4gbr7AE8MLSGEy76fNp5m6sVLBy9p2iTjRkiguVyb8iEHCdUBC7SXnhHdHMpXwFcrVMyA",
                 "balance": 0.0,
                 "id": 1

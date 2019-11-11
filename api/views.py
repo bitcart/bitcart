@@ -1,9 +1,9 @@
 import secrets
+from datetime import timedelta
 from typing import List
 
 from fastapi import APIRouter, HTTPException
 from nejma.ext.starlette import WebSocketEndpoint
-from nejma.layers import Channel
 from starlette.status import WS_1008_POLICY_VIOLATION
 
 from . import crud, models, schemes, settings, tasks, utils
@@ -15,15 +15,18 @@ utils.model_view(
     "/users",
     models.User,
     schemes.User,
+    schemes.CreateUser,
     custom_methods={"post": crud.create_user},
 )
 utils.model_view(
     router,
     "/wallets",
     models.Wallet,
-    schemes.Wallet,
     schemes.CreateWallet,
+    schemes.CreateWallet,
+    schemes.Wallet,
     background_tasks_mapping={"post": tasks.sync_wallet},
+    custom_methods={"post": crud.create_wallet},
 )
 utils.model_view(router, "/stores", models.Store, schemes.Store, schemes.CreateStore)
 utils.model_view(
@@ -68,8 +71,11 @@ async def create_token(input_token: schemes.CreateToken):
     user = await utils.authenticate_user(input_token.username, input_token.password)
     if not user:
         raise HTTPException(401, "Unauthorized")
-    token = await models.Token.create(user)
-    return {"token": token.key}
+    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = utils.create_access_token(
+        data={"sub": user.username}, expires_delta=access_token_expires
+    )
+    return {"access_token": access_token, "token_type": "bearer"}
 
 
 @router.websocket_route("/ws/wallets/{wallet}")

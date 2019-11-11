@@ -36,11 +36,13 @@ class CreateToken(BaseModel):
     password: str
 
 
+class TokenData(BaseModel):
+    username: str = None
+
+
 class CreateWallet(BaseModel):
     name: str
     xpub: str = ""
-    balance: Decimal = Decimal(0)
-    user_id: int
 
     class Config:
         orm_mode = True
@@ -48,6 +50,8 @@ class CreateWallet(BaseModel):
 
 class Wallet(CreateWallet):
     id: Optional[int]
+    user_id: int
+    balance: Decimal = Decimal(0)
 
 
 class CreateStore(BaseModel):

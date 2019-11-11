@@ -20,7 +20,8 @@ fileConfig(config.config_file_name)
 # target_metadata = None
 import sys
 sys.path.insert(0, '.')
-from api.db import db, CONNECTION_STR
+from api.db import CONNECTION_STR
+from api.models import db
 target_metadata = db
 
 # other values from the config, defined by the needs of env.py,

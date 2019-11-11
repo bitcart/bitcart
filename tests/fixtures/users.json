@@ -9,19 +9,19 @@
             "return_data": {
                 "email": null,
                 "username": "test",
-                "id": 1
+                "id": 2
             }
         },
         {
             "data": {
-                "username": "test",
+                "username": "test44",
                 "password": 12345
             },
             "status": "good",
             "return_data": {
                 "email": null,
-                "username": "test",
-                "id": 2
+                "username": "test44",
+                "id": 3
             }
         },
         {
@@ -47,13 +47,18 @@
             "return_data": [
                 {
                     "email": null,
-                    "username": "test",
+                    "username": "testauth",
                     "id": 1
                 },
                 {
                     "email": null,
                     "username": "test",
                     "id": 2
+                },
+                {
+                    "email": null,
+                    "username": "test44",
+                    "id": 3
                 }
             ]
         }
@@ -64,7 +69,7 @@
             "status": "good",
             "return_data": {
                 "email": null,
-                "username": "test",
+                "username": "testauth",
                 "id": 1
             }
         },
@@ -73,13 +78,13 @@
             "status": "bad"
         },
         {
-            "obj_id": 3,
+            "obj_id": 4,
             "status": "not found"
         }
     ],
     "partial_update": [
         {
-            "obj_id": 1,
+            "obj_id": 2,
             "data": {
                 "username": "test1"
             },
@@ -87,11 +92,11 @@
             "return_data": {
                 "email": null,
                 "username": "test1",
-                "id": 1
+                "id": 2
             }
         },
         {
-            "obj_id": 1,
+            "obj_id": 2,
             "data": {
                 "username": "test1",
                 "email": "test@example.com"
@@ -100,11 +105,11 @@
             "return_data": {
                 "email": "test@example.com",
                 "username": "test1",
-                "id": 1
+                "id": 2
             }
         },
         {
-            "obj_id": 1,
+            "obj_id": 2,
             "data": {
                 "username": "test1",
                 "email": "test"
@@ -114,21 +119,21 @@
     ],
     "full_update": [
         {
-            "obj_id": 1,
+            "obj_id": 2,
             "data": {
                 "username": "test"
             },
             "status": "bad"
         },
         {
-            "obj_id": 1,
+            "obj_id": 2,
             "data": {
                 "id": null
             },
             "status": "bad"
         },
         {
-            "obj_id": 1,
+            "obj_id": 2,
             "data": {
                 "id": null,
                 "username": "test"
@@ -136,35 +141,35 @@
             "status": "bad"
         },
         {
-            "obj_id": 1,
+            "obj_id": 2,
             "data": {
-                "id": 1,
+                "id": 2,
                 "username": "test"
             },
             "status": "good",
             "return_data": {
                 "email": null,
                 "username": "test",
-                "id": 1
+                "id": 2
             }
         }
     ],
     "delete": [
         {
-            "obj_id": 3,
+            "obj_id": 4,
             "status": "not found"
         },
         {
-            "obj_id": 1,
+            "obj_id": 2,
             "status": "good",
             "return_data": {
                 "email": null,
                 "username": "test",
-                "id": 1
+                "id": 2
             }
         },
         {
-            "obj_id": 1,
+            "obj_id": 2,
             "status": "not found"
         }
     ]
