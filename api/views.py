@@ -10,11 +10,39 @@ from . import crud, models, schemes, settings, tasks, utils
 
 router = APIRouter()
 
+
+def get_user():
+    return models.User
+
+
+def get_wallet():
+    return models.User.join(models.Wallet)
+
+
+def get_store():
+    return models.Store.join(models.Wallet).join(models.User)
+
+
+def get_product():
+    return models.User.join(models.Wallet).join(models.Store).join(models.Product)
+
+
+def get_invoice():
+    return (
+        models.User.join(models.Wallet)
+        .join(models.Store)
+        .join(models.Product)
+        .join(models.ProductxInvoice)
+        .join(models.Invoice)
+    )
+
+
 utils.model_view(
     router,
     "/users",
     models.User,
     schemes.User,
+    get_user,
     schemes.CreateUser,
     custom_methods={"post": crud.create_user},
 )
@@ -23,20 +51,29 @@ utils.model_view(
     "/wallets",
     models.Wallet,
     schemes.CreateWallet,
+    get_wallet,
     schemes.CreateWallet,
     schemes.Wallet,
     background_tasks_mapping={"post": tasks.sync_wallet},
     custom_methods={"post": crud.create_wallet},
 )
-utils.model_view(router, "/stores", models.Store, schemes.Store, schemes.CreateStore)
 utils.model_view(
-    router, "/products", models.Product, schemes.Product, schemes.CreateProduct
+    router, "/stores", models.Store, schemes.Store, get_store, schemes.CreateStore
+)
+utils.model_view(
+    router,
+    "/products",
+    models.Product,
+    schemes.Product,
+    get_product,
+    schemes.CreateProduct,
 )
 utils.model_view(
     router,
     "/invoices",
     models.Invoice,
     schemes.Invoice,
+    get_invoice,
     schemes.CreateInvoice,
     custom_methods={
         "get": crud.get_invoices,

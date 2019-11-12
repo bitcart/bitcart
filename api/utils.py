@@ -102,6 +102,7 @@ def model_view(
     path: str,
     orm_model,
     pydantic_model,
+    get_data_source,
     create_model=None,
     display_model=None,
     allowed_methods: List[str] = ["GET_ONE"] + HTTP_METHODS,
@@ -147,17 +148,24 @@ def model_view(
         user: Union[None, schemes.User] = Depends(auth_dependency),
     ):
         if custom_methods.get("get"):
-            return await custom_methods["get"](pagination, user)
+            return await custom_methods["get"](pagination, user, get_data_source())
         else:
-            return await pagination.paginate(orm_model)
+            return await pagination.paginate(orm_model, get_data_source(), user.id)
 
     async def get_one(
         model_id: int, user: Union[None, schemes.User] = Depends(auth_dependency)
     ):
+        item = await (
+            (
+                orm_model.query.select_from(get_data_source())
+                if orm_model != models.User
+                else orm_model.query
+            )
+            .where(orm_model.id == model_id)
+            .gino.first()
+        )
         if custom_methods.get("get_one"):
-            item = await custom_methods["get_one"](model_id, user)
-        else:
-            item = await orm_model.get(model_id)
+            item = await custom_methods["get_one"](model_id, user, item)
         if not item:
             raise HTTPException(
                 status_code=404, detail=f"Object with id {model_id} does not exist!"

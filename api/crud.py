@@ -57,14 +57,17 @@ async def invoices_add_related(items: Iterable[models.Invoice]):
     return items
 
 
-async def get_invoice(model_id: int, user: schemes.User):
-    item = await models.Invoice.get(model_id)
+async def get_invoice(model_id: int, user: schemes.User, item: models.Invoice):
     await invoice_add_related(item)
     return item
 
 
-async def get_invoices(pagination: pagination.Pagination, user: schemes.User):
-    return await pagination.paginate(models.Invoice, postprocess=invoices_add_related)
+async def get_invoices(
+    pagination: pagination.Pagination, user: schemes.User, data_source
+):
+    return await pagination.paginate(
+        models.Invoice, data_source, user.id, postprocess=invoices_add_related
+    )
 
 
 async def delete_invoice(item: schemes.Invoice, user: schemes.User):
