@@ -203,6 +203,20 @@ def test_create_token(client: TestClient):
     assert resp.status_code == 200
     j = resp.json()
     assert j.get("access_token")
+    assert j.get("refresh_token")
+    assert j["token_type"] == "bearer"
+
+
+def test_refresh_token(client: TestClient):
+    resp = client.post("/token", json={"username": "test44", "password": 12345})
+    assert resp.status_code == 200
+    resp = resp.json()
+    assert resp.get("refresh_token")
+    resp1 = client.post("/refresh_token", json={"token": resp["refresh_token"]})
+    assert resp1.status_code == 200
+    j = resp1.json()
+    assert j.get("access_token")
+    assert j.get("refresh_token")
     assert j["token_type"] == "bearer"
 
 

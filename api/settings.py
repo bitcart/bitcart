@@ -17,6 +17,7 @@ SECRET_KEY = config(
     default="2b74518b0caf3755b622eb10c00216a50b6884e1adfc362ab52d506c91f9ebcb",
 )
 ACCESS_TOKEN_EXPIRE_MINUTES = config("JWT_EXPIRE", cast=int, default=15)
+REFRESH_EXPIRE_DAYS = config("REFRESH_EXPIRE", cast=int, default=7)
 ALGORITHM = config("JWT_ALGORITHM", default="HS256")
 
 # bitcart-related

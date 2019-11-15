@@ -4,6 +4,7 @@ from typing import List
 
 from fastapi import APIRouter, HTTPException
 from nejma.ext.starlette import WebSocketEndpoint
+from starlette.requests import Request
 from starlette.status import WS_1008_POLICY_VIOLATION
 
 from . import crud, models, schemes, settings, tasks, utils
@@ -103,16 +104,40 @@ async def wallet_history(wallet: int):
     return response
 
 
+def create_tokens(user: models.User):
+    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = utils.create_access_token(
+        data={"sub": user.username},
+        token_type="access",
+        expires_delta=access_token_expires,
+    )
+    refresh_token_expires = timedelta(days=settings.REFRESH_EXPIRE_DAYS)
+    refresh_token = utils.create_access_token(
+        data={"sub": user.username},
+        token_type="refresh",
+        expires_delta=refresh_token_expires,
+    )
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "token_type": "bearer",
+    }
+
+
 @router.post("/token")
 async def create_token(input_token: schemes.CreateToken):
     user = await utils.authenticate_user(input_token.username, input_token.password)
     if not user:
         raise HTTPException(401, "Unauthorized")
-    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = utils.create_access_token(
-        data={"sub": user.username}, expires_delta=access_token_expires
+    return create_tokens(user)
+
+
+@router.post("/refresh_token")
+async def refresh_token(request: Request, refresh_token: schemes.RefreshToken):
+    user = await utils.AuthDependency(token=refresh_token.token, token_type="refresh")(
+        request
     )
-    return {"access_token": access_token, "token_type": "bearer"}
+    return create_tokens(user)
 
 
 @router.websocket_route("/ws/wallets/{wallet}")

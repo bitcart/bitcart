@@ -47,11 +47,11 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/token")
 
 
 def create_access_token(
-    *, data: dict, expires_delta: timedelta = timedelta(minutes=15)
+    *, data: dict, token_type: str, expires_delta: timedelta = timedelta(minutes=15)
 ):
     to_encode = data.copy()
     expire = now() + expires_delta
-    to_encode.update({"exp": expire})
+    to_encode.update({"exp": expire, "token_type": token_type})
     encoded_jwt = jwt.encode(
         to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM
     )
@@ -59,14 +59,22 @@ def create_access_token(
 
 
 class AuthDependency:
-    def __init__(self, enabled: bool = True, superuser_only: bool = False):
+    def __init__(
+        self,
+        enabled: bool = True,
+        superuser_only: bool = False,
+        token: Optional[str] = None,
+        token_type: str = "access",
+    ):
         self.enabled = enabled
         self.superuser_only = superuser_only
+        self.token = token
+        self.token_type = token_type
 
     async def __call__(self, request: Request):
         if not self.enabled:
             return None
-        token: str = await oauth2_scheme(request)
+        token: str = await oauth2_scheme(request) if not self.token else self.token
         from . import schemes
 
         credentials_exception = HTTPException(
@@ -78,8 +86,9 @@ class AuthDependency:
             payload = jwt.decode(
                 token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
             )
+            token_type: str = payload.get("token_type")
             username: str = payload.get("sub")
-            if username is None:
+            if token_type != self.token_type or username is None:
                 raise credentials_exception
             token_data = schemes.TokenData(username=username)
         except PyJWTError:

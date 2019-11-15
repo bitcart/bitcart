@@ -40,6 +40,10 @@ class TokenData(BaseModel):
     username: str = None
 
 
+class RefreshToken(BaseModel):
+    token: str
+
+
 class CreateWallet(BaseModel):
     name: str
     xpub: str = ""
