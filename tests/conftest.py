@@ -1,7 +1,13 @@
 import pytest
 from starlette.testclient import TestClient
 
+from api import settings
 from main import app
+
+
+@pytest.yield_fixture(scope="session", autouse=True)
+def event_loop():
+    yield settings.loop
 
 
 @pytest.yield_fixture(scope="session", autouse=True)

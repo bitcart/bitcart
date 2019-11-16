@@ -1,2 +1,1 @@
--r web.txt
 dramatiq[watch]

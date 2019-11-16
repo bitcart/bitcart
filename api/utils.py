@@ -28,7 +28,7 @@ async def make_subscriber(name):
 
 
 async def publish_message(channel, message):
-    await settings.redis_pool.publish_json(f"channel:{channel}", message)
+    return await settings.redis_pool.publish_json(f"channel:{channel}", message)
 
 
 def now():
