@@ -142,6 +142,8 @@ async def refresh_token(request: Request, refresh_token: schemes.RefreshToken):
 
 @router.websocket_route("/ws/wallets/{wallet}")
 class WalletNotify(WebSocketEndpoint):
+    subscriber = None
+
     async def on_connect(self, websocket, **kwargs):
         await websocket.accept()
         self.channel_name = secrets.token_urlsafe(32)
@@ -173,11 +175,14 @@ class WalletNotify(WebSocketEndpoint):
             await websocket.send_json(msg)
 
     async def on_disconnect(self, websocket, close_code):
-        await self.subscriber.unsubscribe(f"channel:{self.wallet_id}")
+        if self.subscriber:
+            await self.subscriber.unsubscribe(f"channel:{self.wallet_id}")
 
 
 @router.websocket_route("/ws/invoices/{invoice}")
 class InvoiceNotify(WebSocketEndpoint):
+    subscriber = None
+
     async def on_connect(self, websocket, **kwargs):
         await websocket.accept()
         self.channel_name = secrets.token_urlsafe(32)
@@ -210,4 +215,5 @@ class InvoiceNotify(WebSocketEndpoint):
             await websocket.send_json(msg)
 
     async def on_disconnect(self, websocket, close_code):
-        await self.subscriber.unsubscribe(f"channel:{self.invoice_id}")
+        if self.subscriber:
+            await self.subscriber.unsubscribe(f"channel:{self.invoice_id}")

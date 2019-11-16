@@ -166,9 +166,7 @@ def test_wallet_history(client: TestClient, token: str):
     assert client.get("/wallet_history/3", headers=headers).status_code == 404
     resp = client.get("/wallet_history/2", headers=headers)
     client.post(
-        "/wallets",
-        json={"name": "test7", "user_id": 2, "xpub": TEST_XPUB},
-        headers=headers,
+        "/wallets", json={"name": "test7", "xpub": TEST_XPUB}, headers=headers
     ).json()
     assert resp.status_code == 200
     assert resp.json() == []
