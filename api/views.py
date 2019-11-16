@@ -1,8 +1,8 @@
 import secrets
 from datetime import timedelta
-from typing import List
+from typing import List, Union
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from starlette.endpoints import WebSocketEndpoint
 from starlette.requests import Request
 from starlette.status import WS_1008_POLICY_VIOLATION
@@ -36,6 +36,11 @@ def get_invoice():
         .join(models.ProductxInvoice)
         .join(models.Invoice)
     )
+
+
+@router.get("/users/me", response_model=schemes.User)
+async def get_me(user: models.User = Depends(utils.AuthDependency())):
+    return user
 
 
 utils.model_view(
@@ -91,13 +96,20 @@ async def rate():
 
 
 @router.get("/wallet_history/{wallet}", response_model=List[schemes.TxResponse])
-async def wallet_history(wallet: int):
+async def wallet_history(
+    wallet: int, user: models.User = Depends(utils.AuthDependency())
+):
     response: List[schemes.TxResponse] = []
     if wallet == 0:
-        for model in await models.Wallet.query.gino.all():
+
+        for model in await models.Wallet.query.select_from(get_wallet()).gino.all():
             await utils.get_wallet_history(model, response)
     else:
-        model = await models.Wallet.get(wallet)
+        model = (
+            await models.Wallet.query.select_from(get_wallet())
+            .where(models.Wallet.id == wallet)
+            .gino.first()
+        )
         if not model:
             raise HTTPException(404, f"Wallet with id {wallet} does not exist!")
         await utils.get_wallet_history(model, response)

@@ -292,3 +292,12 @@ def test_invalidjwt(client: TestClient, token: str):
         ).status_code
         == 401
     )
+
+
+def test_users_me(client: TestClient, token: str):
+    assert client.get("/users/me").status_code == 401
+    resp = client.get("/users/me", headers={"Authorization": f"Bearer {token}"})
+    assert resp.status_code == 200
+    j = resp.json()
+    assert j == {"email": None, "id": 1, "username": "testauth"}
+
