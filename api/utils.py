@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from os.path import join as path_join
 from typing import Callable, Dict, List, Optional, Type, Union
 
+import aioredis
 import asyncpg
 import jwt
 from fastapi import APIRouter, Depends, HTTPException
@@ -17,6 +18,17 @@ from starlette.status import HTTP_401_UNAUTHORIZED
 from bitcart import BTC
 
 from . import models, pagination, settings
+
+
+async def make_subscriber(name):
+    subscriber = await aioredis.create_redis_pool(settings.REDIS_HOST)
+    res = await subscriber.subscribe(f"channel:{name}")
+    channel = res[0]
+    return subscriber, channel
+
+
+async def publish_message(channel, message):
+    await settings.redis_pool.publish_json(f"channel:{channel}", message)
 
 
 def now():

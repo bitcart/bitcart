@@ -109,9 +109,10 @@ class MyUpdateRequest(UpdateRequest):
         return super().update(**kwargs)
 
     async def apply(self):
-        await ProductxInvoice.delete.where(
-            ProductxInvoice.invoice_id == self._instance.id
-        ).gino.status()
+        if self.products:
+            await ProductxInvoice.delete.where(
+                ProductxInvoice.invoice_id == self._instance.id
+            ).gino.status()
         if self.products is None:
             self.products = []
         for i in self.products:

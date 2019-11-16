@@ -3,7 +3,7 @@ from datetime import timedelta
 from typing import List
 
 from fastapi import APIRouter, HTTPException
-from nejma.ext.starlette import WebSocketEndpoint
+from starlette.endpoints import WebSocketEndpoint
 from starlette.requests import Request
 from starlette.status import WS_1008_POLICY_VIOLATION
 
@@ -142,45 +142,72 @@ async def refresh_token(request: Request, refresh_token: schemes.RefreshToken):
 
 @router.websocket_route("/ws/wallets/{wallet}")
 class WalletNotify(WebSocketEndpoint):
-    channel_layer = settings.layer
-
     async def on_connect(self, websocket, **kwargs):
         await websocket.accept()
         self.channel_name = secrets.token_urlsafe(32)
         try:
             self.wallet_id = int(websocket.path_params["wallet"])
-        except ValueError:
+            self.access_token = websocket.query_params["token"]
+        except (ValueError, KeyError):
             await websocket.close(code=WS_1008_POLICY_VIOLATION)
             return
-        self.wallet = await models.Wallet.get(self.wallet_id)
+        try:
+            self.user = await utils.AuthDependency(token=self.access_token)(None)
+        except HTTPException:
+            await websocket.close(code=WS_1008_POLICY_VIOLATION)
+            return
+        self.wallet = (
+            await models.Wallet.query.select_from(get_wallet())
+            .where(models.Wallet.id == self.wallet_id)
+            .gino.first()
+        )
         if not self.wallet:
             await websocket.close(code=WS_1008_POLICY_VIOLATION)
             return
-        await self.channel_layer.add(str(self.wallet_id), self.channel_name)
-        self.channel_layer.send = websocket.send_json
+        self.subscriber, self.channel = await utils.make_subscriber(self.wallet_id)
+        settings.loop.create_task(self.poll_subs(websocket))
+
+    async def poll_subs(self, websocket):
+        while await self.channel.wait_message():
+            msg = await self.channel.get_json()
+            await websocket.send_json(msg)
 
     async def on_disconnect(self, websocket, close_code):
-        await self.channel_layer.remove_channel(self.channel_name)
+        await self.subscriber.unsubscribe(f"channel:{self.wallet_id}")
 
 
 @router.websocket_route("/ws/invoices/{invoice}")
 class InvoiceNotify(WebSocketEndpoint):
-    channel_layer = settings.layer
-
     async def on_connect(self, websocket, **kwargs):
         await websocket.accept()
         self.channel_name = secrets.token_urlsafe(32)
         try:
             self.invoice_id = int(websocket.path_params["invoice"])
-        except ValueError:
+            self.access_token = websocket.query_params["token"]
+        except (ValueError, KeyError):
             await websocket.close(code=WS_1008_POLICY_VIOLATION)
             return
-        self.invoice = await models.Invoice.get(self.invoice_id)
+        try:
+            self.user = await utils.AuthDependency(token=self.access_token)(None)
+        except HTTPException:
+            await websocket.close(code=WS_1008_POLICY_VIOLATION)
+            return
+        self.invoice = (
+            await models.Invoice.query.select_from(get_invoice())
+            .where(models.Invoice.id == self.invoice_id)
+            .gino.first()
+        )
+        self.invoice = await crud.get_invoice(self.invoice_id, self.invoice, self.user)
         if not self.invoice:
             await websocket.close(code=WS_1008_POLICY_VIOLATION)
             return
-        await self.channel_layer.add(str(self.invoice_id), self.channel_name)
-        self.channel_layer.send = websocket.send_json
+        self.subscriber, self.channel = await utils.make_subscriber(self.invoice_id)
+        settings.loop.create_task(self.poll_subs(websocket))
+
+    async def poll_subs(self, websocket):
+        while await self.channel.wait_message():
+            msg = await self.channel.get_json()
+            await websocket.send_json(msg)
 
     async def on_disconnect(self, websocket, close_code):
-        await self.channel_layer.remove_channel(self.channel_name)
+        await self.subscriber.unsubscribe(f"channel:{self.invoice_id}")
