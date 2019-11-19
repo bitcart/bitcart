@@ -38,7 +38,7 @@ def get_invoice():
     )
 
 
-@router.get("/users/me", response_model=schemes.User)
+@router.get("/users/me", response_model=schemes.DisplayUser)
 async def get_me(user: models.User = Depends(utils.AuthDependency())):
     return user
 
@@ -50,6 +50,7 @@ utils.model_view(
     schemes.User,
     get_user,
     schemes.CreateUser,
+    schemes.DisplayUser,
     custom_methods={"post": crud.create_user},
 )
 utils.model_view(

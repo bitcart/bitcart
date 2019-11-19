@@ -299,5 +299,4 @@ def test_users_me(client: TestClient, token: str):
     resp = client.get("/users/me", headers={"Authorization": f"Bearer {token}"})
     assert resp.status_code == 200
     j = resp.json()
-    assert j == {"email": None, "id": 1, "username": "testauth"}
-
+    assert j == {"email": None, "is_superuser": True, "id": 1, "username": "testauth"}

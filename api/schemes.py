@@ -31,6 +31,10 @@ class User(BaseUser):
     id: Optional[int]
 
 
+class DisplayUser(User):
+    is_superuser: bool
+
+
 class CreateToken(BaseModel):
     username: str
     password: str
