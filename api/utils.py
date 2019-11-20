@@ -13,7 +13,7 @@ from passlib.context import CryptContext
 from pydantic import BaseModel
 from pytz import utc
 from starlette.requests import Request
-from starlette.status import HTTP_401_UNAUTHORIZED
+from starlette.status import HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN
 
 from bitcart import BTC
 
@@ -111,7 +111,7 @@ class AuthDependency:
         if user is None:
             raise credentials_exception
         if self.superuser_only and not user.is_superuser:
-            raise credentials_exception
+            raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Not enough permissions")
         return user
 
 
