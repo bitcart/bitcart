@@ -19,6 +19,27 @@ async def create_user(user: schemes.CreateUser, auth_user: schemes.User):
     )
 
 
+def hash_user(d: dict):
+    if d.get("password"):
+        d["hashed_password"] = utils.get_password_hash(d["password"])
+        del d["password"]
+    return d
+
+
+async def put_user(
+    item: models.User, model: schemes.CreateUser, user: schemes.DisplayUser
+):
+    d = hash_user(model.dict())
+    await item.update(**d).apply()
+
+
+async def patch_user(
+    item: models.User, model: schemes.CreateUser, user: schemes.DisplayUser
+):
+    d = hash_user(model.dict(skip_defaults=True))
+    await item.update(**d).apply()
+
+
 async def create_wallet(wallet: schemes.CreateWallet, user: schemes.User):
     return await models.Wallet.create(**wallet.dict(), user_id=user.id)
 

@@ -246,7 +246,7 @@ def test_superuseronly(client: TestClient, token: str):
         client.get(
             "/users", headers={"Authorization": f"Bearer {token_usual}"}
         ).status_code
-        == 401
+        == 403
     )
     assert (
         client.get("/users", headers={"Authorization": f"Bearer {token}"}).status_code

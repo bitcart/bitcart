@@ -92,7 +92,8 @@
         {
             "obj_id": 2,
             "data": {
-                "username": "test1"
+                "username": "test1",
+                "password": 12345
             },
             "status": "good",
             "return_data": {
@@ -106,7 +107,8 @@
             "obj_id": 2,
             "data": {
                 "username": "test1",
-                "email": "test@example.com"
+                "email": "test@example.com",
+                "password": 12345
             },
             "status": "good",
             "return_data": {
@@ -152,7 +154,8 @@
             "obj_id": 2,
             "data": {
                 "id": 2,
-                "username": "test"
+                "username": "test",
+                "password": 12345
             },
             "status": "good",
             "return_data": {

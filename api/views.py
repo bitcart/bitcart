@@ -47,11 +47,14 @@ utils.model_view(
     router,
     "/users",
     models.User,
-    schemes.User,
-    get_user,
     schemes.CreateUser,
-    schemes.DisplayUser,
-    custom_methods={"post": crud.create_user},
+    get_user,
+    display_model=schemes.DisplayUser,
+    custom_methods={
+        "post": crud.create_user,
+        "patch": crud.patch_user,
+        "put": crud.put_user,
+    },
 )
 utils.model_view(
     router,
