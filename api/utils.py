@@ -17,7 +17,7 @@ from starlette.status import HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN
 
 from bitcart import BTC
 
-from . import models, pagination, settings
+from . import db, models, pagination, settings
 
 
 async def make_subscriber(name):
@@ -128,7 +128,7 @@ def model_view(
     get_data_source,
     create_model=None,
     display_model=None,
-    allowed_methods: List[str] = ["GET_ONE"] + HTTP_METHODS,
+    allowed_methods: List[str] = ["GET_COUNT", "GET_ONE"] + HTTP_METHODS,
     custom_methods: Dict[str, Callable] = {},
     background_tasks_mapping: Dict[str, Callable] = {},
     auth=True,
@@ -147,6 +147,7 @@ def model_view(
         create_model = pydantic_model  # pragma: no cover
     response_models: Dict[str, Type] = {
         "get": PaginationResponse,
+        "get_count": int,
         "get_one": display_model,
         "post": display_model,
         "put": display_model,
@@ -155,8 +156,10 @@ def model_view(
     }
 
     item_path = path_join(path, "{model_id}")
+    count_path = path_join(path, "count")
     paths: Dict[str, str] = {
         "get": path,
+        "get_count": count_path,
         "get_one": item_path,
         "post": path,
         "put": item_path,
@@ -174,6 +177,18 @@ def model_view(
             return await custom_methods["get"](pagination, user, get_data_source())
         else:
             return await pagination.paginate(orm_model, get_data_source(), user.id)
+
+    async def get_count(user: Union[None, schemes.User] = Depends(auth_dependency)):
+        return await (
+            (
+                orm_model.query.select_from(get_data_source())
+                if orm_model != models.User
+                else orm_model.query
+            )
+            .with_only_columns([db.db.func.count(orm_model.id)])
+            .order_by(None)
+            .gino.scalar()
+        )
 
     async def get_one(
         model_id: int, user: Union[None, schemes.User] = Depends(auth_dependency)

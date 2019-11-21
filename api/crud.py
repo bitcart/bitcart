@@ -25,8 +25,9 @@ async def create_user(user: schemes.CreateUser, auth_user: schemes.User):
 
 
 def hash_user(d: dict):
-    if d.get("password"):
-        d["hashed_password"] = utils.get_password_hash(d["password"])
+    if "password" in d:
+        if d["password"] is not None:
+            d["hashed_password"] = utils.get_password_hash(d["password"])
         del d["password"]
     return d
 

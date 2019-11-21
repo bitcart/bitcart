@@ -1,5 +1,6 @@
 import secrets
 from datetime import timedelta
+from decimal import Decimal
 from typing import List, Union
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -7,7 +8,9 @@ from starlette.endpoints import WebSocketEndpoint
 from starlette.requests import Request
 from starlette.status import WS_1008_POLICY_VIOLATION
 
-from . import crud, models, schemes, settings, tasks, utils
+from bitcart import BTC
+
+from . import crud, db, models, schemes, settings, tasks, utils
 
 router = APIRouter()
 
@@ -41,6 +44,26 @@ def get_invoice():
 @router.get("/users/me", response_model=schemes.DisplayUser)
 async def get_me(user: models.User = Depends(utils.AuthDependency())):
     return user
+
+
+@router.get("/wallets/balance", response_model=Decimal)
+async def get_balances(user: models.User = Depends(utils.AuthDependency())):
+    balances = Decimal()
+    async with db.db.acquire() as conn:
+        async with conn.transaction():
+            async for wallet in models.Wallet.query.select_from(
+                get_wallet()
+            ).gino.iterate():
+                balance = (
+                    await BTC(
+                        settings.RPC_URL,
+                        rpc_user=settings.RPC_USER,
+                        rpc_pass=settings.RPC_PASS,
+                        xpub=wallet.xpub,
+                    ).balance()
+                )["confirmed"]
+                balances += Decimal(balance)
+    return balances
 
 
 utils.model_view(
