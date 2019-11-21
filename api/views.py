@@ -66,6 +66,28 @@ async def get_balances(user: models.User = Depends(utils.AuthDependency())):
     return balances
 
 
+# invoices and products should have unauthorized access
+@router.get("/products/{model_id}", response_model=schemes.Product)
+async def get_product_noauth(model_id: int):
+    item = await models.Product.get(model_id)
+    if not item:
+        raise HTTPException(
+            status_code=404, detail=f"Object with id {model_id} does not exist!"
+        )
+    return item
+
+
+@router.get("/invoices/{model_id}", response_model=schemes.Invoice)
+async def get_invoice_noauth(model_id: int):
+    item = await models.Invoice.get(model_id)
+    if not item:
+        raise HTTPException(
+            status_code=404, detail=f"Object with id {model_id} does not exist!"
+        )
+    await crud.invoice_add_related(item)
+    return item
+
+
 utils.model_view(
     router,
     "/users",
