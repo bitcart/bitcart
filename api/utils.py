@@ -111,7 +111,9 @@ class AuthDependency:
         if user is None:
             raise credentials_exception
         if self.superuser_only and not user.is_superuser:
-            raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Not enough permissions")
+            raise HTTPException(
+                status_code=HTTP_403_FORBIDDEN, detail="Not enough permissions"
+            )
         return user
 
 
@@ -193,14 +195,14 @@ def model_view(
             )
         return item
 
-    create_dependency = (
-        auth_dependency if create_model != schemes.CreateUser else AuthDependency(False)
-    )
-
     async def post(
         model: create_model,  # type: ignore,
-        user: Union[None, schemes.User] = Depends(create_dependency),
+        request: Request,
     ):
+        try:
+            user = await auth_dependency(request)
+        except HTTPException:
+            user = None
         try:
             if custom_methods.get("post"):
                 obj = await custom_methods["post"](model, user)

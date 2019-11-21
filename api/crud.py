@@ -10,12 +10,17 @@ async def user_count():
 
 
 async def create_user(user: schemes.CreateUser, auth_user: schemes.User):
-    count = await user_count()
+    is_superuser = False
+    if auth_user is None:
+        count = await user_count()
+        is_superuser = True if count == 0 else False
+    elif auth_user and auth_user.is_superuser:
+        is_superuser = user.is_superuser
     return await models.User.create(
         username=user.username,
         hashed_password=utils.get_password_hash(user.password),
         email=user.email,
-        is_superuser=True if count == 0 else False,
+        is_superuser=is_superuser,
     )
 
 
@@ -26,16 +31,12 @@ def hash_user(d: dict):
     return d
 
 
-async def put_user(
-    item: models.User, model: schemes.CreateUser, user: schemes.DisplayUser
-):
+async def put_user(item: models.User, model: schemes.User, user: schemes.DisplayUser):
     d = hash_user(model.dict())
     await item.update(**d).apply()
 
 
-async def patch_user(
-    item: models.User, model: schemes.CreateUser, user: schemes.DisplayUser
-):
+async def patch_user(item: models.User, model: schemes.User, user: schemes.DisplayUser):
     d = hash_user(model.dict(skip_defaults=True))
     await item.update(**d).apply()
 

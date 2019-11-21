@@ -11,6 +11,7 @@ from .utils import now
 
 class BaseUser(BaseModel):
     username: str
+    is_superuser: Optional[bool] = False
     email: Optional[EmailStr] = ""  # type: ignore
 
     @validator("email", pre=True, always=False)
@@ -29,10 +30,11 @@ class CreateUser(BaseUser):
 
 class User(BaseUser):
     id: Optional[int]
+    password: Optional[str]
 
 
-class DisplayUser(User):
-    is_superuser: bool
+class DisplayUser(BaseUser):
+    id: Optional[int]
 
 
 class CreateToken(BaseModel):

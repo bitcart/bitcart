@@ -47,8 +47,9 @@ utils.model_view(
     router,
     "/users",
     models.User,
-    schemes.CreateUser,
+    schemes.User,
     get_user,
+    schemes.CreateUser,
     display_model=schemes.DisplayUser,
     custom_methods={
         "post": crud.create_user,
