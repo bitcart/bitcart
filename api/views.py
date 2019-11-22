@@ -67,7 +67,6 @@ async def get_balances(user: models.User = Depends(utils.AuthDependency())):
 
 
 # invoices and products should have unauthorized access
-@router.get("/products/{model_id}", response_model=schemes.Product)
 async def get_product_noauth(model_id: int):
     item = await models.Product.get(model_id)
     if not item:
@@ -77,7 +76,6 @@ async def get_product_noauth(model_id: int):
     return item
 
 
-@router.get("/invoices/{model_id}", response_model=schemes.Invoice)
 async def get_invoice_noauth(model_id: int):
     item = await models.Invoice.get(model_id)
     if not item:
@@ -123,6 +121,7 @@ utils.model_view(
     schemes.Product,
     get_product,
     schemes.CreateProduct,
+    request_handlers={"get_one": get_product_noauth},
 )
 utils.model_view(
     router,
@@ -137,6 +136,7 @@ utils.model_view(
         "post": crud.create_invoice,
         "delete": crud.delete_invoice,
     },
+    request_handlers={"get_one": get_invoice_noauth},
 )
 
 

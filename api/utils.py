@@ -131,6 +131,7 @@ def model_view(
     allowed_methods: List[str] = ["GET_COUNT", "GET_ONE"] + HTTP_METHODS,
     custom_methods: Dict[str, Callable] = {},
     background_tasks_mapping: Dict[str, Callable] = {},
+    request_handlers: Dict[str, Callable] = {},
     auth=True,
 ):
     from . import schemes
@@ -287,7 +288,7 @@ def model_view(
         method_name = method.lower()
         router.add_api_route(
             paths.get(method_name),  # type: ignore
-            locals()[method_name],
+            request_handlers.get(method_name) or locals()[method_name],
             methods=[method_name if method in HTTP_METHODS else "get"],
             response_model=response_models.get(method_name),
         )

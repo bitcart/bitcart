@@ -86,6 +86,12 @@
             ]
         }
     ],
+    "get_count": [
+        {
+            "status": "good",
+            "return_data": 2
+        }
+    ],
     "get_one": [
         {
             "obj_id": 1,

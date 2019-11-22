@@ -80,6 +80,11 @@ class ViewTestMixin:
             resp = self.send_request(f"/{self.name}", client, token=token)
             self.process_resp(resp, test, True)
 
+    def test_get_count(self, client: TestClient, token: str):
+        for test in self.tests["get_count"]:
+            resp = self.send_request(f"/{self.name}/count", client, token=token)
+            self.process_resp(resp, test)
+
     def test_get_one(self, client: TestClient, token: str):
         for test in self.tests["get_one"]:
             resp = self.send_request(
@@ -300,3 +305,10 @@ def test_users_me(client: TestClient, token: str):
     assert resp.status_code == 200
     j = resp.json()
     assert j == {"email": None, "is_superuser": True, "id": 1, "username": "testauth"}
+
+
+def test_wallets_balance(client: TestClient, token: str):
+    assert client.get("/wallets/balance").status_code == 401
+    resp = client.get("/wallets/balance", headers={"Authorization": f"Bearer {token}"})
+    assert resp.status_code == 200
+    assert resp.json() == 0.01
