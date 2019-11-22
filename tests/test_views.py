@@ -1,7 +1,11 @@
 import json
+from datetime import datetime, timedelta
 from typing import Dict, List, Union
 
+import jwt
 from starlette.testclient import TestClient
+
+from api.settings import ALGORITHM, SECRET_KEY
 
 TEST_XPUB = "tpubDD5MNJWw35y3eoJA7m3kFWsyX5SaUgx2Y3AaGwFk1pjYsHvpgDwRhrStRbCGad8dYzZCkLCvbGKfPuBiG7BabswmLofb7c2yfQFhjqSjaGi"
 
@@ -19,6 +23,7 @@ class ViewTestMixin:
         True: 200,
         False: 422,
     }
+    auth: bool = False
     name: str  # name used in endpoints
     tests: Dict[str, List[dict]]
     """dict with keys corresponding to testing function, each key is a list of
@@ -57,59 +62,93 @@ class ViewTestMixin:
                     pass
             assert data == test["return_data"]
 
-    def test_create(self, client: TestClient):
+    def send_request(self, url, client, json={}, method="get", token=""):
+        headers = {}
+        if self.auth:
+            headers["Authorization"] = f"Bearer {token}"
+        return client.request(method, url, json=json, headers=headers)
+
+    def test_create(self, client: TestClient, token: str):
         for test in self.tests["create"]:
-            resp = client.post(f"/{self.name}", json=test["data"])
+            resp = self.send_request(
+                f"/{self.name}", client, json=test["data"], method="post", token=token
+            )
             self.process_resp(resp, test)
 
-    def test_get_all(self, client: TestClient):
+    def test_get_all(self, client: TestClient, token: str):
         for test in self.tests["get_all"]:
-            resp = client.get(f"/{self.name}")
+            resp = self.send_request(f"/{self.name}", client, token=token)
             self.process_resp(resp, test, True)
 
-    def test_get_one(self, client: TestClient):
+    def test_get_count(self, client: TestClient, token: str):
+        for test in self.tests["get_count"]:
+            resp = self.send_request(f"/{self.name}/count", client, token=token)
+            self.process_resp(resp, test)
+
+    def test_get_one(self, client: TestClient, token: str):
         for test in self.tests["get_one"]:
-            resp = client.get(f"/{self.name}/{test['obj_id']}")
+            resp = self.send_request(
+                f"/{self.name}/{test['obj_id']}", client, token=token
+            )
             self.process_resp(resp, test)
 
-    def test_partial_update(self, client: TestClient):
+    def test_partial_update(self, client: TestClient, token: str):
         for test in self.tests["partial_update"]:
-            resp = client.patch(f"/{self.name}/{test['obj_id']}", json=test["data"])
+            resp = self.send_request(
+                f"/{self.name}/{test['obj_id']}",
+                client,
+                json=test["data"],
+                method="patch",
+                token=token,
+            )
             self.process_resp(resp, test)
 
-    def test_full_update(self, client: TestClient):
+    def test_full_update(self, client: TestClient, token: str):
         for test in self.tests["full_update"]:
-            resp = client.put(f"/{self.name}/{test['obj_id']}", json=test["data"])
+            resp = self.send_request(
+                f"/{self.name}/{test['obj_id']}",
+                client,
+                json=test["data"],
+                method="put",
+                token=token,
+            )
             self.process_resp(resp, test)
 
-    def test_delete(self, client: TestClient):
+    def test_delete(self, client: TestClient, token: str):
         for test in self.tests["delete"]:
-            resp = client.delete(f"/{self.name}/{test['obj_id']}")
+            resp = self.send_request(
+                f"/{self.name}/{test['obj_id']}", client, method="delete", token=token
+            )
             self.process_resp(resp, test)
 
 
 class TestUsers(ViewTestMixin):
     name = "users"
+    auth = True
     tests = json.loads(open("tests/fixtures/users.json").read())
 
 
 class TestWallets(ViewTestMixin):
     name = "wallets"
+    auth = True
     tests = json.loads(open("tests/fixtures/wallets.json").read())
 
 
 class TestStores(ViewTestMixin):
     name = "stores"
+    auth = True
     tests = json.loads(open("tests/fixtures/stores.json").read())
 
 
 class TestProducts(ViewTestMixin):
     name = "products"
+    auth = True
     tests = json.loads(open("tests/fixtures/products.json").read())
 
 
 class TestInvoices(ViewTestMixin):
     name = "invoices"
+    auth = True
     tests = json.loads(open("tests/fixtures/invoices.json").read())
 
 
@@ -126,14 +165,17 @@ def test_rate(client: TestClient):
     assert data > 0
 
 
-def test_wallet_history(client: TestClient):
-    assert client.get("/wallet_history/1").status_code == 404
-    assert client.get("/wallet_history/3").status_code == 404
-    resp = client.get("/wallet_history/2")
-    client.post("/wallets", json={"name": "test7", "user_id": 2, "xpub": TEST_XPUB})
+def test_wallet_history(client: TestClient, token: str):
+    headers = {"Authorization": f"Bearer {token}"}
+    assert client.get("/wallet_history/1", headers=headers).status_code == 404
+    assert client.get("/wallet_history/3", headers=headers).status_code == 404
+    resp = client.get("/wallet_history/2", headers=headers)
+    client.post(
+        "/wallets", json={"name": "test7", "xpub": TEST_XPUB}, headers=headers
+    ).json()
     assert resp.status_code == 200
     assert resp.json() == []
-    resp1 = client.get("/wallet_history/4")
+    resp1 = client.get("/wallet_history/4", headers=headers)
     assert resp1.status_code == 200
     data2 = resp1.json()
     assert len(data2) == 1
@@ -142,14 +184,16 @@ def test_wallet_history(client: TestClient):
         data2[0]["txid"]
         == "ee4f0c4405f9ba10443958f5c6f6d4552a69a80f3ec3bed1c3d4c98d65abe8f3"
     )
-    resp2 = client.get("/wallet_history/0")
+    resp2 = client.get("/wallet_history/0", headers=headers)
     assert resp2.status_code == 200
     assert len(resp2.json()) == 1
 
 
 def test_create_token(client: TestClient):
     assert (
-        client.post("/token", json={"username": "test", "password": 123456}).status_code
+        client.post(
+            "/token", json={"username": "test44", "password": 123456}
+        ).status_code
         == 401
     )
     assert (
@@ -158,6 +202,113 @@ def test_create_token(client: TestClient):
         ).status_code
         == 401
     )
-    resp = client.post("/token", json={"username": "test", "password": 12345})
+    resp = client.post("/token", json={"username": "test44", "password": 12345})
     assert resp.status_code == 200
-    assert resp.json().get("token")
+    j = resp.json()
+    assert j.get("access_token")
+    assert j.get("refresh_token")
+    assert j["token_type"] == "bearer"
+
+
+def test_refresh_token(client: TestClient):
+    resp = client.post("/token", json={"username": "test44", "password": 12345})
+    assert resp.status_code == 200
+    resp = resp.json()
+    assert resp.get("refresh_token")
+    resp1 = client.post("/refresh_token", json={"token": resp["refresh_token"]})
+    assert resp1.status_code == 200
+    j = resp1.json()
+    assert j.get("access_token")
+    assert j.get("refresh_token")
+    assert j["token_type"] == "bearer"
+
+
+def test_noauth(client: TestClient):
+    assert client.get("/users").status_code == 401
+    assert client.get("/wallets").status_code == 401
+    assert client.get("/stores").status_code == 401
+    assert client.get("/products").status_code == 401
+    assert client.get("/invoices").status_code == 401
+    assert (
+        client.post(
+            "/users", json={"username": "noauth", "password": "noauth"}
+        ).status_code
+        == 200
+    )
+    assert (
+        client.post(
+            "/token", json={"username": "noauth", "password": "noauth"}
+        ).status_code
+        == 200
+    )
+
+
+def test_superuseronly(client: TestClient, token: str):
+    token_usual = client.post(
+        "/token", json={"username": "noauth", "password": "noauth"}
+    ).json()["access_token"]
+    assert (
+        client.get(
+            "/users", headers={"Authorization": f"Bearer {token_usual}"}
+        ).status_code
+        == 403
+    )
+    assert (
+        client.get("/users", headers={"Authorization": f"Bearer {token}"}).status_code
+        == 200
+    )
+
+
+def test_invalidjwt(client: TestClient, token: str):
+    assert (
+        client.get(
+            "/wallets", headers={"Authorization": f"Bearer {token[0:5]}"}
+        ).status_code
+        == 401
+    )
+    invalid_username_jwt = jwt.encode(
+        {"sub": "wronguser", "exp": datetime.utcnow() + timedelta(minutes=10)},
+        SECRET_KEY,
+        algorithm=ALGORITHM,
+    ).decode()
+    assert (
+        client.get(
+            "/wallets", headers={"Authorization": f"Bearer {invalid_username_jwt}"}
+        ).status_code
+        == 401
+    )
+    no_username_jwt = jwt.encode(
+        {"sub": None, "exp": datetime.utcnow() + timedelta(minutes=10)},
+        SECRET_KEY,
+        algorithm=ALGORITHM,
+    ).decode()
+    assert (
+        client.get(
+            "/wallets", headers={"Authorization": f"Bearer {no_username_jwt}"}
+        ).status_code
+        == 401
+    )
+    expired_jwt = jwt.encode(
+        {"sub": "testauth", "exp": -999}, SECRET_KEY, algorithm=ALGORITHM
+    ).decode()
+    assert (
+        client.get(
+            "/wallets", headers={"Authorization": f"Bearer {expired_jwt}"}
+        ).status_code
+        == 401
+    )
+
+
+def test_users_me(client: TestClient, token: str):
+    assert client.get("/users/me").status_code == 401
+    resp = client.get("/users/me", headers={"Authorization": f"Bearer {token}"})
+    assert resp.status_code == 200
+    j = resp.json()
+    assert j == {"email": None, "is_superuser": True, "id": 1, "username": "testauth"}
+
+
+def test_wallets_balance(client: TestClient, token: str):
+    assert client.get("/wallets/balance").status_code == 401
+    resp = client.get("/wallets/balance", headers={"Authorization": f"Bearer {token}"})
+    assert resp.status_code == 200
+    assert resp.json() == 0.01

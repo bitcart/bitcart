@@ -1,17 +1,34 @@
 # pylint: disable=no-member
-from datetime import datetime
+from datetime import datetime, timedelta
 from os.path import join as path_join
 from typing import Callable, Dict, List, Optional, Type, Union
 
+import aioredis
 import asyncpg
+import jwt
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.security import OAuth2PasswordBearer
+from jwt import PyJWTError
 from passlib.context import CryptContext
 from pydantic import BaseModel
 from pytz import utc
+from starlette.requests import Request
+from starlette.status import HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN
 
 from bitcart import BTC
 
-from . import models, pagination, settings
+from . import db, models, pagination, settings
+
+
+async def make_subscriber(name):
+    subscriber = await aioredis.create_redis_pool(settings.REDIS_HOST)
+    res = await subscriber.subscribe(f"channel:{name}")
+    channel = res[0]
+    return subscriber, channel
+
+
+async def publish_message(channel, message):
+    return await settings.redis_pool.publish_json(f"channel:{channel}", message)
 
 
 def now():
@@ -38,6 +55,68 @@ async def authenticate_user(username: str, password: str):
     return user
 
 
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/token")
+
+
+def create_access_token(
+    *, data: dict, token_type: str, expires_delta: timedelta = timedelta(minutes=15)
+):
+    to_encode = data.copy()
+    expire = now() + expires_delta
+    to_encode.update({"exp": expire, "token_type": token_type})
+    encoded_jwt = jwt.encode(
+        to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM
+    )
+    return encoded_jwt
+
+
+class AuthDependency:
+    def __init__(
+        self,
+        enabled: bool = True,
+        superuser_only: bool = False,
+        token: Optional[str] = None,
+        token_type: str = "access",
+    ):
+        self.enabled = enabled
+        self.superuser_only = superuser_only
+        self.token = token
+        self.token_type = token_type
+
+    async def __call__(self, request: Request):
+        if not self.enabled:
+            return None
+        token: str = await oauth2_scheme(request) if not self.token else self.token
+        from . import schemes
+
+        credentials_exception = HTTPException(
+            status_code=HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+        try:
+            payload = jwt.decode(
+                token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
+            )
+            token_type: str = payload.get("token_type")
+            username: str = payload.get("sub")
+            if token_type != self.token_type or username is None:
+                raise credentials_exception
+            token_data = schemes.TokenData(username=username)
+        except PyJWTError:
+            raise credentials_exception
+        user = await models.User.query.where(
+            models.User.username == token_data.username
+        ).gino.first()
+        if user is None:
+            raise credentials_exception
+        if self.superuser_only and not user.is_superuser:
+            raise HTTPException(
+                status_code=HTTP_403_FORBIDDEN, detail="Not enough permissions"
+            )
+        return user
+
+
 HTTP_METHODS: List[str] = ["GET", "POST", "PUT", "PATCH", "DELETE"]
 
 
@@ -46,31 +125,42 @@ def model_view(
     path: str,
     orm_model,
     pydantic_model,
+    get_data_source,
     create_model=None,
-    allowed_methods: List[str] = ["GET_ONE"] + HTTP_METHODS,
+    display_model=None,
+    allowed_methods: List[str] = ["GET_COUNT", "GET_ONE"] + HTTP_METHODS,
     custom_methods: Dict[str, Callable] = {},
     background_tasks_mapping: Dict[str, Callable] = {},
+    request_handlers: Dict[str, Callable] = {},
+    auth=True,
 ):
+    from . import schemes
+
+    display_model = pydantic_model if not display_model else display_model
+
     class PaginationResponse(BaseModel):
         count: int
         next: Optional[str]
         previous: Optional[str]
-        result: List[pydantic_model]  # type: ignore
+        result: List[display_model]  # type: ignore
 
     if not create_model:
-        create_model = pydantic_model
+        create_model = pydantic_model  # pragma: no cover
     response_models: Dict[str, Type] = {
         "get": PaginationResponse,
-        "get_one": pydantic_model,
-        "post": pydantic_model,
-        "put": pydantic_model,
-        "patch": pydantic_model,
-        "delete": pydantic_model,
+        "get_count": int,
+        "get_one": display_model,
+        "post": display_model,
+        "put": display_model,
+        "patch": display_model,
+        "delete": display_model,
     }
 
     item_path = path_join(path, "{model_id}")
+    count_path = path_join(path, "count")
     paths: Dict[str, str] = {
         "get": path,
+        "get_count": count_path,
         "get_one": item_path,
         "post": path,
         "put": item_path,
@@ -78,11 +168,43 @@ def model_view(
         "delete": item_path,
     }
 
-    async def get(pagination: pagination.Pagination = Depends()):
-        return await pagination.paginate(orm_model)
+    auth_dependency = AuthDependency(auth, create_model == schemes.CreateUser)
 
-    async def get_one(model_id: int):
-        item = await orm_model.get(model_id)
+    async def get(
+        pagination: pagination.Pagination = Depends(),
+        user: Union[None, schemes.User] = Depends(auth_dependency),
+    ):
+        if custom_methods.get("get"):
+            return await custom_methods["get"](pagination, user, get_data_source())
+        else:
+            return await pagination.paginate(orm_model, get_data_source(), user.id)
+
+    async def get_count(user: Union[None, schemes.User] = Depends(auth_dependency)):
+        return await (
+            (
+                orm_model.query.select_from(get_data_source())
+                if orm_model != models.User
+                else orm_model.query
+            )
+            .with_only_columns([db.db.func.count(orm_model.id)])
+            .order_by(None)
+            .gino.scalar()
+        )
+
+    async def get_one(
+        model_id: int, user: Union[None, schemes.User] = Depends(auth_dependency)
+    ):
+        item = await (
+            (
+                orm_model.query.select_from(get_data_source())
+                if orm_model != models.User
+                else orm_model.query
+            )
+            .where(orm_model.id == model_id)
+            .gino.first()
+        )
+        if custom_methods.get("get_one"):
+            item = await custom_methods["get_one"](model_id, user, item)
         if not item:
             raise HTTPException(
                 status_code=404, detail=f"Object with id {model_id} does not exist!"
@@ -90,10 +212,18 @@ def model_view(
         return item
 
     async def post(
-        model: create_model  # type: ignore
+        model: create_model,  # type: ignore,
+        request: Request,
     ):
         try:
-            obj = await orm_model.create(**model.dict())  # type: ignore
+            user = await auth_dependency(request)
+        except HTTPException:
+            user = None
+        try:
+            if custom_methods.get("post"):
+                obj = await custom_methods["post"](model, user)
+            else:
+                obj = await orm_model.create(**model.dict())  # type: ignore
         except (
             asyncpg.exceptions.UniqueViolationError,
             asyncpg.exceptions.NotNullViolationError,
@@ -104,10 +234,17 @@ def model_view(
             background_tasks_mapping["post"].send(obj.id)
         return obj
 
-    async def put(model_id: int, model: pydantic_model):  # type: ignore
+    async def put(
+        model_id: int,
+        model: pydantic_model,
+        user: Union[None, schemes.User] = Depends(auth_dependency),
+    ):  # type: ignore
         item = await get_one(model_id)
         try:
-            await item.update(**model.dict()).apply()  # type: ignore
+            if custom_methods.get("put"):
+                await custom_methods["put"](item, model, user)  # pragma: no cover
+            else:
+                await item.update(**model.dict()).apply()  # type: ignore
         except (
             asyncpg.exceptions.UniqueViolationError,
             asyncpg.exceptions.NotNullViolationError,
@@ -116,30 +253,42 @@ def model_view(
             raise HTTPException(422, e.message)
         return item
 
-    async def patch(model_id: int, model: pydantic_model):  # type: ignore
+    async def patch(
+        model_id: int,
+        model: pydantic_model,
+        user: Union[None, schemes.User] = Depends(auth_dependency),
+    ):  # type: ignore
         item = await get_one(model_id)
         try:
-            await item.update(
-                **model.dict(skip_defaults=True)  # type: ignore
-            ).apply()
-        except (
+            if custom_methods.get("patch"):
+                await custom_methods["patch"](item, model, user)  # pragma: no cover
+            else:
+                await item.update(
+                    **model.dict(skip_defaults=True)  # type: ignore
+                ).apply()
+        except (  # pragma: no cover
             asyncpg.exceptions.UniqueViolationError,
             asyncpg.exceptions.NotNullViolationError,
             asyncpg.exceptions.ForeignKeyViolationError,
         ) as e:
-            raise HTTPException(422, e.message)
+            raise HTTPException(422, e.message)  # pragma: no cover
         return item
 
-    async def delete(model_id: int):
+    async def delete(
+        model_id: int, user: Union[None, schemes.User] = Depends(auth_dependency)
+    ):
         item = await get_one(model_id)
-        await item.delete()
+        if custom_methods.get("delete"):
+            await custom_methods["delete"](item, user)
+        else:
+            await item.delete()
         return item
 
     for method in allowed_methods:
         method_name = method.lower()
         router.add_api_route(
             paths.get(method_name),  # type: ignore
-            custom_methods.get(method_name) or locals()[method_name],
+            request_handlers.get(method_name) or locals()[method_name],
             methods=[method_name if method in HTTP_METHODS else "get"],
             response_model=response_models.get(method_name),
         )

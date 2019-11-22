@@ -1,4 +1,4 @@
--r web.txt
 pytest
+pytest-asyncio
 pytest-cov
 codecov

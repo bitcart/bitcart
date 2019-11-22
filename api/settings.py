@@ -1,15 +1,24 @@
 import asyncio
 import warnings
 
+import aioredis
 import dramatiq
 import redis
 from dramatiq.brokers.redis import RedisBroker
-from nejma.layers import RedisLayer
 from starlette.config import Config
 
 from bitcart import BTC
 
 config = Config("conf/.env")
+
+# JWT
+SECRET_KEY = config(
+    "SECRET_KEY",
+    default="2b74518b0caf3755b622eb10c00216a50b6884e1adfc362ab52d506c91f9ebcb",
+)
+ACCESS_TOKEN_EXPIRE_MINUTES = config("JWT_EXPIRE", cast=int, default=15)
+REFRESH_EXPIRE_DAYS = config("REFRESH_EXPIRE", cast=int, default=7)
+ALGORITHM = config("JWT_ALGORITHM", default="HS256")
 
 # bitcart-related
 RPC_USER = config("RPC_USER", default="electrum")
@@ -35,9 +44,17 @@ if TEST:
 with warnings.catch_warnings():  # it is supposed
     warnings.simplefilter("ignore")
     btc = BTC(RPC_URL, rpc_user=RPC_USER, rpc_pass=RPC_PASS)
-# initialize redis layer
-layer = RedisLayer(REDIS_HOST)
+# initialize redis pool
 loop = asyncio.get_event_loop()
+redis_pool = None
+
+
+async def init_redis():
+    global redis_pool
+    redis_pool = await aioredis.create_redis_pool(REDIS_HOST)
+
+
+loop.create_task(init_redis())
 
 
 def run_sync(f):

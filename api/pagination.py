@@ -2,17 +2,18 @@
 import asyncio
 from typing import TYPE_CHECKING, Callable, Optional, Union
 
+import asyncpg
 from fastapi import Query
 from sqlalchemy import Text, and_, or_, select, text
-from sqlalchemy.sql import select as sql_select, join
+from sqlalchemy.sql import join
+from sqlalchemy.sql import select as sql_select
 from starlette.requests import Request
-import asyncpg
 
-from .db import db
 from . import models
+from .db import db
 
 if TYPE_CHECKING:
-    from gino.declarative import ModelType
+    from gino.declarative import ModelType  # pragma: no cover
 
 
 class Pagination:
@@ -89,19 +90,22 @@ class Pagination:
             ]
         )
 
-    async def paginate(self, model, postprocess: Optional[Callable] = None) -> dict:
+    async def paginate(
+        self, model, data_source, user_id=None, postprocess: Optional[Callable] = None
+    ) -> dict:
         self.model = model
-        select_from = model
+        query = model.query.select_from(data_source)
         models_l = [model]
-        for field in self.model.__table__.c:
-            if field.key.endswith("_id"):
-                modelx = getattr(models, field.key[:-3].capitalize())
-                select_from = select_from.join(modelx)
-                models_l.append(modelx)
-        query = model.query.select_from(select_from)
+        if model != models.User:
+            for field in self.model.__table__.c:
+                if field.key.endswith("_id"):
+                    modelx = getattr(models, field.key[:-3].capitalize())
+                    models_l.append(modelx)
         queries = self.search(models_l)
         if queries != []:
             query = query.where(queries)
+        if user_id and model != models.User:
+            query = query.where(models.User.id == user_id)
         count, data = await asyncio.gather(self.get_count(query), self.get_list(query))
         if postprocess:
             data = await postprocess(data)

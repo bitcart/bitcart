@@ -70,7 +70,7 @@
                     "status": "active",
                     "store_id": 2,
                     "title": "test",
-                    "id": 1
+                    "id": 2
                 },
                 {
                     "amount": 0.5,
@@ -79,9 +79,15 @@
                     "status": "active",
                     "store_id": 2,
                     "title": "test",
-                    "id": 2
+                    "id": 1
                 }
             ]
+        }
+    ],
+    "get_count": [
+        {
+            "status": "good",
+            "return_data": 2
         }
     ],
     "get_one": [

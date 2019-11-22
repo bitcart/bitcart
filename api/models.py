@@ -1,13 +1,11 @@
 # pylint: disable=no-member
-import os
-
 from fastapi import HTTPException
 from gino.crud import UpdateRequest
 from sqlalchemy.orm import relationship
 
 from bitcart import BTC
 
-from . import settings, utils
+from . import settings
 from .db import db
 
 # shortcuts
@@ -28,26 +26,10 @@ class User(db.Model):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
-    username = Column(String, index=True)
+    username = Column(String, unique=True, index=True)
     email = Column(String, index=True)
     hashed_password = Column(String)
     is_superuser = Column(Boolean(), default=False)
-    token = relationship("Token", uselist=False, back_populates="users")
-
-
-class Token(db.Model):
-    __tablename__ = "tokens"
-    key = Column(String(length=40), primary_key=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
-    user = relationship("User", back_populates="tokens")
-    created = Column(DateTime(True))
-
-    @classmethod
-    async def create(cls, user: User):
-        user_id = user.id
-        key = os.urandom(20).hex()
-        created = utils.now()
-        return await super().create(user_id=user_id, key=key, created=created)
 
 
 class Wallet(db.Model):
@@ -56,15 +38,13 @@ class Wallet(db.Model):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(length=1000), unique=True, index=True)
     xpub = Column(String(length=1000), unique=True, index=True)
-    balance = Column(Numeric(16, 8))
+    balance = Column(Numeric(16, 8), default=0)
     user_id = Column(Integer, ForeignKey(User.id, ondelete="SET NULL"))
     user = relationship(User, backref="wallets")
 
     @classmethod
     async def create(cls, **kwargs):
-        if await BTC(RPC_URL, rpc_user=RPC_USER, rpc_pass=RPC_PASS).validate_key(
-            kwargs.get("xpub")
-        ):
+        if await settings.btc.validate_key(kwargs.get("xpub")):
             return await super().create(**kwargs)
         else:
             raise HTTPException(422, "Wallet key invalid")
@@ -129,9 +109,10 @@ class MyUpdateRequest(UpdateRequest):
         return super().update(**kwargs)
 
     async def apply(self):
-        await ProductxInvoice.delete.where(
-            ProductxInvoice.invoice_id == self._instance.id
-        ).gino.status()
+        if self.products:
+            await ProductxInvoice.delete.where(
+                ProductxInvoice.invoice_id == self._instance.id
+            ).gino.status()
         if self.products is None:
             self.products = []
         for i in self.products:

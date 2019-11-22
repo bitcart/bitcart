@@ -68,18 +68,6 @@
             "status": "good",
             "return_data": [
                 {
-                    "domain": "",
-                    "email": null,
-                    "email_host": "",
-                    "email_password": "",
-                    "email_port": 25,
-                    "email_user": "",
-                    "id": 1,
-                    "name": "test",
-                    "template": "",
-                    "wallet_id": 2
-                },
-                {
                     "domain": "example.com",
                     "email": "test@example.com",
                     "email_host": "",
@@ -90,8 +78,26 @@
                     "name": "test5",
                     "template": "",
                     "wallet_id": 2
+                },
+                {
+                    "domain": "",
+                    "email": null,
+                    "email_host": "",
+                    "email_password": "",
+                    "email_port": 25,
+                    "email_user": "",
+                    "id": 1,
+                    "name": "test",
+                    "template": "",
+                    "wallet_id": 2
                 }
             ]
+        }
+    ],
+    "get_count": [
+        {
+            "status": "good",
+            "return_data": 2
         }
     ],
     "get_one": [

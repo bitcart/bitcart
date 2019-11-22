@@ -6,7 +6,7 @@ import dramatiq
 
 from bitcart import BTC
 
-from . import db, models, schemes, settings
+from . import db, models, schemes, settings, utils
 
 RPC_URL = settings.RPC_URL
 RPC_USER = settings.RPC_USER
@@ -38,7 +38,7 @@ async def poll_updates(obj: Union[int, models.Invoice], xpub: str, test: bool = 
         if invoice_data["status"] != 0:
             status = STATUS_MAPPING[invoice_data["status"]]
             await obj.update(status=status).apply()
-            await settings.layer.group_send(obj.id, {"status": status})
+            await utils.publish_message(obj.id, {"status": status})
             return
         await asyncio.sleep(1)
     poll_updates.send_with_options(
@@ -53,6 +53,6 @@ async def sync_wallet(model: Union[int, models.Wallet]):
     btc = BTC(RPC_URL, xpub=model.xpub, rpc_user=RPC_USER, rpc_pass=RPC_PASS)
     balance = await btc.balance()
     await model.update(balance=balance["confirmed"]).apply()
-    await settings.layer.group_send(
+    await utils.publish_message(
         model.id, {"status": "success", "balance": balance["confirmed"]}
     )

@@ -11,6 +11,7 @@ from .utils import now
 
 class BaseUser(BaseModel):
     username: str
+    is_superuser: Optional[bool] = False
     email: Optional[EmailStr] = ""  # type: ignore
 
     @validator("email", pre=True, always=False)
@@ -29,6 +30,11 @@ class CreateUser(BaseUser):
 
 class User(BaseUser):
     id: Optional[int]
+    password: Optional[str]
+
+
+class DisplayUser(BaseUser):
+    id: Optional[int]
 
 
 class CreateToken(BaseModel):
@@ -36,11 +42,17 @@ class CreateToken(BaseModel):
     password: str
 
 
+class TokenData(BaseModel):
+    username: str = None
+
+
+class RefreshToken(BaseModel):
+    token: str
+
+
 class CreateWallet(BaseModel):
     name: str
     xpub: str = ""
-    balance: Decimal = Decimal(0)
-    user_id: int
 
     class Config:
         orm_mode = True
@@ -48,6 +60,8 @@ class CreateWallet(BaseModel):
 
 class Wallet(CreateWallet):
     id: Optional[int]
+    user_id: int
+    balance: Decimal = Decimal(0)
 
 
 class CreateStore(BaseModel):
