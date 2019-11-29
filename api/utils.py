@@ -12,6 +12,7 @@ from jwt import PyJWTError
 from passlib.context import CryptContext
 from pydantic import BaseModel
 from pytz import utc
+from sqlalchemy import distinct
 from starlette.requests import Request
 from starlette.status import HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN
 
@@ -46,8 +47,8 @@ def get_password_hash(password):
     return pwd_context.hash(password)
 
 
-async def authenticate_user(username: str, password: str):
-    user = await models.User.query.where(models.User.username == username).gino.first()
+async def authenticate_user(email: str, password: str):
+    user = await models.User.query.where(models.User.email == email).gino.first()
     if not user:
         return False
     if not verify_password(password, user.hashed_password):
@@ -99,14 +100,14 @@ class AuthDependency:
                 token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
             )
             token_type: str = payload.get("token_type")
-            username: str = payload.get("sub")
-            if token_type != self.token_type or username is None:
+            email: str = payload.get("sub")
+            if token_type != self.token_type or email is None:
                 raise credentials_exception
-            token_data = schemes.TokenData(username=username)
+            token_data = schemes.TokenData(email=email)
         except PyJWTError:
             raise credentials_exception
         user = await models.User.query.where(
-            models.User.username == token_data.username
+            models.User.email == token_data.email
         ).gino.first()
         if user is None:
             raise credentials_exception
@@ -182,11 +183,13 @@ def model_view(
     async def get_count(user: Union[None, schemes.User] = Depends(auth_dependency)):
         return await (
             (
-                orm_model.query.select_from(get_data_source())
+                orm_model.query.select_from(get_data_source()).where(
+                    models.User.id == user.id
+                )
                 if orm_model != models.User
                 else orm_model.query
             )
-            .with_only_columns([db.db.func.count(orm_model.id)])
+            .with_only_columns([db.db.func.count(distinct(orm_model.id))])
             .order_by(None)
             .gino.scalar()
         )

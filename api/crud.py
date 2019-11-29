@@ -17,7 +17,6 @@ async def create_user(user: schemes.CreateUser, auth_user: schemes.User):
     elif auth_user and auth_user.is_superuser:
         is_superuser = user.is_superuser
     return await models.User.create(
-        username=user.username,
         hashed_password=utils.get_password_hash(user.password),
         email=user.email,
         is_superuser=is_superuser,

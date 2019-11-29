@@ -40,7 +40,14 @@
                 "name": "test1",
                 "xpub": "tpubDC9zYPoSZUk5W8Rfaex3k324fi1hDLHapbSjPd4gbr7AE8MLSGEy76fNp5m6sVLBy9p2iTjRkiguVyb8iEHCdUBC7SXnhHdHMpXwFcrVMyA"
             },
-            "status": "bad"
+            "status": "good",
+            "return_data": {
+                "id": 3,
+                "name": "test1",
+                "user_id": 1,
+                "xpub": "tpubDC9zYPoSZUk5W8Rfaex3k324fi1hDLHapbSjPd4gbr7AE8MLSGEy76fNp5m6sVLBy9p2iTjRkiguVyb8iEHCdUBC7SXnhHdHMpXwFcrVMyA",
+                "balance": 0
+            }
         },
         {
             "data": {},
@@ -82,6 +89,13 @@
                     "user_id": 1,
                     "xpub": "tpubDD1g867nDN1JyfNAjHNWrL2XNg98y6gM1W82C4nxqxGq5QPEFCtxYLFGgi7GrBwu4TczHRnwXic81BZ2FKBwmKvQdRJpNdfXPtAmtzBkD1A",
                     "balance": 0
+                },
+                {
+                    "id": 3,
+                    "name": "test1",
+                    "user_id": 1,
+                    "xpub": "tpubDC9zYPoSZUk5W8Rfaex3k324fi1hDLHapbSjPd4gbr7AE8MLSGEy76fNp5m6sVLBy9p2iTjRkiguVyb8iEHCdUBC7SXnhHdHMpXwFcrVMyA",
+                    "balance": 0
                 }
             ]
         }
@@ -89,7 +103,7 @@
     "get_count": [
         {
             "status": "good",
-            "return_data": 2
+            "return_data": 3
         }
     ],
     "get_one": [
@@ -105,7 +119,7 @@
             }
         },
         {
-            "obj_id": 3,
+            "obj_id": 4,
             "status": "not found"
         },
         {
@@ -129,14 +143,14 @@
             }
         },
         {
-            "obj_id": 3,
+            "obj_id": 4,
             "data": {
                 "name": "test3"
             },
             "status": "not found"
         },
         {
-            "obj_id": 3,
+            "obj_id": 4,
             "data": {
                 "name": "test2",
                 "user_id": 4
@@ -200,7 +214,7 @@
     ],
     "delete": [
         {
-            "obj_id": 3,
+            "obj_id": 4,
             "status": "not found"
         },
         {

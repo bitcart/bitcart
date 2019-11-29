@@ -33,11 +33,11 @@ def get_product():
 
 def get_invoice():
     return (
-        models.User.join(models.Wallet)
-        .join(models.Store)
+        models.Invoice.join(models.ProductxInvoice)
         .join(models.Product)
-        .join(models.ProductxInvoice)
-        .join(models.Invoice)
+        .join(models.Store)
+        .join(models.Wallet)
+        .join(models.User)
     )
 
 
@@ -51,8 +51,8 @@ async def get_balances(user: models.User = Depends(utils.AuthDependency())):
     balances = Decimal()
     async with db.db.acquire() as conn:
         async with conn.transaction():
-            async for wallet in models.Wallet.query.select_from(
-                get_wallet()
+            async for wallet in models.Wallet.query.select_from(get_wallet()).where(
+                models.User.id == user.id
             ).gino.iterate():
                 balance = (
                     await BTC(
@@ -169,13 +169,13 @@ async def wallet_history(
 def create_tokens(user: models.User):
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = utils.create_access_token(
-        data={"sub": user.username},
+        data={"sub": user.email},
         token_type="access",
         expires_delta=access_token_expires,
     )
     refresh_token_expires = timedelta(days=settings.REFRESH_EXPIRE_DAYS)
     refresh_token = utils.create_access_token(
-        data={"sub": user.username},
+        data={"sub": user.email},
         token_type="refresh",
         expires_delta=refresh_token_expires,
     )
@@ -188,7 +188,7 @@ def create_tokens(user: models.User):
 
 @router.post("/token")
 async def create_token(input_token: schemes.CreateToken):
-    user = await utils.authenticate_user(input_token.username, input_token.password)
+    user = await utils.authenticate_user(input_token.email, input_token.password)
     if not user:
         raise HTTPException(401, "Unauthorized")
     return create_tokens(user)
