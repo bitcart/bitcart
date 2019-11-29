@@ -188,9 +188,11 @@ def create_tokens(user: models.User):
 
 @router.post("/token")
 async def create_token(input_token: schemes.CreateToken):
-    user = await utils.authenticate_user(input_token.email, input_token.password)
+    user, status = await utils.authenticate_user(
+        input_token.email, input_token.password
+    )
     if not user:
-        raise HTTPException(401, "Unauthorized")
+        raise HTTPException(401, {"message": "Unauthorized", "status": status})
     return create_tokens(user)
 
 

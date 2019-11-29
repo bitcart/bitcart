@@ -50,10 +50,10 @@ def get_password_hash(password):
 async def authenticate_user(email: str, password: str):
     user = await models.User.query.where(models.User.email == email).gino.first()
     if not user:
-        return False
+        return False, 404
     if not verify_password(password, user.hashed_password):
-        return False
-    return user
+        return False, 401
+    return user, 200
 
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/token")
