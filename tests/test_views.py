@@ -168,7 +168,7 @@ def test_rate(client: TestClient):
 def test_wallet_history(client: TestClient, token: str):
     headers = {"Authorization": f"Bearer {token}"}
     assert client.get("/wallet_history/1", headers=headers).status_code == 404
-    assert client.get("/wallet_history/3", headers=headers).status_code == 404
+    assert client.get("/wallet_history/4", headers=headers).status_code == 404
     resp = client.get("/wallet_history/2", headers=headers)
     client.post(
         "/wallets", json={"name": "test7", "xpub": TEST_XPUB}, headers=headers
@@ -192,17 +192,19 @@ def test_wallet_history(client: TestClient, token: str):
 def test_create_token(client: TestClient):
     assert (
         client.post(
-            "/token", json={"username": "test44", "password": 123456}
+            "/token", json={"email": "test44@example.com", "password": 123456}
         ).status_code
         == 401
     )
     assert (
         client.post(
-            "/token", json={"username": "test1", "password": 123456}
+            "/token", json={"email": "test1@example.com", "password": 123456}
         ).status_code
         == 401
     )
-    resp = client.post("/token", json={"username": "test44", "password": 12345})
+    resp = client.post(
+        "/token", json={"email": "test44@example.com", "password": 12345}
+    )
     assert resp.status_code == 200
     j = resp.json()
     assert j.get("access_token")
@@ -211,7 +213,9 @@ def test_create_token(client: TestClient):
 
 
 def test_refresh_token(client: TestClient):
-    resp = client.post("/token", json={"username": "test44", "password": 12345})
+    resp = client.post(
+        "/token", json={"email": "test44@example.com", "password": 12345}
+    )
     assert resp.status_code == 200
     resp = resp.json()
     assert resp.get("refresh_token")
@@ -231,13 +235,13 @@ def test_noauth(client: TestClient):
     assert client.get("/invoices").status_code == 401
     assert (
         client.post(
-            "/users", json={"username": "noauth", "password": "noauth"}
+            "/users", json={"email": "noauth@example.com", "password": "noauth"}
         ).status_code
         == 200
     )
     assert (
         client.post(
-            "/token", json={"username": "noauth", "password": "noauth"}
+            "/token", json={"email": "noauth@example.com", "password": "noauth"}
         ).status_code
         == 200
     )
@@ -245,7 +249,7 @@ def test_noauth(client: TestClient):
 
 def test_superuseronly(client: TestClient, token: str):
     token_usual = client.post(
-        "/token", json={"username": "noauth", "password": "noauth"}
+        "/token", json={"email": "noauth@example.com", "password": "noauth"}
     ).json()["access_token"]
     assert (
         client.get(
@@ -304,7 +308,7 @@ def test_users_me(client: TestClient, token: str):
     resp = client.get("/users/me", headers={"Authorization": f"Bearer {token}"})
     assert resp.status_code == 200
     j = resp.json()
-    assert j == {"email": None, "is_superuser": True, "id": 1, "username": "testauth"}
+    assert j == {"is_superuser": True, "id": 1, "email": "testauth@example.com"}
 
 
 def test_wallets_balance(client: TestClient, token: str):

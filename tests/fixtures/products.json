@@ -2,7 +2,7 @@
     "create": [
         {
             "data": {
-                "title": "test",
+                "name": "test",
                 "amount": 0.5,
                 "quantity": 0.5,
                 "store_id": 2
@@ -14,13 +14,13 @@
                 "quantity": 0.5,
                 "status": "active",
                 "store_id": 2,
-                "title": "test",
+                "name": "test",
                 "id": 1
             }
         },
         {
             "data": {
-                "title": "test",
+                "name": "test",
                 "amount": 0.5,
                 "quantity": 0.5,
                 "store_id": 2
@@ -32,7 +32,7 @@
                 "quantity": 0.5,
                 "status": "active",
                 "store_id": 2,
-                "title": "test",
+                "name": "test",
                 "id": 2
             }
         },
@@ -42,7 +42,7 @@
         },
         {
             "data": {
-                "title": "test"
+                "name": "test"
             },
             "status": "bad"
         },
@@ -69,7 +69,7 @@
                     "quantity": 0.5,
                     "status": "active",
                     "store_id": 2,
-                    "title": "test",
+                    "name": "test",
                     "id": 2
                 },
                 {
@@ -78,7 +78,7 @@
                     "quantity": 0.5,
                     "status": "active",
                     "store_id": 2,
-                    "title": "test",
+                    "name": "test",
                     "id": 1
                 }
             ]
@@ -104,7 +104,7 @@
                 "quantity": 0.5,
                 "status": "active",
                 "store_id": 2,
-                "title": "test",
+                "name": "test",
                 "id": 1
             }
         },
@@ -119,7 +119,7 @@
             "data": {
                 "amount": 0.5,
                 "quantity": 0.5,
-                "title": "test1",
+                "name": "test1",
                 "store_id": 2
             },
             "status": "good",
@@ -129,7 +129,7 @@
                 "quantity": 0.5,
                 "status": "active",
                 "store_id": 2,
-                "title": "test1",
+                "name": "test1",
                 "id": 1
             }
         },
@@ -138,7 +138,7 @@
             "data": {
                 "amount": 0.2,
                 "quantity": 0.2,
-                "title": "test1",
+                "name": "test1",
                 "store_id": 2
             },
             "status": "good",
@@ -148,21 +148,21 @@
                 "quantity": 0.2,
                 "status": "active",
                 "store_id": 2,
-                "title": "test1",
+                "name": "test1",
                 "id": 1
             }
         },
         {
             "obj_id": 1,
             "data": {
-                "title": "test3"
+                "name": "test3"
             },
             "status": "bad"
         },
         {
             "obj_id": 1,
             "data": {
-                "title": "test2",
+                "name": "test2",
                 "store_id": 3
             },
             "status": "bad"
@@ -172,7 +172,7 @@
         {
             "obj_id": 1,
             "data": {
-                "title": "test"
+                "name": "test"
             },
             "status": "bad"
         },
@@ -187,7 +187,7 @@
             "obj_id": 1,
             "data": {
                 "id": null,
-                "title": "test"
+                "name": "test"
             },
             "status": "bad"
         },
@@ -195,7 +195,7 @@
             "obj_id": 1,
             "data": {
                 "id": 1,
-                "title": "test",
+                "name": "test",
                 "amount": 0.5,
                 "quantity": 0.5,
                 "store_id": 2
@@ -207,7 +207,7 @@
                 "quantity": 0.5,
                 "status": "active",
                 "store_id": 2,
-                "title": "test",
+                "name": "test",
                 "id": 1
             }
         }
@@ -226,7 +226,7 @@
                 "quantity": 0.5,
                 "status": "active",
                 "store_id": 2,
-                "title": "test",
+                "name": "test",
                 "id": 1
             }
         },

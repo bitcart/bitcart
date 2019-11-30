@@ -2,26 +2,24 @@
     "create": [
         {
             "data": {
-                "username": "test",
+                "email": "test@example.com",
                 "password": 12345
             },
             "status": "good",
             "return_data": {
-                "email": null,
-                "username": "test",
+                "email": "test@example.com",
                 "is_superuser": false,
                 "id": 2
             }
         },
         {
             "data": {
-                "username": "test44",
+                "email": "test44@example.com",
                 "password": 12345
             },
             "status": "good",
             "return_data": {
-                "email": null,
-                "username": "test44",
+                "email": "test44@example.com",
                 "is_superuser": false,
                 "id": 3
             }
@@ -48,20 +46,17 @@
             "status": "good",
             "return_data": [
                 {
-                    "email": null,
-                    "username": "testauth",
+                    "email": "testauth@example.com",
                     "is_superuser": true,
                     "id": 1
                 },
                 {
-                    "email": null,
-                    "username": "test",
+                    "email": "test@example.com",
                     "is_superuser": false,
                     "id": 2
                 },
                 {
-                    "email": null,
-                    "username": "test44",
+                    "email": "test44@example.com",
                     "is_superuser": false,
                     "id": 3
                 }
@@ -79,8 +74,7 @@
             "obj_id": 1,
             "status": "good",
             "return_data": {
-                "email": null,
-                "username": "testauth",
+                "email": "testauth@example.com",
                 "is_superuser": true,
                 "id": 1
             }
@@ -98,13 +92,12 @@
         {
             "obj_id": 2,
             "data": {
-                "username": "test1",
+                "email": "test1@example.com",
                 "password": 12345
             },
             "status": "good",
             "return_data": {
-                "email": null,
-                "username": "test1",
+                "email": "test1@example.com",
                 "is_superuser": false,
                 "id": 2
             }
@@ -112,14 +105,12 @@
         {
             "obj_id": 2,
             "data": {
-                "username": "test1",
-                "email": "test@example.com",
+                "email": "test2@example.com",
                 "password": 12345
             },
             "status": "good",
             "return_data": {
-                "email": "test@example.com",
-                "username": "test1",
+                "email": "test2@example.com",
                 "is_superuser": false,
                 "id": 2
             }
@@ -160,13 +151,12 @@
             "obj_id": 2,
             "data": {
                 "id": 2,
-                "username": "test",
+                "email": "test@example.com",
                 "password": 12345
             },
             "status": "good",
             "return_data": {
-                "email": null,
-                "username": "test",
+                "email": "test@example.com",
                 "is_superuser": false,
                 "id": 2
             }
@@ -181,8 +171,7 @@
             "obj_id": 2,
             "status": "good",
             "return_data": {
-                "email": null,
-                "username": "test",
+                "email": "test@example.com",
                 "is_superuser": false,
                 "id": 2
             }

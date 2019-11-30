@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Callable, Optional, Union
 
 import asyncpg
 from fastapi import Query
-from sqlalchemy import Text, and_, or_, select, text
+from sqlalchemy import Text, and_, distinct, or_, select, text
 from sqlalchemy.sql import join
 from sqlalchemy.sql import select as sql_select
 from starlette.requests import Request
@@ -42,7 +42,7 @@ class Pagination:
 
     async def get_count(self, query) -> int:
         query = query.with_only_columns(
-            [db.func.count(self.model.id)]  # type: ignore
+            [db.func.count(distinct(self.model.id))]  # type: ignore
         ).order_by(None)
 
         return await query.gino.scalar()
@@ -106,7 +106,10 @@ class Pagination:
             query = query.where(queries)
         if user_id and model != models.User:
             query = query.where(models.User.id == user_id)
-        count, data = await asyncio.gather(self.get_count(query), self.get_list(query))
+        list_query = query.distinct(model.id) if model == models.Invoice else query
+        count, data = await asyncio.gather(
+            self.get_count(query), self.get_list(list_query)
+        )
         if postprocess:
             data = await postprocess(data)
         return {

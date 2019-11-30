@@ -10,15 +10,8 @@ from .utils import now
 
 
 class BaseUser(BaseModel):
-    username: str
+    email: EmailStr
     is_superuser: Optional[bool] = False
-    email: Optional[EmailStr] = ""  # type: ignore
-
-    @validator("email", pre=True, always=False)
-    def validate_email(cls, val):
-        if val == "":
-            return None
-        return val
 
     class Config:
         orm_mode = True
@@ -38,12 +31,12 @@ class DisplayUser(BaseUser):
 
 
 class CreateToken(BaseModel):
-    username: str
+    email: str
     password: str
 
 
 class TokenData(BaseModel):
-    username: str = None
+    email: str
 
 
 class RefreshToken(BaseModel):
@@ -93,7 +86,7 @@ class CreateProduct(BaseModel):
     status: str = "active"
     amount: Decimal
     quantity: Decimal
-    title: str
+    name: str
     date: Optional[datetime]
     description: str = ""
     store_id: int

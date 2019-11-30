@@ -26,8 +26,7 @@ class User(db.Model):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
-    username = Column(String, unique=True, index=True)
-    email = Column(String, index=True)
+    email = Column(String, unique=True, index=True)
     hashed_password = Column(String)
     is_superuser = Column(Boolean(), default=False)
 
@@ -36,8 +35,8 @@ class Wallet(db.Model):
     __tablename__ = "wallets"
 
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(length=1000), unique=True, index=True)
-    xpub = Column(String(length=1000), unique=True, index=True)
+    name = Column(String(length=1000), index=True)
+    xpub = Column(String(length=1000), index=True)
     balance = Column(Numeric(16, 8), default=0)
     user_id = Column(Integer, ForeignKey(User.id, ondelete="SET NULL"))
     user = relationship(User, backref="wallets")
@@ -54,10 +53,10 @@ class Store(db.Model):
     __tablename__ = "stores"
 
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(1000), unique=True, index=True)
-    domain = Column(String(1000), unique=True, index=True)
+    name = Column(String(1000), index=True)
+    domain = Column(String(1000), index=True)
     template = Column(String(1000))
-    email = Column(String(1000), unique=True, index=True)
+    email = Column(String(1000), index=True)
     wallet_id = Column(
         ForeignKey(
             "wallets.id", deferrable=True, initially="DEFERRED", ondelete="SET NULL"
@@ -76,9 +75,9 @@ class Product(db.Model):
     __tablename__ = "products"
 
     id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(length=1000), index=True)
     amount = Column(Numeric(16, 8), nullable=False)
     quantity = Column(Numeric(16, 8), nullable=False)
-    title = Column(String(1000), nullable=False)
     date = Column(DateTime(True), nullable=False)
     description = Column(Text)
     image = Column(String(100))
@@ -97,8 +96,18 @@ class Product(db.Model):
 class ProductxInvoice(db.Model):
     __tablename__ = "productsxinvoices"
 
-    product_id = Column(Integer, ForeignKey("products.id", ondelete="SET NULL"))
-    invoice_id = Column(Integer, ForeignKey("invoices.id", ondelete="SET NULL"))
+    product_id = Column(
+        Integer,
+        ForeignKey("products.id", ondelete="SET NULL"),
+        primary_key=True,
+        index=True,
+    )
+    invoice_id = Column(
+        Integer,
+        ForeignKey("invoices.id", ondelete="SET NULL"),
+        primary_key=True,
+        index=True,
+    )
 
 
 class MyUpdateRequest(UpdateRequest):
