@@ -80,7 +80,7 @@ class Product(db.Model):
     quantity = Column(Numeric(16, 8), nullable=False)
     date = Column(DateTime(True), nullable=False)
     description = Column(Text)
-    image = Column(String(100))
+    image = Column(String(1000))
     store_id = Column(
         Integer,
         ForeignKey(
@@ -138,8 +138,8 @@ class Invoice(db.Model):
     amount = Column(Numeric(16, 8), nullable=False)
     status = Column(String(1000), nullable=False)
     date = Column(DateTime(True), nullable=False)
-    bitcoin_address = Column(String(255), nullable=False)
-    bitcoin_url = Column(String(255), nullable=False)
+    bitcoin_address = Column(String(10000), nullable=False)
+    bitcoin_url = Column(String(10000), nullable=False)
     products = relationship("Product", secondary=ProductxInvoice)
 
     @classmethod

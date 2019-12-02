@@ -19,9 +19,11 @@ fileConfig(config.config_file_name)
 # target_metadata = mymodel.Base.metadata
 # target_metadata = None
 import sys
-sys.path.insert(0, '.')
+
+sys.path.insert(0, ".")
 from api.db import CONNECTION_STR
 from api.models import db
+
 target_metadata = db
 
 # other values from the config, defined by the needs of env.py,
@@ -43,10 +45,11 @@ def run_migrations_offline():
 
     """
     alembic_config = config.get_section(config.config_ini_section)
-    alembic_config['sqlalchemy.url'] = CONNECTION_STR
+    alembic_config["sqlalchemy.url"] = CONNECTION_STR
 
     url = config.get_main_option("sqlalchemy.url")
     context.configure(
+        compare_type=True,
         url=url,
         target_metadata=target_metadata,
         literal_binds=True,
@@ -65,17 +68,15 @@ def run_migrations_online():
 
     """
     alembic_config = config.get_section(config.config_ini_section)
-    alembic_config['sqlalchemy.url'] = CONNECTION_STR
+    alembic_config["sqlalchemy.url"] = CONNECTION_STR
 
     connectable = engine_from_config(
-        alembic_config,
-        prefix="sqlalchemy.",
-        poolclass=pool.NullPool,
+        alembic_config, prefix="sqlalchemy.", poolclass=pool.NullPool
     )
 
     with connectable.connect() as connection:
         context.configure(
-            connection=connection, target_metadata=target_metadata
+            compare_type=True, connection=connection, target_metadata=target_metadata
         )
 
         with context.begin_transaction():
