@@ -11,6 +11,7 @@
             "return_data": {
                 "amount": 0.5,
                 "status": "active",
+                "buyer_email": null,
                 "products": [
                     2
                 ],
@@ -35,6 +36,7 @@
                 {
                     "amount": 0.5,
                     "status": "active",
+                    "buyer_email": null,
                     "products": [
                         2
                     ],
@@ -60,6 +62,7 @@
             "return_data": {
                 "amount": 0.5,
                 "status": "active",
+                "buyer_email": null,
                 "products": [
                     2
                 ],
@@ -84,6 +87,7 @@
             "return_data": {
                 "amount": 0.2,
                 "status": "active",
+                "buyer_email": null,
                 "products": [
                     2
                 ],
@@ -141,6 +145,7 @@
             "return_data": {
                 "amount": 0.5,
                 "status": "active",
+                "buyer_email": null,
                 "products": [
                     2
                 ],
@@ -159,6 +164,7 @@
             "return_data": {
                 "amount": 0.5,
                 "status": "active",
+                "buyer_email": null,
                 "products": [
                     2
                 ],
