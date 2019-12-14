@@ -78,6 +78,7 @@ class Product(db.Model):
     name = Column(String(length=1000), index=True)
     amount = Column(Numeric(16, 8), nullable=False)
     quantity = Column(Numeric(16, 8), nullable=False)
+    download_url = Column(String(100000))
     date = Column(DateTime(True), nullable=False)
     description = Column(Text)
     image = Column(String(1000))
@@ -140,6 +141,7 @@ class Invoice(db.Model):
     date = Column(DateTime(True), nullable=False)
     bitcoin_address = Column(String(10000), nullable=False)
     bitcoin_url = Column(String(10000), nullable=False)
+    buyer_email = Column(String(10000))
     products = relationship("Product", secondary=ProductxInvoice)
 
     @classmethod

@@ -61,11 +61,12 @@ class CreateStore(BaseModel):
     name: str
     domain: str = ""
     template: str = ""
-    email: Optional[EmailStr] = ""  # type: ignore
+    email: Optional[EmailStr] = ""
     email_host: str = ""
     email_port: int = 25
     email_user: str = ""
     email_password: str = ""
+    email_use_ssl: bool = True
     wallet_id: int
 
     @validator("email", pre=True, always=False)
@@ -88,6 +89,7 @@ class CreateProduct(BaseModel):
     quantity: Decimal
     name: str
     date: Optional[datetime]
+    download_url: Optional[str] = ""
     description: str = ""
     store_id: int
 
@@ -105,6 +107,7 @@ class Product(CreateProduct):
 
 class CreateInvoice(BaseModel):
     amount: Decimal
+    buyer_email: Optional[EmailStr] = ""
     status: str = "active"
     date: Optional[datetime] = now()
     bitcoin_address: str = ""
@@ -114,6 +117,12 @@ class CreateInvoice(BaseModel):
     @validator("date", pre=True, always=True)
     def set_date(cls, v):
         return v or now()
+
+    @validator("buyer_email", pre=True, always=False)
+    def validate_buyer_email(cls, val):
+        if val == "":
+            return None
+        return val
 
     class Config:
         orm_mode = True

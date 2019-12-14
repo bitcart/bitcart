@@ -1,4 +1,5 @@
 # pylint: disable=no-member
+import smtplib
 from datetime import datetime, timedelta
 from os.path import join as path_join
 from typing import Callable, Dict, List, Optional, Type, Union
@@ -8,6 +9,7 @@ import asyncpg
 import jwt
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer
+from jinja2 import Template
 from jwt import PyJWTError
 from passlib.context import CryptContext
 from pydantic import BaseModel
@@ -307,3 +309,31 @@ async def get_wallet_history(model, response):
     txes = (await btc.history())["transactions"]
     for i in txes:
         response.append({"date": i["date"], "txid": i["txid"], "amount": i["bc_value"]})
+
+
+def check_ping(host, port, user, password, email, ssl=True):
+    try:
+        server = smtplib.SMTP(host=host, port=port, timeout=2)
+        if ssl:
+            server.starttls()
+        server.login(user, password)
+        server.verify(email)
+        server.quit()
+        return True
+    except OSError:
+        return False
+
+
+def get_email_template(store, product):
+    with open("api/templates/email_product.j2") as f:
+        template = Template(f.read())
+    return template.render(store=store, product=product)
+
+
+def send_mail(store, where, message):
+    server = smtplib.SMTP(host=store.email_host, port=store.email_port, timeout=2)
+    if store.email_use_ssl:
+        server.starttls()
+    server.login(store.email_user, store.email_password)
+    server.sendmail(store.email, where, message)
+    server.quit()

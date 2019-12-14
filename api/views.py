@@ -66,6 +66,25 @@ async def get_balances(user: models.User = Depends(utils.AuthDependency())):
     return balances
 
 
+@router.get("/stores/{store}/ping")
+async def ping_email(store: int, user: models.User = Depends(utils.AuthDependency())):
+    model = (
+        await models.Store.query.select_from(get_store())
+        .where(models.Store.id == store)
+        .gino.first()
+    )
+    if not model:
+        raise HTTPException(404, f"Store with id {store} does not exist!")
+    return utils.check_ping(
+        model.email_host,
+        model.email_port,
+        model.email_user,
+        model.email_password,
+        model.email,
+        model.email_use_ssl,
+    )
+
+
 # invoices and products should have unauthorized access
 async def get_product_noauth(model_id: int):
     item = await models.Product.get(model_id)

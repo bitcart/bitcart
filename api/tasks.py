@@ -6,7 +6,7 @@ import dramatiq
 
 from bitcart import BTC
 
-from . import db, models, schemes, settings, utils
+from . import crud, db, models, schemes, settings, utils
 
 RPC_URL = settings.RPC_URL
 RPC_USER = settings.RPC_USER
@@ -27,6 +27,7 @@ STATUS_MAPPING = {
 @settings.run_sync
 async def poll_updates(obj: Union[int, models.Invoice], xpub: str, test: bool = False):
     obj = await models.Invoice.get(obj)
+    await crud.invoice_add_related(obj)
     address = obj.bitcoin_address
     if not address:
         return
@@ -37,6 +38,23 @@ async def poll_updates(obj: Union[int, models.Invoice], xpub: str, test: bool = 
             return
         if invoice_data["status"] != 0:
             status = STATUS_MAPPING[invoice_data["status"]]
+            if status == "complete":
+                for product_id in obj.products:
+                    product = await models.Product.get(product_id)
+                    store = await models.Store.get(product.store_id)
+                    if utils.check_ping(
+                        store.email_host,
+                        store.email_port,
+                        store.email_user,
+                        store.email_password,
+                        store.email,
+                        store.email_use_ssl,
+                    ):
+                        utils.send_mail(
+                            store,
+                            obj.buyer_email,
+                            utils.get_email_template(store, product),
+                        )
             await obj.update(status=status).apply()
             await utils.publish_message(obj.id, {"status": status})
             return
