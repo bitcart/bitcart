@@ -37,4 +37,4 @@ htmlcov/
 bitcart-cli
 bitcart-cli-*
 # static
-images/
+images/products/*.png
