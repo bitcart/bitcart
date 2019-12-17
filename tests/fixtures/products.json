@@ -16,6 +16,7 @@
                 "status": "active",
                 "store_id": 2,
                 "name": "test",
+                "image": null,
                 "id": 1
             }
         },
@@ -35,6 +36,7 @@
                 "status": "active",
                 "store_id": 2,
                 "name": "test",
+                "image": null,
                 "id": 2
             }
         },
@@ -73,6 +75,7 @@
                     "status": "active",
                     "store_id": 2,
                     "name": "test",
+                    "image": null,
                     "id": 2
                 },
                 {
@@ -83,6 +86,7 @@
                     "status": "active",
                     "store_id": 2,
                     "name": "test",
+                    "image": null,
                     "id": 1
                 }
             ]
@@ -110,6 +114,7 @@
                 "status": "active",
                 "store_id": 2,
                 "name": "test",
+                "image": null,
                 "id": 1
             }
         },
@@ -136,6 +141,7 @@
                 "status": "active",
                 "store_id": 2,
                 "name": "test1",
+                "image": null,
                 "id": 1
             }
         },
@@ -156,6 +162,7 @@
                 "status": "active",
                 "store_id": 2,
                 "name": "test1",
+                "image": null,
                 "id": 1
             }
         },
@@ -216,6 +223,7 @@
                 "status": "active",
                 "store_id": 2,
                 "name": "test",
+                "image": null,
                 "id": 1
             }
         }
@@ -236,6 +244,7 @@
                 "status": "active",
                 "store_id": 2,
                 "name": "test",
+                "image": null,
                 "id": 1
             }
         },

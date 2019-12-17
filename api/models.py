@@ -81,7 +81,7 @@ class Product(db.Model):
     download_url = Column(String(100000))
     date = Column(DateTime(True), nullable=False)
     description = Column(Text)
-    image = Column(String(1000))
+    image = Column(String(100000))
     store_id = Column(
         Integer,
         ForeignKey(
@@ -98,16 +98,10 @@ class ProductxInvoice(db.Model):
     __tablename__ = "productsxinvoices"
 
     product_id = Column(
-        Integer,
-        ForeignKey("products.id", ondelete="SET NULL"),
-        primary_key=True,
-        index=True,
+        Integer, ForeignKey("products.id", ondelete="SET NULL"), unique=True, index=True
     )
     invoice_id = Column(
-        Integer,
-        ForeignKey("invoices.id", ondelete="SET NULL"),
-        primary_key=True,
-        index=True,
+        Integer, ForeignKey("invoices.id", ondelete="SET NULL"), unique=True, index=True
     )
 
 

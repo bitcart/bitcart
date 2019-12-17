@@ -91,6 +91,7 @@ class CreateProduct(BaseModel):
     date: Optional[datetime]
     download_url: Optional[str] = ""
     description: str = ""
+    image: Optional[str] = ""
     store_id: int
 
     @validator("date", pre=True, always=True)

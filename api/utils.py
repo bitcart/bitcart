@@ -1,4 +1,5 @@
 # pylint: disable=no-member
+import os
 import smtplib
 from datetime import datetime, timedelta
 from os.path import join as path_join
@@ -337,3 +338,27 @@ def send_mail(store, where, message):
     server.login(store.email_user, store.email_password)
     server.sendmail(store.email, where, message)
     server.quit()
+
+
+def get_image_filename(image, create=True, model=None):
+    filename = None
+    if create:
+        filename = "images/products/temp.png" if image else None
+    else:
+        if image:
+            filename = f"images/products/{model.id}.png"
+        else:
+            filename = model.image
+    return filename
+
+
+async def save_image(filename, image):
+    with open(filename, "wb") as f:
+        f.write(await image.read())
+
+
+def safe_remove(filename):
+    try:
+        os.remove(filename)
+    except (TypeError, OSError):
+        pass

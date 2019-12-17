@@ -1,10 +1,18 @@
 import asyncio
+import os
 import warnings
 
 import aioredis
 import dramatiq
 import redis
 from dramatiq.brokers.redis import RedisBroker
+from dramatiq.middleware import (
+    AgeLimit,
+    Callbacks,
+    Pipelines,
+    Retries,
+    ShutdownNotifications,
+)
 from starlette.config import Config
 
 from bitcart import BTC
@@ -39,6 +47,15 @@ DB_HOST = config("DB_HOST", default="127.0.0.1")
 DB_PORT = config("DB_PORT", default="5432")
 if TEST:
     DB_NAME = "bitcart_test"
+
+# initialize images dir
+def create_ifn(path):
+    if not os.path.exists(path):
+        os.mkdir(path)
+
+
+create_ifn("images")
+create_ifn("images/products")
 
 # initialize bitcart instance
 with warnings.catch_warnings():  # it is supposed
@@ -78,6 +95,11 @@ class InitDB(dramatiq.Middleware):
         shutdown.set()
 
 
-redis_broker = RedisBroker(connection_pool=redis.ConnectionPool.from_url(REDIS_HOST))
+redis_broker = RedisBroker(
+    connection_pool=redis.ConnectionPool.from_url(REDIS_HOST),
+    middleware=[
+        m() for m in (AgeLimit, ShutdownNotifications, Callbacks, Pipelines, Retries)
+    ],
+)
 redis_broker.add_middleware(InitDB())
 dramatiq.set_broker(redis_broker)

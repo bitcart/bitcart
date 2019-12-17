@@ -1,9 +1,13 @@
+# pylint: disable=no-member, no-name-in-module
+import json
 import secrets
 from datetime import timedelta
 from decimal import Decimal
-from typing import List, Union
+from typing import List
+from pydantic.error_wrappers import ValidationError
 
-from fastapi import APIRouter, Depends, HTTPException
+import asyncpg
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from starlette.endpoints import WebSocketEndpoint
 from starlette.requests import Request
 from starlette.status import WS_1008_POLICY_VIOLATION
@@ -105,6 +109,87 @@ async def get_invoice_noauth(model_id: int):
     return item
 
 
+async def create_product(
+    data: str = Form(...),
+    image: UploadFile = File(None),
+    user: models.User = Depends(utils.AuthDependency()),
+):
+    filename = utils.get_image_filename(image)
+    data = json.loads(data)
+    try:
+        data = schemes.CreateProduct(**data)
+    except ValidationError as e:
+        raise HTTPException(422, e.errors())
+    data.image = filename
+    try:
+        obj = await models.Product.create(**data.dict())
+        if image:
+            filename = utils.get_image_filename(image, False, obj)
+            await obj.update(image=filename).apply()
+            await utils.save_image(filename, image)
+    except (
+        asyncpg.exceptions.UniqueViolationError,
+        asyncpg.exceptions.NotNullViolationError,
+        asyncpg.exceptions.ForeignKeyViolationError,
+    ) as e:
+        raise HTTPException(422, e.message)
+    return obj
+
+
+async def process_edit_product(model_id, data, image, user, patch=True):
+    data = json.loads(data)
+    try:
+        model = schemes.Product(**data)
+    except ValidationError as e:
+        raise HTTPException(422, e.errors())
+    item = await get_product_noauth(model_id)
+    if image:
+        filename = utils.get_image_filename(image, False, item)
+        model.image = filename
+        await utils.save_image(filename, image)
+    else:
+        utils.safe_remove(item.image)
+        model.image = None
+    try:
+        if patch:
+            await item.update(
+                **model.dict(skip_defaults=True)  # type: ignore
+            ).apply()
+        else:
+            await item.update(**model.dict()).apply()
+    except (  # pragma: no cover
+        asyncpg.exceptions.UniqueViolationError,
+        asyncpg.exceptions.NotNullViolationError,
+        asyncpg.exceptions.ForeignKeyViolationError,
+    ) as e:
+        raise HTTPException(422, e.message)  # pragma: no cover
+    return item
+
+
+async def patch_product(
+    model_id: int,
+    data: str = Form(...),
+    image: UploadFile = File(None),
+    user: models.User = Depends(utils.AuthDependency()),
+):
+    return await process_edit_product(model_id, data, image, user)
+
+
+async def put_product(
+    model_id: int,
+    data: str = Form(...),
+    image: UploadFile = File(None),
+    user: models.User = Depends(utils.AuthDependency()),
+):
+    return await process_edit_product(model_id, data, image, user, patch=False)
+
+
+async def delete_product(item: schemes.Product, user: schemes.User) -> schemes.Product:
+    utils.safe_remove(item.image)
+    await item.delete()
+    return item
+
+
 utils.model_view(
     router,
     "/users",
@@ -140,7 +225,13 @@ utils.model_view(
     schemes.Product,
     get_product,
     schemes.CreateProduct,
-    request_handlers={"get_one": get_product_noauth},
+    custom_methods={"delete": delete_product},
+    request_handlers={
+        "get_one": get_product_noauth,
+        "post": create_product,
+        "patch": patch_product,
+        "put": put_product,
+    },
 )
 utils.model_view(
     router,

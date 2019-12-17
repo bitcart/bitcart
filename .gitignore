@@ -36,3 +36,5 @@ htmlcov/
 # CLI builds
 bitcart-cli
 bitcart-cli-*
+# static
+images/

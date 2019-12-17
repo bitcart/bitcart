@@ -1,8 +1,8 @@
 """Initial revision
 
-Revision ID: 86bd32a3d5e9
+Revision ID: 3c45508831d1
 Revises: 
-Create Date: 2019-11-28 22:03:24.371254
+Create Date: 2019-12-17 17:57:46.302198
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '86bd32a3d5e9'
+revision = '3c45508831d1'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -23,8 +23,9 @@ def upgrade():
     sa.Column('amount', sa.Numeric(precision=16, scale=8), nullable=False),
     sa.Column('status', sa.String(length=1000), nullable=False),
     sa.Column('date', sa.DateTime(timezone=True), nullable=False),
-    sa.Column('bitcoin_address', sa.String(length=255), nullable=False),
-    sa.Column('bitcoin_url', sa.String(length=255), nullable=False),
+    sa.Column('bitcoin_address', sa.String(length=10000), nullable=False),
+    sa.Column('bitcoin_url', sa.String(length=10000), nullable=False),
+    sa.Column('buyer_email', sa.String(length=10000), nullable=True),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_invoices_id'), 'invoices', ['id'], unique=False)
@@ -74,9 +75,10 @@ def upgrade():
     sa.Column('name', sa.String(length=1000), nullable=True),
     sa.Column('amount', sa.Numeric(precision=16, scale=8), nullable=False),
     sa.Column('quantity', sa.Numeric(precision=16, scale=8), nullable=False),
+    sa.Column('download_url', sa.String(length=100000), nullable=True),
     sa.Column('date', sa.DateTime(timezone=True), nullable=False),
     sa.Column('description', sa.Text(), nullable=True),
-    sa.Column('image', sa.String(length=100), nullable=True),
+    sa.Column('image', sa.String(length=100000), nullable=True),
     sa.Column('store_id', sa.Integer(), nullable=True),
     sa.Column('status', sa.String(length=1000), nullable=False),
     sa.ForeignKeyConstraint(['store_id'], ['stores.id'], ondelete='SET NULL', initially='DEFERRED', deferrable=True),
@@ -86,14 +88,13 @@ def upgrade():
     op.create_index(op.f('ix_products_name'), 'products', ['name'], unique=False)
     op.create_index(op.f('ix_products_store_id'), 'products', ['store_id'], unique=False)
     op.create_table('productsxinvoices',
-    sa.Column('product_id', sa.Integer(), nullable=False),
-    sa.Column('invoice_id', sa.Integer(), nullable=False),
+    sa.Column('product_id', sa.Integer(), nullable=True),
+    sa.Column('invoice_id', sa.Integer(), nullable=True),
     sa.ForeignKeyConstraint(['invoice_id'], ['invoices.id'], ondelete='SET NULL'),
-    sa.ForeignKeyConstraint(['product_id'], ['products.id'], ondelete='SET NULL'),
-    sa.PrimaryKeyConstraint('product_id', 'invoice_id')
+    sa.ForeignKeyConstraint(['product_id'], ['products.id'], ondelete='SET NULL')
     )
-    op.create_index(op.f('ix_productsxinvoices_invoice_id'), 'productsxinvoices', ['invoice_id'], unique=False)
-    op.create_index(op.f('ix_productsxinvoices_product_id'), 'productsxinvoices', ['product_id'], unique=False)
+    op.create_index(op.f('ix_productsxinvoices_invoice_id'), 'productsxinvoices', ['invoice_id'], unique=True)
+    op.create_index(op.f('ix_productsxinvoices_product_id'), 'productsxinvoices', ['product_id'], unique=True)
     # ### end Alembic commands ###
 
 

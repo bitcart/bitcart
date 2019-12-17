@@ -1,4 +1,4 @@
-import json
+import json as json_module
 from datetime import datetime, timedelta
 from typing import Dict, List, Union
 
@@ -23,6 +23,7 @@ class ViewTestMixin:
         True: 200,
         False: 422,
     }
+    json_encoding: bool = True
     auth: bool = False
     name: str  # name used in endpoints
     tests: Dict[str, List[dict]]
@@ -66,7 +67,12 @@ class ViewTestMixin:
         headers = {}
         if self.auth:
             headers["Authorization"] = f"Bearer {token}"
-        return client.request(method, url, json=json, headers=headers)
+        kwargs = {"headers": headers}
+        if self.json_encoding:
+            kwargs["json"] = json
+        else:
+            kwargs["data"] = {"data": json_module.dumps(json)}
+        return client.request(method, url, **kwargs)
 
     def test_create(self, client: TestClient, token: str):
         for test in self.tests["create"]:
@@ -125,31 +131,32 @@ class ViewTestMixin:
 class TestUsers(ViewTestMixin):
     name = "users"
     auth = True
-    tests = json.loads(open("tests/fixtures/users.json").read())
+    tests = json_module.loads(open("tests/fixtures/users.json").read())
 
 
 class TestWallets(ViewTestMixin):
     name = "wallets"
     auth = True
-    tests = json.loads(open("tests/fixtures/wallets.json").read())
+    tests = json_module.loads(open("tests/fixtures/wallets.json").read())
 
 
 class TestStores(ViewTestMixin):
     name = "stores"
     auth = True
-    tests = json.loads(open("tests/fixtures/stores.json").read())
+    tests = json_module.loads(open("tests/fixtures/stores.json").read())
 
 
 class TestProducts(ViewTestMixin):
     name = "products"
+    json_encoding = False
     auth = True
-    tests = json.loads(open("tests/fixtures/products.json").read())
+    tests = json_module.loads(open("tests/fixtures/products.json").read())
 
 
 class TestInvoices(ViewTestMixin):
     name = "invoices"
     auth = True
-    tests = json.loads(open("tests/fixtures/invoices.json").read())
+    tests = json_module.loads(open("tests/fixtures/invoices.json").read())
 
 
 def test_no_root(client: TestClient):
