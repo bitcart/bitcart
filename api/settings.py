@@ -48,6 +48,15 @@ DB_PORT = config("DB_PORT", default="5432")
 if TEST:
     DB_NAME = "bitcart_test"
 
+# initialize image dir
+def create_ifn(path):
+    if not os.path.exists(path):
+        os.mkdir(path)
+
+
+create_ifn("images")
+create_ifn("images/products")
+
 # initialize bitcart instance
 with warnings.catch_warnings():  # it is supposed
     warnings.simplefilter("ignore")
