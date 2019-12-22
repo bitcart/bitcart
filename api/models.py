@@ -97,12 +97,8 @@ class Product(db.Model):
 class ProductxInvoice(db.Model):
     __tablename__ = "productsxinvoices"
 
-    product_id = Column(
-        Integer, ForeignKey("products.id", ondelete="SET NULL"), unique=True, index=True
-    )
-    invoice_id = Column(
-        Integer, ForeignKey("invoices.id", ondelete="SET NULL"), unique=True, index=True
-    )
+    product_id = Column(Integer, ForeignKey("products.id", ondelete="SET NULL"))
+    invoice_id = Column(Integer, ForeignKey("invoices.id", ondelete="SET NULL"))
 
 
 class MyUpdateRequest(UpdateRequest):
