@@ -23,6 +23,7 @@ class ViewTestMixin:
         True: 200,
         False: 422,
     }
+    invoice: bool = False
     json_encoding: bool = True
     auth: bool = False
     name: str  # name used in endpoints
@@ -46,21 +47,15 @@ class ViewTestMixin:
             if isinstance(data, list):
                 for d in data:
                     if isinstance(d, dict):
-                        if d.get("date"):
-                            d.pop("date")
-                        try:
-                            d.pop("bitcoin_address")
-                            d.pop("bitcoin_url")
-                        except KeyError:
-                            pass
+                        if self.invoice:
+                            assert d.get("payments")
+                        d.pop("date", None)
+                        d.pop("payments", None)
             elif isinstance(data, dict):
-                if data.get("date"):
-                    data.pop("date")
-                try:
-                    data.pop("bitcoin_address")
-                    data.pop("bitcoin_url")
-                except KeyError:
-                    pass
+                if self.invoice:
+                    assert data.get("payments")
+                data.pop("date", None)
+                data.pop("payments", None)
             assert data == test["return_data"]
 
     def send_request(self, url, client, json={}, method="get", token=""):
@@ -134,6 +129,12 @@ class TestUsers(ViewTestMixin):
     tests = json_module.loads(open("tests/fixtures/users.json").read())
 
 
+class TestDiscounts(ViewTestMixin):
+    name = "discounts"
+    auth = True
+    tests = json_module.loads(open("tests/fixtures/discounts.json").read())
+
+
 class TestWallets(ViewTestMixin):
     name = "wallets"
     auth = True
@@ -156,6 +157,7 @@ class TestProducts(ViewTestMixin):
 class TestInvoices(ViewTestMixin):
     name = "invoices"
     auth = True
+    invoice = True
     tests = json_module.loads(open("tests/fixtures/invoices.json").read())
 
 

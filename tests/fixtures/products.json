@@ -5,7 +5,8 @@
                 "name": "test",
                 "amount": 0.5,
                 "quantity": 0.5,
-                "store_id": 2
+                "store_id": 2,
+                "discounts": []
             },
             "status": "good",
             "return_data": {
@@ -17,6 +18,8 @@
                 "store_id": 2,
                 "name": "test",
                 "image": null,
+                "category": "",
+                "discounts": [],
                 "id": 1
             }
         },
@@ -25,7 +28,8 @@
                 "name": "test",
                 "amount": 0.5,
                 "quantity": 0.5,
-                "store_id": 2
+                "store_id": 2,
+                "discounts": []
             },
             "status": "good",
             "return_data": {
@@ -37,6 +41,8 @@
                 "store_id": 2,
                 "name": "test",
                 "image": null,
+                "category": "",
+                "discounts": [],
                 "id": 2
             }
         },
@@ -76,7 +82,9 @@
                     "store_id": 2,
                     "name": "test",
                     "image": null,
-                    "id": 2
+                    "category": "",
+                    "discounts": [],
+                    "id": 1
                 },
                 {
                     "amount": 0.5,
@@ -87,7 +95,9 @@
                     "store_id": 2,
                     "name": "test",
                     "image": null,
-                    "id": 1
+                    "category": "",
+                    "discounts": [],
+                    "id": 2
                 }
             ]
         }
@@ -115,6 +125,8 @@
                 "store_id": 2,
                 "name": "test",
                 "image": null,
+                "category": "",
+                "discounts": [],
                 "id": 1
             }
         },
@@ -130,7 +142,8 @@
                 "amount": 0.5,
                 "quantity": 0.5,
                 "name": "test1",
-                "store_id": 2
+                "store_id": 2,
+                "discounts": []
             },
             "status": "good",
             "return_data": {
@@ -142,6 +155,8 @@
                 "store_id": 2,
                 "name": "test1",
                 "image": null,
+                "category": "",
+                "discounts": [],
                 "id": 1
             }
         },
@@ -151,7 +166,8 @@
                 "amount": 0.2,
                 "quantity": 0.2,
                 "name": "test1",
-                "store_id": 2
+                "store_id": 2,
+                "discounts": []
             },
             "status": "good",
             "return_data": {
@@ -163,6 +179,8 @@
                 "store_id": 2,
                 "name": "test1",
                 "image": null,
+                "category": "",
+                "discounts": [],
                 "id": 1
             }
         },
@@ -212,7 +230,8 @@
                 "name": "test",
                 "amount": 0.5,
                 "quantity": 0.5,
-                "store_id": 2
+                "store_id": 2,
+                "discounts": []
             },
             "status": "good",
             "return_data": {
@@ -224,6 +243,8 @@
                 "store_id": 2,
                 "name": "test",
                 "image": null,
+                "category": "",
+                "discounts": [],
                 "id": 1
             }
         }
@@ -245,6 +266,8 @@
                 "store_id": 2,
                 "name": "test",
                 "image": null,
+                "category": "",
+                "discounts": [],
                 "id": 1
             }
         },

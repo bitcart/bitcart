@@ -3,7 +3,9 @@
         {
             "data": {
                 "name": "test",
-                "wallet_id": 2
+                "wallets": [
+                    2
+                ]
             },
             "status": "good",
             "return_data": {
@@ -17,13 +19,17 @@
                 "id": 1,
                 "name": "test",
                 "template": "",
-                "wallet_id": 2
+                "wallets": [
+                    2
+                ]
             }
         },
         {
             "data": {
                 "name": "test5",
-                "wallet_id": 2,
+                "wallets": [
+                    2
+                ],
                 "domain": "example.com",
                 "email": "test@example.com"
             },
@@ -39,7 +45,9 @@
                 "id": 2,
                 "name": "test5",
                 "template": "",
-                "wallet_id": 2
+                "wallets": [
+                    2
+                ]
             }
         },
         {
@@ -54,7 +62,9 @@
         },
         {
             "data": {
-                "wallet_id": 3
+                "wallets": [
+                    3
+                ]
             },
             "status": "bad"
         },
@@ -70,19 +80,6 @@
             "status": "good",
             "return_data": [
                 {
-                    "domain": "example.com",
-                    "email": "test@example.com",
-                    "email_host": "",
-                    "email_password": "",
-                    "email_port": 25,
-                    "email_user": "",
-                    "email_use_ssl": true,
-                    "id": 2,
-                    "name": "test5",
-                    "template": "",
-                    "wallet_id": 2
-                },
-                {
                     "domain": "",
                     "email": null,
                     "email_host": "",
@@ -93,7 +90,24 @@
                     "id": 1,
                     "name": "test",
                     "template": "",
-                    "wallet_id": 2
+                    "wallets": [
+                        2
+                    ]
+                },
+                {
+                    "domain": "example.com",
+                    "email": "test@example.com",
+                    "email_host": "",
+                    "email_password": "",
+                    "email_port": 25,
+                    "email_user": "",
+                    "email_use_ssl": true,
+                    "id": 2,
+                    "name": "test5",
+                    "template": "",
+                    "wallets": [
+                        2
+                    ]
                 }
             ]
         }
@@ -123,7 +137,9 @@
                 "id": 1,
                 "name": "test",
                 "template": "",
-                "wallet_id": 2
+                "wallets": [
+                    2
+                ]
             }
         },
         {
@@ -136,7 +152,9 @@
             "obj_id": 1,
             "data": {
                 "name": "test2",
-                "wallet_id": 2
+                "wallets": [
+                    2
+                ]
             },
             "status": "good",
             "return_data": {
@@ -150,14 +168,18 @@
                 "id": 1,
                 "name": "test2",
                 "template": "",
-                "wallet_id": 2
+                "wallets": [
+                    2
+                ]
             }
         },
         {
             "obj_id": 1,
             "data": {
                 "name": "test2",
-                "wallet_id": 2,
+                "wallets": [
+                    2
+                ],
                 "email": "test1@example.com"
             },
             "status": "good",
@@ -172,14 +194,18 @@
                 "id": 1,
                 "name": "test2",
                 "template": "",
-                "wallet_id": 2
+                "wallets": [
+                    2
+                ]
             }
         },
         {
             "obj_id": 1,
             "data": {
                 "name": "test2",
-                "wallet_id": 2,
+                "wallets": [
+                    2
+                ],
                 "email": "test"
             },
             "status": "bad"
@@ -228,7 +254,9 @@
             "data": {
                 "id": 1,
                 "name": "test",
-                "wallet_id": 2
+                "wallets": [
+                    2
+                ]
             },
             "status": "good",
             "return_data": {
@@ -242,7 +270,9 @@
                 "id": 1,
                 "name": "test",
                 "template": "",
-                "wallet_id": 2
+                "wallets": [
+                    2
+                ]
             }
         }
     ],
@@ -265,7 +295,9 @@
                 "id": 1,
                 "name": "test",
                 "template": "",
-                "wallet_id": 2
+                "wallets": [
+                    2
+                ]
             }
         },
         {

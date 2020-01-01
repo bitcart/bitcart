@@ -90,7 +90,7 @@ class CreateDiscount(BaseModel):
     end_date: datetime
     description: str = ""
     promocode: str = ""
-    currencies: str = "btc"
+    currencies: str = ""
 
     class Config:
         orm_mode = True
@@ -98,6 +98,7 @@ class CreateDiscount(BaseModel):
 
 class Discount(CreateDiscount):
     id: Optional[int]
+    user_id: int
 
 
 class CreateProduct(BaseModel):
@@ -134,7 +135,7 @@ class CreateInvoice(BaseModel):
     buyer_email: Optional[EmailStr] = ""
     promocode: Optional[str] = ""
     discount: Optional[int]
-    status: str = "active"
+    status: str = "Pending"
     date: Optional[datetime] = now()
     products: List[int]
 
@@ -147,6 +148,10 @@ class CreateInvoice(BaseModel):
         if val == "":
             return None
         return val
+
+    @validator("discount", pre=True, always=True)
+    def set_discount(cls, val):
+        return val or None
 
     class Config:
         orm_mode = True

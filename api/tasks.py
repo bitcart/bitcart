@@ -1,11 +1,9 @@
 import asyncio
-import warnings
-from typing import Union, Dict
-from starlette.datastructures import CommaSeparatedStrings
-from datetime import datetime
+from typing import Dict, Union
+
 import dramatiq
 
-from . import crud, db, models, schemes, settings, utils
+from . import crud, models, settings, utils
 
 MAX_RETRIES = 3
 
@@ -26,14 +24,9 @@ async def poll_updates(
 ):
     obj = await models.Invoice.get(obj)
     await crud.invoice_add_related(obj)
-    product = await models.Product.get(obj.products[0])
-    await crud.product_add_related(product)
     payment_methods = await models.PaymentMethod.query.where(
         models.PaymentMethod.invoice_id == obj.id
     ).gino.all()
-    discounts = [
-        await models.Discount.get(discount_id) for discount_id in product.discounts
-    ]
     if not payment_methods:
         return
     for ind, method in enumerate(payment_methods):

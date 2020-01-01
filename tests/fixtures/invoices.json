@@ -10,11 +10,13 @@
             "status": "good",
             "return_data": {
                 "amount": 0.5,
-                "status": "active",
+                "status": "Pending",
                 "buyer_email": null,
                 "products": [
                     2
                 ],
+                "discount": null,
+                "promocode": "",
                 "id": 1
             }
         },
@@ -35,11 +37,13 @@
             "return_data": [
                 {
                     "amount": 0.5,
-                    "status": "active",
+                    "status": "Pending",
                     "buyer_email": null,
                     "products": [
                         2
                     ],
+                    "discount": null,
+                    "promocode": "",
                     "id": 1
                 }
             ]
@@ -61,11 +65,13 @@
             "status": "good",
             "return_data": {
                 "amount": 0.5,
-                "status": "active",
+                "status": "Pending",
                 "buyer_email": null,
                 "products": [
                     2
                 ],
+                "discount": null,
+                "promocode": "",
                 "id": 1
             }
         },
@@ -86,11 +92,13 @@
             "status": "good",
             "return_data": {
                 "amount": 0.2,
-                "status": "active",
+                "status": "Pending",
                 "buyer_email": null,
                 "products": [
                     2
                 ],
+                "discount": null,
+                "promocode": "",
                 "id": 1
             }
         },
@@ -144,11 +152,13 @@
             "status": "good",
             "return_data": {
                 "amount": 0.5,
-                "status": "active",
+                "status": "Pending",
                 "buyer_email": null,
                 "products": [
                     2
                 ],
+                "discount": null,
+                "promocode": "",
                 "id": 1
             }
         }
@@ -163,11 +173,13 @@
             "status": "good",
             "return_data": {
                 "amount": 0.5,
-                "status": "active",
+                "status": "Pending",
                 "buyer_email": null,
                 "products": [
                     2
                 ],
+                "discount": null,
+                "promocode": "",
                 "id": 1
             }
         },

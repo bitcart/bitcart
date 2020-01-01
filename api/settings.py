@@ -13,9 +13,9 @@ from dramatiq.middleware import (
     Retries,
     ShutdownNotifications,
 )
+from fastapi import HTTPException
 from starlette.config import Config
 from starlette.datastructures import CommaSeparatedStrings
-from fastapi import HTTPException
 
 import bitcart
 

@@ -54,6 +54,7 @@ async def create_invoice(invoice: schemes.CreateInvoice, user: schemes.User):
     products = d.get("products")
     promocode = d.get("promocode")
     obj, wallets, product = await models.Invoice.create(**d)
+    await product_add_related(product)
     created = []
     for i in products:  # type: ignore
         created.append(
@@ -65,7 +66,6 @@ async def create_invoice(invoice: schemes.CreateInvoice, user: schemes.User):
     obj.payments = {}
     task_wallets = {}
     current_date = utils.now()
-    await product_add_related(product)
     discounts = [
         await models.Discount.get(discount_id) for discount_id in product.discounts
     ]
@@ -110,7 +110,6 @@ async def create_invoice(invoice: schemes.CreateInvoice, user: schemes.User):
                 "currency": wallet.currency,
             }
     tasks.poll_updates.send(obj.id, task_wallets, settings.TEST)
-
     return obj
 
 

@@ -4,15 +4,15 @@ import secrets
 from datetime import timedelta
 from decimal import Decimal
 from typing import List, Optional
-from pydantic.error_wrappers import ValidationError
 
 import asyncpg
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from pydantic.error_wrappers import ValidationError
 from starlette.endpoints import WebSocketEndpoint
 from starlette.requests import Request
 from starlette.status import WS_1008_POLICY_VIOLATION
 
-from . import crud, db, models, schemes, settings, tasks, utils, pagination
+from . import crud, db, models, pagination, schemes, settings, tasks, utils
 
 router = APIRouter()
 
@@ -28,11 +28,19 @@ def get_wallet():
 def get_store():
     return models.Store.join(models.WalletxStore).join(models.Wallet).join(models.User)
 
+
 def get_product():
-    return models.Product.join(models.Store).join(models.WalletxStore).join(models.Wallet).join(models.User)
+    return (
+        models.Product.join(models.Store)
+        .join(models.WalletxStore)
+        .join(models.Wallet)
+        .join(models.User)
+    )
+
 
 def get_discount():
     return models.Discount.join(models.User)
+
 
 def get_invoice():
     return (
@@ -58,7 +66,9 @@ async def get_balances(user: models.User = Depends(utils.AuthDependency())):
             async for wallet in models.Wallet.query.select_from(get_wallet()).where(
                 models.User.id == user.id
             ).gino.iterate():
-                balance = (await settings.get_coin(wallet.currency, wallet.xpub).balance())["confirmed"]
+                balance = (
+                    await settings.get_coin(wallet.currency, wallet.xpub).balance()
+                )["confirmed"]
                 balances += Decimal(balance)
     return balances
 
@@ -102,12 +112,20 @@ async def get_invoice_noauth(model_id: int):
     await crud.invoice_add_related(item)
     return item
 
+
 async def get_products(
-        pagination: pagination.Pagination = Depends(),
-        store: Optional[int] = None,
-        user: schemes.User = Depends(utils.AuthDependency()),
-    ):
-        return await pagination.paginate(models.Product, get_product(), user.id, store, postprocess=crud.products_add_related)
+    pagination: pagination.Pagination = Depends(),
+    store: Optional[int] = None,
+    user: schemes.User = Depends(utils.AuthDependency()),
+):
+    return await pagination.paginate(
+        models.Product,
+        get_product(),
+        user.id,
+        store,
+        postprocess=crud.products_add_related,
+    )
+
 
 async def create_product(
     data: str = Form(...),
@@ -122,14 +140,16 @@ async def create_product(
         raise HTTPException(422, e.errors())
     data.image = filename
     d = data.dict()
-    discounts = d.pop("discounts",None)
+    discounts = d.pop("discounts", None)
     try:
         obj = await models.Product.create(**d)
         created = []
         for i in discounts:
             created.append(
                 (
-                    await models.DiscountxProduct.create(product_id=obj.id, discount_id=i)
+                    await models.DiscountxProduct.create(
+                        product_id=obj.id, discount_id=i
+                    )
                 ).discount_id
             )
         obj.discounts = created
@@ -195,6 +215,7 @@ async def put_product(
 
 
 async def delete_product(item: schemes.Product, user: schemes.User) -> schemes.Product:
+    await crud.product_add_related(item)
     utils.safe_remove(item.image)
     await item.delete()
     return item
@@ -226,12 +247,18 @@ utils.model_view(
     custom_methods={"post": crud.create_wallet},
 )
 utils.model_view(
-    router, "/stores", models.Store, schemes.Store, get_store, schemes.CreateStore,custom_methods={
+    router,
+    "/stores",
+    models.Store,
+    schemes.Store,
+    get_store,
+    schemes.CreateStore,
+    custom_methods={
         "get": crud.get_stores,
         "get_one": crud.get_store,
         "post": crud.create_store,
         "delete": crud.delete_store,
-    }
+    },
 )
 utils.model_view(
     router,
@@ -240,7 +267,7 @@ utils.model_view(
     schemes.Discount,
     get_discount,
     schemes.CreateDiscount,
-    custom_methods={"post":crud.create_discount}
+    custom_methods={"post": crud.create_discount},
 )
 utils.model_view(
     router,
@@ -251,12 +278,12 @@ utils.model_view(
     schemes.CreateProduct,
     custom_methods={"delete": delete_product},
     request_handlers={
-        "get":get_products,
+        "get": get_products,
         "get_one": get_product_noauth,
         "post": create_product,
         "patch": patch_product,
         "put": put_product,
-    }
+    },
 )
 utils.model_view(
     router,
