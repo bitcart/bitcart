@@ -46,6 +46,7 @@ class RefreshToken(BaseModel):
 class CreateWallet(BaseModel):
     name: str
     xpub: str = ""
+    currency: str = "btc"
 
     class Config:
         orm_mode = True
@@ -67,7 +68,7 @@ class CreateStore(BaseModel):
     email_user: str = ""
     email_password: str = ""
     email_use_ssl: bool = True
-    wallet_id: int
+    wallets: List[int]
 
     @validator("email", pre=True, always=False)
     def validate_email(cls, val):
@@ -83,6 +84,22 @@ class Store(CreateStore):
     id: Optional[int]
 
 
+class CreateDiscount(BaseModel):
+    name: str
+    percent: int
+    end_date: datetime
+    description: str = ""
+    promocode: str = ""
+    currencies: str = "btc"
+
+    class Config:
+        orm_mode = True
+
+
+class Discount(CreateDiscount):
+    id: Optional[int]
+
+
 class CreateProduct(BaseModel):
     status: str = "active"
     amount: Decimal
@@ -91,12 +108,18 @@ class CreateProduct(BaseModel):
     date: Optional[datetime]
     download_url: Optional[str] = ""
     description: str = ""
+    category: str = ""
     image: Optional[str] = ""
     store_id: int
+    discounts: List[int]
 
     @validator("date", pre=True, always=True)
     def set_date(cls, v):
         return v or now()
+
+    @validator("status", pre=True, always=True)
+    def set_status(cls, v):
+        return v or "active"
 
     class Config:
         orm_mode = True
@@ -109,10 +132,10 @@ class Product(CreateProduct):
 class CreateInvoice(BaseModel):
     amount: Decimal
     buyer_email: Optional[EmailStr] = ""
+    promocode: Optional[str] = ""
+    discount: Optional[int]
     status: str = "active"
     date: Optional[datetime] = now()
-    bitcoin_address: str = ""
-    bitcoin_url: str = ""
     products: List[int]
 
     @validator("date", pre=True, always=True)
@@ -131,6 +154,10 @@ class CreateInvoice(BaseModel):
 
 class Invoice(CreateInvoice):
     id: Optional[int]
+
+
+class DisplayInvoice(Invoice):
+    payments: dict = {}
 
 
 class TxResponse(BaseModel):

@@ -19,8 +19,6 @@ from sqlalchemy import distinct
 from starlette.requests import Request
 from starlette.status import HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN
 
-from bitcart import BTC
-
 from . import db, models, pagination, settings
 
 
@@ -301,13 +299,8 @@ def model_view(
 
 
 async def get_wallet_history(model, response):
-    btc = BTC(
-        settings.RPC_URL,
-        xpub=model.xpub,
-        rpc_user=settings.RPC_USER,
-        rpc_pass=settings.RPC_PASS,
-    )
-    txes = (await btc.history())["transactions"]
+    coin = settings.get_coin(model.currency, model.xpub)
+    txes = (await coin.history())["transactions"]
     for i in txes:
         response.append({"date": i["date"], "txid": i["txid"], "amount": i["bc_value"]})
 

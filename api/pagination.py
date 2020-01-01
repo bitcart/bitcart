@@ -28,6 +28,7 @@ class Pagination:
         offset: int = Query(default=default_offset, ge=0, le=max_offset),
         limit: int = Query(default=default_limit, ge=-1, le=max_limit),
         query: str = Query(default=""),
+        multiple: bool = Query(default=False),
         sort: str = Query(default=""),
         desc: bool = Query(default=True),
     ):
@@ -35,6 +36,9 @@ class Pagination:
         self.offset = offset
         self.limit = limit
         self.query = query
+        self.multiple = multiple
+        if self.multiple:
+            self.query = self.query.replace(",", "|")
         self.sort = sort
         self.desc = desc
         self.desc_s = "desc" if desc else ""
@@ -84,14 +88,23 @@ class Pagination:
             return []
         return or_(
             *[
-                getattr(model, m.key).cast(Text).ilike(f"%{self.query}%")
+                getattr(model, m.key)
+                .cast(Text)
+                .op("~*")(
+                    f"{self.query}"
+                )  # NOTE: not cross-db, postgres case-insensitive regex
                 for model in models
                 for m in model.__table__.columns
             ]
         )
 
     async def paginate(
-        self, model, data_source, user_id=None, postprocess: Optional[Callable] = None
+        self,
+        model,
+        data_source,
+        user_id=None,
+        store_id=None,
+        postprocess: Optional[Callable] = None,
     ) -> dict:
         self.model = model
         query = model.query.select_from(data_source)
@@ -106,9 +119,10 @@ class Pagination:
             query = query.where(queries)
         if user_id and model != models.User:
             query = query.where(models.User.id == user_id)
-        list_query = query.distinct(model.id) if model == models.Invoice else query
+        if store_id and model == models.Product:
+            query = query.where(models.Product.store_id == store_id)
         count, data = await asyncio.gather(
-            self.get_count(query), self.get_list(list_query)
+            self.get_count(query), self.get_list(query.group_by(model.id))
         )
         if postprocess:
             data = await postprocess(data)

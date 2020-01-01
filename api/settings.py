@@ -14,8 +14,10 @@ from dramatiq.middleware import (
     ShutdownNotifications,
 )
 from starlette.config import Config
+from starlette.datastructures import CommaSeparatedStrings
+from fastapi import HTTPException
 
-from bitcart import BTC
+import bitcart
 
 config = Config("conf/.env")
 
@@ -29,9 +31,7 @@ REFRESH_EXPIRE_DAYS = config("REFRESH_EXPIRE", cast=int, default=7)
 ALGORITHM = config("JWT_ALGORITHM", default="HS256")
 
 # bitcart-related
-RPC_USER = config("RPC_USER", default="electrum")
-RPC_PASS = config("RPC_PASS", default="electrumz")
-RPC_URL = config("RPC_URL", default="http://localhost:5000/")
+ENABLED_CRYPTOS = config("BITCART_CRYPTOS", cast=CommaSeparatedStrings, default="btc")
 
 # redis
 REDIS_HOST = config("REDIS_HOST", default="redis://localhost")
@@ -57,10 +57,50 @@ def create_ifn(path):
 create_ifn("images")
 create_ifn("images/products")
 
-# initialize bitcart instance
+# initialize bitcart instances
+cryptos = {}
+crypto_settings = {}
 with warnings.catch_warnings():  # it is supposed
     warnings.simplefilter("ignore")
-    btc = BTC(RPC_URL, rpc_user=RPC_USER, rpc_pass=RPC_PASS)
+    for crypto in ENABLED_CRYPTOS:
+        env_name = crypto.upper()
+        coin = getattr(bitcart, env_name)
+        default_url = coin.RPC_URL
+        default_user = coin.RPC_USER
+        default_password = coin.RPC_PASS
+        _, default_host, default_port = default_url.split(":")
+        default_host = default_host[2:]
+        default_port = int(default_port)
+        rpc_host = config(f"{env_name}_HOST", default=default_host)
+        rpc_port = config(f"{env_name}_PORT", cast=int, default=default_port)
+        rpc_url = f"http://{rpc_host}:{rpc_port}"
+        rpc_user = config(f"{env_name}_LOGIN", default=default_user)
+        rpc_password = config(f"{env_name}_PASSWORD", default=default_password)
+        crypto_network = config(f"{env_name}_NETWORK", default="mainnet")
+        crypto_lightning = config(f"{env_name}_LIGHTNING", cast=bool, default=False)
+        crypto_settings[crypto] = {
+            "credentials": {
+                "rpc_url": rpc_url,
+                "rpc_user": rpc_user,
+                "rpc_pass": rpc_password,
+            },
+            "network": crypto_network,
+            "lightning": crypto_lightning,
+        }
+        cryptos[crypto] = coin(**crypto_settings[crypto]["credentials"])
+
+
+def get_coin(coin, xpub=None):
+    coin = coin.lower()
+    if not coin in cryptos:
+        raise HTTPException(422, "Unsupported currency")
+    if not xpub:
+        return cryptos[coin]
+    return getattr(bitcart, coin.upper())(
+        xpub=xpub, **crypto_settings[coin]["credentials"]
+    )
+
+
 # initialize redis pool
 loop = asyncio.get_event_loop()
 redis_pool = None

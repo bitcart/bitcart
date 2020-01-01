@@ -1,5 +1,9 @@
 # pylint: disable=no-member
+from decimal import Decimal
+from operator import attrgetter
 from typing import Iterable
+
+from starlette.datastructures import CommaSeparatedStrings
 
 from . import models, pagination, schemes, settings, tasks, utils
 from .db import db
@@ -48,7 +52,8 @@ async def create_wallet(wallet: schemes.CreateWallet, user: schemes.User):
 async def create_invoice(invoice: schemes.CreateInvoice, user: schemes.User):
     d = invoice.dict()
     products = d.get("products")
-    obj, xpub = await models.Invoice.create(**d)
+    promocode = d.get("promocode")
+    obj, wallets, product = await models.Invoice.create(**d)
     created = []
     for i in products:  # type: ignore
         created.append(
@@ -57,7 +62,55 @@ async def create_invoice(invoice: schemes.CreateInvoice, user: schemes.User):
             ).product_id
         )
     obj.products = created
-    tasks.poll_updates.send(obj.id, xpub, settings.TEST)
+    obj.payments = {}
+    task_wallets = {}
+    current_date = utils.now()
+    await product_add_related(product)
+    discounts = [
+        await models.Discount.get(discount_id) for discount_id in product.discounts
+    ]
+    discounts = list(filter(lambda x: current_date <= x.end_date, discounts))
+    for wallet_id in wallets:
+        wallet = await models.Wallet.get(wallet_id)
+        if not wallet.currency in obj.payments:
+            discount_id = None
+            amount = obj.amount
+            if discounts:
+                discount = max(
+                    filter(
+                        lambda x: (
+                            not x.currencies
+                            or wallet.currency in CommaSeparatedStrings(x.currencies)
+                        )
+                        and (promocode == x.promocode or not x.promocode),
+                        discounts,
+                    ),
+                    key=attrgetter("percent"),
+                )
+                discount_id = discount.id
+                amount -= amount * (Decimal(discount.percent) / Decimal(100))
+            task_wallets[wallet.currency] = wallet.xpub
+            coin = settings.get_coin(wallet.currency, wallet.xpub)
+            data_got = await coin.addrequest(
+                str(amount), description=product.description
+            )
+            await models.PaymentMethod.create(
+                invoice_id=obj.id,
+                amount=amount,
+                discount=discount_id,
+                currency=wallet.currency,
+                payment_address=data_got["address"],
+                payment_url=data_got["URI"],
+            )
+            obj.payments[wallet.currency] = {
+                "payment_address": data_got["address"],
+                "payment_url": data_got["URI"],
+                "amount": amount,
+                "discount": discount_id,
+                "currency": wallet.currency,
+            }
+    tasks.poll_updates.send(obj.id, task_wallets, settings.TEST)
+
     return obj
 
 
@@ -71,6 +124,20 @@ async def invoice_add_related(item: models.Invoice):
         .gino.all()
     )
     item.products = [product_id for product_id, in result if product_id]
+    item.payments = {}
+    if item.products:
+        payment_methods = await models.PaymentMethod.query.where(
+            models.PaymentMethod.invoice_id == item.id
+        ).gino.all()
+        for method in payment_methods:
+            if not method.currency in item.payments:
+                item.payments[method.currency] = {
+                    "payment_address": method.payment_address,
+                    "payment_url": method.payment_url,
+                    "amount": method.amount,
+                    "discount": method.discount,
+                    "currency": method.currency,
+                }
 
 
 async def invoices_add_related(items: Iterable[models.Invoice]):
@@ -92,9 +159,91 @@ async def get_invoices(
     )
 
 
+async def get_store(model_id: int, user: schemes.User, item: models.Store):
+    await store_add_related(item)
+    return item
+
+
+async def get_stores(
+    pagination: pagination.Pagination, user: schemes.User, data_source
+):
+    return await pagination.paginate(
+        models.Store, data_source, user.id, postprocess=stores_add_related
+    )
+
+
+async def delete_store(item: schemes.Store, user: schemes.User):
+    await models.WalletxStore.delete.where(
+        models.WalletxStore.store_id == item.id
+    ).gino.status()
+    await item.delete()
+    return item
+
+
+async def create_store(store: schemes.CreateStore, user: schemes.User):
+    d = store.dict()
+    wallets = d.get("wallets")
+    obj = await models.Store.create(**d)
+    created = []
+    for i in wallets:  # type: ignore
+        created.append(
+            (await models.WalletxStore.create(store_id=obj.id, wallet_id=i)).wallet_id
+        )
+    obj.wallets = created
+    return obj
+
+
+async def store_add_related(item: models.Store):
+    # add related wallets
+    if not item:
+        return
+    result = (
+        await models.WalletxStore.select("wallet_id")
+        .where(models.WalletxStore.store_id == item.id)
+        .gino.all()
+    )
+    item.wallets = [wallet_id for wallet_id, in result if wallet_id]
+
+
+async def stores_add_related(items: Iterable[models.Store]):
+    for item in items:
+        await store_add_related(item)
+    return items
+
+
 async def delete_invoice(item: schemes.Invoice, user: schemes.User):
     await models.ProductxInvoice.delete.where(
         models.ProductxInvoice.invoice_id == item.id
     ).gino.status()
     await item.delete()
     return item
+
+
+async def product_add_related(item: models.Product):
+    # add related discounts
+    if not item:
+        return
+    result = (
+        await models.DiscountxProduct.select("discount_id")
+        .where(models.DiscountxProduct.product_id == item.id)
+        .gino.all()
+    )
+    item.discounts = [discount_id for discount_id, in result if discount_id]
+
+
+async def products_add_related(items: Iterable[models.Product]):
+    for item in items:
+        await product_add_related(item)
+    return items
+
+
+async def get_products(
+    pagination: pagination.Pagination, user: schemes.User, data_source
+):
+    return await pagination.paginate(
+        models.Product, data_source, user.id, postprocess=products_add_related
+    )
+
+
+async def create_discount(discount: schemes.CreateDiscount, user: schemes.User):
+    return await models.Discount.create(**discount.dict(), user_id=user.id)
