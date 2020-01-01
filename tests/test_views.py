@@ -50,11 +50,13 @@ class ViewTestMixin:
                         if self.invoice:
                             assert d.get("payments")
                         d.pop("date", None)
+                        d.pop("end_date", None)
                         d.pop("payments", None)
             elif isinstance(data, dict):
                 if self.invoice:
                     assert data.get("payments")
                 data.pop("date", None)
+                data.pop("end_date", None)
                 data.pop("payments", None)
             assert data == test["return_data"]
 

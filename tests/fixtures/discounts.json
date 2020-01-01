@@ -17,7 +17,6 @@
             "return_data": {
                 "currencies": "",
                 "description": "",
-                "end_date": "2020-01-01T18:19:34.503627+00:00",
                 "id": 1,
                 "name": "test",
                 "percent": 50,
@@ -35,7 +34,6 @@
             "return_data": {
                 "currencies": "",
                 "description": "",
-                "end_date": "2020-01-01T18:19:34.503627+00:00",
                 "id": 2,
                 "name": "test5",
                 "percent": 50,
@@ -73,7 +71,6 @@
                 {
                     "currencies": "",
                     "description": "",
-                    "end_date": "2020-01-01T18:19:34.503627+00:00",
                     "id": 1,
                     "name": "test",
                     "percent": 50,
@@ -83,7 +80,6 @@
                 {
                     "currencies": "",
                     "description": "",
-                    "end_date": "2020-01-01T18:19:34.503627+00:00",
                     "id": 2,
                     "name": "test5",
                     "percent": 50,
@@ -106,7 +102,6 @@
             "return_data": {
                 "currencies": "",
                 "description": "",
-                "end_date": "2020-01-01T18:19:34.503627+00:00",
                 "id": 1,
                 "name": "test",
                 "percent": 50,
@@ -136,7 +131,6 @@
             "return_data": {
                 "currencies": "",
                 "description": "",
-                "end_date": "2020-01-01T18:19:34.503627+00:00",
                 "id": 1,
                 "name": "test2",
                 "percent": 50,
@@ -179,7 +173,6 @@
             "return_data": {
                 "currencies": "",
                 "description": "",
-                "end_date": "2020-01-01T18:19:34.503627+00:00",
                 "id": 1,
                 "name": "test",
                 "percent": 50,
@@ -207,7 +200,6 @@
             "return_data": {
                 "currencies": "",
                 "description": "",
-                "end_date": "2020-01-01T18:19:34.503627+00:00",
                 "id": 1,
                 "name": "test",
                 "percent": 60,
@@ -227,7 +219,6 @@
             "return_data": {
                 "currencies": "",
                 "description": "",
-                "end_date": "2020-01-01T18:19:34.503627+00:00",
                 "id": 1,
                 "name": "test",
                 "percent": 60,
