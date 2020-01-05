@@ -112,7 +112,7 @@ class CreateProduct(BaseModel):
     category: str = ""
     image: Optional[str] = ""
     store_id: int
-    discounts: List[int]
+    discounts: Optional[List[int]] = []
 
     @validator("date", pre=True, always=True)
     def set_date(cls, v):
@@ -121,6 +121,10 @@ class CreateProduct(BaseModel):
     @validator("status", pre=True, always=True)
     def set_status(cls, v):
         return v or "active"
+
+    @validator("discounts", pre=True, always=True)
+    def set_discounts(cls, v):
+        return v or []
 
     class Config:
         orm_mode = True

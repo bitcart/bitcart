@@ -76,19 +76,23 @@ async def create_invoice(invoice: schemes.CreateInvoice, user: schemes.User):
             discount_id = None
             amount = obj.amount
             if discounts:
-                discount = max(
-                    filter(
-                        lambda x: (
-                            not x.currencies
-                            or wallet.currency in CommaSeparatedStrings(x.currencies)
-                        )
-                        and (promocode == x.promocode or not x.promocode),
-                        discounts,
-                    ),
-                    key=attrgetter("percent"),
-                )
-                discount_id = discount.id
-                amount -= amount * (Decimal(discount.percent) / Decimal(100))
+                try:
+                    discount = max(
+                        filter(
+                            lambda x: (
+                                not x.currencies
+                                or wallet.currency
+                                in CommaSeparatedStrings(x.currencies)
+                            )
+                            and (promocode == x.promocode or not x.promocode),
+                            discounts,
+                        ),
+                        key=attrgetter("percent"),
+                    )
+                    discount_id = discount.id
+                    amount -= amount * (Decimal(discount.percent) / Decimal(100))
+                except ValueError:  # no matched discounts
+                    pass
             task_wallets[wallet.currency] = wallet.xpub
             coin = settings.get_coin(wallet.currency, wallet.xpub)
             data_got = await coin.addrequest(

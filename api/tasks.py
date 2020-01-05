@@ -38,8 +38,10 @@ async def poll_updates(
     while not settings.shutdown.is_set():
         for method in payment_methods:
             invoice_data = await method.coin.getrequest(method.payment_address)
-            if invoice_data["status"] != 0:
-                status = STATUS_MAPPING[invoice_data["status"]]
+            if invoice_data["status"] != "Pending" and invoice_data["status"] != 0:
+                status = invoice_data["status"]
+                if isinstance(status, int):
+                    status = STATUS_MAPPING[status]
                 if not status:
                     status = "expired"
                 if status == "complete":
