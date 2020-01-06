@@ -183,7 +183,7 @@ async def process_edit_product(model_id, data, image, user, patch=True):
     try:
         if patch:
             await item.update(
-                **model.dict(skip_defaults=True)  # type: ignore
+                **model.dict(exclude_unset=True)  # type: ignore
             ).apply()
         else:
             await item.update(**model.dict()).apply()

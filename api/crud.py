@@ -41,7 +41,7 @@ async def put_user(item: models.User, model: schemes.User, user: schemes.Display
 
 
 async def patch_user(item: models.User, model: schemes.User, user: schemes.DisplayUser):
-    d = hash_user(model.dict(skip_defaults=True))
+    d = hash_user(model.dict(exclude_unset=True))
     await item.update(**d).apply()
 
 

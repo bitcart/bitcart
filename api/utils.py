@@ -268,7 +268,7 @@ def model_view(
                 await custom_methods["patch"](item, model, user)  # pragma: no cover
             else:
                 await item.update(
-                    **model.dict(skip_defaults=True)  # type: ignore
+                    **model.dict(exclude_unset=True)  # type: ignore
                 ).apply()
         except (  # pragma: no cover
             asyncpg.exceptions.UniqueViolationError,
