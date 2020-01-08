@@ -158,6 +158,7 @@ class ProductxInvoice(db.Model):
 
     product_id = Column(Integer, ForeignKey("products.id", ondelete="SET NULL"))
     invoice_id = Column(Integer, ForeignKey("invoices.id", ondelete="SET NULL"))
+    count = Column(Integer)
 
 
 class MyUpdateRequest(UpdateRequest):

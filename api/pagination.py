@@ -104,6 +104,8 @@ class Pagination:
         data_source,
         user_id=None,
         store_id=None,
+        category=None,
+        max_price=None,
         postprocess: Optional[Callable] = None,
     ) -> dict:
         self.model = model
@@ -119,8 +121,14 @@ class Pagination:
             query = query.where(queries)
         if user_id and model != models.User:
             query = query.where(models.User.id == user_id)
-        if store_id and model == models.Product:
-            query = query.where(models.Product.store_id == store_id)
+        if model == models.Product:
+            if store_id:
+                query = query.where(models.Product.store_id == store_id)
+            if category and category != "all":
+                query = query.where(models.Product.category == category)
+            if max_price:
+                query = query.where(models.Product.amount <= max_price)
+
         count, data = await asyncio.gather(
             self.get_count(query), self.get_list(query.group_by(model.id))
         )

@@ -1,7 +1,7 @@
 # pylint: disable=no-name-in-module, no-self-argument
 from datetime import datetime
 from decimal import Decimal
-from typing import List, Optional
+from typing import Dict, List, Optional, Union
 
 from fastapi import File, UploadFile
 from pydantic import BaseModel, EmailStr, validator
@@ -141,7 +141,7 @@ class CreateInvoice(BaseModel):
     discount: Optional[int]
     status: str = "Pending"
     date: Optional[datetime] = now()
-    products: List[int]
+    products: Optional[Union[List[int], Dict[int, int]]] = {}
 
     @validator("date", pre=True, always=True)
     def set_date(cls, v):

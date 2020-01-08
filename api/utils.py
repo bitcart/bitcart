@@ -318,13 +318,20 @@ def check_ping(host, port, user, password, email, ssl=True):
         return False
 
 
-def get_email_template(store, product):
+def get_product_template(store, product, quantity):
     with open("api/templates/email_product.j2") as f:
-        template = Template(f.read())
-    return template.render(store=store, product=product)
+        template = Template(f.read(), trim_blocks=True)
+    return template.render(store=store, product=product, quantity=quantity)
 
 
-def send_mail(store, where, message):
+def get_store_template(store, products):
+    with open("api/templates/email_base_shop.j2") as f:
+        template = Template(f.read(), trim_blocks=True)
+    return template.render(store=store, products=products)
+
+
+def send_mail(store, where, message, subject="Thank you for your purchase"):
+    message = f"Subject: {subject}\n\n{message}"
     server = smtplib.SMTP(host=store.email_host, port=store.email_port, timeout=2)
     if store.email_use_ssl:
         server.starttls()

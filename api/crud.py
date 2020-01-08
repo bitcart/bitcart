@@ -51,15 +51,20 @@ async def create_wallet(wallet: schemes.CreateWallet, user: schemes.User):
 
 async def create_invoice(invoice: schemes.CreateInvoice, user: schemes.User):
     d = invoice.dict()
-    products = d.get("products")
+    products = d.get("products", {})
+    if isinstance(products, list):
+        products = {k: 1 for k in products}
     promocode = d.get("promocode")
+    d["products"] = list(products.keys())
     obj, wallets, product = await models.Invoice.create(**d)
     await product_add_related(product)
     created = []
-    for i in products:  # type: ignore
+    for key, value in products.items():  # type: ignore
         created.append(
             (
-                await models.ProductxInvoice.create(invoice_id=obj.id, product_id=i)
+                await models.ProductxInvoice.create(
+                    invoice_id=obj.id, product_id=key, count=value
+                )
             ).product_id
         )
     obj.products = created

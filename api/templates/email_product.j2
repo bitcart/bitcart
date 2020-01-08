@@ -1,9 +1,6 @@
-Welcome to our shop!
-Thanks for buying {{product.name}} x {{product.quantity|int}}!
+Thanks for buying {{product.name}} x {{quantity|int}}!
 {% if product.download_url %}
 Your download link: {{product.download_url}}
 {% else %}
 It'll ship shortly!
 {% endif %}
-If you've got any questions, email as at {{store.email}}.
-Best wishes, your {{store.name}}.

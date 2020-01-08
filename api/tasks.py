@@ -44,25 +44,38 @@ async def poll_updates(
                     status = STATUS_MAPPING[status]
                 if not status:
                     status = "expired"
-                if status == "complete":
-                    for product_id in obj.products:
-                        product = await models.Product.get(product_id)
-                        store = await models.Store.get(product.store_id)
-                        if utils.check_ping(
-                            store.email_host,
-                            store.email_port,
-                            store.email_user,
-                            store.email_password,
-                            store.email,
-                            store.email_use_ssl,
-                        ):
-                            utils.send_mail(
-                                store,
-                                obj.buyer_email,
-                                utils.get_email_template(store, product),
-                            )
-                await obj.update(status=status, discount=method.discount).apply()
                 await utils.publish_message(obj.id, {"status": status})
+                if status == "complete" and obj.products:
+                    product = await models.Product.get(obj.products[0])
+                    store = await models.Store.get(product.store_id)
+                    if utils.check_ping(
+                        store.email_host,
+                        store.email_port,
+                        store.email_user,
+                        store.email_password,
+                        store.email,
+                        store.email_use_ssl,
+                    ):
+                        messages = []
+                        for product_id in obj.products:
+                            product = await models.Product.get(product_id)
+                            relation = (
+                                await models.ProductxInvoice.query.where(
+                                    models.ProductxInvoice.invoice_id == obj.id
+                                )
+                                .where(models.ProductxInvoice.product_id == product_id)
+                                .gino.first()
+                            )
+                            quantity = relation.count
+                            messages.append(
+                                utils.get_product_template(store, product, quantity)
+                            )
+                        utils.send_mail(
+                            store,
+                            obj.buyer_email,
+                            utils.get_store_template(store, messages),
+                        )
+                await obj.update(status=status, discount=method.discount).apply()
                 return
         await asyncio.sleep(1)
     poll_updates.send_with_options(

@@ -8,6 +8,7 @@ from typing import List, Optional
 import asyncpg
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from pydantic.error_wrappers import ValidationError
+from sqlalchemy import distinct
 from starlette.endpoints import WebSocketEndpoint
 from starlette.requests import Request
 from starlette.status import WS_1008_POLICY_VIOLATION
@@ -116,6 +117,8 @@ async def get_invoice_noauth(model_id: int):
 async def get_products(
     pagination: pagination.Pagination = Depends(),
     store: Optional[int] = None,
+    category: Optional[str] = "",
+    max_price: Optional[Decimal] = None,
     user: schemes.User = Depends(utils.AuthDependency()),
 ):
     return await pagination.paginate(
@@ -123,6 +126,8 @@ async def get_products(
         get_product(),
         user.id,
         store,
+        category,
+        max_price,
         postprocess=crud.products_add_related,
     )
 
@@ -221,6 +226,29 @@ async def delete_product(item: schemes.Product, user: schemes.User) -> schemes.P
     return item
 
 
+async def products_count(
+    request: Request,
+    store: Optional[int] = None,
+    category: Optional[str] = "",
+    max_price: Optional[Decimal] = None,
+):
+    query = models.Product.query
+    if store is None:
+        user = await utils.AuthDependency()(request)
+        query = query.select_from(get_product()).where(models.User.id == user.id)
+    else:
+        query = query.where(models.Product.store_id == store)
+    if category and category != "all":
+        query = query.where(models.Product.category == category)
+    if max_price is not None:
+        query = query.where(models.Product.amount <= max_price)
+    return await (
+        query.with_only_columns([db.db.func.count(distinct(models.Product.id))])
+        .order_by(None)
+        .gino.scalar()
+    )
+
+
 utils.model_view(
     router,
     "/users",
@@ -283,6 +311,7 @@ utils.model_view(
         "post": create_product,
         "patch": patch_product,
         "put": put_product,
+        "get_count": products_count,
     },
 )
 utils.model_view(
@@ -306,6 +335,17 @@ utils.model_view(
 @router.get("/rate")
 async def rate(currency: str = "btc"):
     return await settings.get_coin(currency).rate()
+
+
+@router.get("/categories")
+async def categories(store: int):
+    return {
+        category
+        for category, in await models.Product.select("category")
+        .where(models.Product.store_id == store)
+        .gino.all()
+        if category
+    }.union({"all"})
 
 
 @router.get("/wallet_history/{wallet}", response_model=List[schemes.TxResponse])
