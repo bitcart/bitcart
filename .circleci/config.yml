@@ -118,9 +118,9 @@ jobs:
           name: build bch daemon
           command: |
             cd compose
-            docker build -t mrnaif/bitcart-bch:latest -f bch.Dockerfile .
+            docker build -t mrnaif/bitcart-bch:latest -f bch.Dockerfile . || yes
             docker login --username=$DOCKER_USER --password=$DOCKER_PASS
-            docker push mrnaif/bitcart-bch:latest
+            docker push mrnaif/bitcart-bch:latest || yes
 
       - run:
           path: ~/repo/bitcart-docker
