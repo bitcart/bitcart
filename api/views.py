@@ -247,6 +247,19 @@ async def products_count(
     )
 
 
+@router.get("/invoices/order_id/{order_id}", response_model=schemes.DisplayInvoice)
+async def get_invoice_by_order_id(order_id: str):
+    item = await models.Invoice.query.where(
+        models.Invoice.order_id == order_id
+    ).gino.first()
+    if not item:
+        raise HTTPException(
+            status_code=404, detail=f"Object with order id {order_id} does not exist!"
+        )
+    await crud.invoice_add_related(item)
+    return item
+
+
 utils.model_view(
     router,
     "/users",
