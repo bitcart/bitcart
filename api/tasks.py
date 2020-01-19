@@ -44,6 +44,8 @@ async def poll_updates(
                     status = STATUS_MAPPING[status]
                 if not status:
                     status = "expired"
+                await obj.update(status=status, discount=method.discount).apply()
+                await crud.invoice_add_related(obj)
                 await utils.publish_message(obj.id, {"status": status})
                 await utils.send_ipn(obj, status)
                 if status == "complete" and obj.products:
@@ -76,7 +78,6 @@ async def poll_updates(
                             obj.buyer_email,
                             utils.get_store_template(store, messages),
                         )
-                await obj.update(status=status, discount=method.discount).apply()
                 return
         await asyncio.sleep(1)
     poll_updates.send_with_options(
