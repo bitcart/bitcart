@@ -138,6 +138,8 @@ class CreateInvoice(BaseModel):
     amount: Decimal
     store_id: int
     order_id: Optional[str] = ""
+    notification_url: Optional[str] = ""
+    redirect_url: Optional[str] = ""
     buyer_email: Optional[EmailStr] = ""
     promocode: Optional[str] = ""
     discount: Optional[int]

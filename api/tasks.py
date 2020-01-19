@@ -45,6 +45,7 @@ async def poll_updates(
                 if not status:
                     status = "expired"
                 await utils.publish_message(obj.id, {"status": status})
+                await utils.send_ipn(obj, status)
                 if status == "complete" and obj.products:
                     product = await models.Product.get(obj.products[0])
                     store = await models.Store.get(product.store_id)

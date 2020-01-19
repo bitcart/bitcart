@@ -8,6 +8,7 @@ from typing import Callable, Dict, List, Optional, Type, Union
 import aioredis
 import asyncpg
 import jwt
+from aiohttp import ClientSession
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer
 from jinja2 import Template
@@ -362,3 +363,13 @@ def safe_remove(filename):
         os.remove(filename)
     except (TypeError, OSError):
         pass
+
+
+async def send_ipn(obj, status):
+    if obj.notification_url:
+        data = {"id": obj.id, "status": status}
+        try:
+            async with ClientSession() as session:
+                await session.post(obj.notification_url, json=data)
+        except Exception:
+            pass

@@ -201,6 +201,8 @@ class Invoice(db.Model):
     buyer_email = Column(String(10000))
     discount = Column(Integer)
     promocode = Column(Text)
+    notification_url = Column(Text)
+    redirect_url = Column(Text)
     products = relationship("Product", secondary=ProductxInvoice)
     store_id = Column(
         Integer,
