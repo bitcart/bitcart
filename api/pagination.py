@@ -113,7 +113,7 @@ class Pagination:
         models_l = [model]
         if model != models.User:
             for field in self.model.__table__.c:
-                if field.key.endswith("_id"):
+                if field.key.endswith("_id") and field.key != "order_id":
                     modelx = getattr(models, field.key[:-3].capitalize())
                     models_l.append(modelx)
         queries = self.search(models_l)

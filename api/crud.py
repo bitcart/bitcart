@@ -56,8 +56,11 @@ async def create_invoice(invoice: schemes.CreateInvoice, user: schemes.User):
         products = {k: 1 for k in products}
     promocode = d.get("promocode")
     d["products"] = list(products.keys())
-    obj, wallets, product = await models.Invoice.create(**d)
-    await product_add_related(product)
+    obj, wallets = await models.Invoice.create(**d)
+    product = None
+    if d["products"]:
+        product = await models.Product.get(d["products"][0])
+        await product_add_related(product)
     created = []
     for key, value in products.items():  # type: ignore
         created.append(
@@ -71,9 +74,11 @@ async def create_invoice(invoice: schemes.CreateInvoice, user: schemes.User):
     obj.payments = {}
     task_wallets = {}
     current_date = utils.now()
-    discounts = [
-        await models.Discount.get(discount_id) for discount_id in product.discounts
-    ]
+    discounts = []
+    if product:
+        discounts = [
+            await models.Discount.get(discount_id) for discount_id in product.discounts
+        ]
     discounts = list(filter(lambda x: current_date <= x.end_date, discounts))
     for wallet_id in wallets:
         wallet = await models.Wallet.get(wallet_id)
@@ -101,7 +106,7 @@ async def create_invoice(invoice: schemes.CreateInvoice, user: schemes.User):
             task_wallets[wallet.currency] = wallet.xpub
             coin = settings.get_coin(wallet.currency, wallet.xpub)
             data_got = await coin.addrequest(
-                str(amount), description=product.description
+                str(amount), description=product.description if product else ""
             )
             await models.PaymentMethod.create(
                 invoice_id=obj.id,
@@ -133,19 +138,18 @@ async def invoice_add_related(item: models.Invoice):
     )
     item.products = [product_id for product_id, in result if product_id]
     item.payments = {}
-    if item.products:
-        payment_methods = await models.PaymentMethod.query.where(
-            models.PaymentMethod.invoice_id == item.id
-        ).gino.all()
-        for method in payment_methods:
-            if not method.currency in item.payments:
-                item.payments[method.currency] = {
-                    "payment_address": method.payment_address,
-                    "payment_url": method.payment_url,
-                    "amount": method.amount,
-                    "discount": method.discount,
-                    "currency": method.currency,
-                }
+    payment_methods = await models.PaymentMethod.query.where(
+        models.PaymentMethod.invoice_id == item.id
+    ).gino.all()
+    for method in payment_methods:
+        if not method.currency in item.payments:
+            item.payments[method.currency] = {
+                "payment_address": method.payment_address,
+                "payment_url": method.payment_url,
+                "amount": method.amount,
+                "discount": method.discount,
+                "currency": method.currency,
+            }
 
 
 async def invoices_add_related(items: Iterable[models.Invoice]):

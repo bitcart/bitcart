@@ -136,6 +136,8 @@ class Product(CreateProduct):
 
 class CreateInvoice(BaseModel):
     amount: Decimal
+    store_id: int
+    order_id: Optional[str] = ""
     buyer_email: Optional[EmailStr] = ""
     promocode: Optional[str] = ""
     discount: Optional[int]

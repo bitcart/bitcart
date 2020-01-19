@@ -45,9 +45,7 @@ def get_discount():
 
 def get_invoice():
     return (
-        models.Invoice.join(models.ProductxInvoice)
-        .join(models.Product)
-        .join(models.Store)
+        models.Invoice.join(models.Store)
         .join(models.WalletxStore)
         .join(models.Wallet)
         .join(models.User)

@@ -202,23 +202,29 @@ class Invoice(db.Model):
     discount = Column(Integer)
     promocode = Column(Text)
     products = relationship("Product", secondary=ProductxInvoice)
+    store_id = Column(
+        Integer,
+        ForeignKey(
+            "stores.id", deferrable=True, initially="DEFERRED", ondelete="SET NULL"
+        ),
+        index=True,
+    )
+    order_id = Column(Text)
+    store = relationship("Store", back_populates="invoices")
 
     @classmethod
     async def create(cls, **kwargs):
         from . import crud
 
-        products = kwargs["products"]
+        store_id = kwargs["store_id"]
         kwargs["status"] = "Pending"
-        if not products:
-            raise HTTPException(422, "Products list empty")
-        product = await Product.get(products[0])
-        if not product:
-            raise HTTPException(422, f"Product {products[0]} doesn't exist!")
-        store = await Store.get(product.store_id)
+        if not store_id:
+            raise HTTPException(422, "No store id provided")
+        store = await Store.get(store_id)
         if not store:
-            raise HTTPException(422, f"Store {product.store_id} doesn't exist!")
+            raise HTTPException(422, f"Store {store_id} doesn't exist!")
         await crud.get_store(None, None, store)
         if not store.wallets:
             raise HTTPException(422, "No wallet linked")
         kwargs.pop("products")
-        return await super().create(**kwargs), store.wallets, product
+        return await super().create(**kwargs), store.wallets
