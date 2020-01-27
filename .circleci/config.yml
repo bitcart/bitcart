@@ -9,11 +9,12 @@ jobs:
       - image: circleci/python:3.6
       - image: circleci/redis:latest
       - image: circleci/postgres:9-alpine-ram
+        environment:
+          POSTGRES_DB: bitcart_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: 123@
     environment:
       TEST: true
-      POSTGRES_DB: bitcart_test
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: 123@
 
     working_directory: ~/repo
 
@@ -68,6 +69,10 @@ jobs:
       - image: circleci/python:3.7
       - image: circleci/redis:latest
       - image: circleci/postgres:9-alpine-ram
+        environment:
+          POSTGRES_DB: bitcart_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: 123@
     <<: *test-template
 
   deploy:
