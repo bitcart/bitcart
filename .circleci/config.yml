@@ -21,11 +21,15 @@ jobs:
 
     steps:
       - checkout
+      - run:
+          name: Set env vars
+          command: |
+            echo $PYVER > /tmp/python-version
 
       # Download and cache dependencies
       - restore_cache:
           keys:
-            - v5-dependencies-{{ checksum "requirements/web.txt" }}-{{ checksum "requirements/test.txt" }}-{{ checksum "requirements/daemons/btc.txt" }}-{{ .Environment.PYVER }}
+            - v5-dependencies-{{ checksum "requirements/web.txt" }}-{{ checksum "requirements/test.txt" }}-{{ checksum "requirements/daemons/btc.txt" }}-{{ checksum "/tmp/python-version" }}
             # fallback to using the latest cache if no exact match is found
             - v5-dependencies-
 
@@ -42,7 +46,7 @@ jobs:
       - save_cache:
           paths:
             - ./venv
-          key: v5-dependencies-{{ checksum "requirements/web.txt" }}-{{ checksum "requirements/test.txt" }}-{{ checksum "requirements/daemons/btc.txt" }}-{{ .Environment.PYVER }}
+          key: v5-dependencies-{{ checksum "requirements/web.txt" }}-{{ checksum "requirements/test.txt" }}-{{ checksum "requirements/daemons/btc.txt" }}-{{ checksum "/tmp/python-version" }}
 
       - run:
           name: prepare daemon
