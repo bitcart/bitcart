@@ -1,4 +1,5 @@
 import pytest
+from dramatiq import Worker
 from starlette.testclient import TestClient
 
 from api import settings
@@ -24,3 +25,17 @@ def token(client):
     return client.post(
         "/token", json={"email": "testauth@example.com", "password": "test12345"}
     ).json()["access_token"]
+
+
+@pytest.fixture(scope="session", autouse=True)
+def stub_broker():
+    settings.broker.flush_all()
+    return settings.broker
+
+
+@pytest.fixture(scope="session", autouse=True)
+def stub_worker():
+    worker = Worker(settings.broker, worker_timeout=100)
+    worker.start()
+    yield worker
+    worker.stop()

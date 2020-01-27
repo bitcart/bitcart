@@ -6,6 +6,7 @@ import aioredis
 import dramatiq
 import redis
 from dramatiq.brokers.redis import RedisBroker
+from dramatiq.brokers.stub import StubBroker
 from dramatiq.middleware import (
     AgeLimit,
     Callbacks,
@@ -135,11 +136,17 @@ class InitDB(dramatiq.Middleware):
         shutdown.set()
 
 
-redis_broker = RedisBroker(
-    connection_pool=redis.ConnectionPool.from_url(REDIS_HOST),
-    middleware=[
-        m() for m in (AgeLimit, ShutdownNotifications, Callbacks, Pipelines, Retries)
-    ],
-)
-redis_broker.add_middleware(InitDB())
-dramatiq.set_broker(redis_broker)
+MIDDLEWARE = [
+    m() for m in (AgeLimit, ShutdownNotifications, Callbacks, Pipelines, Retries)
+]
+
+if TEST:
+    broker = StubBroker(middleware=MIDDLEWARE)
+    broker.emit_after("process_boot")
+else:
+    broker = RedisBroker(
+        connection_pool=redis.ConnectionPool.from_url(REDIS_HOST), middleware=MIDDLEWARE
+    )
+
+broker.add_middleware(InitDB())
+dramatiq.set_broker(broker)
