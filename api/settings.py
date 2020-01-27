@@ -117,7 +117,11 @@ loop.create_task(init_redis())
 
 def run_sync(f):
     def wrapper(*args, **kwargs):
-        return loop.run_until_complete(f(*args, **kwargs))
+        if not TEST:
+            result = loop.run_until_complete(f(*args, **kwargs))
+        else:
+            result = loop.create_task(f(*args, **kwargs))
+        return result
 
     return wrapper
 
@@ -126,11 +130,13 @@ shutdown = asyncio.Event(loop=loop)
 
 
 class InitDB(dramatiq.Middleware):
-    @run_sync
-    async def before_worker_boot(self, broker, worker):
-        from . import db
+    def before_worker_boot(self, broker, worker):
+        async def run():
+            from . import db
 
-        await db.db.set_bind(db.CONNECTION_STR)
+            await db.db.set_bind(db.CONNECTION_STR)
+
+        loop.run_until_complete(run())
 
     def before_worker_shutdown(self, broker, worker):
         shutdown.set()
