@@ -20,7 +20,7 @@ app.add_middleware(
 
 @app.on_event("startup")
 async def startup():
-    await db.set_bind(CONNECTION_STR)
+    await db.set_bind(CONNECTION_STR, min_size=3, max_size=3)
     if settings.TEST:
         await db.gino.create_all()
 

@@ -106,7 +106,7 @@ async def create_invoice(invoice: schemes.CreateInvoice, user: schemes.User):
             task_wallets[wallet.currency] = wallet.xpub
             coin = settings.get_coin(wallet.currency, wallet.xpub)
             data_got = await coin.addrequest(
-                str(amount), description=product.description if product else ""
+                str(amount), description=product.name if product else ""
             )
             await models.PaymentMethod.create(
                 invoice_id=obj.id,
