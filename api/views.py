@@ -8,7 +8,7 @@ from typing import List, Optional
 import asyncpg
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from pydantic.error_wrappers import ValidationError
-from sqlalchemy import distinct
+from sqlalchemy import distinct, func
 from starlette.endpoints import WebSocketEndpoint
 from starlette.requests import Request
 from starlette.status import WS_1008_POLICY_VIOLATION
@@ -116,7 +116,9 @@ async def get_products(
     pagination: pagination.Pagination = Depends(),
     store: Optional[int] = None,
     category: Optional[str] = "",
+    min_price: Optional[Decimal] = None,
     max_price: Optional[Decimal] = None,
+    sale: Optional[bool] = False,
     user: schemes.User = Depends(utils.AuthDependency()),
 ):
     return await pagination.paginate(
@@ -125,7 +127,9 @@ async def get_products(
         user.id,
         store,
         category,
+        min_price,
         max_price,
+        sale,
         postprocess=crud.products_add_related,
     )
 
@@ -228,22 +232,39 @@ async def products_count(
     request: Request,
     store: Optional[int] = None,
     category: Optional[str] = "",
+    min_price: Optional[Decimal] = None,
     max_price: Optional[Decimal] = None,
+    sale: Optional[bool] = False,
 ):
     query = models.Product.query
+    if sale:
+        query = (
+            query.select_from(
+                get_product().join(models.DiscountxProduct).join(models.Discount)
+            )
+            .having(func.count(models.DiscountxProduct.product_id) > 0)
+            .where(models.Discount.end_date > utils.now())
+        )
     if store is None:
         user = await utils.AuthDependency()(request)
-        query = query.select_from(get_product()).where(models.User.id == user.id)
+        if not sale:
+            query = query.select_from(get_product())
+        query = query.where(models.User.id == user.id)
     else:
         query = query.where(models.Product.store_id == store)
     if category and category != "all":
         query = query.where(models.Product.category == category)
+    if min_price is not None:
+        query = query.where(models.Product.amount >= min_price)
     if max_price is not None:
         query = query.where(models.Product.amount <= max_price)
-    return await (
-        query.with_only_columns([db.db.func.count(distinct(models.Product.id))])
-        .order_by(None)
-        .gino.scalar()
+    return (
+        await (
+            query.with_only_columns([db.db.func.count(distinct(models.Product.id))])
+            .order_by(None)
+            .gino.scalar()
+        )
+        or 0
     )
 
 
@@ -258,6 +279,17 @@ async def get_invoice_by_order_id(order_id: str):
         )
     await crud.invoice_add_related(item)
     return item
+
+
+@router.get("/products/maxprice")
+async def get_max_product_price(store: int):
+    return await (
+        models.Product.query.select_from(get_product())
+        .where(models.Store.id == store)
+        .with_only_columns([db.db.func.max(distinct(models.Product.amount))])
+        .order_by(None)
+        .gino.scalar()
+    )
 
 
 utils.model_view(

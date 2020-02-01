@@ -4,12 +4,12 @@ from typing import TYPE_CHECKING, Callable, Optional, Union
 
 import asyncpg
 from fastapi import Query
-from sqlalchemy import Text, and_, distinct, or_, select, text
+from sqlalchemy import Text, and_, distinct, func, or_, select, text
 from sqlalchemy.sql import join
 from sqlalchemy.sql import select as sql_select
 from starlette.requests import Request
 
-from . import models
+from . import models, utils
 from .db import db
 
 if TYPE_CHECKING:
@@ -49,7 +49,7 @@ class Pagination:
             [db.func.count(distinct(self.model.id))]  # type: ignore
         ).order_by(None)
 
-        return await query.gino.scalar()
+        return await query.gino.scalar() or 0
 
     def get_next_url(self, count) -> Union[None, str]:
         if self.offset + self.limit >= count or self.limit == -1:
@@ -105,11 +105,22 @@ class Pagination:
         user_id=None,
         store_id=None,
         category=None,
+        min_price=None,
         max_price=None,
+        sale=False,
         postprocess: Optional[Callable] = None,
     ) -> dict:
         self.model = model
-        query = model.query.select_from(data_source)
+        if model == models.Product and sale:
+            query = (
+                model.query.select_from(
+                    data_source.join(models.DiscountxProduct).join(models.Discount)
+                )
+                .having(func.count(models.DiscountxProduct.product_id) > 0)
+                .where(models.Discount.end_date > utils.now())
+            )
+        else:
+            query = model.query.select_from(data_source)
         models_l = [model]
         if model != models.User:
             for field in self.model.__table__.c:
@@ -126,6 +137,8 @@ class Pagination:
                 query = query.where(models.Product.store_id == store_id)
             if category and category != "all":
                 query = query.where(models.Product.category == category)
+            if min_price:
+                query = query.where(models.Product.amount >= min_price)
             if max_price:
                 query = query.where(models.Product.amount <= max_price)
 
