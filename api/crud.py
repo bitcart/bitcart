@@ -1,4 +1,5 @@
 # pylint: disable=no-member
+import math
 from decimal import Decimal
 from operator import attrgetter
 from typing import Iterable
@@ -83,8 +84,13 @@ async def create_invoice(invoice: schemes.CreateInvoice, user: schemes.User):
     for wallet_id in wallets:
         wallet = await models.Wallet.get(wallet_id)
         if not wallet.currency in obj.payments:
+            coin = settings.get_coin(wallet.currency, wallet.xpub)
             discount_id = None
-            amount = obj.amount
+            price = obj.price / await coin.rate(obj.currency, accurate=True)
+            if math.isnan(price):
+                price = obj.price / await coin.rate("USD", accurate=True)
+            if math.isnan(price):
+                price = obj.price
             if discounts:
                 try:
                     discount = max(
@@ -100,17 +106,16 @@ async def create_invoice(invoice: schemes.CreateInvoice, user: schemes.User):
                         key=attrgetter("percent"),
                     )
                     discount_id = discount.id
-                    amount -= amount * (Decimal(discount.percent) / Decimal(100))
+                    price -= price * (Decimal(discount.percent) / Decimal(100))
                 except ValueError:  # no matched discounts
                     pass
             task_wallets[wallet.currency] = wallet.xpub
-            coin = settings.get_coin(wallet.currency, wallet.xpub)
             data_got = await coin.addrequest(
-                str(amount), description=product.name if product else ""
+                str(price), description=product.name if product else ""
             )
             await models.PaymentMethod.create(
                 invoice_id=obj.id,
-                amount=amount,
+                amount=price,
                 discount=discount_id,
                 currency=wallet.currency,
                 payment_address=data_got["address"],
@@ -119,7 +124,7 @@ async def create_invoice(invoice: schemes.CreateInvoice, user: schemes.User):
             obj.payments[wallet.currency] = {
                 "payment_address": data_got["address"],
                 "payment_url": data_got["URI"],
-                "amount": amount,
+                "amount": price,
                 "discount": discount_id,
                 "currency": wallet.currency,
             }

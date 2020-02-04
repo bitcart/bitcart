@@ -3,14 +3,14 @@
         {
             "data": {
                 "name": "test",
-                "amount": 0.5,
+                "price": 0.5,
                 "quantity": 0.5,
                 "store_id": 2,
                 "discounts": []
             },
             "status": "good",
             "return_data": {
-                "amount": 0.5,
+                "price": 0.5,
                 "description": "",
                 "quantity": 0.5,
                 "download_url": "",
@@ -26,14 +26,14 @@
         {
             "data": {
                 "name": "test",
-                "amount": 0.5,
+                "price": 0.5,
                 "quantity": 0.5,
                 "store_id": 2,
                 "discounts": []
             },
             "status": "good",
             "return_data": {
-                "amount": 0.5,
+                "price": 0.5,
                 "description": "",
                 "quantity": 0.5,
                 "download_url": "",
@@ -74,7 +74,7 @@
             "status": "good",
             "return_data": [
                 {
-                    "amount": 0.5,
+                    "price": 0.5,
                     "description": "",
                     "quantity": 0.5,
                     "download_url": "",
@@ -87,7 +87,7 @@
                     "id": 1
                 },
                 {
-                    "amount": 0.5,
+                    "price": 0.5,
                     "description": "",
                     "quantity": 0.5,
                     "download_url": "",
@@ -117,7 +117,7 @@
             "obj_id": 1,
             "status": "good",
             "return_data": {
-                "amount": 0.5,
+                "price": 0.5,
                 "description": "",
                 "quantity": 0.5,
                 "download_url": "",
@@ -139,7 +139,7 @@
         {
             "obj_id": 1,
             "data": {
-                "amount": 0.5,
+                "price": 0.5,
                 "quantity": 0.5,
                 "name": "test1",
                 "store_id": 2,
@@ -147,7 +147,7 @@
             },
             "status": "good",
             "return_data": {
-                "amount": 0.5,
+                "price": 0.5,
                 "description": "",
                 "quantity": 0.5,
                 "download_url": "",
@@ -163,7 +163,7 @@
         {
             "obj_id": 1,
             "data": {
-                "amount": 0.2,
+                "price": 0.2,
                 "quantity": 0.2,
                 "name": "test1",
                 "store_id": 2,
@@ -171,7 +171,7 @@
             },
             "status": "good",
             "return_data": {
-                "amount": 0.2,
+                "price": 0.2,
                 "description": "",
                 "quantity": 0.2,
                 "download_url": "",
@@ -228,14 +228,14 @@
             "data": {
                 "id": 1,
                 "name": "test",
-                "amount": 0.5,
+                "price": 0.5,
                 "quantity": 0.5,
                 "store_id": 2,
                 "discounts": []
             },
             "status": "good",
             "return_data": {
-                "amount": 0.5,
+                "price": 0.5,
                 "description": "",
                 "quantity": 0.5,
                 "download_url": "",
@@ -258,7 +258,7 @@
             "obj_id": 1,
             "status": "good",
             "return_data": {
-                "amount": 0.5,
+                "price": 0.5,
                 "description": "",
                 "quantity": 0.5,
                 "download_url": "",

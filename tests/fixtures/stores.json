@@ -19,6 +19,7 @@
                 "id": 1,
                 "name": "test",
                 "template": "",
+                "default_currency": "USD",
                 "wallets": [
                     2
                 ]
@@ -45,6 +46,7 @@
                 "id": 2,
                 "name": "test5",
                 "template": "",
+                "default_currency": "USD",
                 "wallets": [
                     2
                 ]
@@ -90,6 +92,7 @@
                     "id": 1,
                     "name": "test",
                     "template": "",
+                    "default_currency": "USD",
                     "wallets": [
                         2
                     ]
@@ -105,6 +108,7 @@
                     "id": 2,
                     "name": "test5",
                     "template": "",
+                    "default_currency": "USD",
                     "wallets": [
                         2
                     ]
@@ -137,6 +141,7 @@
                 "id": 1,
                 "name": "test",
                 "template": "",
+                "default_currency": "USD",
                 "wallets": [
                     2
                 ]
@@ -168,6 +173,7 @@
                 "id": 1,
                 "name": "test2",
                 "template": "",
+                "default_currency": "USD",
                 "wallets": [
                     2
                 ]
@@ -194,6 +200,7 @@
                 "id": 1,
                 "name": "test2",
                 "template": "",
+                "default_currency": "USD",
                 "wallets": [
                     2
                 ]
@@ -270,6 +277,7 @@
                 "id": 1,
                 "name": "test",
                 "template": "",
+                "default_currency": "USD",
                 "wallets": [
                     2
                 ]
@@ -295,6 +303,7 @@
                 "id": 1,
                 "name": "test",
                 "template": "",
+                "default_currency": "USD",
                 "wallets": [
                     2
                 ]

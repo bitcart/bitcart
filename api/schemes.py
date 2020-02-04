@@ -60,6 +60,7 @@ class Wallet(CreateWallet):
 
 class CreateStore(BaseModel):
     name: str
+    default_currency: str = "USD"
     domain: str = ""
     template: str = ""
     email: Optional[EmailStr] = ""
@@ -103,7 +104,7 @@ class Discount(CreateDiscount):
 
 class CreateProduct(BaseModel):
     status: str = "active"
-    amount: Decimal
+    price: Decimal
     quantity: Decimal
     name: str
     date: Optional[datetime]
@@ -135,8 +136,9 @@ class Product(CreateProduct):
 
 
 class CreateInvoice(BaseModel):
-    amount: Decimal
+    price: Decimal
     store_id: int
+    currency: str = "USD"
     order_id: Optional[str] = ""
     notification_url: Optional[str] = ""
     redirect_url: Optional[str] = ""

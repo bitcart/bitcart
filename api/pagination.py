@@ -138,9 +138,9 @@ class Pagination:
             if category and category != "all":
                 query = query.where(models.Product.category == category)
             if min_price:
-                query = query.where(models.Product.amount >= min_price)
+                query = query.where(models.Product.price >= min_price)
             if max_price:
-                query = query.where(models.Product.amount <= max_price)
+                query = query.where(models.Product.price <= max_price)
 
         count, data = await asyncio.gather(
             self.get_count(query), self.get_list(query.group_by(model.id))

@@ -1,7 +1,6 @@
 -r base.txt
 fastapi
 email-validator
-pytz
 gino
 passlib[bcrypt]
 bitcart-async==0.8.5

@@ -1,7 +1,7 @@
 # pylint: disable=no-member
 import os
 import smtplib
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from os.path import join as path_join
 from typing import Callable, Dict, List, Optional, Type, Union
 
@@ -15,7 +15,6 @@ from jinja2 import Template
 from jwt import PyJWTError
 from passlib.context import CryptContext
 from pydantic import BaseModel
-from pytz import utc
 from sqlalchemy import distinct
 from starlette.requests import Request
 from starlette.status import HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN
@@ -35,7 +34,7 @@ async def publish_message(channel, message):
 
 
 def now():
-    return datetime.utcnow().replace(tzinfo=utc)
+    return datetime.now(timezone.utc)
 
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")

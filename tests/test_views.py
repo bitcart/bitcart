@@ -327,3 +327,22 @@ def test_wallets_balance(client: TestClient, token: str):
     resp = client.get("/wallets/balance", headers={"Authorization": f"Bearer {token}"})
     assert resp.status_code == 200
     assert resp.json() == 0.01
+
+
+def test_fiatlist(client: TestClient):
+    resp = client.get("/fiatlist")
+    assert resp.status_code == 200
+    j1 = resp.json()
+    assert isinstance(j1, list)
+    assert "BTC" in j1
+    assert "USD" in j1
+    resp2 = client.get("/fiatlist?query=b")
+    assert resp2.status_code == 200
+    j2 = resp2.json()
+    assert isinstance(j2, list)
+    assert "BTC" in j2
+    resp3 = client.get("/fiatlist?query=U")
+    assert resp3.status_code == 200
+    j3 = resp3.json()
+    assert isinstance(j3, list)
+    assert "USD" in j3

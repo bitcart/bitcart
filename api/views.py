@@ -1,5 +1,6 @@
 # pylint: disable=no-member, no-name-in-module
 import json
+import re
 import secrets
 from datetime import timedelta
 from decimal import Decimal
@@ -255,9 +256,9 @@ async def products_count(
     if category and category != "all":
         query = query.where(models.Product.category == category)
     if min_price is not None:
-        query = query.where(models.Product.amount >= min_price)
+        query = query.where(models.Product.price >= min_price)
     if max_price is not None:
-        query = query.where(models.Product.amount <= max_price)
+        query = query.where(models.Product.price <= max_price)
     return (
         await (
             query.with_only_columns([db.db.func.count(distinct(models.Product.id))])
@@ -286,10 +287,25 @@ async def get_max_product_price(store: int):
     return await (
         models.Product.query.select_from(get_product())
         .where(models.Store.id == store)
-        .with_only_columns([db.db.func.max(distinct(models.Product.amount))])
+        .with_only_columns([db.db.func.max(distinct(models.Product.price))])
         .order_by(None)
         .gino.scalar()
     )
+
+
+@router.get("/fiatlist")
+async def get_fiatlist(query: Optional[str] = None):
+    s = None
+    for coin in settings.cryptos:
+        fiat_list = await settings.cryptos[coin].list_fiat()
+        if not s:
+            s = set(fiat_list)
+        else:
+            s = s.intersection(fiat_list)
+    if query is not None:
+        pattern = re.compile(query, re.IGNORECASE)
+        s = [x for x in s if pattern.match(x)]
+    return sorted(s)
 
 
 utils.model_view(

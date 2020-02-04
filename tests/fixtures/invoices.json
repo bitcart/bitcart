@@ -2,22 +2,27 @@
   "create": [
     {
       "data": {
-        "amount": 0.5,
+        "price": 0.5,
         "store_id": 2,
-        "products": [2]
+        "products": [
+          2
+        ]
       },
       "status": "good",
       "return_data": {
-        "amount": 0.5,
+        "price": 0.5,
         "status": "Pending",
         "buyer_email": null,
         "store_id": 2,
-        "products": [2],
+        "products": [
+          2
+        ],
         "discount": null,
         "promocode": "",
         "order_id": "",
         "notification_url": "",
         "redirect_url": "",
+        "currency": "USD",
         "id": 1
       }
     },
@@ -27,7 +32,7 @@
     },
     {
       "data": {
-        "amount": 0.2
+        "price": 0.2
       },
       "status": "bad"
     }
@@ -37,16 +42,19 @@
       "status": "good",
       "return_data": [
         {
-          "amount": 0.5,
+          "price": 0.5,
           "status": "Pending",
           "buyer_email": null,
           "store_id": 2,
-          "products": [2],
+          "products": [
+            2
+          ],
           "discount": null,
           "promocode": "",
           "order_id": "",
           "notification_url": "",
           "redirect_url": "",
+          "currency": "USD",
           "id": 1
         }
       ]
@@ -67,16 +75,19 @@
       "obj_id": 1,
       "status": "good",
       "return_data": {
-        "amount": 0.5,
+        "price": 0.5,
         "status": "Pending",
         "buyer_email": null,
         "store_id": 2,
-        "products": [2],
+        "products": [
+          2
+        ],
         "discount": null,
         "promocode": "",
         "order_id": "",
         "notification_url": "",
         "redirect_url": "",
+        "currency": "USD",
         "id": 1
       }
     },
@@ -89,36 +100,41 @@
     {
       "obj_id": 1,
       "data": {
-        "amount": 0.2,
-        "products": [2],
+        "price": 0.2,
+        "products": [
+          2
+        ],
         "store_id": 2
       },
       "status": "good",
       "return_data": {
-        "amount": 0.2,
+        "price": 0.2,
         "status": "Pending",
         "buyer_email": null,
         "store_id": 2,
-        "products": [2],
+        "products": [
+          2
+        ],
         "discount": null,
         "promocode": "",
         "order_id": "",
         "notification_url": "",
         "redirect_url": "",
+        "currency": "USD",
         "id": 1
       }
     },
     {
       "obj_id": 1,
       "data": {
-        "amount": "test3"
+        "price": "test3"
       },
       "status": "bad"
     },
     {
       "obj_id": 1,
       "data": {
-        "amount": "test2"
+        "price": "test2"
       },
       "status": "bad"
     }
@@ -127,7 +143,7 @@
     {
       "obj_id": 1,
       "data": {
-        "amount": 0.5
+        "price": 0.5
       },
       "status": "bad"
     },
@@ -142,7 +158,7 @@
       "obj_id": 1,
       "data": {
         "id": null,
-        "amount": 0.5
+        "price": 0.5
       },
       "status": "bad"
     },
@@ -150,22 +166,27 @@
       "obj_id": 1,
       "data": {
         "id": 1,
-        "amount": 0.5,
+        "price": 0.5,
         "store_id": 2,
-        "products": [2]
+        "products": [
+          2
+        ]
       },
       "status": "good",
       "return_data": {
-        "amount": 0.5,
+        "price": 0.5,
         "status": "Pending",
         "buyer_email": null,
         "store_id": 2,
-        "products": [2],
+        "products": [
+          2
+        ],
         "discount": null,
         "promocode": "",
         "order_id": "",
         "notification_url": "",
         "redirect_url": "",
+        "currency": "USD",
         "id": 1
       }
     }
@@ -179,16 +200,19 @@
       "obj_id": 1,
       "status": "good",
       "return_data": {
-        "amount": 0.5,
+        "price": 0.5,
         "status": "Pending",
         "buyer_email": null,
         "store_id": 2,
-        "products": [2],
+        "products": [
+          2
+        ],
         "order_id": "",
         "discount": null,
         "promocode": "",
         "notification_url": "",
         "redirect_url": "",
+        "currency": "USD",
         "id": 1
       }
     },

@@ -78,6 +78,7 @@ class Store(db.Model):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(1000), index=True)
+    default_currency = Column(Text)
     domain = Column(String(1000), index=True)
     template = Column(String(1000))
     email = Column(String(1000), index=True)
@@ -134,7 +135,7 @@ class Product(db.Model):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(length=1000), index=True)
-    amount = Column(Numeric(16, 8), nullable=False)
+    price = Column(Numeric(16, 8), nullable=False)
     quantity = Column(Numeric(16, 8), nullable=False)
     download_url = Column(String(100000))
     date = Column(DateTime(True), nullable=False)
@@ -195,7 +196,8 @@ class Invoice(db.Model):
     _update_request_cls = MyUpdateRequest
 
     id = Column(Integer, primary_key=True, index=True)
-    amount = Column(Numeric(16, 8), nullable=False)
+    price = Column(Numeric(16, 8), nullable=False)
+    currency = Column(Text)
     status = Column(String(1000), nullable=False)
     date = Column(DateTime(True), nullable=False)
     buyer_email = Column(String(10000))
