@@ -138,7 +138,7 @@ class Product(CreateProduct):
 class CreateInvoice(BaseModel):
     price: Decimal
     store_id: int
-    currency: str = "USD"
+    currency: str = ""
     order_id: Optional[str] = ""
     notification_url: Optional[str] = ""
     redirect_url: Optional[str] = ""
@@ -169,6 +169,7 @@ class CreateInvoice(BaseModel):
 
 class Invoice(CreateInvoice):
     id: Optional[int]
+    currency: str = "USD"
 
 
 class DisplayInvoice(Invoice):

@@ -52,6 +52,8 @@ async def create_wallet(wallet: schemes.CreateWallet, user: schemes.User):
 
 async def create_invoice(invoice: schemes.CreateInvoice, user: schemes.User):
     d = invoice.dict()
+    store = await models.Store.get(d["store_id"])
+    d["currency"] = d["currency"] or store.default_currency or "USD"
     products = d.get("products", {})
     if isinstance(products, list):
         products = {k: 1 for k in products}
@@ -87,6 +89,10 @@ async def create_invoice(invoice: schemes.CreateInvoice, user: schemes.User):
             coin = settings.get_coin(wallet.currency, wallet.xpub)
             discount_id = None
             price = obj.price / await coin.rate(obj.currency, accurate=True)
+            if math.isnan(price):
+                price = obj.price / await coin.rate(
+                    store.default_currency, accurate=True
+                )
             if math.isnan(price):
                 price = obj.price / await coin.rate("USD", accurate=True)
             if math.isnan(price):
