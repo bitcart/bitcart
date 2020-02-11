@@ -40,6 +40,9 @@ REDIS_HOST = config("REDIS_HOST", default="redis://localhost")
 # testing
 TEST = config("TEST", cast=bool, default=False)
 
+# environment
+DOCKER_ENV = config("IN_DOCKER", cast=bool, default=False)
+
 # database
 DB_NAME = config("DB_DATABASE", default="bitcart")
 DB_USER = config("DB_USER", default="postgres")

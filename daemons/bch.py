@@ -16,11 +16,6 @@ class BCHDaemon(BaseDaemon):
         "mainnet": electrum.networks.set_mainnet,
         "testnet": electrum.networks.set_testnet,
     }
-    AVAILABLE_EVENTS = ["blockchain_updated", "new_transaction"]
-    EVENT_MAPPING = {
-        "blockchain_updated": "new_block",
-        "new_transaction": "new_transaction",
-    }
     latest_height = -1
 
     def configure_logging(self, electrum_config):
@@ -64,6 +59,13 @@ class BCHDaemon(BaseDaemon):
         elif event == "new_transaction":
             tx, wallet = args
             data["tx"] = tx.txid()
+        elif event == "new_payment":
+            wallet, address, status = args
+            data = {
+                "address": str(address),
+                "status": status,
+                "status_str": self.electrum.paymentrequest.pr_tooltips[status],
+            }
         else:
             return None, None
         return data, wallet
@@ -75,6 +77,24 @@ class BCHDaemon(BaseDaemon):
         )
         result.update({"confirmations": result.get("confirmations", 0)})
         return result
+
+    @rpc
+    async def payto(self, *args, **kwargs):
+        wallet = kwargs.pop("wallet", None)
+        kwargs.pop("feerate", None)  # TODO: add to electron cash
+        return self.wallets[wallet]["cmd"].payto(*args, **kwargs)
+
+    @rpc
+    async def paytomany(self, *args, **kwargs):
+        wallet = kwargs.pop("wallet", None)
+        kwargs.pop("feerate", None)  # TODO: add to electron cash
+        return self.wallets[wallet]["cmd"].paytomany(*args, **kwargs)
+
+    @rpc
+    async def broadcast(self, *args, **kwargs):
+        wallet = kwargs.pop("wallet", None)
+        result = self.wallets[wallet]["cmd"].broadcast(*args, **kwargs)
+        return result[1]  # tx hash
 
 
 daemon = BCHDaemon()

@@ -466,6 +466,46 @@ async def refresh_token(request: Request, refresh_token: schemes.RefreshToken):
     return create_tokens(user)
 
 
+@router.post("/manage/update")
+async def update_server(
+    user: models.User = Depends(utils.AuthDependency(superuser_only=True))
+):
+    if settings.DOCKER_ENV:
+        utils.run_host("./update.sh")
+        return {"status": "success", "message": "Successfully started update process!"}
+    return {"status": "error", "message": "Not running in docker"}
+
+
+@router.post("/manage/cleanup")
+async def cleanup_server(
+    user: models.User = Depends(utils.AuthDependency(superuser_only=True))
+):
+    if settings.DOCKER_ENV:
+        utils.run_host("./cleanup.sh")
+        return {"status": "success", "message": "Successfully started cleanup process!"}
+    return {"status": "error", "message": "Not running in docker"}
+
+
+@router.get("/manage/daemons")
+async def get_daemons(
+    user: models.User = Depends(utils.AuthDependency(superuser_only=True))
+):
+    return settings.crypto_settings
+
+
+@router.get("/manage/policies", response_model=schemes.Policy)
+async def get_policies():
+    return await utils.get_setting(schemes.Policy)
+
+
+@router.post("/manage/policies", response_model=schemes.Policy)
+async def set_policies(
+    settings: schemes.Policy,
+    user: models.User = Depends(utils.AuthDependency(superuser_only=True)),
+):
+    return await utils.set_setting(settings)
+
+
 @router.websocket_route("/ws/wallets/{wallet}")
 class WalletNotify(WebSocketEndpoint):
     subscriber = None

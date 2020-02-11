@@ -232,3 +232,11 @@ class Invoice(db.Model):
             raise HTTPException(422, "No wallet linked")
         kwargs.pop("products")
         return await super().create(**kwargs), store.wallets
+
+
+class Setting(db.Model):
+    __tablename__ = "settings"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(Text)
+    value = Column(Text)

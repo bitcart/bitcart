@@ -4,6 +4,7 @@ from decimal import Decimal
 from operator import attrgetter
 from typing import Iterable
 
+from fastapi import HTTPException
 from starlette.datastructures import CommaSeparatedStrings
 
 from . import models, pagination, schemes, settings, tasks, utils
@@ -15,6 +16,9 @@ async def user_count():
 
 
 async def create_user(user: schemes.CreateUser, auth_user: schemes.User):
+    register_off = (await utils.get_setting(schemes.Policy))["disable_registration"]
+    if register_off and (not auth_user or not auth_user.is_superuser):
+        raise HTTPException(422, "Registration disabled")
     is_superuser = False
     if auth_user is None:
         count = await user_count()

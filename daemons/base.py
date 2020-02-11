@@ -303,6 +303,7 @@ class BaseDaemon:
     async def _process_events(self, event, *args):
         mapped_event = self.EVENT_MAPPING.get(event)
         data = {"event": mapped_event}
+        data_got = None
         try:
             result = self.process_events(mapped_event, *args)
             if inspect.isawaitable(result):
@@ -336,6 +337,7 @@ class BaseDaemon:
         """For non-asyncio clients"""
         mapped_event = self.EVENT_MAPPING.get(event)
         data = {"event": mapped_event}
+        data_got = None
         try:
             data_got, wallet = self.process_events(mapped_event, *args)
         except Exception:

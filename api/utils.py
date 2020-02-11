@@ -1,4 +1,5 @@
 # pylint: disable=no-member
+import json
 import os
 import smtplib
 from datetime import datetime, timedelta, timezone
@@ -372,3 +373,35 @@ async def send_ipn(obj, status):
                 await session.post(obj.notification_url, json=data)
         except Exception:
             pass
+
+
+def run_host(command):
+    if not os.path.exists("queue"):
+        raise HTTPException(422, "No pipe existing")
+    with open("queue", "w") as f:
+        f.write(f"{command}\n")
+
+
+async def get_setting(scheme):
+    name = scheme.__name__.lower()
+    item = await models.Setting.query.where(models.Setting.name == name).gino.first()
+    if not item:
+        return scheme()
+    return json.loads(item.value)
+
+
+async def set_setting(scheme):
+    name = scheme.__class__.__name__.lower()
+    json_data = scheme.dict(exclude_unset=True)
+    data = {"name": name, "value": json_data}
+    model = await models.Setting.query.where(models.Setting.name == name).gino.first()
+    if model:
+        value = json.loads(model.value)
+        for key in json_data:
+            value[key] = json_data[key]
+        data["value"] = json.dumps(value)
+        await model.update(**data).apply()
+    else:
+        data["value"] = json.dumps(value)
+        await models.Setting.create(**data)
+    return scheme

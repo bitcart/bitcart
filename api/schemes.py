@@ -180,3 +180,8 @@ class TxResponse(BaseModel):
     date: Optional[datetime]
     txid: str
     amount: str
+
+
+class Policy(BaseModel):
+    disable_registration: bool = False
+    discourage_index: bool = False
