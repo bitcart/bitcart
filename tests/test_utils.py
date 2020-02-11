@@ -18,6 +18,12 @@ async def reader(chan):
 
 
 @pytest.mark.asyncio
+async def test_auth_dependency():
+    dep = utils.AuthDependency(enabled=False)
+    assert not await dep(None)
+
+
+@pytest.mark.asyncio
 async def test_make_subscriber():
     sub, chan = await utils.make_subscriber("test")
     assert sub is not None

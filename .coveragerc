@@ -8,6 +8,7 @@ omit =
     *settings*,
     *tests/*,
     *wsgi.py,
+    *tasks.py,
     manage.py,
     venv/*,
     env/*,

@@ -1,4 +1,5 @@
 import pytest
+from async_asgi_testclient import TestClient as AsyncClient
 from dramatiq import Worker
 from starlette.testclient import TestClient
 
@@ -14,6 +15,12 @@ def event_loop():
 @pytest.yield_fixture(scope="session", autouse=True)
 def client():
     with TestClient(app) as client:
+        yield client
+
+
+@pytest.yield_fixture(scope="session")
+async def async_client():
+    async with AsyncClient(app) as client:
         yield client
 
 

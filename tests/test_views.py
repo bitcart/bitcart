@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Union
 
 import jwt
+import pytest
 from starlette.testclient import TestClient
 
 from api.settings import ALGORITHM, SECRET_KEY
@@ -346,3 +347,77 @@ def test_fiatlist(client: TestClient):
     j3 = resp3.json()
     assert isinstance(j3, list)
     assert "USD" in j3
+
+
+async def check_ws_response(ws):
+    data = await ws.receive_json()
+    assert data == {"status": "test"}
+
+
+async def check_ws_response2(ws):
+    data = await ws.receive_json()
+    assert data == {"status": "success", "balance": "0.01"}
+
+
+def test_ping_email(client: TestClient, token: str):
+    resp0 = client.get("/stores/55/ping")
+    assert resp0.status_code == 401
+    resp = client.get("/stores/55/ping", headers={"Authorization": f"Bearer {token}"})
+    assert resp.status_code == 404
+    resp1 = client.get("/stores/2/ping", headers={"Authorization": f"Bearer {token}"})
+    assert resp1.status_code == 200
+    assert resp1.json() == False
+
+
+@pytest.mark.asyncio
+async def test_wallet_ws(async_client, token: str):
+    r = await async_client.post(
+        "/wallets",
+        json={"name": "testws1", "xpub": TEST_XPUB},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert r.status_code == 200
+    wallet_id = r.json()["id"]
+    websocket = async_client.websocket_connect(f"/ws/wallets/{wallet_id}?token={token}")
+    await websocket.connect()
+    await check_ws_response2(websocket)
+    with pytest.raises(Exception):
+        websocket = async_client.websocket_connect(f"/ws/wallets/{wallet_id}")
+        await websocket.connect()
+        await check_ws_response2(websocket)
+    with pytest.raises(Exception):
+        websocket = async_client.websocket_connect(f"/ws/wallets/{wallet_id}?token=x")
+        await websocket.connect()
+        await check_ws_response2(websocket)
+    with pytest.raises(Exception):
+        websocket = async_client.websocket_connect(f"/ws/wallets/555?token={token}")
+        await websocket.connect()
+        await check_ws_response2(websocket)
+
+
+@pytest.mark.asyncio
+async def test_invoice_ws(async_client, token: str):
+    r = await async_client.post(
+        "/invoices",
+        json={"store_id": 2, "price": 5},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert r.status_code == 200
+    invoice_id = r.json()["id"]
+    websocket = async_client.websocket_connect(
+        f"/ws/invoices/{invoice_id}?token={token}"
+    )
+    await websocket.connect()
+    await check_ws_response(websocket)
+    with pytest.raises(Exception):
+        websocket = async_client.websocket_connect(f"/ws/invoices/{invoice_id}")
+        await websocket.connect()
+        await check_ws_response(websocket)
+    with pytest.raises(Exception):
+        websocket = async_client.websocket_connect(f"/ws/invoices/{invoice_id}?token=x")
+        await websocket.connect()
+        await check_ws_response(websocket)
+    with pytest.raises(Exception):
+        websocket = async_client.websocket_connect(f"/ws/invoices/555?token={token}")
+        await websocket.connect()
+        await check_ws_response(websocket)

@@ -138,7 +138,7 @@ async def create_invoice(invoice: schemes.CreateInvoice, user: schemes.User):
                 "discount": discount_id,
                 "currency": wallet.currency,
             }
-    tasks.poll_updates.send(obj.id, task_wallets, settings.TEST)
+    tasks.poll_updates.send(obj.id, task_wallets)
     return obj
 
 

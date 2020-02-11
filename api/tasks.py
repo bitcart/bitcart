@@ -19,9 +19,8 @@ STATUS_MAPPING = {
 
 @dramatiq.actor(actor_name="poll_updates", max_retries=MAX_RETRIES)
 @settings.run_sync
-async def poll_updates(
-    obj: Union[int, models.Invoice], task_wallets: Dict[str, str], test: bool = False
-):
+async def poll_updates(obj: Union[int, models.Invoice], task_wallets: Dict[str, str]):
+    test = settings.TEST
     obj = await models.Invoice.get(obj)
     await crud.invoice_add_related(obj)
     payment_methods = await models.PaymentMethod.query.where(
@@ -34,6 +33,8 @@ async def poll_updates(
             method.currency, task_wallets[method.currency]
         )
     if test:
+        await asyncio.sleep(1)
+        await utils.publish_message(obj.id, {"status": "test"})
         return
     while not settings.shutdown.is_set():
         for method in payment_methods:
@@ -81,17 +82,20 @@ async def poll_updates(
                 return
         await asyncio.sleep(1)
     poll_updates.send_with_options(
-        args=(obj.id, task_wallets, test), delay=1000
+        args=(obj.id, task_wallets), delay=1000
     )  # to run on next startup
 
 
 @dramatiq.actor(actor_name="sync_wallet", max_retries=0)
 @settings.run_sync
 async def sync_wallet(model: Union[int, models.Wallet]):
+    test = settings.TEST
     model = await models.Wallet.get(model)
     coin = settings.get_coin(model.currency, model.xpub)
     balance = await coin.balance()
     await model.update(balance=balance["confirmed"]).apply()
+    if test:
+        await asyncio.sleep(1)
     await utils.publish_message(
         model.id, {"status": "success", "balance": balance["confirmed"]}
     )

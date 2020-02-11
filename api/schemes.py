@@ -157,7 +157,7 @@ class CreateInvoice(BaseModel):
     def validate_buyer_email(cls, val):
         if val == "":
             return None
-        return val
+        return val  # pragma: no cover
 
     @validator("discount", pre=True, always=True)
     def set_discount(cls, val):

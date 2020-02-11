@@ -16,6 +16,7 @@ from jinja2 import Template
 from jwt import PyJWTError
 from passlib.context import CryptContext
 from pydantic import BaseModel
+from pydantic import create_model as create_pydantic_model
 from sqlalchemy import distinct
 from starlette.requests import Request
 from starlette.status import HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN
@@ -136,16 +137,20 @@ def model_view(
     background_tasks_mapping: Dict[str, Callable] = {},
     request_handlers: Dict[str, Callable] = {},
     auth=True,
+    post_auth=True,
 ):
     from . import schemes
 
     display_model = pydantic_model if not display_model else display_model
 
-    class PaginationResponse(BaseModel):
-        count: int
-        next: Optional[str]
-        previous: Optional[str]
-        result: List[display_model]  # type: ignore
+    PaginationResponse = create_pydantic_model(
+        f"PaginationResponse_{display_model.__name__}",
+        count=(int, ...),
+        next=(Optional[str], None),
+        previous=(Optional[str], None),
+        result=(List[display_model], ...),
+        __base__=BaseModel,
+    )
 
     if not create_model:
         create_model = pydantic_model  # pragma: no cover
@@ -183,17 +188,20 @@ def model_view(
             return await pagination.paginate(orm_model, get_data_source(), user.id)
 
     async def get_count(user: Union[None, schemes.User] = Depends(auth_dependency)):
-        return await (
-            (
-                orm_model.query.select_from(get_data_source()).where(
-                    models.User.id == user.id
+        return (
+            await (
+                (
+                    orm_model.query.select_from(get_data_source()).where(
+                        models.User.id == user.id
+                    )
+                    if orm_model != models.User
+                    else orm_model.query
                 )
-                if orm_model != models.User
-                else orm_model.query
+                .with_only_columns([db.db.func.count(distinct(orm_model.id))])
+                .order_by(None)
+                .gino.scalar()
             )
-            .with_only_columns([db.db.func.count(distinct(orm_model.id))])
-            .order_by(None)
-            .gino.scalar()
+            or 0
         )
 
     async def get_one(
@@ -223,6 +231,8 @@ def model_view(
         try:
             user = await auth_dependency(request)
         except HTTPException:
+            if post_auth:
+                raise
             user = None
         try:
             if custom_methods.get("post"):

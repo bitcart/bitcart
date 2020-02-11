@@ -284,12 +284,15 @@ async def get_invoice_by_order_id(order_id: str):
 
 @router.get("/products/maxprice")
 async def get_max_product_price(store: int):
-    return await (
-        models.Product.query.select_from(get_product())
-        .where(models.Store.id == store)
-        .with_only_columns([db.db.func.max(distinct(models.Product.price))])
-        .order_by(None)
-        .gino.scalar()
+    return (
+        await (
+            models.Product.query.select_from(get_product())
+            .where(models.Store.id == store)
+            .with_only_columns([db.db.func.max(distinct(models.Product.price))])
+            .order_by(None)
+            .gino.scalar()
+        )
+        or 0
     )
 
 
@@ -321,6 +324,7 @@ utils.model_view(
         "patch": crud.patch_user,
         "put": crud.put_user,
     },
+    post_auth=False,
 )
 utils.model_view(
     router,
@@ -568,10 +572,10 @@ class InvoiceNotify(WebSocketEndpoint):
             .where(models.Invoice.id == self.invoice_id)
             .gino.first()
         )
-        self.invoice = await crud.get_invoice(self.invoice_id, self.invoice, self.user)
         if not self.invoice:
             await websocket.close(code=WS_1008_POLICY_VIOLATION)
             return
+        self.invoice = await crud.get_invoice(self.invoice_id, self.user, self.invoice)
         self.subscriber, self.channel = await utils.make_subscriber(self.invoice_id)
         settings.loop.create_task(self.poll_subs(websocket))
 
