@@ -387,7 +387,7 @@ async def get_setting(scheme):
     item = await models.Setting.query.where(models.Setting.name == name).gino.first()
     if not item:
         return scheme()
-    return json.loads(item.value)
+    return scheme(**json.loads(item.value))
 
 
 async def set_setting(scheme):

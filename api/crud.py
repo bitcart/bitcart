@@ -16,7 +16,7 @@ async def user_count():
 
 
 async def create_user(user: schemes.CreateUser, auth_user: schemes.User):
-    register_off = (await utils.get_setting(schemes.Policy))["disable_registration"]
+    register_off = (await utils.get_setting(schemes.Policy)).disable_registration
     if register_off and (not auth_user or not auth_user.is_superuser):
         raise HTTPException(422, "Registration disabled")
     is_superuser = False
