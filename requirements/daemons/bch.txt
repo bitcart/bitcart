@@ -1,1 +1,2 @@
 https://github.com/MrNaif2018/electrum/archive/electroncash.zip
+aiohttp>=3.3.0,<4.0.0
