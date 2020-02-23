@@ -14,6 +14,10 @@ STATUS_MAPPING = {
     1: "expired",
     4: "In progress",
     5: "Failed",
+    "Paid": "complete",
+    "Pending": "Pending",
+    "Unknown": "invalid",
+    "Expired": "expired",
 }
 
 
@@ -42,6 +46,8 @@ async def poll_updates(obj: Union[int, models.Invoice], task_wallets: Dict[str, 
             if invoice_data["status"] != "Pending" and invoice_data["status"] != 0:
                 status = invoice_data["status"]
                 if isinstance(status, int):
+                    status = STATUS_MAPPING[status]
+                elif isinstance(status, str) and status in STATUS_MAPPING:
                     status = STATUS_MAPPING[status]
                 if not status:
                     status = "expired"
