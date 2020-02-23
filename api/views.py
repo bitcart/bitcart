@@ -392,6 +392,7 @@ utils.model_view(
         "delete": crud.delete_invoice,
     },
     request_handlers={"get_one": get_invoice_noauth},
+    post_auth=False,
 )
 
 
