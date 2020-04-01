@@ -546,7 +546,15 @@ async def patch_token(
     model: schemes.EditToken,
     user: models.User = Security(utils.AuthDependency()),
 ):
-    item = await models.Token.get(model_id)
+    item = (
+        await models.Token.query.where(models.Token.user_id == user.id)
+        .where(models.Token.id == model_id)
+        .gino.first()
+    )
+    if not item:
+        raise HTTPException(
+            status_code=404, detail=f"Token with id {model_id} does not exist!"
+        )
     try:
         await item.update(**model.dict(exclude_unset=True)).apply()
     except (
@@ -586,8 +594,6 @@ async def create_token(
             request, SecurityScopes(), return_token=True
         )
     except HTTPException:
-        if not token_data:
-            raise
         user, status = await utils.authenticate_user(
             token_data.email, token_data.password
         )
