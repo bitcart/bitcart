@@ -1,6 +1,9 @@
 # pylint: disable=no-member
+import secrets
+
 from fastapi import HTTPException
 from gino.crud import UpdateRequest
+from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import relationship
 
 from . import settings
@@ -227,10 +230,10 @@ class Invoice(db.Model):
         store = await Store.get(store_id)
         if not store:
             raise HTTPException(422, f"Store {store_id} doesn't exist!")
-        await crud.get_store(None, None, store)
+        await crud.get_store(None, None, store, True)
         if not store.wallets:
             raise HTTPException(422, "No wallet linked")
-        kwargs.pop("products")
+        kwargs.pop("products", None)
         return await super().create(**kwargs), store.wallets
 
 
@@ -240,3 +243,18 @@ class Setting(db.Model):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(Text)
     value = Column(Text)
+
+
+class Token(db.Model):
+    __tablename__ = "tokens"
+
+    id = Column(String, primary_key=True)
+    user_id = Column(Integer, ForeignKey(User.id, ondelete="SET NULL"), index=True)
+    app_id = Column(String)
+    redirect_url = Column(String)
+    permissions = Column(ARRAY(String))
+
+    @classmethod
+    async def create(cls, **kwargs):
+        kwargs["id"] = secrets.token_urlsafe()
+        return await super().create(**kwargs)

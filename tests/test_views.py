@@ -2,11 +2,8 @@ import json as json_module
 from datetime import datetime, timedelta
 from typing import Dict, List, Union
 
-import jwt
 import pytest
 from starlette.testclient import TestClient
-
-from api.settings import ALGORITHM, SECRET_KEY
 
 TEST_XPUB = "tpubDD5MNJWw35y3eoJA7m3kFWsyX5SaUgx2Y3AaGwFk1pjYsHvpgDwRhrStRbCGad8dYzZCkLCvbGKfPuBiG7BabswmLofb7c2yfQFhjqSjaGi"
 
@@ -164,9 +161,9 @@ class TestInvoices(ViewTestMixin):
     tests = json_module.loads(open("tests/fixtures/invoices.json").read())
 
 
-def test_no_root(client: TestClient):
+def test_docs_root(client: TestClient):
     response = client.get("/")
-    assert response.status_code == 404
+    assert response.status_code == 200
 
 
 def test_rate(client: TestClient):
@@ -220,22 +217,6 @@ def test_create_token(client: TestClient):
     assert resp.status_code == 200
     j = resp.json()
     assert j.get("access_token")
-    assert j.get("refresh_token")
-    assert j["token_type"] == "bearer"
-
-
-def test_refresh_token(client: TestClient):
-    resp = client.post(
-        "/token", json={"email": "test44@example.com", "password": 12345}
-    )
-    assert resp.status_code == 200
-    resp = resp.json()
-    assert resp.get("refresh_token")
-    resp1 = client.post("/refresh_token", json={"token": resp["refresh_token"]})
-    assert resp1.status_code == 200
-    j = resp1.json()
-    assert j.get("access_token")
-    assert j.get("refresh_token")
     assert j["token_type"] == "bearer"
 
 
@@ -272,46 +253,6 @@ def test_superuseronly(client: TestClient, token: str):
     assert (
         client.get("/users", headers={"Authorization": f"Bearer {token}"}).status_code
         == 200
-    )
-
-
-def test_invalidjwt(client: TestClient, token: str):
-    assert (
-        client.get(
-            "/wallets", headers={"Authorization": f"Bearer {token[0:5]}"}
-        ).status_code
-        == 401
-    )
-    invalid_username_jwt = jwt.encode(
-        {"sub": "wronguser", "exp": datetime.utcnow() + timedelta(minutes=10)},
-        SECRET_KEY,
-        algorithm=ALGORITHM,
-    ).decode()
-    assert (
-        client.get(
-            "/wallets", headers={"Authorization": f"Bearer {invalid_username_jwt}"}
-        ).status_code
-        == 401
-    )
-    no_username_jwt = jwt.encode(
-        {"sub": None, "exp": datetime.utcnow() + timedelta(minutes=10)},
-        SECRET_KEY,
-        algorithm=ALGORITHM,
-    ).decode()
-    assert (
-        client.get(
-            "/wallets", headers={"Authorization": f"Bearer {no_username_jwt}"}
-        ).status_code
-        == 401
-    )
-    expired_jwt = jwt.encode(
-        {"sub": "testauth", "exp": -999}, SECRET_KEY, algorithm=ALGORITHM
-    ).decode()
-    assert (
-        client.get(
-            "/wallets", headers={"Authorization": f"Bearer {expired_jwt}"}
-        ).status_code
-        == 401
     )
 
 
@@ -404,20 +345,15 @@ async def test_invoice_ws(async_client, token: str):
     )
     assert r.status_code == 200
     invoice_id = r.json()["id"]
-    websocket = async_client.websocket_connect(
-        f"/ws/invoices/{invoice_id}?token={token}"
-    )
+    websocket = async_client.websocket_connect(f"/ws/invoices/{invoice_id}")
     await websocket.connect()
     await check_ws_response(websocket)
+    websocket2 = async_client.websocket_connect(
+        f"/ws/invoices/{invoice_id}"
+    )  # test if after invoice was completed websocket returns immediately
+    await websocket2.connect()
+    await check_ws_response(websocket2)
     with pytest.raises(Exception):
-        websocket = async_client.websocket_connect(f"/ws/invoices/{invoice_id}")
-        await websocket.connect()
-        await check_ws_response(websocket)
-    with pytest.raises(Exception):
-        websocket = async_client.websocket_connect(f"/ws/invoices/{invoice_id}?token=x")
-        await websocket.connect()
-        await check_ws_response(websocket)
-    with pytest.raises(Exception):
-        websocket = async_client.websocket_connect(f"/ws/invoices/555?token={token}")
+        websocket = async_client.websocket_connect(f"/ws/invoices/555")
         await websocket.connect()
         await check_ws_response(websocket)

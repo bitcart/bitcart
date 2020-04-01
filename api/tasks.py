@@ -26,6 +26,8 @@ STATUS_MAPPING = {
 async def poll_updates(obj: Union[int, models.Invoice], task_wallets: Dict[str, str]):
     test = settings.TEST
     obj = await models.Invoice.get(obj)
+    if not obj:
+        return
     await crud.invoice_add_related(obj)
     payment_methods = await models.PaymentMethod.query.where(
         models.PaymentMethod.invoice_id == obj.id
@@ -38,6 +40,7 @@ async def poll_updates(obj: Union[int, models.Invoice], task_wallets: Dict[str, 
         )
     if test:
         await asyncio.sleep(1)
+        await obj.update(status="test").apply()
         await utils.publish_message(obj.id, {"status": "test"})
         return
     while not settings.shutdown.is_set():
@@ -97,6 +100,8 @@ async def poll_updates(obj: Union[int, models.Invoice], task_wallets: Dict[str, 
 async def sync_wallet(model: Union[int, models.Wallet]):
     test = settings.TEST
     model = await models.Wallet.get(model)
+    if not model:
+        return
     coin = settings.get_coin(model.currency, model.xpub)
     balance = await coin.balance()
     await model.update(balance=balance["confirmed"]).apply()

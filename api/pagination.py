@@ -109,6 +109,10 @@ class Pagination:
         max_price=None,
         sale=False,
         postprocess: Optional[Callable] = None,
+        app_id=None,
+        redirect_url=None,
+        permissions=None,
+        count_only=False,
     ) -> dict:
         self.model = model
         if model == models.Product and sale:
@@ -124,7 +128,10 @@ class Pagination:
         models_l = [model]
         if model != models.User:
             for field in self.model.__table__.c:
-                if field.key.endswith("_id") and field.key != "order_id":
+                if field.key.endswith("_id") and field.key not in [
+                    "order_id",
+                    "app_id",
+                ]:
                     modelx = getattr(models, field.key[:-3].capitalize())
                     models_l.append(modelx)
         queries = self.search(models_l)
@@ -141,7 +148,15 @@ class Pagination:
                 query = query.where(models.Product.price >= min_price)
             if max_price:
                 query = query.where(models.Product.price <= max_price)
-
+        elif model == models.Token:
+            if app_id is not None:
+                query = query.where(models.Token.app_id == app_id)
+            if redirect_url is not None:
+                query = query.where(models.Token.redirect_url == redirect_url)
+            if permissions:
+                query = query.where(models.Token.permissions.contains(permissions))
+        if count_only:
+            return await self.get_count(query)
         count, data = await asyncio.gather(
             self.get_count(query), self.get_list(query.group_by(model.id))
         )

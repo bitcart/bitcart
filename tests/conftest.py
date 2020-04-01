@@ -30,7 +30,12 @@ def token(client):
         "/users", json={"email": "testauth@example.com", "password": "test12345"}
     )
     return client.post(
-        "/token", json={"email": "testauth@example.com", "password": "test12345"}
+        "/token",
+        json={
+            "email": "testauth@example.com",
+            "password": "test12345",
+            "permissions": ["full_control"],
+        },
     ).json()["access_token"]
 
 
