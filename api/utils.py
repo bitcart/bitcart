@@ -225,9 +225,6 @@ def model_view(
         user: Union[None, schemes.User] = Security(
             auth_dependency, scopes=scopes["get_all"]
         ),
-        store: Optional[
-            int
-        ] = None,  # TODO: investigate why is it there and possibly remove
     ):
         if custom_methods.get("get"):
             return await custom_methods["get"](pagination, user, get_data_source())

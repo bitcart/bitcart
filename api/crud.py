@@ -192,7 +192,10 @@ async def get_store(
     model_id: int, user: schemes.User, item: models.Store, internal=False
 ):
     if item is None:
-        return
+        item = await models.Store.get(model_id)  # Extra query to fetch public data
+        if item is None:
+            return
+        user = None  # reset User to display only public data
     await store_add_related(item)
     if internal:
         return item

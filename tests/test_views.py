@@ -346,7 +346,6 @@ def check_token(result):
     assert result["permissions"] == ["full_control"]
 
 
-# TODO: test for restricted token access, disallow permissonless token access other tokens
 def test_token(client: TestClient, token: str):
     assert client.get("/token").status_code == 401
     resp = client.get("/token", headers={"Authorization": f"Bearer {token}"})
