@@ -62,6 +62,7 @@ oauth2_scheme = OAuth2PasswordBearer(
     tokenUrl="/token",
     scopes={
         "server_management": "Edit server settings",
+        "token_management": "Create, list or edit tokens",
         "wallet_management": "Create, list or edit wallets",
         "store_management": "Create, list or edit stores",
         "discount_management": "Create, list or edit discounts",

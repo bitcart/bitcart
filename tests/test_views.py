@@ -563,6 +563,42 @@ def test_policies(client: TestClient, token: str):
     assert resp.json() == {"pos_id": 1}
 
 
+def test_no_token_management(client: TestClient, token: str):
+    limited_user_token = client.post("/token", json=LIMITED_USER_DATA).json()["id"]
+    assert (
+        client.get(
+            "/token/current", headers={"Authorization": f"Bearer {limited_user_token}"}
+        ).status_code
+        == 200
+    )
+    assert (
+        client.get(
+            "/token", headers={"Authorization": f"Bearer {limited_user_token}"}
+        ).status_code
+        == 403
+    )
+    assert (
+        client.get(
+            "/token/count", headers={"Authorization": f"Bearer {limited_user_token}"}
+        ).status_code
+        == 403
+    )
+    assert (
+        client.patch(
+            f"/token/{limited_user_token}",
+            headers={"Authorization": f"Bearer {limited_user_token}"},
+        ).status_code
+        == 403
+    )
+    assert (
+        client.delete(
+            f"/token/{limited_user_token}",
+            headers={"Authorization": f"Bearer {limited_user_token}"},
+        ).status_code
+        == 403
+    )
+
+
 @pytest.mark.asyncio
 async def test_wallet_ws(async_client, token: str):
     r = await async_client.post(

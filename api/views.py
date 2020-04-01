@@ -497,7 +497,7 @@ async def wallet_history(
 
 @router.get("/token", response_model=utils.get_pagination_model(schemes.Token))
 async def get_tokens(
-    user: models.User = Security(utils.AuthDependency()),
+    user: models.User = Security(utils.AuthDependency(), scopes=["token_management"]),
     pagination: pagination.Pagination = Depends(),
     app_id: Optional[str] = None,
     redirect_url: Optional[str] = None,
@@ -523,7 +523,7 @@ async def get_current_token(request: Request):
 
 @router.get("/token/count", response_model=int)
 async def get_token_count(
-    user: models.User = Security(utils.AuthDependency()),
+    user: models.User = Security(utils.AuthDependency(), scopes=["token_management"]),
     pagination: pagination.Pagination = Depends(),
     app_id: Optional[str] = None,
     redirect_url: Optional[str] = None,
@@ -544,7 +544,7 @@ async def get_token_count(
 async def patch_token(
     model_id: str,
     model: schemes.EditToken,
-    user: models.User = Security(utils.AuthDependency()),
+    user: models.User = Security(utils.AuthDependency(), scopes=["token_management"]),
 ):
     item = (
         await models.Token.query.where(models.Token.user_id == user.id)
@@ -568,7 +568,8 @@ async def patch_token(
 
 @router.delete("/token/{model_id}", response_model=schemes.Token)
 async def delete_token(
-    model_id: str, user: models.User = Security(utils.AuthDependency())
+    model_id: str,
+    user: models.User = Security(utils.AuthDependency(), scopes=["token_management"]),
 ):
     item = (
         await models.Token.query.where(models.Token.user_id == user.id)
