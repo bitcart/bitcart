@@ -29,6 +29,7 @@
                 "price": 0.5,
                 "quantity": 0.5,
                 "store_id": 2,
+                "category": "Test",
                 "discounts": []
             },
             "status": "good",
@@ -41,7 +42,7 @@
                 "store_id": 2,
                 "name": "test",
                 "image": null,
-                "category": "",
+                "category": "Test",
                 "discounts": [],
                 "id": 2
             }
@@ -95,7 +96,7 @@
                     "store_id": 2,
                     "name": "test",
                     "image": null,
-                    "category": "",
+                    "category": "Test",
                     "discounts": [],
                     "id": 2
                 }

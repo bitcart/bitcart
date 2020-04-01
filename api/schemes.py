@@ -30,17 +30,37 @@ class DisplayUser(BaseUser):
     id: Optional[int]
 
 
-class CreateToken(BaseModel):
-    email: str
-    password: str
+class HTTPCreateToken(BaseModel):
+    app_id: str = ""
+    redirect_url: str = ""
+    permissions: List[str] = []
+
+    @validator("permissions", pre=True, always=False)
+    def validate_permissions(cls, val):
+        if val == "":
+            return []
+        return val
+
+    class Config:
+        orm_mode = True
 
 
-class TokenData(BaseModel):
-    email: str
+class HTTPCreateLoginToken(HTTPCreateToken):
+    email: str = ""
+    password: str = ""
+    strict: bool = True
 
 
-class RefreshToken(BaseModel):
-    token: str
+class EditToken(BaseModel):
+    redirect_url: str = ""
+
+
+class CreateDBToken(HTTPCreateToken):
+    user_id: int
+
+
+class Token(CreateDBToken):
+    id: str
 
 
 class CreateWallet(BaseModel):
@@ -58,18 +78,12 @@ class Wallet(CreateWallet):
     balance: Decimal = Decimal(0)
 
 
-class CreateStore(BaseModel):
+class BaseStore(BaseModel):
     name: str
     default_currency: str = "USD"
     domain: str = ""
     template: str = ""
     email: Optional[EmailStr] = ""
-    email_host: str = ""
-    email_port: int = 25
-    email_user: str = ""
-    email_password: str = ""
-    email_use_ssl: bool = True
-    wallets: List[int]
 
     @validator("email", pre=True, always=False)
     def validate_email(cls, val):
@@ -79,6 +93,19 @@ class CreateStore(BaseModel):
 
     class Config:
         orm_mode = True
+
+
+class CreateStore(BaseStore):
+    email_host: str = ""
+    email_port: int = 25
+    email_user: str = ""
+    email_password: str = ""
+    email_use_ssl: bool = True
+    wallets: List[int]
+
+
+class PublicStore(BaseStore):
+    id: Optional[int]
 
 
 class Store(CreateStore):
@@ -146,7 +173,7 @@ class CreateInvoice(BaseModel):
     promocode: Optional[str] = ""
     discount: Optional[int]
     status: str = "Pending"
-    date: Optional[datetime] = now()
+    date: Optional[datetime]
     products: Optional[Union[List[int], Dict[int, int]]] = {}
 
     @validator("date", pre=True, always=True)
@@ -185,3 +212,7 @@ class TxResponse(BaseModel):
 class Policy(BaseModel):
     disable_registration: bool = False
     discourage_index: bool = False
+
+
+class GlobalStorePolicy(BaseModel):
+    pos_id: int = 1

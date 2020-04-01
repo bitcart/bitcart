@@ -173,7 +173,9 @@ async def invoices_add_related(items: Iterable[models.Invoice]):
     return items
 
 
-async def get_invoice(model_id: int, user: schemes.User, item: models.Invoice):
+async def get_invoice(
+    model_id: int, user: schemes.User, item: models.Invoice, internal: bool = False
+):
     await invoice_add_related(item)
     return item
 
@@ -186,9 +188,21 @@ async def get_invoices(
     )
 
 
-async def get_store(model_id: int, user: schemes.User, item: models.Store):
+async def get_store(
+    model_id: int, user: schemes.User, item: models.Store, internal=False
+):
+    if item is None:
+        item = await models.Store.get(model_id)  # Extra query to fetch public data
+        if item is None:
+            return
+        user = None  # reset User to display only public data
     await store_add_related(item)
-    return item
+    if internal:
+        return item
+    elif user:
+        return schemes.Store.from_orm(item)
+    else:
+        return schemes.PublicStore.from_orm(item)
 
 
 async def get_stores(

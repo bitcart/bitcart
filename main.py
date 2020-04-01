@@ -6,7 +6,7 @@ from api import settings
 from api.db import CONNECTION_STR, db
 from api.views import router
 
-app = FastAPI(title="Bitcart", version="1.0")
+app = FastAPI(title="Bitcart", version="1.0", docs_url="/", redoc_url="/redoc")
 app.mount("/images", StaticFiles(directory="images"), name="images")
 app.include_router(router)
 app.add_middleware(

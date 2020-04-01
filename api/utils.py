@@ -1,19 +1,18 @@
-# pylint: disable=no-member
+# pylint: disable=no-member, no-name-in-module
 import json
 import os
 import smtplib
+from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from os.path import join as path_join
 from typing import Callable, Dict, List, Optional, Type, Union
 
 import aioredis
 import asyncpg
-import jwt
 from aiohttp import ClientSession
-from fastapi import APIRouter, Depends, HTTPException
-from fastapi.security import OAuth2PasswordBearer
+from fastapi import APIRouter, Depends, HTTPException, Security
+from fastapi.security import OAuth2PasswordBearer, SecurityScopes
 from jinja2 import Template
-from jwt import PyJWTError
 from passlib.context import CryptContext
 from pydantic import BaseModel
 from pydantic import create_model as create_pydantic_model
@@ -59,69 +58,85 @@ async def authenticate_user(email: str, password: str):
     return user, 200
 
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/token")
+oauth2_scheme = OAuth2PasswordBearer(
+    tokenUrl="/token",
+    scopes={
+        "server_management": "Edit server settings",
+        "token_management": "Create, list or edit tokens",
+        "wallet_management": "Create, list or edit wallets",
+        "store_management": "Create, list or edit stores",
+        "discount_management": "Create, list or edit discounts",
+        "product_management": "Create, list or edit products",
+        "invoice_management": "Create, list or edit invoices",
+        "full_control": "Full control over what current user has",
+    },
+)
 
 
-def create_access_token(
-    *, data: dict, token_type: str, expires_delta: timedelta = timedelta(minutes=15)
-):
-    to_encode = data.copy()
-    expire = now() + expires_delta
-    to_encode.update({"exp": expire, "token_type": token_type})
-    encoded_jwt = jwt.encode(
-        to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM
-    )
-    return encoded_jwt
+def check_selective_scopes(request, scope, token):
+    model_id = request.path_params.get("model_id", None)
+    if model_id is None:
+        return False
+    return f"{scope}:{model_id}" in token.permissions
 
 
 class AuthDependency:
-    def __init__(
-        self,
-        enabled: bool = True,
-        superuser_only: bool = False,
-        token: Optional[str] = None,
-        token_type: str = "access",
-    ):
+    def __init__(self, enabled: bool = True, token: Optional[str] = None):
         self.enabled = enabled
-        self.superuser_only = superuser_only
         self.token = token
-        self.token_type = token_type
 
-    async def __call__(self, request: Request):
+    async def __call__(
+        self, request: Request, security_scopes: SecurityScopes, return_token=False
+    ):
         if not self.enabled:
             return None
+        if security_scopes.scopes:
+            authenticate_value = f'Bearer scope="{security_scopes.scope_str}"'
+        else:
+            authenticate_value = f"Bearer"
         token: str = await oauth2_scheme(request) if not self.token else self.token
-        from . import schemes
-
-        credentials_exception = HTTPException(
-            status_code=HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials",
-            headers={"WWW-Authenticate": "Bearer"},
+        data = (
+            await models.User.join(models.Token)
+            .select(models.Token.id == token)
+            .gino.load((models.User, models.Token))
+            .first()
         )
-        try:
-            payload = jwt.decode(
-                token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
-            )
-            token_type: str = payload.get("token_type")
-            email: str = payload.get("sub")
-            if token_type != self.token_type or email is None:
-                raise credentials_exception
-            token_data = schemes.TokenData(email=email)
-        except PyJWTError:
-            raise credentials_exception
-        user = await models.User.query.where(
-            models.User.email == token_data.email
-        ).gino.first()
-        if user is None:
-            raise credentials_exception
-        if self.superuser_only and not user.is_superuser:
+        if data is None:
             raise HTTPException(
-                status_code=HTTP_403_FORBIDDEN, detail="Not enough permissions"
+                status_code=HTTP_401_UNAUTHORIZED,
+                detail="Could not validate credentials",
+                headers={"WWW-Authenticate": authenticate_value},
             )
+        user, token = data  # first validate data, then unpack
+        forbidden_exception = HTTPException(
+            status_code=HTTP_403_FORBIDDEN,
+            detail="Not enough permissions",
+            headers={"WWW-Authenticate": authenticate_value},
+        )
+        if "full_control" not in token.permissions:
+            for scope in security_scopes.scopes:
+                if scope not in token.permissions and not check_selective_scopes(
+                    request, scope, token
+                ):
+                    raise forbidden_exception
+        if "server_management" in security_scopes.scopes and not user.is_superuser:
+            raise forbidden_exception
+        if return_token:
+            return user, token
         return user
 
 
 HTTP_METHODS: List[str] = ["GET", "POST", "PUT", "PATCH", "DELETE"]
+ENDPOINTS: List[str] = [
+    "get_all",
+    "get_one",
+    "get_count",
+    "post",
+    "put",
+    "patch",
+    "delete",
+]
+crud_models = []
 
 
 def model_view(
@@ -137,11 +152,22 @@ def model_view(
     background_tasks_mapping: Dict[str, Callable] = {},
     request_handlers: Dict[str, Callable] = {},
     auth=True,
+    get_one_auth=True,
     post_auth=True,
+    get_one_model=True,
+    scopes=None,
 ):
     from . import schemes
 
+    if scopes is None:
+        scopes = {i: [] for i in ENDPOINTS}
+    crud_models.append((path, orm_model, get_data_source))
+
     display_model = pydantic_model if not display_model else display_model
+    if isinstance(scopes, list):
+        scopes_list = scopes.copy()
+        scopes = {i: scopes_list for i in ENDPOINTS}
+    scopes = defaultdict(list, **scopes)
 
     PaginationResponse = create_pydantic_model(
         f"PaginationResponse_{display_model.__name__}",
@@ -157,7 +183,7 @@ def model_view(
     response_models: Dict[str, Type] = {
         "get": PaginationResponse,
         "get_count": int,
-        "get_one": display_model,
+        "get_one": display_model if get_one_model else None,
         "post": display_model,
         "put": display_model,
         "patch": display_model,
@@ -176,18 +202,40 @@ def model_view(
         "delete": item_path,
     }
 
-    auth_dependency = AuthDependency(auth, create_model == schemes.CreateUser)
+    auth_dependency = AuthDependency(auth)
+
+    async def _get_one(model_id: int, user: schemes.User, internal: bool = False):
+        if orm_model != models.User:
+            query = orm_model.query.select_from(get_data_source())
+            if user:
+                query = query.where(models.User.id == user.id)
+        else:
+            query = orm_model.query
+        item = await query.where(orm_model.id == model_id).gino.first()
+        if custom_methods.get("get_one"):
+            item = await custom_methods["get_one"](model_id, user, item, internal)
+        if not item:
+            raise HTTPException(
+                status_code=404, detail=f"Object with id {model_id} does not exist!"
+            )
+        return item
 
     async def get(
         pagination: pagination.Pagination = Depends(),
-        user: Union[None, schemes.User] = Depends(auth_dependency),
+        user: Union[None, schemes.User] = Security(
+            auth_dependency, scopes=scopes["get_all"]
+        ),
     ):
         if custom_methods.get("get"):
             return await custom_methods["get"](pagination, user, get_data_source())
         else:
             return await pagination.paginate(orm_model, get_data_source(), user.id)
 
-    async def get_count(user: Union[None, schemes.User] = Depends(auth_dependency)):
+    async def get_count(
+        user: Union[None, schemes.User] = Security(
+            auth_dependency, scopes=scopes["get_count"]
+        )
+    ):
         return (
             await (
                 (
@@ -204,32 +252,21 @@ def model_view(
             or 0
         )
 
-    async def get_one(
-        model_id: int, user: Union[None, schemes.User] = Depends(auth_dependency)
-    ):
-        item = await (
-            (
-                orm_model.query.select_from(get_data_source())
-                if orm_model != models.User
-                else orm_model.query
-            )
-            .where(orm_model.id == model_id)
-            .gino.first()
-        )
-        if custom_methods.get("get_one"):
-            item = await custom_methods["get_one"](model_id, user, item)
-        if not item:
-            raise HTTPException(
-                status_code=404, detail=f"Object with id {model_id} does not exist!"
-            )
-        return item
+    async def get_one(model_id: int, request: Request):
+        try:
+            user = await auth_dependency(request, SecurityScopes(scopes["get_one"]))
+        except HTTPException:
+            if get_one_auth:
+                raise
+            user = None
+        return await _get_one(model_id, user)
 
     async def post(
         model: create_model,  # type: ignore,
         request: Request,
     ):
         try:
-            user = await auth_dependency(request)
+            user = await auth_dependency(request, SecurityScopes(scopes["post"]))
         except HTTPException:
             if post_auth:
                 raise
@@ -252,9 +289,11 @@ def model_view(
     async def put(
         model_id: int,
         model: pydantic_model,
-        user: Union[None, schemes.User] = Depends(auth_dependency),
+        user: Union[None, schemes.User] = Security(
+            auth_dependency, scopes=scopes["put"]
+        ),
     ):  # type: ignore
-        item = await get_one(model_id)
+        item = await _get_one(model_id, user, True)
         try:
             if custom_methods.get("put"):
                 await custom_methods["put"](item, model, user)  # pragma: no cover
@@ -271,9 +310,11 @@ def model_view(
     async def patch(
         model_id: int,
         model: pydantic_model,
-        user: Union[None, schemes.User] = Depends(auth_dependency),
+        user: Union[None, schemes.User] = Security(
+            auth_dependency, scopes=scopes["patch"]
+        ),
     ):  # type: ignore
-        item = await get_one(model_id)
+        item = await _get_one(model_id, user, True)
         try:
             if custom_methods.get("patch"):
                 await custom_methods["patch"](item, model, user)  # pragma: no cover
@@ -290,9 +331,12 @@ def model_view(
         return item
 
     async def delete(
-        model_id: int, user: Union[None, schemes.User] = Depends(auth_dependency)
+        model_id: int,
+        user: Union[None, schemes.User] = Security(
+            auth_dependency, scopes=scopes["delete"]
+        ),
     ):
-        item = await get_one(model_id)
+        item = await _get_one(model_id, user, True)
         if custom_methods.get("delete"):
             await custom_methods["delete"](item, user)
         else:
@@ -412,6 +456,17 @@ async def set_setting(scheme):
         data["value"] = json.dumps(value)
         await model.update(**data).apply()
     else:
-        data["value"] = json.dumps(value)
+        data["value"] = json.dumps(json_data)
         await models.Setting.create(**data)
     return scheme
+
+
+def get_pagination_model(display_model):
+    return create_pydantic_model(
+        f"PaginationResponse_{display_model.__name__}",
+        count=(int, ...),
+        next=(Optional[str], None),
+        previous=(Optional[str], None),
+        result=(List[display_model], ...),
+        __base__=BaseModel,
+    )

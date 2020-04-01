@@ -20,7 +20,7 @@ async def reader(chan):
 @pytest.mark.asyncio
 async def test_auth_dependency():
     dep = utils.AuthDependency(enabled=False)
-    assert not await dep(None)
+    assert not await dep(None, None)
 
 
 @pytest.mark.asyncio

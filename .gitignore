@@ -38,3 +38,5 @@ bitcart-cli
 bitcart-cli-*
 # static
 images/products/*.png
+# message queue for processing maintenance commands
+queue

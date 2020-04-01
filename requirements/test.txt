@@ -1,5 +1,5 @@
 pytest
-pytest-asyncio
+https://github.com/pytest-dev/pytest-asyncio/archive/6397a2255e3e9ef858439b164018438a8106f454.zip # TODO: refer back to stable version when out
 pytest-cov
 codecov
 async-asgi-testclient

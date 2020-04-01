@@ -1,4 +1,5 @@
 [run]
+source = .
 omit =
     *apps.py,
     *routing.py,
@@ -12,6 +13,5 @@ omit =
     manage.py,
     venv/*,
     env/*,
-    ~/envs/bitcart/*
     *__init__.py
     
