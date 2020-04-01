@@ -414,22 +414,10 @@ def test_create_tokens(client: TestClient, token: str):
         client.post("/token", headers={"Authorization": f"Bearer {token}"}).status_code
         == 200
     )
-    # By default store_management assumes access to all stores, unless said otherwise
-    assert (
-        client.post(
-            "/token",
-            json={"permissions": ["store_management"], "selected_stores": [2]},
-            headers={"Authorization": f"Bearer {token}"},
-        ).status_code
-        == 422
-    )
+    # Selective permissions control is done by client, not by server
     resp = client.post(
         "/token",
-        json={
-            "permissions": ["store_management"],
-            "selective_stores": True,
-            "selected_stores": [2],
-        },
+        json={"permissions": ["store_management:2"],},
         headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 200

@@ -48,8 +48,6 @@ class HTTPCreateToken(BaseModel):
 class HTTPCreateLoginToken(HTTPCreateToken):
     email: str = ""
     password: str = ""
-    selective_stores: bool = False
-    selected_stores: List[int] = []
     strict: bool = True
 
 

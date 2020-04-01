@@ -601,8 +601,6 @@ async def create_token(
         if not user:
             raise HTTPException(401, {"message": "Unauthorized", "status": status})
     token_data = token_data.dict()
-    selective_stores = token_data.pop("selective_stores")
-    selected_stores = token_data.pop("selected_stores")
     strict = token_data.pop("strict")
     if "server_management" in token_data["permissions"] and not user.is_superuser:
         if strict:
@@ -610,16 +608,6 @@ async def create_token(
                 422, "This application requires access to server settings"
             )
         token_data["permissions"].remove("server_management")
-    if "store_management" in token_data["permissions"]:
-        if not selective_stores and selected_stores:
-            raise HTTPException(
-                422, "This application requires access to all the stores"
-            )
-        if selective_stores and selected_stores:
-            token_data["permissions"].remove("store_management")
-            token_data["permissions"].extend(
-                map(lambda i: f"store_management:{i}", selected_stores)
-            )
     if token and not "full_control" in token.permissions:
         for permission in token_data["permissions"]:
             if permission not in token.permissions:
