@@ -23,7 +23,7 @@ Have you identified a reproducible problem in Bitcart? Have a feature request? W
 
 ### Identify Where to Report
 
-The Bitcart project is distributed across multiple repositories. Try to file the issue against the correct repository. Check the list of [Related Projects](https://docs.bitcartcc.com/en/latest/) if you aren't sure which repo is correct.
+The Bitcart project is distributed across multiple repositories. Try to file the issue against the correct repository. Check the list of [Related Projects](https://docs.bitcartcc.com) if you aren't sure which repo is correct.
 
 ### Look For an Existing Issue
 
