@@ -24,11 +24,21 @@
       "contributions": [
         "code"
       ]
+    },
+    {
+      "login": "yagicandegirmenci",
+      "name": "Yağız Değirmenci",
+      "avatar_url": "https://avatars3.githubusercontent.com/u/62724709?v=4",
+      "profile": "https://github.com/yagicandegirmenci",
+      "contributions": [
+        "code"
+      ]
     }
   ],
   "contributorsPerLine": 7,
   "projectName": "bitcart",
   "projectOwner": "MrNaif2018",
   "repoType": "github",
-  "repoHost": "https://github.com"
+  "repoHost": "https://github.com",
+  "commitConvention": "none"
 }

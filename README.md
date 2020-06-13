@@ -28,14 +28,18 @@ See https://github.com/MrNaif2018/bitcart/blob/master/CONTRIBUTING.md for detail
 Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/docs/en/emoji-key)):
 
 <!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
-<!-- prettier-ignore -->
+<!-- prettier-ignore-start -->
+<!-- markdownlint-disable -->
 <table>
   <tr>
-    <td align="center"><a href="https://github.com/MrNaif2018"><img src="https://avatars3.githubusercontent.com/u/39452697?v=4" width="100px;" alt="MrNaif2018"/><br /><sub><b>MrNaif2018</b></sub></a><br /><a href="#maintenance-MrNaif2018" title="Maintenance">🚧</a> <a href="https://github.com/MrNaif2018/bitcart/commits?author=MrNaif2018" title="Code">💻</a> <a href="https://github.com/MrNaif2018/bitcart/commits?author=MrNaif2018" title="Documentation">📖</a></td>
-    <td align="center"><a href="https://github.com/tomasmor42"><img src="https://avatars2.githubusercontent.com/u/42064734?v=4" width="100px;" alt="tomasmor42"/><br /><sub><b>tomasmor42</b></sub></a><br /><a href="https://github.com/MrNaif2018/bitcart/commits?author=tomasmor42" title="Code">💻</a></td>
+    <td align="center"><a href="https://github.com/MrNaif2018"><img src="https://avatars3.githubusercontent.com/u/39452697?v=4" width="100px;" alt=""/><br /><sub><b>MrNaif2018</b></sub></a><br /><a href="#maintenance-MrNaif2018" title="Maintenance">🚧</a> <a href="https://github.com/MrNaif2018/bitcart/commits?author=MrNaif2018" title="Code">💻</a> <a href="https://github.com/MrNaif2018/bitcart/commits?author=MrNaif2018" title="Documentation">📖</a></td>
+    <td align="center"><a href="https://github.com/tomasmor42"><img src="https://avatars2.githubusercontent.com/u/42064734?v=4" width="100px;" alt=""/><br /><sub><b>tomasmor42</b></sub></a><br /><a href="https://github.com/MrNaif2018/bitcart/commits?author=tomasmor42" title="Code">💻</a></td>
+    <td align="center"><a href="https://github.com/yagicandegirmenci"><img src="https://avatars3.githubusercontent.com/u/62724709?v=4" width="100px;" alt=""/><br /><sub><b>Yağız Değirmenci</b></sub></a><br /><a href="https://github.com/MrNaif2018/bitcart/commits?author=yagicandegirmenci" title="Code">💻</a></td>
   </tr>
 </table>
 
+<!-- markdownlint-enable -->
+<!-- prettier-ignore-end -->
 <!-- ALL-CONTRIBUTORS-LIST:END -->
 
 This project follows the [all-contributors](https://github.com/all-contributors/all-contributors) specification. Contributions of any kind welcome!
