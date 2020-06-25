@@ -7,7 +7,7 @@ bitcart-async==0.8.5
 aioredis
 uvicorn
 alembic==1.4.2
-psycopg2-binary==2.8.4
+psycopg2-binary==2.8.5
 dramatiq[redis]
 Jinja2
 python-multipart
