@@ -28,9 +28,9 @@ jobs:
       # Download and cache dependencies
       - restore_cache:
           keys:
-            - v7-dependencies-{{ checksum "requirements/web.txt" }}-{{ checksum "requirements/test.txt" }}-{{ checksum "requirements/daemons/btc.txt" }}-{{ checksum "/tmp/python-version" }}
+            - v8-dependencies-{{ checksum "requirements/web.txt" }}-{{ checksum "requirements/test.txt" }}-{{ checksum "requirements/daemons/btc.txt" }}-{{ checksum "/tmp/python-version" }}
             # fallback to using the latest cache if no exact match is found
-            - v7-dependencies-
+            - v8-dependencies-
 
       - run:
           name: install dependencies
@@ -45,7 +45,7 @@ jobs:
       - save_cache:
           paths:
             - ./venv
-          key: v7-dependencies-{{ checksum "requirements/web.txt" }}-{{ checksum "requirements/test.txt" }}-{{ checksum "requirements/daemons/btc.txt" }}-{{ checksum "/tmp/python-version" }}
+          key: v8-dependencies-{{ checksum "requirements/web.txt" }}-{{ checksum "requirements/test.txt" }}-{{ checksum "requirements/daemons/btc.txt" }}-{{ checksum "/tmp/python-version" }}
 
       - run:
           name: prepare daemon
