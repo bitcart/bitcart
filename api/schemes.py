@@ -102,6 +102,11 @@ class CreateStore(BaseStore):
     email_password: str = ""
     email_use_ssl: bool = True
     wallets: List[int]
+    notifications: Optional[List[int]] = []
+
+    @validator("notifications", pre=True, always=True)
+    def set_notifications(cls, v):
+        return v or []
 
 
 class PublicStore(BaseStore):
@@ -125,6 +130,20 @@ class CreateDiscount(BaseModel):
 
 
 class Discount(CreateDiscount):
+    id: Optional[int]
+    user_id: int
+
+
+class CreateNotification(BaseModel):
+    name: str
+    provider: str
+    data: dict
+
+    class Config:
+        orm_mode = True
+
+
+class Notification(CreateNotification):
     id: Optional[int]
     user_id: int
 

@@ -12,3 +12,4 @@ dramatiq[redis]
 Jinja2
 python-multipart
 aiofiles
+notifiers

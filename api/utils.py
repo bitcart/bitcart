@@ -9,6 +9,7 @@ from typing import Callable, Dict, List, Optional, Type, Union
 
 import aioredis
 import asyncpg
+import notifiers
 from aiohttp import ClientSession
 from fastapi import APIRouter, Depends, HTTPException, Security
 from fastapi.security import OAuth2PasswordBearer, SecurityScopes
@@ -68,6 +69,7 @@ oauth2_scheme = OAuth2PasswordBearer(
         "discount_management": "Create, list or edit discounts",
         "product_management": "Create, list or edit products",
         "invoice_management": "Create, list or edit invoices",
+        "notification_management": "Create, list or edit notification providers",
         "full_control": "Full control over what current user has",
     },
 )
@@ -470,3 +472,18 @@ def get_pagination_model(display_model):
         result=(List[display_model], ...),
         __base__=BaseModel,
     )
+
+
+async def notify(store, text):
+    notification_providers = [
+        await models.Notification.get(notification_id)
+        for notification_id in store.notifications
+    ]
+    for provider in notification_providers:
+        notifiers.notify(provider.provider, message=text, **provider.data)
+
+
+def get_notify_template(store, invoice):
+    with open("api/templates/notification.j2") as f:
+        template = Template(f.read(), trim_blocks=True)
+    return template.render(store=store, invoice=invoice)

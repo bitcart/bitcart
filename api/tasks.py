@@ -58,36 +58,40 @@ async def poll_updates(obj: Union[int, models.Invoice], task_wallets: Dict[str, 
                 await crud.invoice_add_related(obj)
                 await utils.publish_message(obj.id, {"status": status})
                 await utils.send_ipn(obj, status)
-                if status == "complete" and obj.products:
-                    product = await models.Product.get(obj.products[0])
-                    store = await models.Store.get(product.store_id)
-                    if utils.check_ping(
-                        store.email_host,
-                        store.email_port,
-                        store.email_user,
-                        store.email_password,
-                        store.email,
-                        store.email_use_ssl,
-                    ):
-                        messages = []
-                        for product_id in obj.products:
-                            product = await models.Product.get(product_id)
-                            relation = (
-                                await models.ProductxInvoice.query.where(
-                                    models.ProductxInvoice.invoice_id == obj.id
+                if status == "complete":
+                    store = await models.Store.get(obj.store_id)
+                    await crud.store_add_related(store)
+                    await utils.notify(store, utils.get_notify_template(store, obj))
+                    if obj.products:
+                        if utils.check_ping(
+                            store.email_host,
+                            store.email_port,
+                            store.email_user,
+                            store.email_password,
+                            store.email,
+                            store.email_use_ssl,
+                        ):
+                            messages = []
+                            for product_id in obj.products:
+                                product = await models.Product.get(product_id)
+                                relation = (
+                                    await models.ProductxInvoice.query.where(
+                                        models.ProductxInvoice.invoice_id == obj.id
+                                    )
+                                    .where(
+                                        models.ProductxInvoice.product_id == product_id
+                                    )
+                                    .gino.first()
                                 )
-                                .where(models.ProductxInvoice.product_id == product_id)
-                                .gino.first()
+                                quantity = relation.count
+                                messages.append(
+                                    utils.get_product_template(store, product, quantity)
+                                )
+                            utils.send_mail(
+                                store,
+                                obj.buyer_email,
+                                utils.get_store_template(store, messages),
                             )
-                            quantity = relation.count
-                            messages.append(
-                                utils.get_product_template(store, product, quantity)
-                            )
-                        utils.send_mail(
-                            store,
-                            obj.buyer_email,
-                            utils.get_store_template(store, messages),
-                        )
                 return
         await asyncio.sleep(1)
     poll_updates.send_with_options(

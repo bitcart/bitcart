@@ -1,8 +1,10 @@
 import asyncio
 import os
+import sys
 import warnings
 
 import aioredis
+import bitcart
 import dramatiq
 import redis
 from dramatiq.brokers.redis import RedisBroker
@@ -15,10 +17,9 @@ from dramatiq.middleware import (
     ShutdownNotifications,
 )
 from fastapi import HTTPException
+from notifiers import all_providers, get_notifier
 from starlette.config import Config
 from starlette.datastructures import CommaSeparatedStrings
-
-import bitcart
 
 config = Config("conf/.env")
 
@@ -29,7 +30,7 @@ ENABLED_CRYPTOS = config("BITCART_CRYPTOS", cast=CommaSeparatedStrings, default=
 REDIS_HOST = config("REDIS_HOST", default="redis://localhost")
 
 # testing
-TEST = config("TEST", cast=bool, default=False)
+TEST = config("TEST", cast=bool, default="pytest" in sys.modules)
 
 # environment
 DOCKER_ENV = config("IN_DOCKER", cast=bool, default=False)
@@ -95,6 +96,17 @@ def get_coin(coin, xpub=None):
         xpub=xpub, **crypto_settings[coin]["credentials"]
     )
 
+
+# cache notifiers schema
+
+notifiers = {}
+for provider in all_providers():
+    notifier = get_notifier(provider)
+    if "required" in notifier.required:
+        required = notifier.required["required"]
+        if "message" in required:
+            required.remove("message")
+        notifiers[notifier.name] = required
 
 # initialize redis pool
 loop = asyncio.get_event_loop()

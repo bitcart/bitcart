@@ -15,7 +15,6 @@ jobs:
           POSTGRES_PASSWORD: 123@
     environment:
       PYVER: "3.6"
-      TEST: true
 
     working_directory: ~/repo
 
@@ -80,7 +79,6 @@ jobs:
           POSTGRES_PASSWORD: 123@
     environment:
       PYVER: "3.7"
-      TEST: true
     <<: *test-template
 
   deploy:

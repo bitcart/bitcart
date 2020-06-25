@@ -5,6 +5,8 @@ from typing import Dict, List, Union
 import pytest
 from starlette.testclient import TestClient
 
+from api import settings
+
 TEST_XPUB = "tpubDD5MNJWw35y3eoJA7m3kFWsyX5SaUgx2Y3AaGwFk1pjYsHvpgDwRhrStRbCGad8dYzZCkLCvbGKfPuBiG7BabswmLofb7c2yfQFhjqSjaGi"
 LIMITED_USER_DATA = {
     "email": "testauthlimited@example.com",
@@ -137,6 +139,12 @@ class TestDiscounts(ViewTestMixin):
     name = "discounts"
     auth = True
     tests = json_module.loads(open("tests/fixtures/discounts.json").read())
+
+
+class TestNotifications(ViewTestMixin):
+    name = "notifications"
+    auth = True
+    tests = json_module.loads(open("tests/fixtures/notifications.json").read())
 
 
 class TestWallets(ViewTestMixin):
@@ -323,6 +331,7 @@ def test_crud_count(client: TestClient, token: str):
         "discounts": 1,
         "products": 1,
         "invoices": 0,
+        "notifications": 1,
         "balance": 0.01,
     }
 
@@ -584,6 +593,23 @@ def test_no_token_management(client: TestClient, token: str):
         ).status_code
         == 403
     )
+
+
+def test_notification_list(client: TestClient):
+    resp = client.get("/notifications/list")
+    assert resp.status_code == 200
+    assert resp.json() == {
+        "count": len(settings.notifiers),
+        "next": None,
+        "previous": None,
+        "result": list(settings.notifiers.keys()),
+    }
+
+
+def test_notification_schema(client: TestClient):
+    resp = client.get("/notifications/schema")
+    assert resp.status_code == 200
+    assert resp.json() == settings.notifiers
 
 
 @pytest.mark.asyncio

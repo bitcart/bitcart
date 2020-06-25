@@ -3,7 +3,7 @@ import secrets
 
 from fastapi import HTTPException
 from gino.crud import UpdateRequest
-from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy.dialects.postgresql import ARRAY, JSON
 from sqlalchemy.orm import relationship
 
 from . import settings
@@ -18,6 +18,7 @@ Numeric = db.Numeric
 DateTime = db.DateTime
 Text = db.Text
 ForeignKey = db.ForeignKey
+JSON = db.JSON
 
 
 class User(db.Model):
@@ -50,6 +51,17 @@ class Wallet(db.Model):
             raise HTTPException(422, "Wallet key invalid")
 
 
+class Notification(db.Model):
+    __tablename__ = "notifications"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey(User.id, ondelete="SET NULL"))
+    user = relationship(User, backref="notifications")
+    name = Column(String(length=1000), index=True)
+    provider = Column(String(length=10000))
+    data = Column(JSON)
+
+
 class WalletxStore(db.Model):
     __tablename__ = "walletsxstores"
 
@@ -57,9 +69,19 @@ class WalletxStore(db.Model):
     store_id = Column(Integer, ForeignKey("stores.id", ondelete="SET NULL"))
 
 
-class WalletXStoreUpdateRequest(UpdateRequest):
+class NotificationxStore(db.Model):
+    __tablename__ = "notificationsxstores"
+
+    notification_id = Column(
+        Integer, ForeignKey("notifications.id", ondelete="SET NULL")
+    )
+    store_id = Column(Integer, ForeignKey("stores.id", ondelete="SET NULL"))
+
+
+class StoreUpdateRequest(UpdateRequest):
     def update(self, **kwargs):
         self.wallets = kwargs.pop("wallets", None)
+        self.notifications = kwargs.pop("notifications", None)
         return super().update(**kwargs)
 
     async def apply(self):
@@ -72,12 +94,23 @@ class WalletXStoreUpdateRequest(UpdateRequest):
         for i in self.wallets:
             await WalletxStore.create(store_id=self._instance.id, wallet_id=i)
         self._instance.wallets = self.wallets
+        if self.notifications:
+            await NotificationxStore.delete.where(
+                NotificationxStore.store_id == self._instance.id
+            ).gino.status()
+        if self.notifications is None:
+            self.notifications = []
+        for i in self.notifications:
+            await NotificationxStore.create(
+                store_id=self._instance.id, notification_id=i
+            )
+        self._instance.notifications = self.notifications
         return await super().apply()
 
 
 class Store(db.Model):
     __tablename__ = "stores"
-    _update_request_cls = WalletXStoreUpdateRequest
+    _update_request_cls = StoreUpdateRequest
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(1000), index=True)
@@ -91,6 +124,7 @@ class Store(db.Model):
     email_use_ssl = Column(Boolean)
     email_user = Column(String(1000))
     wallets = relationship("Wallet", secondary=WalletxStore)
+    notifications = relationship("Notification", secondary=NotificationxStore)
 
 
 class Discount(db.Model):

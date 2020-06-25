@@ -22,13 +22,17 @@
                 "default_currency": "USD",
                 "wallets": [
                     2
-                ]
+                ],
+                "notifications": []
             }
         },
         {
             "data": {
                 "name": "test5",
                 "wallets": [
+                    2
+                ],
+                "notifications": [
                     2
                 ],
                 "domain": "example.com",
@@ -48,6 +52,9 @@
                 "template": "",
                 "default_currency": "USD",
                 "wallets": [
+                    2
+                ],
+                "notifications": [
                     2
                 ]
             }
@@ -95,7 +102,8 @@
                     "default_currency": "USD",
                     "wallets": [
                         2
-                    ]
+                    ],
+                    "notifications": []
                 },
                 {
                     "domain": "example.com",
@@ -110,6 +118,9 @@
                     "template": "",
                     "default_currency": "USD",
                     "wallets": [
+                        2
+                    ],
+                    "notifications": [
                         2
                     ]
                 }
@@ -144,7 +155,8 @@
                 "default_currency": "USD",
                 "wallets": [
                     2
-                ]
+                ],
+                "notifications": []
             }
         },
         {
@@ -176,7 +188,8 @@
                 "default_currency": "USD",
                 "wallets": [
                     2
-                ]
+                ],
+                "notifications": []
             }
         },
         {
@@ -203,7 +216,8 @@
                 "default_currency": "USD",
                 "wallets": [
                     2
-                ]
+                ],
+                "notifications": []
             }
         },
         {
@@ -280,7 +294,8 @@
                 "default_currency": "USD",
                 "wallets": [
                     2
-                ]
+                ],
+                "notifications": []
             }
         }
     ],
@@ -306,7 +321,8 @@
                 "default_currency": "USD",
                 "wallets": [
                     2
-                ]
+                ],
+                "notifications": []
             }
         },
         {

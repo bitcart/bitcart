@@ -54,6 +54,10 @@ def get_discount():
     return models.Discount.join(models.User)
 
 
+def get_notification():
+    return models.Notification.join(models.User)
+
+
 def get_invoice():
     return (
         models.Invoice.join(models.Store)
@@ -336,6 +340,21 @@ async def get_fiatlist(query: Optional[str] = None):
     return sorted(s)
 
 
+@router.get("/notifications/list")
+async def get_notifications():
+    return {
+        "count": len(settings.notifiers),
+        "next": None,
+        "previous": None,
+        "result": list(settings.notifiers.keys()),
+    }
+
+
+@router.get("/notifications/schema")
+async def get_notifications_schema():
+    return settings.notifiers
+
+
 utils.model_view(
     router,
     "/users",
@@ -398,6 +417,16 @@ utils.model_view(
     schemes.CreateDiscount,
     custom_methods={"post": crud.create_discount},
     scopes=["discount_management"],
+)
+utils.model_view(
+    router,
+    "/notifications",
+    models.Notification,
+    schemes.Notification,
+    get_notification,
+    schemes.CreateNotification,
+    custom_methods={"post": crud.create_notification},
+    scopes=["notification_management"],
 )
 utils.model_view(
     router,
