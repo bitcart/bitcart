@@ -21,7 +21,7 @@ from sqlalchemy import distinct
 from starlette.requests import Request
 from starlette.status import HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN
 
-from . import db, models, pagination, settings
+from . import db, exceptions, models, pagination, settings, templates
 
 
 async def make_subscriber(name):
@@ -70,6 +70,7 @@ oauth2_scheme = OAuth2PasswordBearer(
         "product_management": "Create, list or edit products",
         "invoice_management": "Create, list or edit invoices",
         "notification_management": "Create, list or edit notification providers",
+        "template_management": "Create, list or edit templates",
         "full_control": "Full control over what current user has",
     },
 )
@@ -375,15 +376,26 @@ def check_ping(host, port, user, password, email, ssl=True):
         return False
 
 
-def get_product_template(store, product, quantity):
-    with open("api/templates/email_product.j2") as f:
-        template = Template(f.read(), trim_blocks=True)
+async def get_template(name):
+    custom_template = await models.Template.query.where(
+        models.Template.name == name
+    ).gino.first()
+    if custom_template:
+        return templates.Template(name, custom_template.text)
+    if name in templates.templates:
+        return templates.templates[name]
+    raise exceptions.TemplateDoesNotExistError(
+        f"Template {name} does not exist and has no default"
+    )
+
+
+async def get_product_template(store, product, quantity):
+    template = await get_template("email_product")
     return template.render(store=store, product=product, quantity=quantity)
 
 
-def get_store_template(store, products):
-    with open("api/templates/email_base_shop.j2") as f:
-        template = Template(f.read(), trim_blocks=True)
+async def get_store_template(store, products):
+    template = await get_template("email_base_shop")
     return template.render(store=store, products=products)
 
 
@@ -483,7 +495,6 @@ async def notify(store, text):
         notifiers.notify(provider.provider, message=text, **provider.data)
 
 
-def get_notify_template(store, invoice):
-    with open("api/templates/notification.j2") as f:
-        template = Template(f.read(), trim_blocks=True)
+async def get_notify_template(store, invoice):
+    template = await get_template("notification")
     return template.render(store=store, invoice=invoice)

@@ -313,3 +313,7 @@ async def create_notification(
     notification: schemes.CreateNotification, user: schemes.User
 ):
     return await models.Notification.create(**notification.dict(), user_id=user.id)
+
+
+async def create_template(template: schemes.CreateTemplate, user: schemes.User):
+    return await models.Template.create(**template.dict(), user_id=user.id)

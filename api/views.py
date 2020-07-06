@@ -24,7 +24,7 @@ from starlette.endpoints import WebSocketEndpoint
 from starlette.requests import Request
 from starlette.status import WS_1008_POLICY_VIOLATION
 
-from . import crud, db, models, pagination, schemes, settings, tasks, utils
+from . import crud, db, models, pagination, schemes, settings, tasks, templates, utils
 
 router = APIRouter()
 
@@ -56,6 +56,10 @@ def get_discount():
 
 def get_notification():
     return models.Notification.join(models.User)
+
+
+def get_template():
+    return models.Template.join(models.User)
 
 
 def get_invoice():
@@ -355,6 +359,16 @@ async def get_notifications_schema():
     return settings.notifiers
 
 
+@router.get("/templates/list")
+async def get_template_list():
+    return {
+        "count": len(templates.templates_strings),
+        "next": None,
+        "previous": None,
+        "result": templates.templates_strings,
+    }
+
+
 utils.model_view(
     router,
     "/users",
@@ -427,6 +441,16 @@ utils.model_view(
     schemes.CreateNotification,
     custom_methods={"post": crud.create_notification},
     scopes=["notification_management"],
+)
+utils.model_view(
+    router,
+    "/templates",
+    models.Template,
+    schemes.Template,
+    get_template,
+    schemes.CreateTemplate,
+    custom_methods={"post": crud.create_template},
+    scopes=["template_management"],
 )
 utils.model_view(
     router,

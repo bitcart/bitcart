@@ -148,6 +148,19 @@ class Notification(CreateNotification):
     user_id: int
 
 
+class CreateTemplate(BaseModel):
+    name: str
+    text: str
+
+    class Config:
+        orm_mode = True
+
+
+class Template(CreateTemplate):
+    id: Optional[int]
+    user_id: int
+
+
 class CreateProduct(BaseModel):
     status: str = "active"
     price: Decimal

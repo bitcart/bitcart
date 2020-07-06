@@ -13,6 +13,7 @@ from .db import db
 Column = db.Column
 Integer = db.Integer
 String = db.String
+Text = db.Text
 Boolean = db.Boolean
 Numeric = db.Numeric
 DateTime = db.DateTime
@@ -60,6 +61,16 @@ class Notification(db.Model):
     name = Column(String(length=1000), index=True)
     provider = Column(String(length=10000))
     data = Column(JSON)
+
+
+class Template(db.Model):
+    __tablename__ = "templates"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey(User.id, ondelete="SET NULL"))
+    user = relationship(User, backref="templates")
+    name = Column(String(length=100000), index=True, unique=True)
+    text = Column(Text())
 
 
 class WalletxStore(db.Model):

@@ -1,0 +1,189 @@
+{
+    "create": [
+        {
+            "data": {
+                "name": "test"
+            },
+            "status": "bad"
+        },
+        {
+            "data": {
+                "name": "test",
+                "text": "Test {{template}}"
+            },
+            "status": "good",
+            "return_data": {
+                "id": 2,
+                "name": "test",
+                "text": "Test {{template}}",
+                "user_id": 1
+            }
+        },
+        {
+            "data": {
+                "name": "template",
+                "text": "Test {{var}}"
+            },
+            "status": "good",
+            "return_data": {
+                "id": 3,
+                "name": "template",
+                "text": "Test {{var}}",
+                "user_id": 1
+            }
+        },
+        {
+            "data": {
+                "text": ""
+            },
+            "status": "bad"
+        },
+        {
+            "data": {
+                "user_id": "test"
+            },
+            "status": "bad"
+        }
+    ],
+    "get_all": [
+        {
+            "status": "good",
+            "return_data": [
+                {
+                    "id": 2,
+                    "name": "test",
+                    "text": "Test {{template}}",
+                    "user_id": 1
+                },
+                {
+                    "id": 3,
+                    "name": "template",
+                    "text": "Test {{var}}",
+                    "user_id": 1
+                }
+            ]
+        }
+    ],
+    "get_count": [
+        {
+            "status": "good",
+            "return_data": 2
+        }
+    ],
+    "get_one": [
+        {
+            "obj_id": 2,
+            "status": "good",
+            "return_data": {
+                "id": 2,
+                "name": "test",
+                "text": "Test {{template}}",
+                "user_id": 1
+            }
+        },
+        {
+            "obj_id": 4,
+            "status": "not found"
+        },
+        {
+            "obj_id": "x",
+            "status": "bad"
+        }
+    ],
+    "partial_update": [
+        {
+            "obj_id": 2,
+            "data": {
+                "name": "test2",
+                "text": "Test {{template}}",
+                "user_id": 1
+            },
+            "status": "good",
+            "return_data": {
+                "id": 2,
+                "name": "test2",
+                "text": "Test {{template}}",
+                "user_id": 1
+            }
+        },
+        {
+            "obj_id": 4,
+            "data": {
+                "name": "test3",
+                "text": "Test {{template}}",
+                "user_id": 1
+            },
+            "status": "not found"
+        },
+        {
+            "obj_id": 4,
+            "data": {
+                "name": "test2",
+                "text": "Test {{template}}",
+                "user_id": 1
+            },
+            "status": "not found"
+        }
+    ],
+    "full_update": [
+        {
+            "obj_id": 2,
+            "data": {
+                "name": "test3",
+                "text": "Test {{template}}",
+                "user_id": 1,
+                "id": 2
+            },
+            "status": "good",
+            "return_data": {
+                "id": 2,
+                "name": "test3",
+                "text": "Test {{template}}",
+                "user_id": 1
+            }
+        },
+        {
+            "obj_id": 2,
+            "data": {
+                "id": null
+            },
+            "status": "bad"
+        },
+        {
+            "obj_id": 2,
+            "data": {
+                "id": 2,
+                "name": "test",
+                "text": "Test {{template}}",
+                "user_id": 1
+            },
+            "status": "good",
+            "return_data": {
+                "id": 2,
+                "name": "test",
+                "text": "Test {{template}}",
+                "user_id": 1
+            }
+        }
+    ],
+    "delete": [
+        {
+            "obj_id": 4,
+            "status": "not found"
+        },
+        {
+            "obj_id": 2,
+            "status": "good",
+            "return_data": {
+                "id": 2,
+                "name": "test",
+                "text": "Test {{template}}",
+                "user_id": 1
+            }
+        },
+        {
+            "obj_id": 2,
+            "status": "not found"
+        }
+    ]
+}

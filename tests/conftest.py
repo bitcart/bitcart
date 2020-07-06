@@ -25,6 +25,13 @@ async def async_client():
 
 
 @pytest.fixture(scope="session", autouse=True)
+def notification_template():
+    with open("api/templates/notification.j2") as f:
+        text = f.read()
+    return text
+
+
+@pytest.fixture(scope="session", autouse=True)
 def token(client):
     client.post(
         "/users", json={"email": "testauth@example.com", "password": "test12345"}

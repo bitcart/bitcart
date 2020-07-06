@@ -1,7 +1,7 @@
 import aioredis
 import pytest
 
-from api import settings, utils
+from api import exceptions, settings, utils
 
 
 def test_verify_password():
@@ -33,3 +33,27 @@ async def test_make_subscriber():
     await sub.subscribe("channel:test")
     settings.loop.create_task(reader(chan))
     assert await utils.publish_message("test", {"hello": "world"}) == 1
+
+
+@pytest.mark.asyncio
+async def test_get_template(notification_template, async_client, token):
+    template = await utils.get_template("notification")
+    assert template.name == "notification"
+    assert template.template_text == notification_template
+    assert template.render() == ""
+    with pytest.raises(exceptions.TemplateDoesNotExistError):
+        await utils.get_template("templ")
+    resp = await async_client.post(
+        "/templates",
+        json={"name": "templ", "text": "Hello {{var1}}!"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 200
+    template2 = await utils.get_template("templ")
+    assert template2.name == "templ"
+    assert template2.template_text == "Hello {{var1}}!"
+    assert template2.render() == "Hello !"
+    assert template2.render(var1="world") == "Hello world!"
+    await async_client.delete(
+        "/templates/1", headers={"Authorization": f"Bearer {token}"}
+    )  # cleanup

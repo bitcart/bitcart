@@ -5,7 +5,7 @@ from typing import Dict, List, Union
 import pytest
 from starlette.testclient import TestClient
 
-from api import settings
+from api import settings, templates
 
 TEST_XPUB = "tpubDD5MNJWw35y3eoJA7m3kFWsyX5SaUgx2Y3AaGwFk1pjYsHvpgDwRhrStRbCGad8dYzZCkLCvbGKfPuBiG7BabswmLofb7c2yfQFhjqSjaGi"
 LIMITED_USER_DATA = {
@@ -145,6 +145,12 @@ class TestNotifications(ViewTestMixin):
     name = "notifications"
     auth = True
     tests = json_module.loads(open("tests/fixtures/notifications.json").read())
+
+
+class TestTemplates(ViewTestMixin):
+    name = "templates"
+    auth = True
+    tests = json_module.loads(open("tests/fixtures/templates.json").read())
 
 
 class TestWallets(ViewTestMixin):
@@ -332,6 +338,7 @@ def test_crud_count(client: TestClient, token: str):
         "products": 1,
         "invoices": 0,
         "notifications": 1,
+        "templates": 1,
         "balance": 0.01,
     }
 
@@ -610,6 +617,17 @@ def test_notification_schema(client: TestClient):
     resp = client.get("/notifications/schema")
     assert resp.status_code == 200
     assert resp.json() == settings.notifiers
+
+
+def test_template_list(client: TestClient):
+    resp = client.get("/templates/list")
+    assert resp.status_code == 200
+    assert resp.json() == {
+        "count": len(templates.templates_strings),
+        "next": None,
+        "previous": None,
+        "result": templates.templates_strings,
+    }
 
 
 @pytest.mark.asyncio

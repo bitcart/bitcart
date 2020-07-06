@@ -61,7 +61,9 @@ async def poll_updates(obj: Union[int, models.Invoice], task_wallets: Dict[str, 
                 if status == "complete":
                     store = await models.Store.get(obj.store_id)
                     await crud.store_add_related(store)
-                    await utils.notify(store, utils.get_notify_template(store, obj))
+                    await utils.notify(
+                        store, await utils.get_notify_template(store, obj)
+                    )
                     if obj.products:
                         if utils.check_ping(
                             store.email_host,
@@ -85,12 +87,14 @@ async def poll_updates(obj: Union[int, models.Invoice], task_wallets: Dict[str, 
                                 )
                                 quantity = relation.count
                                 messages.append(
-                                    utils.get_product_template(store, product, quantity)
+                                    await utils.get_product_template(
+                                        store, product, quantity
+                                    )
                                 )
                             utils.send_mail(
                                 store,
                                 obj.buyer_email,
-                                utils.get_store_template(store, messages),
+                                await utils.get_store_template(store, messages),
                             )
                 return
         await asyncio.sleep(1)
