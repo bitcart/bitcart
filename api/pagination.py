@@ -101,7 +101,6 @@ class Pagination:
     async def paginate(
         self,
         model,
-        data_source,
         user_id=None,
         store_id=None,
         category=None,
@@ -118,13 +117,13 @@ class Pagination:
         if model == models.Product and sale:
             query = (
                 model.query.select_from(
-                    data_source.join(models.DiscountxProduct).join(models.Discount)
+                    model.join(models.DiscountxProduct).join(models.Discount)
                 )
                 .having(func.count(models.DiscountxProduct.product_id) > 0)
                 .where(models.Discount.end_date > utils.now())
             )
         else:
-            query = model.query.select_from(data_source)
+            query = model.query
         models_l = [model]
         if model != models.User:
             for field in self.model.__table__.c:
@@ -138,7 +137,7 @@ class Pagination:
         if queries != []:
             query = query.where(queries)
         if user_id and model != models.User:
-            query = query.where(models.User.id == user_id)
+            query = query.where(model.user_id == user_id)
         if model == models.Product:
             if store_id:
                 query = query.where(models.Product.store_id == store_id)

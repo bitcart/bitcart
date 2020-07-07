@@ -20,6 +20,7 @@
                 "name": "test",
                 "template": "",
                 "default_currency": "USD",
+                "user_id": 1,
                 "wallets": [
                     2
                 ],
@@ -51,6 +52,7 @@
                 "name": "test5",
                 "template": "",
                 "default_currency": "USD",
+                "user_id": 1,
                 "wallets": [
                     2
                 ],
@@ -100,6 +102,7 @@
                     "name": "test",
                     "template": "",
                     "default_currency": "USD",
+                    "user_id": 1,
                     "wallets": [
                         2
                     ],
@@ -117,6 +120,7 @@
                     "name": "test5",
                     "template": "",
                     "default_currency": "USD",
+                    "user_id": 1,
                     "wallets": [
                         2
                     ],
@@ -153,6 +157,7 @@
                 "name": "test",
                 "template": "",
                 "default_currency": "USD",
+                "user_id": 1,
                 "wallets": [
                     2
                 ],
@@ -171,7 +176,8 @@
                 "name": "test2",
                 "wallets": [
                     2
-                ]
+                ],
+                "user_id": 1
             },
             "status": "good",
             "return_data": {
@@ -186,6 +192,7 @@
                 "name": "test2",
                 "template": "",
                 "default_currency": "USD",
+                "user_id": 1,
                 "wallets": [
                     2
                 ],
@@ -199,7 +206,8 @@
                 "wallets": [
                     2
                 ],
-                "email": "test1@example.com"
+                "email": "test1@example.com",
+                "user_id": 1
             },
             "status": "good",
             "return_data": {
@@ -214,6 +222,7 @@
                 "name": "test2",
                 "template": "",
                 "default_currency": "USD",
+                "user_id": 1,
                 "wallets": [
                     2
                 ],
@@ -277,7 +286,8 @@
                 "name": "test",
                 "wallets": [
                     2
-                ]
+                ],
+                "user_id": 1
             },
             "status": "good",
             "return_data": {
@@ -292,6 +302,7 @@
                 "name": "test",
                 "template": "",
                 "default_currency": "USD",
+                "user_id": 1,
                 "wallets": [
                     2
                 ],
@@ -319,6 +330,7 @@
                 "name": "test",
                 "template": "",
                 "default_currency": "USD",
+                "user_id": 1,
                 "wallets": [
                     2
                 ],

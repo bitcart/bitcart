@@ -20,6 +20,7 @@ DateTime = db.DateTime
 Text = db.Text
 ForeignKey = db.ForeignKey
 JSON = db.JSON
+UniqueConstraint = db.UniqueConstraint
 
 
 class User(db.Model):
@@ -69,8 +70,9 @@ class Template(db.Model):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey(User.id, ondelete="SET NULL"))
     user = relationship(User, backref="templates")
-    name = Column(String(length=100000), index=True, unique=True)
+    name = Column(String(length=100000), index=True)
     text = Column(Text())
+    _unique_constaint = UniqueConstraint("user_id", "name")
 
 
 class WalletxStore(db.Model):
@@ -136,6 +138,8 @@ class Store(db.Model):
     email_user = Column(String(1000))
     wallets = relationship("Wallet", secondary=WalletxStore)
     notifications = relationship("Notification", secondary=NotificationxStore)
+    user_id = Column(Integer, ForeignKey(User.id, ondelete="SET NULL"))
+    user = relationship(User, backref="stores")
 
 
 class Discount(db.Model):
@@ -200,6 +204,8 @@ class Product(db.Model):
     status = Column(String(1000), nullable=False)
     store = relationship("Store", back_populates="products")
     discounts = relationship("Discount", secondary=DiscountxProduct)
+    user_id = Column(Integer, ForeignKey(User.id, ondelete="SET NULL"))
+    user = relationship(User, backref="products")
 
 
 class ProductxInvoice(db.Model):
@@ -263,6 +269,8 @@ class Invoice(db.Model):
     )
     order_id = Column(Text)
     store = relationship("Store", back_populates="invoices")
+    user_id = Column(Integer, ForeignKey(User.id, ondelete="SET NULL"))
+    user = relationship(User, backref="invoices")
 
     @classmethod
     async def create(cls, **kwargs):
@@ -278,6 +286,8 @@ class Invoice(db.Model):
         await crud.get_store(None, None, store, True)
         if not store.wallets:
             raise HTTPException(422, "No wallet linked")
+        if not kwargs.get("user_id"):
+            kwargs["user_id"] = store.user_id
         kwargs.pop("products", None)
         return await super().create(**kwargs), store.wallets
 

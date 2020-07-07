@@ -20,6 +20,7 @@
                 "image": null,
                 "category": "",
                 "discounts": [],
+                "user_id": 1,
                 "id": 1
             }
         },
@@ -44,6 +45,7 @@
                 "image": null,
                 "category": "Test",
                 "discounts": [],
+                "user_id": 1,
                 "id": 2
             }
         },
@@ -85,6 +87,7 @@
                     "image": null,
                     "category": "",
                     "discounts": [],
+                    "user_id": 1,
                     "id": 1
                 },
                 {
@@ -98,6 +101,7 @@
                     "image": null,
                     "category": "Test",
                     "discounts": [],
+                    "user_id": 1,
                     "id": 2
                 }
             ]
@@ -128,6 +132,7 @@
                 "image": null,
                 "category": "",
                 "discounts": [],
+                "user_id": 1,
                 "id": 1
             }
         },
@@ -144,7 +149,8 @@
                 "quantity": 0.5,
                 "name": "test1",
                 "store_id": 2,
-                "discounts": []
+                "discounts": [],
+                "user_id": 1
             },
             "status": "good",
             "return_data": {
@@ -158,6 +164,7 @@
                 "image": null,
                 "category": "",
                 "discounts": [],
+                "user_id": 1,
                 "id": 1
             }
         },
@@ -168,7 +175,8 @@
                 "quantity": 0.2,
                 "name": "test1",
                 "store_id": 2,
-                "discounts": []
+                "discounts": [],
+                "user_id": 1
             },
             "status": "good",
             "return_data": {
@@ -182,7 +190,8 @@
                 "image": null,
                 "category": "",
                 "discounts": [],
-                "id": 1
+                "id": 1,
+                "user_id": 1
             }
         },
         {
@@ -232,7 +241,8 @@
                 "price": 0.5,
                 "quantity": 0.5,
                 "store_id": 2,
-                "discounts": []
+                "discounts": [],
+                "user_id": 1
             },
             "status": "good",
             "return_data": {
@@ -246,7 +256,8 @@
                 "image": null,
                 "category": "",
                 "discounts": [],
-                "id": 1
+                "id": 1,
+                "user_id": 1
             }
         }
     ],
@@ -269,6 +280,7 @@
                 "image": null,
                 "category": "",
                 "discounts": [],
+                "user_id": 1,
                 "id": 1
             }
         },

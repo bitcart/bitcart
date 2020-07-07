@@ -147,7 +147,6 @@ def model_view(
     path: str,
     orm_model,
     pydantic_model,
-    get_data_source,
     create_model=None,
     display_model=None,
     allowed_methods: List[str] = ["GET_COUNT", "GET_ONE"] + HTTP_METHODS,
@@ -164,7 +163,7 @@ def model_view(
 
     if scopes is None:
         scopes = {i: [] for i in ENDPOINTS}
-    crud_models.append((path, orm_model, get_data_source))
+    crud_models.append((path, orm_model))
 
     display_model = pydantic_model if not display_model else display_model
     if isinstance(scopes, list):
@@ -208,12 +207,9 @@ def model_view(
     auth_dependency = AuthDependency(auth)
 
     async def _get_one(model_id: int, user: schemes.User, internal: bool = False):
-        if orm_model != models.User:
-            query = orm_model.query.select_from(get_data_source())
-            if user:
-                query = query.where(models.User.id == user.id)
-        else:
-            query = orm_model.query
+        query = orm_model.query
+        if orm_model != models.User and user:
+            query = query.where(orm_model.user_id == user.id)
         item = await query.where(orm_model.id == model_id).gino.first()
         if custom_methods.get("get_one"):
             item = await custom_methods["get_one"](model_id, user, item, internal)
@@ -230,9 +226,9 @@ def model_view(
         ),
     ):
         if custom_methods.get("get"):
-            return await custom_methods["get"](pagination, user, get_data_source())
+            return await custom_methods["get"](pagination, user)
         else:
-            return await pagination.paginate(orm_model, get_data_source(), user.id)
+            return await pagination.paginate(orm_model, user.id)
 
     async def get_count(
         user: Union[None, schemes.User] = Security(
@@ -242,9 +238,7 @@ def model_view(
         return (
             await (
                 (
-                    orm_model.query.select_from(get_data_source()).where(
-                        models.User.id == user.id
-                    )
+                    orm_model.query.where(orm_model.user_id == user.id)
                     if orm_model != models.User
                     else orm_model.query
                 )
@@ -265,8 +259,7 @@ def model_view(
         return await _get_one(model_id, user)
 
     async def post(
-        model: create_model,  # type: ignore,
-        request: Request,
+        model: create_model, request: Request,  # type: ignore,
     ):
         try:
             user = await auth_dependency(request, SecurityScopes(scopes["post"]))
@@ -376,10 +369,11 @@ def check_ping(host, port, user, password, email, ssl=True):
         return False
 
 
-async def get_template(name):
-    custom_template = await models.Template.query.where(
-        models.Template.name == name
-    ).gino.first()
+async def get_template(name, user_id=None):
+    query = models.Template.query.where(models.Template.name == name)
+    if user_id:
+        query = query.where(models.Template.user_id == user_id)
+    custom_template = await query.gino.first()
     if custom_template:
         return templates.Template(name, custom_template.text)
     if name in templates.templates:
@@ -390,12 +384,12 @@ async def get_template(name):
 
 
 async def get_product_template(store, product, quantity):
-    template = await get_template("email_product")
+    template = await get_template("email_product", store.user_id)
     return template.render(store=store, product=product, quantity=quantity)
 
 
 async def get_store_template(store, products):
-    template = await get_template("email_base_shop")
+    template = await get_template("email_base_shop", store.user_id)
     return template.render(store=store, products=products)
 
 
@@ -496,5 +490,5 @@ async def notify(store, text):
 
 
 async def get_notify_template(store, invoice):
-    template = await get_template("notification")
+    template = await get_template("notification", store.user_id)
     return template.render(store=store, invoice=invoice)

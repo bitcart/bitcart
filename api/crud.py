@@ -57,6 +57,8 @@ async def create_wallet(wallet: schemes.CreateWallet, user: schemes.User):
 async def create_invoice(invoice: schemes.CreateInvoice, user: schemes.User):
     d = invoice.dict()
     store = await models.Store.get(d["store_id"])
+    if not store:
+        raise HTTPException(422, f"Store {d['store_id']} doesn't exist!")
     d["currency"] = d["currency"] or store.default_currency or "USD"
     products = d.get("products", {})
     if isinstance(products, list):
@@ -180,11 +182,9 @@ async def get_invoice(
     return item
 
 
-async def get_invoices(
-    pagination: pagination.Pagination, user: schemes.User, data_source
-):
+async def get_invoices(pagination: pagination.Pagination, user: schemes.User):
     return await pagination.paginate(
-        models.Invoice, data_source, user.id, postprocess=invoices_add_related
+        models.Invoice, user.id, postprocess=invoices_add_related
     )
 
 
@@ -205,11 +205,9 @@ async def get_store(
         return schemes.PublicStore.from_orm(item)
 
 
-async def get_stores(
-    pagination: pagination.Pagination, user: schemes.User, data_source
-):
+async def get_stores(pagination: pagination.Pagination, user: schemes.User):
     return await pagination.paginate(
-        models.Store, data_source, user.id, postprocess=stores_add_related
+        models.Store, user.id, postprocess=stores_add_related
     )
 
 
@@ -225,7 +223,7 @@ async def create_store(store: schemes.CreateStore, user: schemes.User):
     d = store.dict()
     wallets = d.get("wallets", [])
     notifications = d.get("notifications", [])
-    obj = await models.Store.create(**d)
+    obj = await models.Store.create(**d, user_id=user.id)
     created_wallets = []
     for i in wallets:  # type: ignore
         created_wallets.append(
@@ -297,11 +295,9 @@ async def products_add_related(items: Iterable[models.Product]):
     return items
 
 
-async def get_products(
-    pagination: pagination.Pagination, user: schemes.User, data_source
-):
+async def get_products(pagination: pagination.Pagination, user: schemes.User):
     return await pagination.paginate(
-        models.Product, data_source, user.id, postprocess=products_add_related
+        models.Product, user.id, postprocess=products_add_related
     )
 
 

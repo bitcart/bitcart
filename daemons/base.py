@@ -89,7 +89,8 @@ class BaseDaemon:
         activate_selected_network = self.NETWORK_MAPPING.get(self.NET.lower())
         if not activate_selected_network:
             raise ValueError(
-                f"Invalid network passed: {self.NET}. Valid choices are {', '.join(self.NETWORK_MAPPING.keys())}."
+                f"Invalid network passed: {self.NET}. Valid choices are"
+                f" {', '.join(self.NETWORK_MAPPING.keys())}."
             )
         activate_selected_network()
         self.electrum_config = self.electrum.simple_config.SimpleConfig()

@@ -111,10 +111,12 @@ class CreateStore(BaseStore):
 
 class PublicStore(BaseStore):
     id: Optional[int]
+    user_id: int
 
 
 class Store(CreateStore):
     id: Optional[int]
+    user_id: int
 
 
 class CreateDiscount(BaseModel):
@@ -192,6 +194,7 @@ class CreateProduct(BaseModel):
 
 class Product(CreateProduct):
     id: Optional[int]
+    user_id: int
 
 
 class CreateInvoice(BaseModel):
@@ -228,6 +231,7 @@ class CreateInvoice(BaseModel):
 
 class Invoice(CreateInvoice):
     id: Optional[int]
+    user_id: int
     currency: str = "USD"
 
 

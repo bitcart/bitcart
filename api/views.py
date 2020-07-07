@@ -29,48 +29,6 @@ from . import crud, db, models, pagination, schemes, settings, tasks, templates,
 router = APIRouter()
 
 
-def get_user():
-    return models.User
-
-
-def get_wallet():
-    return models.User.join(models.Wallet)
-
-
-def get_store():
-    return models.Store.join(models.WalletxStore).join(models.Wallet).join(models.User)
-
-
-def get_product():
-    return (
-        models.Product.join(models.Store)
-        .join(models.WalletxStore)
-        .join(models.Wallet)
-        .join(models.User)
-    )
-
-
-def get_discount():
-    return models.Discount.join(models.User)
-
-
-def get_notification():
-    return models.Notification.join(models.User)
-
-
-def get_template():
-    return models.Template.join(models.User)
-
-
-def get_invoice():
-    return (
-        models.Invoice.join(models.Store)
-        .join(models.WalletxStore)
-        .join(models.Wallet)
-        .join(models.User)
-    )
-
-
 @router.get("/users/me", response_model=schemes.DisplayUser)
 async def get_me(user: models.User = Security(utils.AuthDependency())):
     return user
@@ -83,8 +41,8 @@ async def get_balances(
     balances = Decimal()
     async with db.db.acquire() as conn:
         async with conn.transaction():
-            async for wallet in models.Wallet.query.select_from(get_wallet()).where(
-                models.User.id == user.id
+            async for wallet in models.Wallet.query.where(
+                models.Wallet.user_id == user.id
             ).gino.iterate():
                 balance = (
                     await settings.get_coin(wallet.currency, wallet.xpub).balance()
@@ -98,11 +56,7 @@ async def ping_email(
     model_id: int,
     user: models.User = Security(utils.AuthDependency(), scopes=["store_management"]),
 ):
-    model = (
-        await models.Store.query.select_from(get_store())
-        .where(models.Store.id == model_id)
-        .gino.first()
-    )
+    model = await models.Store.query.where(models.Store.id == model_id).gino.first()
     if not model:
         raise HTTPException(404, f"Store with id {model_id} does not exist!")
     return utils.check_ping(
@@ -155,7 +109,6 @@ async def get_products(
         user = None
     return await pagination.paginate(
         models.Product,
-        get_product(),
         user.id if user else None,
         store,
         category,
@@ -181,7 +134,7 @@ async def create_product(
     d = data.dict()
     discounts = d.pop("discounts", None)
     try:
-        obj = await models.Product.create(**d)
+        obj = await models.Product.create(**d, user_id=user.id)
         created = []
         for i in discounts:
             created.append(
@@ -221,9 +174,7 @@ async def process_edit_product(model_id, data, image, user, patch=True):
         model.image = None
     try:
         if patch:
-            await item.update(
-                **model.dict(exclude_unset=True)  # type: ignore
-            ).apply()
+            await item.update(**model.dict(exclude_unset=True)).apply()  # type: ignore
         else:
             await item.update(**model.dict()).apply()
     except (  # pragma: no cover
@@ -272,7 +223,7 @@ async def products_count(
     if sale:
         query = (
             query.select_from(
-                get_product().join(models.DiscountxProduct).join(models.Discount)
+                models.Product.join(models.DiscountxProduct).join(models.Discount)
             )
             .having(func.count(models.DiscountxProduct.product_id) > 0)
             .where(models.Discount.end_date > utils.now())
@@ -281,9 +232,7 @@ async def products_count(
         user = await utils.AuthDependency()(
             request, SecurityScopes(["product_management"])
         )
-        if not sale:
-            query = query.select_from(get_product())
-        query = query.where(models.User.id == user.id)
+        query = query.where(models.Product.user_id == user.id)
     else:
         query = query.where(models.Product.store_id == store)
     if category and category != "all":
@@ -319,8 +268,7 @@ async def get_invoice_by_order_id(order_id: str):
 async def get_max_product_price(store: int):
     return (
         await (
-            models.Product.query.select_from(get_product())
-            .where(models.Store.id == store)
+            models.Product.query.where(models.Store.id == store)
             .with_only_columns([db.db.func.max(distinct(models.Product.price))])
             .order_by(None)
             .gino.scalar()
@@ -374,7 +322,6 @@ utils.model_view(
     "/users",
     models.User,
     schemes.User,
-    get_user,
     schemes.CreateUser,
     display_model=schemes.DisplayUser,
     custom_methods={
@@ -398,7 +345,6 @@ utils.model_view(
     "/wallets",
     models.Wallet,
     schemes.CreateWallet,
-    get_wallet,
     schemes.CreateWallet,
     schemes.Wallet,
     background_tasks_mapping={"post": tasks.sync_wallet},
@@ -410,7 +356,6 @@ utils.model_view(
     "/stores",
     models.Store,
     schemes.Store,
-    get_store,
     schemes.CreateStore,
     custom_methods={
         "get": crud.get_stores,
@@ -427,7 +372,6 @@ utils.model_view(
     "/discounts",
     models.Discount,
     schemes.Discount,
-    get_discount,
     schemes.CreateDiscount,
     custom_methods={"post": crud.create_discount},
     scopes=["discount_management"],
@@ -437,7 +381,6 @@ utils.model_view(
     "/notifications",
     models.Notification,
     schemes.Notification,
-    get_notification,
     schemes.CreateNotification,
     custom_methods={"post": crud.create_notification},
     scopes=["notification_management"],
@@ -447,7 +390,6 @@ utils.model_view(
     "/templates",
     models.Template,
     schemes.Template,
-    get_template,
     schemes.CreateTemplate,
     custom_methods={"post": crud.create_template},
     scopes=["template_management"],
@@ -457,7 +399,6 @@ utils.model_view(
     "/products",
     models.Product,
     schemes.Product,
-    get_product,
     schemes.CreateProduct,
     custom_methods={"delete": delete_product},
     request_handlers={
@@ -475,7 +416,6 @@ utils.model_view(
     "/invoices",
     models.Invoice,
     schemes.Invoice,
-    get_invoice,
     schemes.CreateInvoice,
     schemes.DisplayInvoice,
     custom_methods={
@@ -496,13 +436,11 @@ async def get_stats(
 ):
     queries = []
     output_formats = []
-    for index, (path, orm_model, data_source) in enumerate(utils.crud_models):
-        queries.append(
-            select([func.count(distinct(orm_model.id))])
-            .select_from(data_source())
-            .where(models.User.id == user.id)
-            .label(path[1:])  # remove / from name
-        )
+    for index, (path, orm_model) in enumerate(utils.crud_models):
+        query = select([func.count(distinct(orm_model.id))])
+        if orm_model != models.User:
+            query = query.where(orm_model.user_id == user.id)
+        queries.append(query.label(path[1:]))  # remove / from name
         output_formats.append((path[1:], index))
     result = await db.db.first(select(queries))
     response = {key: result[ind] for key, ind in output_formats}
@@ -534,14 +472,12 @@ async def wallet_history(
 ):
     response: List[schemes.TxResponse] = []
     if model_id == 0:
-        for model in await models.Wallet.query.select_from(get_wallet()).gino.all():
+        for model in await models.Wallet.query.gino.all():
             await utils.get_wallet_history(model, response)
     else:
-        model = (
-            await models.Wallet.query.select_from(get_wallet())
-            .where(models.Wallet.id == model_id)
-            .gino.first()
-        )
+        model = await models.Wallet.query.where(
+            models.Wallet.id == model_id
+        ).gino.first()
         if not model:
             raise HTTPException(404, f"Wallet with id {model_id} does not exist!")
         await utils.get_wallet_history(model, response)
@@ -558,7 +494,6 @@ async def get_tokens(
 ):
     return await pagination.paginate(
         models.Token,
-        models.User.join(models.Token),
         user.id,
         app_id=app_id,
         redirect_url=redirect_url,
@@ -584,7 +519,6 @@ async def get_token_count(
 ):
     return await pagination.paginate(
         models.Token,
-        models.User.join(models.Token),
         user.id,
         app_id=app_id,
         redirect_url=redirect_url,
@@ -749,8 +683,8 @@ class WalletNotify(WebSocketEndpoint):
             await websocket.close(code=WS_1008_POLICY_VIOLATION)
             return
         self.wallet = (
-            await models.Wallet.query.select_from(get_wallet())
-            .where(models.Wallet.id == self.wallet_id)
+            await models.Wallet.query.where(models.Wallet.id == self.wallet_id)
+            .where(models.Wallet.user_id == self.user.id)
             .gino.first()
         )
         if not self.wallet:
@@ -781,11 +715,9 @@ class InvoiceNotify(WebSocketEndpoint):
         except (ValueError, KeyError):
             await websocket.close(code=WS_1008_POLICY_VIOLATION)
             return
-        self.invoice = (
-            await models.Invoice.query.select_from(get_invoice())
-            .where(models.Invoice.id == self.invoice_id)
-            .gino.first()
-        )
+        self.invoice = await models.Invoice.query.where(
+            models.Invoice.id == self.invoice_id
+        ).gino.first()
         if not self.invoice:
             await websocket.close(code=WS_1008_POLICY_VIOLATION)
             return
