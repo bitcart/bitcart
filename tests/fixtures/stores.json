@@ -9,7 +9,6 @@
             },
             "status": "good",
             "return_data": {
-                "domain": "",
                 "email": null,
                 "email_host": "",
                 "email_password": "",
@@ -18,13 +17,13 @@
                 "email_use_ssl": true,
                 "id": 1,
                 "name": "test",
-                "template": "",
                 "default_currency": "USD",
                 "user_id": 1,
                 "wallets": [
                     2
                 ],
-                "notifications": []
+                "notifications": [],
+                "templates": {}
             }
         },
         {
@@ -36,12 +35,10 @@
                 "notifications": [
                     2
                 ],
-                "domain": "example.com",
                 "email": "test@example.com"
             },
             "status": "good",
             "return_data": {
-                "domain": "example.com",
                 "email": "test@example.com",
                 "email_host": "",
                 "email_password": "",
@@ -50,7 +47,6 @@
                 "email_use_ssl": true,
                 "id": 2,
                 "name": "test5",
-                "template": "",
                 "default_currency": "USD",
                 "user_id": 1,
                 "wallets": [
@@ -58,7 +54,8 @@
                 ],
                 "notifications": [
                     2
-                ]
+                ],
+                "templates": {}
             }
         },
         {
@@ -91,7 +88,6 @@
             "status": "good",
             "return_data": [
                 {
-                    "domain": "",
                     "email": null,
                     "email_host": "",
                     "email_password": "",
@@ -100,16 +96,15 @@
                     "email_use_ssl": true,
                     "id": 1,
                     "name": "test",
-                    "template": "",
                     "default_currency": "USD",
                     "user_id": 1,
                     "wallets": [
                         2
                     ],
-                    "notifications": []
+                    "notifications": [],
+                    "templates": {}
                 },
                 {
-                    "domain": "example.com",
                     "email": "test@example.com",
                     "email_host": "",
                     "email_password": "",
@@ -118,7 +113,6 @@
                     "email_use_ssl": true,
                     "id": 2,
                     "name": "test5",
-                    "template": "",
                     "default_currency": "USD",
                     "user_id": 1,
                     "wallets": [
@@ -126,7 +120,8 @@
                     ],
                     "notifications": [
                         2
-                    ]
+                    ],
+                    "templates": {}
                 }
             ]
         }
@@ -146,7 +141,6 @@
             "obj_id": 1,
             "status": "good",
             "return_data": {
-                "domain": "",
                 "email": null,
                 "email_host": "",
                 "email_password": "",
@@ -155,13 +149,13 @@
                 "email_use_ssl": true,
                 "id": 1,
                 "name": "test",
-                "template": "",
                 "default_currency": "USD",
                 "user_id": 1,
                 "wallets": [
                     2
                 ],
-                "notifications": []
+                "notifications": [],
+                "templates": {}
             }
         },
         {
@@ -181,7 +175,6 @@
             },
             "status": "good",
             "return_data": {
-                "domain": "",
                 "email": null,
                 "email_host": "",
                 "email_password": "",
@@ -190,13 +183,13 @@
                 "email_use_ssl": true,
                 "id": 1,
                 "name": "test2",
-                "template": "",
                 "default_currency": "USD",
                 "user_id": 1,
                 "wallets": [
                     2
                 ],
-                "notifications": []
+                "notifications": [],
+                "templates": {}
             }
         },
         {
@@ -211,7 +204,6 @@
             },
             "status": "good",
             "return_data": {
-                "domain": "",
                 "email": "test1@example.com",
                 "email_host": "",
                 "email_password": "",
@@ -220,13 +212,13 @@
                 "email_use_ssl": true,
                 "id": 1,
                 "name": "test2",
-                "template": "",
                 "default_currency": "USD",
                 "user_id": 1,
                 "wallets": [
                     2
                 ],
-                "notifications": []
+                "notifications": [],
+                "templates": {}
             }
         },
         {
@@ -291,7 +283,6 @@
             },
             "status": "good",
             "return_data": {
-                "domain": "",
                 "email": null,
                 "email_host": "",
                 "email_password": "",
@@ -300,13 +291,13 @@
                 "email_use_ssl": true,
                 "id": 1,
                 "name": "test",
-                "template": "",
                 "default_currency": "USD",
                 "user_id": 1,
                 "wallets": [
                     2
                 ],
-                "notifications": []
+                "notifications": [],
+                "templates": {}
             }
         }
     ],
@@ -319,7 +310,6 @@
             "obj_id": 1,
             "status": "good",
             "return_data": {
-                "domain": "",
                 "email": null,
                 "email_host": "",
                 "email_password": "",
@@ -328,13 +318,13 @@
                 "email_use_ssl": true,
                 "id": 1,
                 "name": "test",
-                "template": "",
                 "default_currency": "USD",
                 "user_id": 1,
                 "wallets": [
                     2
                 ],
-                "notifications": []
+                "notifications": [],
+                "templates": {}
             }
         },
         {

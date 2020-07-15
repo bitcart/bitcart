@@ -369,8 +369,11 @@ def check_ping(host, port, user, password, email, ssl=True):
         return False
 
 
-async def get_template(name, user_id=None):
-    query = models.Template.query.where(models.Template.name == name)
+async def get_template(name, user_id=None, obj=None):
+    if obj and obj.templates.get(name):
+        query = models.Template.query.where(models.Template.id == obj.templates[name])
+    else:
+        query = models.Template.query.where(models.Template.name == name)
     if user_id:
         query = query.where(models.Template.user_id == user_id)
     custom_template = await query.gino.first()
@@ -384,12 +387,12 @@ async def get_template(name, user_id=None):
 
 
 async def get_product_template(store, product, quantity):
-    template = await get_template("email_product", store.user_id)
+    template = await get_template("product", store.user_id, product)
     return template.render(store=store, product=product, quantity=quantity)
 
 
 async def get_store_template(store, products):
-    template = await get_template("email_base_shop", store.user_id)
+    template = await get_template("shop", store.user_id, store)
     return template.render(store=store, products=products)
 
 
@@ -490,5 +493,5 @@ async def notify(store, text):
 
 
 async def get_notify_template(store, invoice):
-    template = await get_template("notification", store.user_id)
+    template = await get_template("notification", store.user_id, store)
     return template.render(store=store, invoice=invoice)

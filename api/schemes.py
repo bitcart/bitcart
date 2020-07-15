@@ -81,8 +81,6 @@ class Wallet(CreateWallet):
 class BaseStore(BaseModel):
     name: str
     default_currency: str = "USD"
-    domain: str = ""
-    template: str = ""
     email: Optional[EmailStr] = ""
 
     @validator("email", pre=True, always=False)
@@ -103,10 +101,15 @@ class CreateStore(BaseStore):
     email_use_ssl: bool = True
     wallets: List[int]
     notifications: Optional[List[int]] = []
+    templates: Optional[Dict[str, int]] = {}
 
     @validator("notifications", pre=True, always=True)
     def set_notifications(cls, v):
         return v or []
+
+    @validator("templates", pre=True, always=True)
+    def set_templates(cls, v):
+        return v or {}
 
 
 class PublicStore(BaseStore):
@@ -175,6 +178,7 @@ class CreateProduct(BaseModel):
     image: Optional[str] = ""
     store_id: int
     discounts: Optional[List[int]] = []
+    templates: Optional[Dict[str, int]] = {}
 
     @validator("date", pre=True, always=True)
     def set_date(cls, v):
@@ -187,6 +191,10 @@ class CreateProduct(BaseModel):
     @validator("discounts", pre=True, always=True)
     def set_discounts(cls, v):
         return v or []
+
+    @validator("templates", pre=True, always=True)
+    def set_templates(cls, v):
+        return v or {}
 
     class Config:
         orm_mode = True

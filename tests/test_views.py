@@ -628,6 +628,33 @@ def test_template_list(client: TestClient):
         "previous": None,
         "result": templates.templates_strings,
     }
+    resp1 = client.get("/templates/list?show_all=true")
+    result = [
+        v for template_set in templates.templates_strings.values() for v in template_set
+    ]
+    assert resp1.status_code == 200
+    assert resp1.json() == {
+        "count": len(result),
+        "next": None,
+        "previous": None,
+        "result": result,
+    }
+    resp2 = client.get("/templates/list?applicable_to=product")
+    assert resp2.status_code == 200
+    assert resp2.json() == {
+        "count": len(templates.templates_strings["product"]),
+        "next": None,
+        "previous": None,
+        "result": templates.templates_strings["product"],
+    }
+    resp3 = client.get("/templates/list?applicable_to=notfound")
+    assert resp3.status_code == 200
+    assert resp3.json() == {
+        "count": 0,
+        "next": None,
+        "previous": None,
+        "result": [],
+    }
 
 
 @pytest.mark.asyncio

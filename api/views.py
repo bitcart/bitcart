@@ -308,12 +308,19 @@ async def get_notifications_schema():
 
 
 @router.get("/templates/list")
-async def get_template_list():
+async def get_template_list(
+    applicable_to: Optional[str] = None, show_all: bool = False
+):
+    result_set = templates.templates_strings
+    if applicable_to:
+        result_set = result_set.get(applicable_to, [])
+    elif show_all:
+        result_set = [v for template_set in result_set.values() for v in template_set]
     return {
-        "count": len(templates.templates_strings),
+        "count": len(result_set),
         "next": None,
         "previous": None,
-        "result": templates.templates_strings,
+        "result": result_set,
     }
 
 

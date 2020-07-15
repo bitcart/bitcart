@@ -35,6 +35,10 @@ async def test_make_subscriber():
     assert await utils.publish_message("test", {"hello": "world"}) == 1
 
 
+class MockStore:
+    templates = {"notification": 1}
+
+
 @pytest.mark.asyncio
 async def test_get_template(notification_template, async_client, token):
     template = await utils.get_template("notification")
@@ -54,6 +58,9 @@ async def test_get_template(notification_template, async_client, token):
     assert template2.template_text == "Hello {{var1}}!"
     assert template2.render() == "Hello !"
     assert template2.render(var1="world") == "Hello world!"
+    template3 = await utils.get_template("notification", obj=MockStore())
+    assert template3.name == "notification"
+    assert template3.template_text == template2.template_text
     await async_client.delete(
         "/templates/1", headers={"Authorization": f"Bearer {token}"}
     )  # cleanup
