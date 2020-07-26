@@ -25,6 +25,7 @@ from starlette.requests import Request
 from starlette.status import WS_1008_POLICY_VIOLATION
 
 from . import crud, db, models, pagination, schemes, settings, tasks, templates, utils
+from .ext import tor as tor_ext
 
 router = APIRouter()
 
@@ -667,6 +668,17 @@ async def set_store_policies(
     user: models.User = Security(utils.AuthDependency(), scopes=["server_management"]),
 ):
     return await utils.set_setting(settings)
+
+
+@router.get("/services")
+async def get_services(request: Request):
+    try:
+        user = await utils.AuthDependency()(
+            request, SecurityScopes(["server_management"])
+        )
+    except HTTPException:
+        user = None
+    return tor_ext.services_dict if user else tor_ext.anonymous_services_dict
 
 
 @router.websocket_route("/ws/wallets/{model_id}")
