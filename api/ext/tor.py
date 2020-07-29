@@ -88,6 +88,6 @@ anonymous_services_dict = {
     service.name: {"name": service.name, "hostname": service.hostname}
     for service in services
 }
-onion_host = services_dict.get("BitcartCC-Merchants-API", "")
+onion_host = services_dict.get("BitcartCC Merchants API", "")
 if onion_host:
     onion_host = onion_host["hostname"]
