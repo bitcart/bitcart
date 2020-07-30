@@ -44,6 +44,9 @@ DB_PORT = config("DB_PORT", default="5432")
 if TEST:
     DB_NAME = "bitcart_test"
 
+# Tor support
+TORRC_FILE = config("TORRC_FILE", default=None)
+
 # initialize image dir
 def create_ifn(path):
     if not os.path.exists(path):

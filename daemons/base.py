@@ -3,10 +3,12 @@ import asyncio
 import functools
 import inspect
 import os
+import sys
 import traceback
 from base64 import b64decode
 from types import ModuleType
 from typing import Union
+from urllib.parse import urlparse
 
 from aiohttp import ClientSession
 from aiohttp import __version__ as aiohttp_version
@@ -62,6 +64,10 @@ class BaseDaemon:
         self.DEFAULT_CURRENCY = self.config(
             f"{self.env_name}_FIAT_CURRENCY", default="USD"
         )
+        self.EXCHANGE = self.config(
+            f"{self.env_name}_FIAT_EXCHANGE",
+            default=self.electrum.exchange_rate.DEFAULT_EXCHANGE,
+        )
         self.VERBOSE = self.config(f"{self.env_name}_DEBUG", cast=bool, default=False)
         self.HOST = self.config(
             f"{self.env_name}_HOST",
@@ -74,6 +80,7 @@ class BaseDaemon:
         self.ONESERVER = self.config(
             f"{self.env_name}_ONESERVER", cast=bool, default=False
         )
+        self.PROXY_URL = self.config(f"{self.env_name}_PROXY_URL", default=None)
         self.supported_methods = {
             func.__name__: func
             for func in (getattr(self, name) for name in dir(self))
@@ -113,6 +120,25 @@ class BaseDaemon:
     def create_daemon(self):
         return self.electrum.daemon.Daemon(self.electrum_config, listen_jsonrpc=False)
 
+    def set_proxy(self, config):
+        proxy = None
+        if self.PROXY_URL:
+            try:
+                parsed = urlparse(self.PROXY_URL)
+                proxy = {
+                    "mode": str(parsed.scheme),
+                    "host": str(parsed.hostname),
+                    "port": str(parsed.port),
+                    "user": str(parsed.username),
+                    "password": str(parsed.password),
+                }
+                proxy = self.electrum.network.serialize_proxy(proxy)
+            except Exception:
+                sys.exit(
+                    f"Invalid proxy URL. Original traceback:\n{traceback.format_exc()}"
+                )
+        config.set_key("proxy", proxy)
+
     async def on_startup(self, app):
         self.client_session = ClientSession()
         self.daemon = self.create_daemon()
@@ -142,10 +168,11 @@ class BaseDaemon:
     def copy_config_settings(self, config, per_wallet=False):
         config.set_key("verbosity", self.VERBOSE)
         config.set_key("lightning", self.LIGHTNING)
+        config.set_key("use_exchange", self.EXCHANGE)
         config.set_key("currency", self.DEFAULT_CURRENCY)
         config.set_key("server", self.SERVER)
         config.set_key("oneserver", self.ONESERVER)
-
+        self.set_proxy(config)
         config.set_key("use_exchange_rate", True)
         if self.HAS_FEE_ESTIMATES and per_wallet:
             config.fee_estimates = self.network.config.fee_estimates.copy() or {

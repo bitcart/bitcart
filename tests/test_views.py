@@ -3,9 +3,11 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Union
 
 import pytest
+from fastapi.encoders import jsonable_encoder
 from starlette.testclient import TestClient
 
 from api import settings, templates
+from api.ext import tor as tor_ext
 
 TEST_XPUB = "tpubDD5MNJWw35y3eoJA7m3kFWsyX5SaUgx2Y3AaGwFk1pjYsHvpgDwRhrStRbCGad8dYzZCkLCvbGKfPuBiG7BabswmLofb7c2yfQFhjqSjaGi"
 LIMITED_USER_DATA = {
@@ -655,6 +657,15 @@ def test_template_list(client: TestClient):
         "previous": None,
         "result": [],
     }
+
+
+def test_services(client: TestClient, token: str):
+    resp = client.get("/services")
+    assert resp.status_code == 200
+    assert resp.json() == tor_ext.TorService.anonymous_services_dict
+    resp2 = client.get("/services", headers={"Authorization": f"Bearer {token}"})
+    assert resp2.status_code == 200
+    assert resp2.json() == jsonable_encoder(tor_ext.TorService.services_dict)
 
 
 @pytest.mark.asyncio

@@ -1,3 +1,6 @@
+import os
+import shutil
+
 import pytest
 from async_asgi_testclient import TestClient as AsyncClient
 from dramatiq import Worker
@@ -13,13 +16,13 @@ def event_loop():
 
 
 @pytest.yield_fixture(scope="session", autouse=True)
-def client():
+def client(event_loop):
     with TestClient(app) as client:
         yield client
 
 
 @pytest.yield_fixture(scope="session")
-async def async_client():
+async def async_client(event_loop):
     async with AsyncClient(app) as client:
         yield client
 
@@ -58,3 +61,26 @@ def stub_worker():
     worker.start()
     yield worker
     worker.stop()
+
+
+@pytest.yield_fixture
+def service_dir():
+    directory = "test-1"
+    os.mkdir(directory)
+    with open(f"{directory}/hostname", "w") as f:
+        f.write("test.onion\n\n\n")
+    yield directory
+    shutil.rmtree(directory)
+
+
+@pytest.yield_fixture
+def torrc(service_dir):
+    filename = "torrc"
+    with open(filename, "w") as f:
+        f.write(
+            """
+HiddenServiceDir test-1
+HiddenServicePort 80 127.0.0.1:80"""
+        )
+    yield filename
+    os.remove(filename)
