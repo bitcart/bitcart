@@ -1,6 +1,7 @@
 [run]
 source = .
 omit =
+    main.py,
     *apps.py,
     *routing.py,
     *urls.py,

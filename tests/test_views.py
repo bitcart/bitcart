@@ -657,6 +657,12 @@ def test_template_list(client: TestClient):
     }
 
 
+def test_services(client: TestClient):
+    resp = client.get("/services")
+    assert resp.status_code == 200
+    assert resp.json() == {}
+
+
 @pytest.mark.asyncio
 async def test_wallet_ws(async_client, token: str):
     r = await async_client.post(

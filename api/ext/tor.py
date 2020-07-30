@@ -43,8 +43,6 @@ def parse_hidden_service_port(line):
 
 def get_hostname(service_dir):
     path = os.path.join(service_dir, "hostname")
-    if not os.path.exists(path):
-        return
     try:
         with open(path) as f:
             return f"http://{f.readline().strip()}"
@@ -57,7 +55,7 @@ def get_service_name(service_dir):
 
 
 def parse_torrc(torrc):
-    if not torrc or not os.path.exists(torrc):
+    if not torrc:
         return []
     try:
         with open(torrc) as f:
