@@ -21,7 +21,7 @@ from notifiers import all_providers, get_notifier
 from starlette.config import Config
 from starlette.datastructures import CommaSeparatedStrings
 
-config = Config("conf/.env" if not "pytest" in sys.modules else None)
+config = Config("conf/.env")
 
 # bitcart-related
 ENABLED_CRYPTOS = config("BITCART_CRYPTOS", cast=CommaSeparatedStrings, default="btc")
