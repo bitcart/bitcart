@@ -64,6 +64,10 @@ class BaseDaemon:
         self.DEFAULT_CURRENCY = self.config(
             f"{self.env_name}_FIAT_CURRENCY", default="USD"
         )
+        self.EXCHANGE = self.config(
+            f"{self.env_name}_FIAT_EXCHANGE",
+            default=self.electrum.exchange_rate.DEFAULT_EXCHANGE,
+        )
         self.VERBOSE = self.config(f"{self.env_name}_DEBUG", cast=bool, default=False)
         self.HOST = self.config(
             f"{self.env_name}_HOST",
@@ -164,6 +168,7 @@ class BaseDaemon:
     def copy_config_settings(self, config, per_wallet=False):
         config.set_key("verbosity", self.VERBOSE)
         config.set_key("lightning", self.LIGHTNING)
+        config.set_key("use_exchange", self.EXCHANGE)
         config.set_key("currency", self.DEFAULT_CURRENCY)
         config.set_key("server", self.SERVER)
         config.set_key("oneserver", self.ONESERVER)
