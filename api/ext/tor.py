@@ -80,12 +80,27 @@ def parse_torrc(torrc):
     return services
 
 
-services = parse_torrc(settings.TORRC_FILE)
-services_dict = {service.name: service._asdict() for service in services}
-anonymous_services_dict = {
-    service.name: {"name": service.name, "hostname": service.hostname}
-    for service in services
-}
-onion_host = services_dict.get("BitcartCC Merchants API", "")
-if onion_host:
-    onion_host = onion_host["hostname"]
+class TorService:
+    services = []
+    services_dict = {}
+    anonymous_services_dict = {}
+    onion_host = ""
+
+
+def refresh():
+    TorService.services = parse_torrc(settings.TORRC_FILE)
+    TorService.services_dict = {
+        service.name: service._asdict() for service in TorService.services
+    }
+    TorService.anonymous_services_dict = {
+        service.name: {"name": service.name, "hostname": service.hostname}
+        for service in TorService.services
+    }
+    TorService.onion_host = TorService.services_dict.get("BitcartCC Merchants API", "")
+    if TorService.onion_host:  # pragma: no cover
+        TorService.onion_host = TorService.onion_host[  # pylint: disable=invalid-sequence-index
+            "hostname"
+        ]
+
+
+refresh()

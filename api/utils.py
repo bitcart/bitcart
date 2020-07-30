@@ -1,4 +1,5 @@
 # pylint: disable=no-member, no-name-in-module
+import asyncio
 import json
 import os
 import smtplib
@@ -495,3 +496,11 @@ async def notify(store, text):
 async def get_notify_template(store, invoice):
     template = await get_template("notification", store.user_id, store)
     return template.render(store=store, invoice=invoice)
+
+
+async def run_repeated(func, timeout, start_timeout):
+    first_iter = True
+    while True:
+        await asyncio.sleep(start_timeout if first_iter else timeout)
+        func()
+        first_iter = False

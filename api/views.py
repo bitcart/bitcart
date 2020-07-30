@@ -678,7 +678,11 @@ async def get_services(request: Request):
         )
     except HTTPException:
         user = None
-    return tor_ext.services_dict if user else tor_ext.anonymous_services_dict
+    return (
+        tor_ext.TorService.services_dict
+        if user
+        else tor_ext.TorService.anonymous_services_dict
+    )
 
 
 @router.websocket_route("/ws/wallets/{model_id}")
