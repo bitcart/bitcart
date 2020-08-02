@@ -1,27 +1,35 @@
-# Bitcart
-[![All Contributors](https://img.shields.io/badge/all_contributors-2-orange.svg?style=flat-square)](#contributors)
+# BitcartCC
+![Github All Contributors](https://img.shields.io/github/all-contributors/MrNaif2018/bitcart?style=flat-square)
 [![CircleCI](https://circleci.com/gh/MrNaif2018/bitcart.svg?style=svg)](https://circleci.com/gh/MrNaif2018/bitcart)
-[![codecov](https://codecov.io/gh/MrNaif2018/bitcart/branch/master/graph/badge.svg)](https://codecov.io/gh/MrNaif2018/bitcart)
-[![Python versions](https://img.shields.io/badge/python-3.6%20|%203.7%20|%203.8-blue.svg)](https://docs.bitcartcc.com)
+![Codecov](https://img.shields.io/codecov/c/github/MrNaif2018/bitcart?style=flat-square)
+[![Python versions](https://img.shields.io/pypi/pyversions/bitcart?style=flat-square)](https://docs.bitcartcc.com)
 
-Bitcart is a platform for merchants, users and developers which offers easy setup and use.
+BitcartCC is a platform for merchants, users and developers which offers easy setup and use.
 
 Linked repositories
 -------------------
-Our ecosystem consists of a few packages, this is main web interface.
-Other repositories:
+Our ecosystem consists of a few packages, this is our central repository.
 
-https://github.com/MrNaif2018/bitcart-docker - docker packaging, easy install
+It is recommended to propose feature requests to BitcartCC ecosystem as a whole on that repository.
 
-https://github.com/MrNaif2018/bitcart-sdk - python library for coins connection
+Full list of our repositories:
+
+https://github.com/MrNaif2018/bitcart - BitcartCC Core Daemons and Merchants API
+https://github.com/MrNaif2018/bitcart-admin - The admin panel of BitcartCC
+https://github.com/MrNaif2018/bitcart-frontend - BitcartCC ready store
+https://github.com/MrNaif2018/bitcart-docker - Docker packaging, base for all deployment methods
+https://github.com/MrNaif2018/bitcart-sdk - Python library for coins connection
+https://github.com/MrNaif2018/bitccl - The BitCCL scripting language for checkout flow automation
+https://github.com/MrNaif2018/bitcart-docs - [BitcartCC documentation](https://docs.bitcartcc.com)
+https://github.com/MrNaif2018/bitcart-site - [BitcartCC official site](https://bitcartcc.com)
 
 Docs
 ----
-Docs are available at https://docs.bitcartcc.com or at docs directory in this repository.
+Docs are available at https://docs.bitcartcc.com or in our [docs repository](https://github.com/MrNaif2018/bitcart-docs)
 
 Contributing
 ------------
-See https://github.com/MrNaif2018/bitcart/blob/master/CONTRIBUTING.md for details.
+See [our contributing guidelines](https://github.com/MrNaif2018/bitcart/blob/master/CONTRIBUTING.md) for details.
 
 ## Contributors ✨
 

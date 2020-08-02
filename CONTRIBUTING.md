@@ -1,13 +1,12 @@
-# Contributing to Bitcart
+# Contributing to BitcartCC
 
-Welcome, and thank you for your interest in contributing to Bitcart!
+Welcome, and thank you for your interest in contributing to BitcartCC!
 
 There are many ways in which you can contribute, beyond writing code. The goal of this document is to provide a high-level overview of how you can get involved.
 
 ## Asking Questions
 
-Have a question? Rather than opening an issue, please ask away on [Stack Overflow](https://stackoverflow.com/questions/tagged/bitcart) using the tag `bitcart`
-or [Telegram](https://t.me/bitcartcc).
+Have a question? Rather than opening an issue, please ask away in our [communities](https://bitcartcc.com#community)
 
 The active community will be eager to assist you. Your well-worded question will serve as a resource to others searching for help.
 
@@ -15,15 +14,17 @@ The active community will be eager to assist you. Your well-worded question will
 
 Your comments and feedback are welcome, and the development team is available via a handful of different channels.
 
-Join our [Telegram](https://t.me/bitcartcc) group to share your thoughts.
+Join our [communities](https://bitcartcc.com#community) to share your thoughts.
 
 ## Reporting Issues
 
-Have you identified a reproducible problem in Bitcart? Have a feature request? We want to hear about it! Here's how you can make reporting your issue as effective as possible.
+Have you identified a reproducible problem in BitcartCC? Have a feature request? We want to hear about it! Here's how you can make reporting your issue as effective as possible.
 
 ### Identify Where to Report
 
-The Bitcart project is distributed across multiple repositories. Try to file the issue against the correct repository. Check the list of [Related Projects](https://docs.bitcartcc.com) if you aren't sure which repo is correct.
+The BitcartCC project is distributed across multiple repositories. Try to file the issue against the correct repository. Check the list of [Linked repositories](https://github.com/MrNaif2018/bitcart/blob/master/README.md#linked-repositories) if you aren't sure which repo is correct.
+
+If the issue is related to BitcartCC deployment and not to some individual components, or you are not sure, you can open an issue on our [central repository](https://github.com/MrNaif2018/bitcart)
 
 ### Look For an Existing Issue
 
@@ -48,11 +49,11 @@ The more information you can provide, the more likely someone will be successful
 
 Please include the following with each issue:
 
-* Version of Bitcart
+* Version of BitcartCC
 
 * Your operating system  
 
-* Type of install: Docker or Manual
+* Deployment method: Docker, manual or others
 
 * Reproducible steps (1... 2... 3...) that cause the issue
 
@@ -68,6 +69,10 @@ Please remember to do the following:
 * [ ] Search the issue repository to ensure your report is a new issue
 
 * [ ] Try to isolate the problem
+
+* [ ] Try to gather as much information as possible to reproduce your issue
+
+* [ ] Open an issue and communicate with developers to solve it
 
 Don't feel bad if the developers can't reproduce the issue right away. They will simply ask for more information!
 
