@@ -15,12 +15,19 @@ It is recommended to propose feature requests to BitcartCC ecosystem as a whole 
 Full list of our repositories:
 
 https://github.com/MrNaif2018/bitcart - BitcartCC Core Daemons and Merchants API
+
 https://github.com/MrNaif2018/bitcart-admin - The admin panel of BitcartCC
+
 https://github.com/MrNaif2018/bitcart-frontend - BitcartCC ready store
+
 https://github.com/MrNaif2018/bitcart-docker - Docker packaging, base for all deployment methods
+
 https://github.com/MrNaif2018/bitcart-sdk - Python library for coins connection
+
 https://github.com/MrNaif2018/bitccl - The BitCCL scripting language for checkout flow automation
+
 https://github.com/MrNaif2018/bitcart-docs - [BitcartCC documentation](https://docs.bitcartcc.com)
+
 https://github.com/MrNaif2018/bitcart-site - [BitcartCC official site](https://bitcartcc.com)
 
 Docs
