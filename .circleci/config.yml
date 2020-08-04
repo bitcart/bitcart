@@ -1,8 +1,4 @@
-# Python CircleCI 2.0 configuration file
-#
-# Check https://circleci.com/docs/2.0/language-python/ for more details
-#
-version: 2
+version: 2.1
 jobs:
   test-3.6: &test-template
     docker:
@@ -176,7 +172,7 @@ jobs:
             docker push mrnaif/bitcart-bsty:stable
 
 workflows:
-  version: 2
+  version: 2.1
   build_and_test:
     jobs:
       - test-3.6:
