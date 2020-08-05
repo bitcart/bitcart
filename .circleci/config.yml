@@ -1,30 +1,28 @@
 version: 2.1
 jobs:
-  test-3.6: &test-template
+  test:
+    parameters:
+      v:
+        type: string
+        default: "3.6"
     docker:
-      - image: circleci/python:3.6
+      - image: circleci/python:<< parameters.v >>
       - image: circleci/redis:latest
       - image: circleci/postgres:9-alpine-ram
         environment:
           POSTGRES_DB: bitcart_test
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: 123@
-    environment:
-      PYVER: "3.6"
 
     working_directory: ~/repo
 
     steps:
       - checkout
-      - run:
-          name: Set env vars
-          command: |
-            echo $PYVER > /tmp/python-version
 
       # Download and cache dependencies
       - restore_cache:
           keys:
-            - v8-dependencies-{{ checksum "requirements/web.txt" }}-{{ checksum "requirements/test.txt" }}-{{ checksum "requirements/daemons/btc.txt" }}-{{ checksum "/tmp/python-version" }}
+            - v8-dependencies-{{ checksum "requirements/web.txt" }}-{{ checksum "requirements/test.txt" }}-{{ checksum "requirements/daemons/btc.txt" }}-<< parameters.v >>
             # fallback to using the latest cache if no exact match is found
             - v8-dependencies-
 
@@ -41,7 +39,7 @@ jobs:
       - save_cache:
           paths:
             - ./venv
-          key: v8-dependencies-{{ checksum "requirements/web.txt" }}-{{ checksum "requirements/test.txt" }}-{{ checksum "requirements/daemons/btc.txt" }}-{{ checksum "/tmp/python-version" }}
+          key: v8-dependencies-{{ checksum "requirements/web.txt" }}-{{ checksum "requirements/test.txt" }}-{{ checksum "requirements/daemons/btc.txt" }}-<< parameters.v >>
 
       - run:
           name: prepare daemon
@@ -61,20 +59,6 @@ jobs:
       - store_artifacts:
           path: test-reports
           destination: test-reports
-
-  test-3.7:
-    <<: *test-template
-    docker:
-      - image: circleci/python:3.7
-      - image: circleci/redis:latest
-      - image: circleci/postgres:9-alpine-ram
-        environment:
-          POSTGRES_DB: bitcart_test
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: 123@
-    environment:
-      PYVER: "3.7"
-    <<: *test-template
 
   deploy:
     docker:
@@ -172,18 +156,24 @@ jobs:
             docker push mrnaif/bitcart-bsty:stable
 
 workflows:
-  version: 2.1
+  version: 2
   build_and_test:
     jobs:
-      - test-3.6:
+      - test:
+          name: test-<< matrix.v >>
           context: global
-      - test-3.7:
-          context: global
+          matrix:
+            parameters:
+              v:
+                - "3.6"
+                - "3.7"
+                - "3.8"
       - deploy:
           context: global
           requires:
             - test-3.6
             - test-3.7
+            - test-3.8
           filters:
             branches:
               only: master
