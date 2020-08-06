@@ -24,6 +24,6 @@ def is_changed(files):
     )
 
 
-for image, files in contents.items():
-    if is_changed(files):
-        subprocess.run(f"./build.sh {image}", shell=True)
+for image, settings in contents.items():
+    if is_changed(settings["files"]):
+        subprocess.run(f"./build.sh {image} {settings['dockerfile']}", shell=True)
