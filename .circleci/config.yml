@@ -81,7 +81,7 @@ jobs:
           step-name: Publish modified docker images
           custom-logic: |
             cd .circleci
-            python3 build.py
+            COMMIT_RANGE="$COMMIT_RANGE" python3 build.py
 
   deploy_stable:
     docker:
