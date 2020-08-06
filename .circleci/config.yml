@@ -78,9 +78,9 @@ jobs:
             cd bitcart-docker
             ./dev-setup.sh $CIRCLE_BRANCH
       - setup_remote_docker
-      - compare-url/use:
+      - circle-compare-url/use:
           step-name: Publish modified docker images
-          command: |
+          custom-logic: |
             cd .circleci
             python3 build.py
 
