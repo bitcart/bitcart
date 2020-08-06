@@ -1,4 +1,8 @@
 version: 2.1
+
+orbs:
+  compare-url: iynere/compare-url@1.2.0
+
 jobs:
   test:
     parameters:
@@ -66,6 +70,7 @@ jobs:
     working_directory: ~/repo
     steps:
       - checkout
+      - circle-compare-url/reconstruct
       - run:
           name: set up build environment
           command: |
@@ -73,58 +78,11 @@ jobs:
             cd bitcart-docker
             ./dev-setup.sh $CIRCLE_BRANCH
       - setup_remote_docker
-      - run:
-          path: ~/repo/bitcart-docker
-          name: build docker image
+      - compare-url/use:
+          step-name: Publish modified docker images
           command: |
-            cd compose
-            docker build -t mrnaif/bitcart:latest -f backend.Dockerfile .
-            docker login --username=$DOCKER_USER --password=$DOCKER_PASS
-            docker push mrnaif/bitcart:latest
-      - run:
-          path: ~/repo/bitcart-docker
-          name: build btc daemon
-          command: |
-            cd compose
-            docker build -t mrnaif/bitcart-btc:latest -f btc.Dockerfile .
-            docker login --username=$DOCKER_USER --password=$DOCKER_PASS
-            docker push mrnaif/bitcart-btc:latest
-
-      - run:
-          path: ~/repo/bitcart-docker
-          name: build bch daemon
-          command: |
-            cd compose
-            docker build -t mrnaif/bitcart-bch:latest -f bch.Dockerfile . || true
-            docker login --username=$DOCKER_USER --password=$DOCKER_PASS
-            docker push mrnaif/bitcart-bch:latest || true
-
-      - run:
-          path: ~/repo/bitcart-docker
-          name: build ltc daemon
-          command: |
-            cd compose
-            docker build -t mrnaif/bitcart-ltc:latest -f ltc.Dockerfile .
-            docker login --username=$DOCKER_USER --password=$DOCKER_PASS
-            docker push mrnaif/bitcart-ltc:latest
-
-      - run:
-          path: ~/repo/bitcart-docker
-          name: build gzro daemon
-          command: |
-            cd compose
-            docker build -t mrnaif/bitcart-gzro:latest -f gzro.Dockerfile .
-            docker login --username=$DOCKER_USER --password=$DOCKER_PASS
-            docker push mrnaif/bitcart-gzro:latest
-
-      - run:
-          path: ~/repo/bitcart-docker
-          name: build bsty daemon
-          command: |
-            cd compose
-            docker build -t mrnaif/bitcart-bsty:latest -f bsty.Dockerfile .
-            docker login --username=$DOCKER_USER --password=$DOCKER_PASS
-            docker push mrnaif/bitcart-bsty:latest
+            cd .circleci
+            python3 build.py
 
   deploy_stable:
     docker:

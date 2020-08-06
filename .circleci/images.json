@@ -1,0 +1,43 @@
+{
+    "bitcart": [
+        "api/*",
+        "alembic/*",
+        "alembic.ini",
+        "main.py",
+        "gunicorn.conf.py",
+        "requirements/base.txt",
+        "requirements/web.txt",
+        "requirements/production.txt",
+        "requirements.txt"
+    ],
+    "bitcart-btc": [
+        "daemons/base.py",
+        "daemons/btc.py",
+        "requirements/base.txt",
+        "requirements/daemons/btc.txt"
+    ],
+    "bitcart-bch": [
+        "daemons/base.py",
+        "daemons/bch.py",
+        "requirements/base.txt",
+        "requirements/daemons/bch.txt"
+    ],
+    "bitcart-ltc": [
+        "daemons/base.py",
+        "daemons/ltc.py",
+        "requirements/base.txt",
+        "requirements/daemons/ltc.txt"
+    ],
+    "bitcart-gzro": [
+        "daemons/base.py",
+        "daemons/gzro.py",
+        "requirements/base.txt",
+        "requirements/daemons/gzro.txt"
+    ],
+    "bitcart-bsty": [
+        "daemons/base.py",
+        "daemons/bsty.py",
+        "requirements/base.txt",
+        "requirements/daemons/bsty.txt"
+    ]
+}
