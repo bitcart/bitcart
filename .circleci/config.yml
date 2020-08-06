@@ -56,7 +56,6 @@ jobs:
           name: run tests
           command: |
             . venv/bin/activate
-            sleep 5s
             pytest --cov=.
             codecov
 
