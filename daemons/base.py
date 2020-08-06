@@ -212,7 +212,7 @@ class BaseDaemon:
             self.network.is_connecting()
             or self.network.is_connected()
             and not wallet.is_up_to_date()
-        ):
+        ):  # when daemon is syncing or is synced and wallet is not, prevent running commands to avoid unexpected results
             await asyncio.sleep(0.1)
         self.wallets[xpub] = {"wallet": wallet, "cmd": command_runner, "config": config}
         self.wallets_config[xpub] = {"events": set(), "notification_url": None}
