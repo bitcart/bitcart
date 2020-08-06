@@ -81,6 +81,7 @@ jobs:
           step-name: Publish modified docker images
           custom-logic: |
             cd .circleci
+            docker login --username=$DOCKER_USER --password=$DOCKER_PASS
             COMMIT_RANGE="$COMMIT_RANGE" python3 build.py
 
   deploy_stable:
