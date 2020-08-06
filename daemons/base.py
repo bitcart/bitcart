@@ -208,7 +208,11 @@ class BaseDaemon:
         storage = self.electrum.storage.WalletStorage(wallet_path)
         wallet = self.create_wallet(storage, config)
         self.load_cmd_wallet(command_runner, wallet, wallet_path)
-        while self.network.is_connected() and not wallet.is_up_to_date():
+        while (
+            self.network.is_connecting()
+            or self.network.is_connected()
+            and not wallet.is_up_to_date()
+        ):
             await asyncio.sleep(0.1)
         self.wallets[xpub] = {"wallet": wallet, "cmd": command_runner, "config": config}
         self.wallets_config[xpub] = {"events": set(), "notification_url": None}
