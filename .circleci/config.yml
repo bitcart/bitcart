@@ -123,13 +123,13 @@ workflows:
           matrix:
             parameters:
               v:
-                - "3.6.9"
+                - "3.6"
                 - "3.7"
                 - "3.8"
       - deploy:
           context: global
           requires:
-            - test-3.6.9
+            - test-3.6
             - test-3.7
             - test-3.8
           filters:
