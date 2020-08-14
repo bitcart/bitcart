@@ -15,10 +15,7 @@ def grep(string, search):
 def is_changed(files):
     return grep(
         subprocess.run(
-            "git diff $COMMIT_RANGE --name-status",
-            shell=True,
-            stdout=subprocess.PIPE,
-            universal_newlines=True,
+            "git diff $COMMIT_RANGE --name-status", shell=True, stdout=subprocess.PIPE, universal_newlines=True,
         ).stdout,
         f"({'|'.join(files)})",
     )

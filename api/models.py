@@ -85,9 +85,7 @@ class WalletxStore(db.Model):
 class NotificationxStore(db.Model):
     __tablename__ = "notificationsxstores"
 
-    notification_id = Column(
-        Integer, ForeignKey("notifications.id", ondelete="SET NULL")
-    )
+    notification_id = Column(Integer, ForeignKey("notifications.id", ondelete="SET NULL"))
     store_id = Column(Integer, ForeignKey("stores.id", ondelete="SET NULL"))
 
 
@@ -99,24 +97,18 @@ class StoreUpdateRequest(UpdateRequest):
 
     async def apply(self):
         if self.wallets:
-            await WalletxStore.delete.where(
-                WalletxStore.store_id == self._instance.id
-            ).gino.status()
+            await WalletxStore.delete.where(WalletxStore.store_id == self._instance.id).gino.status()
         if self.wallets is None:
             self.wallets = []
         for i in self.wallets:
             await WalletxStore.create(store_id=self._instance.id, wallet_id=i)
         self._instance.wallets = self.wallets
         if self.notifications:
-            await NotificationxStore.delete.where(
-                NotificationxStore.store_id == self._instance.id
-            ).gino.status()
+            await NotificationxStore.delete.where(NotificationxStore.store_id == self._instance.id).gino.status()
         if self.notifications is None:
             self.notifications = []
         for i in self.notifications:
-            await NotificationxStore.create(
-                store_id=self._instance.id, notification_id=i
-            )
+            await NotificationxStore.create(store_id=self._instance.id, notification_id=i)
         self._instance.notifications = self.notifications
         return await super().apply()
 
@@ -169,9 +161,7 @@ class DiscountXProductUpdateRequest(UpdateRequest):
 
     async def apply(self):
         if self.discounts:
-            await DiscountxProduct.delete.where(
-                DiscountxProduct.product_id == self._instance.id
-            ).gino.status()
+            await DiscountxProduct.delete.where(DiscountxProduct.product_id == self._instance.id).gino.status()
         if self.discounts is None:
             self.discounts = []
         for i in self.discounts:
@@ -194,11 +184,7 @@ class Product(db.Model):
     description = Column(Text)
     image = Column(String(100000))
     store_id = Column(
-        Integer,
-        ForeignKey(
-            "stores.id", deferrable=True, initially="DEFERRED", ondelete="SET NULL"
-        ),
-        index=True,
+        Integer, ForeignKey("stores.id", deferrable=True, initially="DEFERRED", ondelete="SET NULL"), index=True,
     )
     status = Column(String(1000), nullable=False)
     templates = Column(JSON)
@@ -223,9 +209,7 @@ class MyUpdateRequest(UpdateRequest):
 
     async def apply(self):
         if self.products:
-            await ProductxInvoice.delete.where(
-                ProductxInvoice.invoice_id == self._instance.id
-            ).gino.status()
+            await ProductxInvoice.delete.where(ProductxInvoice.invoice_id == self._instance.id).gino.status()
         if self.products is None:
             self.products = []
         for i in self.products:
@@ -261,11 +245,7 @@ class Invoice(db.Model):
     redirect_url = Column(Text)
     products = relationship("Product", secondary=ProductxInvoice)
     store_id = Column(
-        Integer,
-        ForeignKey(
-            "stores.id", deferrable=True, initially="DEFERRED", ondelete="SET NULL"
-        ),
-        index=True,
+        Integer, ForeignKey("stores.id", deferrable=True, initially="DEFERRED", ondelete="SET NULL"), index=True,
     )
     order_id = Column(Text)
     store = relationship("Store", back_populates="invoices")

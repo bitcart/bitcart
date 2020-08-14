@@ -5,9 +5,9 @@ Revises: 9232980a793a
 Create Date: 2020-06-20 23:26:09.349131
 
 """
-from alembic import op
 import sqlalchemy as sa
 
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "bbeb9365b195"
@@ -29,16 +29,12 @@ def upgrade():
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(op.f("ix_notifications_id"), "notifications", ["id"], unique=False)
-    op.create_index(
-        op.f("ix_notifications_name"), "notifications", ["name"], unique=False
-    )
+    op.create_index(op.f("ix_notifications_name"), "notifications", ["name"], unique=False)
     op.create_table(
         "notificationsxstores",
         sa.Column("notification_id", sa.Integer(), nullable=True),
         sa.Column("store_id", sa.Integer(), nullable=True),
-        sa.ForeignKeyConstraint(
-            ["notification_id"], ["notifications.id"], ondelete="SET NULL"
-        ),
+        sa.ForeignKeyConstraint(["notification_id"], ["notifications.id"], ondelete="SET NULL"),
         sa.ForeignKeyConstraint(["store_id"], ["stores.id"], ondelete="SET NULL"),
     )
     # ### end Alembic commands ###

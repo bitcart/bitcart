@@ -57,34 +57,18 @@ class BaseDaemon:
         self.PASSWORD = self.config(f"{self.env_name}_PASSWORD", default="electrumz")
         self.NET = self.config(f"{self.env_name}_NETWORK", default="mainnet")
         self.LIGHTNING = (
-            self.config(f"{self.env_name}_LIGHTNING", cast=bool, default=False)
-            if self.LIGHTNING_SUPPORTED
-            else False
+            self.config(f"{self.env_name}_LIGHTNING", cast=bool, default=False) if self.LIGHTNING_SUPPORTED else False
         )
-        self.DEFAULT_CURRENCY = self.config(
-            f"{self.env_name}_FIAT_CURRENCY", default="USD"
-        )
-        self.EXCHANGE = self.config(
-            f"{self.env_name}_FIAT_EXCHANGE",
-            default=self.electrum.exchange_rate.DEFAULT_EXCHANGE,
-        )
+        self.DEFAULT_CURRENCY = self.config(f"{self.env_name}_FIAT_CURRENCY", default="USD")
+        self.EXCHANGE = self.config(f"{self.env_name}_FIAT_EXCHANGE", default=self.electrum.exchange_rate.DEFAULT_EXCHANGE,)
         self.VERBOSE = self.config(f"{self.env_name}_DEBUG", cast=bool, default=False)
-        self.HOST = self.config(
-            f"{self.env_name}_HOST",
-            default="0.0.0.0" if os.getenv("IN_DOCKER") else "127.0.0.1",
-        )
-        self.PORT = self.config(
-            f"{self.env_name}_PORT", cast=int, default=self.DEFAULT_PORT
-        )
+        self.HOST = self.config(f"{self.env_name}_HOST", default="0.0.0.0" if os.getenv("IN_DOCKER") else "127.0.0.1",)
+        self.PORT = self.config(f"{self.env_name}_PORT", cast=int, default=self.DEFAULT_PORT)
         self.SERVER = self.config(f"{self.env_name}_SERVER", default="")
-        self.ONESERVER = self.config(
-            f"{self.env_name}_ONESERVER", cast=bool, default=False
-        )
+        self.ONESERVER = self.config(f"{self.env_name}_ONESERVER", cast=bool, default=False)
         self.PROXY_URL = self.config(f"{self.env_name}_PROXY_URL", default=None)
         self.supported_methods = {
-            func.__name__: func
-            for func in (getattr(self, name) for name in dir(self))
-            if getattr(func, "is_handler", False)
+            func.__name__: func for func in (getattr(self, name) for name in dir(self)) if getattr(func, "is_handler", False)
         }
         self.NETWORK_MAPPING = self.NETWORK_MAPPING or {
             "mainnet": self.electrum.constants.set_mainnet,
@@ -96,8 +80,7 @@ class BaseDaemon:
         activate_selected_network = self.NETWORK_MAPPING.get(self.NET.lower())
         if not activate_selected_network:
             raise ValueError(
-                f"Invalid network passed: {self.NET}. Valid choices are"
-                f" {', '.join(self.NETWORK_MAPPING.keys())}."
+                f"Invalid network passed: {self.NET}. Valid choices are" f" {', '.join(self.NETWORK_MAPPING.keys())}."
             )
         activate_selected_network()
         self.electrum_config = self.electrum.simple_config.SimpleConfig()
@@ -134,9 +117,7 @@ class BaseDaemon:
                 }
                 proxy = self.electrum.network.serialize_proxy(proxy)
             except Exception:
-                sys.exit(
-                    f"Invalid proxy URL. Original traceback:\n{traceback.format_exc()}"
-                )
+                sys.exit(f"Invalid proxy URL. Original traceback:\n{traceback.format_exc()}")
         config.set_key("proxy", proxy)
 
     async def on_startup(self, app):
@@ -150,9 +131,7 @@ class BaseDaemon:
         await self.client_session.close()
 
     def create_commands(self, config):
-        return self.electrum.commands.Commands(
-            config=config, network=self.network, daemon=self.daemon
-        )
+        return self.electrum.commands.Commands(config=config, network=self.network, daemon=self.daemon)
 
     async def restore_wallet(self, command_runner, xpub, config, wallet_path):
         await command_runner.restore(xpub, wallet_path=wallet_path)
@@ -202,16 +181,12 @@ class BaseDaemon:
         wallet_dir = os.path.dirname(config.get_wallet_path())
         wallet_path = os.path.join(wallet_dir, xpub)
         if not os.path.exists(wallet_path):
-            await self.restore_wallet(
-                command_runner, xpub, config, wallet_path=wallet_path
-            )
+            await self.restore_wallet(command_runner, xpub, config, wallet_path=wallet_path)
         storage = self.electrum.storage.WalletStorage(wallet_path)
         wallet = self.create_wallet(storage, config)
         self.load_cmd_wallet(command_runner, wallet, wallet_path)
         while (
-            self.network.is_connecting()
-            or self.network.is_connected()
-            and not wallet.is_up_to_date()
+            self.network.is_connecting() or self.network.is_connected() and not wallet.is_up_to_date()
         ):  # when daemon is syncing or is synced and wallet is not, prevent running commands to avoid unexpected results
             await asyncio.sleep(0.1)
         self.wallets[xpub] = {"wallet": wallet, "cmd": command_runner, "config": config}
@@ -242,13 +217,7 @@ class BaseDaemon:
         auth = request.headers.get("Authorization")
         user, password = self.decode_auth(auth)
         if not (user == self.LOGIN and password == self.PASSWORD):
-            return web.json_response(
-                {
-                    "jsonrpc": "2.0",
-                    "error": {"code": -32600, "message": "Unauthorized"},
-                    "id": None,
-                }
-            )
+            return web.json_response({"jsonrpc": "2.0", "error": {"code": -32600, "message": "Unauthorized"}, "id": None,})
         if not LEGACY_AIOHTTP:
             data = await request.json(content_type=None)  # aiohttp 4.0
         else:
@@ -260,22 +229,14 @@ class BaseDaemon:
         xpub = kwargs.pop("xpub", None)
         if not method:
             return web.json_response(
-                {
-                    "jsonrpc": "2.0",
-                    "error": {"code": -32601, "message": "Procedure not found."},
-                    "id": id,
-                }
+                {"jsonrpc": "2.0", "error": {"code": -32601, "message": "Procedure not found."}, "id": id,}
             )
         try:
             wallet, cmd, config = await self.load_wallet(xpub)
         except Exception:
             if not method in self.supported_methods:
                 return web.json_response(
-                    {
-                        "jsonrpc": "2.0",
-                        "error": {"code": -32601, "message": "Error loading wallet"},
-                        "id": id,
-                    }
+                    {"jsonrpc": "2.0", "error": {"code": -32601, "message": "Error loading wallet"}, "id": id,}
                 )
         custom = False
         if method in self.supported_methods:
@@ -286,33 +247,20 @@ class BaseDaemon:
                 exec_method = getattr(cmd, method)
             except AttributeError:
                 return web.json_response(
-                    {
-                        "jsonrpc": "2.0",
-                        "error": {"code": -32601, "message": "Procedure not found."},
-                        "id": id,
-                    }
+                    {"jsonrpc": "2.0", "error": {"code": -32601, "message": "Procedure not found."}, "id": id,}
                 )
         try:
             if custom:
                 exec_method = functools.partial(exec_method, wallet=xpub)
             else:
-                if (
-                    self.NEW_ELECTRUM
-                    and self.electrum.commands.known_commands[method].requires_wallet
-                ):
+                if self.NEW_ELECTRUM and self.electrum.commands.known_commands[method].requires_wallet:
                     cmd_name = self.electrum.commands.known_commands[method].name
                     need_path = cmd_name == "create" or cmd_name == "restore"
-                    path = (
-                        wallet.storage.path
-                        if wallet
-                        else (config.get_wallet_path() if need_path else None)
-                    )
+                    path = wallet.storage.path if wallet else (config.get_wallet_path() if need_path else None)
                     if need_path:
                         if isinstance(params, dict) and params.get("wallet_path"):
                             params["wallet_path"] = os.path.join(
-                                self.electrum_config.electrum_path(),
-                                "wallets",
-                                params.get("wallet_path"),
+                                self.electrum_config.electrum_path(), "wallets", params.get("wallet_path"),
                             )
                     exec_method = functools.partial(exec_method, wallet_path=path)
 
@@ -321,14 +269,7 @@ class BaseDaemon:
                 result = await result
         except BaseException:
             return web.json_response(
-                {
-                    "jsonrpc": "2.0",
-                    "error": {
-                        "code": -32601,
-                        "message": traceback.format_exc().splitlines()[-1],
-                    },
-                    "id": id,
-                }
+                {"jsonrpc": "2.0", "error": {"code": -32601, "message": traceback.format_exc().splitlines()[-1],}, "id": id,}
             )
         return web.json_response({"jsonrpc": "2.0", "result": result, "id": id})
 
@@ -349,9 +290,7 @@ class BaseDaemon:
         for i in self.wallets_config:
             if mapped_event in self.wallets_config[i]["events"]:
                 if not wallet or wallet == self.wallets[i]["wallet"]:
-                    if self.wallets_config[i][
-                        "notification_url"
-                    ] and await self.send_notification(
+                    if self.wallets_config[i]["notification_url"] and await self.send_notification(
                         data, self.wallets_config[i]["notification_url"]
                     ):
                         pass
@@ -383,10 +322,7 @@ class BaseDaemon:
                     if (
                         self.wallets_config[i]["notification_url"]
                         and asyncio.run_coroutine_threadsafe(
-                            self.send_notification(
-                                data, self.wallets_config[i]["notification_url"]
-                            ),
-                            self.loop,
+                            self.send_notification(data, self.wallets_config[i]["notification_url"]), self.loop,
                         ).result()
                     ):
                         pass
@@ -415,9 +351,7 @@ class BaseDaemon:
 
     @rpc
     def validatekey(self, key, wallet=None):
-        return self.electrum.keystore.is_master_key(
-            key
-        ) or self.electrum.keystore.is_seed(key)
+        return self.electrum.keystore.is_master_key(key) or self.electrum.keystore.is_seed(key)
 
     @rpc
     def get_updates(self, wallet):
@@ -433,15 +367,11 @@ class BaseDaemon:
     def unsubscribe(self, events=None, wallet=None):
         if events is None:
             events = self.EVENT_MAPPING.keys()
-        self.wallets_config[wallet]["events"] = set(
-            i for i in self.wallets_config[wallet]["events"] if i not in events
-        )
+        self.wallets_config[wallet]["events"] = set(i for i in self.wallets_config[wallet]["events"] if i not in events)
 
     @rpc
     async def get_transaction(self, tx, wallet=None):
-        result = await self.network.interface.session.send_request(
-            "blockchain.transaction.get", [tx, True]
-        )
+        result = await self.network.interface.session.send_request("blockchain.transaction.get", [tx, True])
         result_formatted = self.electrum.transaction.Transaction(result).deserialize()
         result_formatted.update({"confirmations": result.get("confirmations", 0)})
         return result_formatted
@@ -460,15 +390,11 @@ class BaseDaemon:
 
     @rpc
     def get_tx_size(self, raw_tx: dict, wallet=None) -> int:
-        return self.electrum.transaction.Transaction(
-            raw_tx
-        ).estimated_size()  # type: ignore
+        return self.electrum.transaction.Transaction(raw_tx).estimated_size()  # type: ignore
 
     @rpc
     def get_default_fee(self, tx: Union[dict, int], wallet=None) -> float:
-        return self.electrum_config.estimate_fee(
-            self.get_tx_size(tx) if isinstance(tx, dict) else tx
-        )
+        return self.electrum_config.estimate_fee(self.get_tx_size(tx) if isinstance(tx, dict) else tx)
 
     @rpc
     def configure_notifications(self, notification_url, wallet=None):

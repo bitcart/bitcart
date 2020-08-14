@@ -48,9 +48,7 @@ async def test_get_template(notification_template, async_client, token):
     with pytest.raises(exceptions.TemplateDoesNotExistError):
         await utils.get_template("templ")
     resp = await async_client.post(
-        "/templates",
-        json={"name": "templ", "text": "Hello {{var1}}!"},
-        headers={"Authorization": f"Bearer {token}"},
+        "/templates", json={"name": "templ", "text": "Hello {{var1}}!"}, headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 200
     template2 = await utils.get_template("templ")
@@ -61,6 +59,4 @@ async def test_get_template(notification_template, async_client, token):
     template3 = await utils.get_template("notification", obj=MockStore())
     assert template3.name == "notification"
     assert template3.template_text == template2.template_text
-    await async_client.delete(
-        "/templates/1", headers={"Authorization": f"Bearer {token}"}
-    )  # cleanup
+    await async_client.delete("/templates/1", headers={"Authorization": f"Bearer {token}"})  # cleanup

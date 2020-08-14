@@ -29,15 +29,11 @@ async def poll_updates(obj: Union[int, models.Invoice], task_wallets: Dict[str, 
     if not obj:
         return
     await crud.invoice_add_related(obj)
-    payment_methods = await models.PaymentMethod.query.where(
-        models.PaymentMethod.invoice_id == obj.id
-    ).gino.all()
+    payment_methods = await models.PaymentMethod.query.where(models.PaymentMethod.invoice_id == obj.id).gino.all()
     if not payment_methods:
         return
     for ind, method in enumerate(payment_methods):
-        payment_methods[ind].coin = settings.get_coin(
-            method.currency, task_wallets[method.currency]
-        )
+        payment_methods[ind].coin = settings.get_coin(method.currency, task_wallets[method.currency])
     if test:
         await asyncio.sleep(1)
         await obj.update(status="test").apply()
@@ -61,9 +57,7 @@ async def poll_updates(obj: Union[int, models.Invoice], task_wallets: Dict[str, 
                 if status == "complete":
                     store = await models.Store.get(obj.store_id)
                     await crud.store_add_related(store)
-                    await utils.notify(
-                        store, await utils.get_notify_template(store, obj)
-                    )
+                    await utils.notify(store, await utils.get_notify_template(store, obj))
                     if obj.products:
                         if utils.check_ping(
                             store.email_host,
@@ -77,30 +71,18 @@ async def poll_updates(obj: Union[int, models.Invoice], task_wallets: Dict[str, 
                             for product_id in obj.products:
                                 product = await models.Product.get(product_id)
                                 relation = (
-                                    await models.ProductxInvoice.query.where(
-                                        models.ProductxInvoice.invoice_id == obj.id
-                                    )
-                                    .where(
-                                        models.ProductxInvoice.product_id == product_id
-                                    )
+                                    await models.ProductxInvoice.query.where(models.ProductxInvoice.invoice_id == obj.id)
+                                    .where(models.ProductxInvoice.product_id == product_id)
                                     .gino.first()
                                 )
                                 quantity = relation.count
-                                messages.append(
-                                    await utils.get_product_template(
-                                        store, product, quantity
-                                    )
-                                )
+                                messages.append(await utils.get_product_template(store, product, quantity))
                             utils.send_mail(
-                                store,
-                                obj.buyer_email,
-                                await utils.get_store_template(store, messages),
+                                store, obj.buyer_email, await utils.get_store_template(store, messages),
                             )
                 return
         await asyncio.sleep(1)
-    poll_updates.send_with_options(
-        args=(obj.id, task_wallets), delay=1000
-    )  # to run on next startup
+    poll_updates.send_with_options(args=(obj.id, task_wallets), delay=1000)  # to run on next startup
 
 
 @dramatiq.actor(actor_name="sync_wallet", max_retries=0)
@@ -115,6 +97,4 @@ async def sync_wallet(model: Union[int, models.Wallet]):
     await model.update(balance=balance["confirmed"]).apply()
     if test:
         await asyncio.sleep(1)
-    await utils.publish_message(
-        model.id, {"status": "success", "balance": balance["confirmed"]}
-    )
+    await utils.publish_message(model.id, {"status": "success", "balance": balance["confirmed"]})

@@ -89,9 +89,7 @@ class AuthDependency:
         self.enabled = enabled
         self.token = token
 
-    async def __call__(
-        self, request: Request, security_scopes: SecurityScopes, return_token=False
-    ):
+    async def __call__(self, request: Request, security_scopes: SecurityScopes, return_token=False):
         if not self.enabled:
             return None
         if security_scopes.scopes:
@@ -113,15 +111,11 @@ class AuthDependency:
             )
         user, token = data  # first validate data, then unpack
         forbidden_exception = HTTPException(
-            status_code=HTTP_403_FORBIDDEN,
-            detail="Not enough permissions",
-            headers={"WWW-Authenticate": authenticate_value},
+            status_code=HTTP_403_FORBIDDEN, detail="Not enough permissions", headers={"WWW-Authenticate": authenticate_value},
         )
         if "full_control" not in token.permissions:
             for scope in security_scopes.scopes:
-                if scope not in token.permissions and not check_selective_scopes(
-                    request, scope, token
-                ):
+                if scope not in token.permissions and not check_selective_scopes(request, scope, token):
                     raise forbidden_exception
         if "server_management" in security_scopes.scopes and not user.is_superuser:
             raise forbidden_exception
@@ -215,34 +209,22 @@ def model_view(
         if custom_methods.get("get_one"):
             item = await custom_methods["get_one"](model_id, user, item, internal)
         if not item:
-            raise HTTPException(
-                status_code=404, detail=f"Object with id {model_id} does not exist!"
-            )
+            raise HTTPException(status_code=404, detail=f"Object with id {model_id} does not exist!")
         return item
 
     async def get(
         pagination: pagination.Pagination = Depends(),
-        user: Union[None, schemes.User] = Security(
-            auth_dependency, scopes=scopes["get_all"]
-        ),
+        user: Union[None, schemes.User] = Security(auth_dependency, scopes=scopes["get_all"]),
     ):
         if custom_methods.get("get"):
             return await custom_methods["get"](pagination, user)
         else:
             return await pagination.paginate(orm_model, user.id)
 
-    async def get_count(
-        user: Union[None, schemes.User] = Security(
-            auth_dependency, scopes=scopes["get_count"]
-        )
-    ):
+    async def get_count(user: Union[None, schemes.User] = Security(auth_dependency, scopes=scopes["get_count"])):
         return (
             await (
-                (
-                    orm_model.query.where(orm_model.user_id == user.id)
-                    if orm_model != models.User
-                    else orm_model.query
-                )
+                (orm_model.query.where(orm_model.user_id == user.id) if orm_model != models.User else orm_model.query)
                 .with_only_columns([db.db.func.count(distinct(orm_model.id))])
                 .order_by(None)
                 .gino.scalar()
@@ -286,9 +268,7 @@ def model_view(
     async def put(
         model_id: int,
         model: pydantic_model,
-        user: Union[None, schemes.User] = Security(
-            auth_dependency, scopes=scopes["put"]
-        ),
+        user: Union[None, schemes.User] = Security(auth_dependency, scopes=scopes["put"]),
     ):  # type: ignore
         item = await _get_one(model_id, user, True)
         try:
@@ -307,9 +287,7 @@ def model_view(
     async def patch(
         model_id: int,
         model: pydantic_model,
-        user: Union[None, schemes.User] = Security(
-            auth_dependency, scopes=scopes["patch"]
-        ),
+        user: Union[None, schemes.User] = Security(auth_dependency, scopes=scopes["patch"]),
     ):  # type: ignore
         item = await _get_one(model_id, user, True)
         try:
@@ -328,10 +306,7 @@ def model_view(
         return item
 
     async def delete(
-        model_id: int,
-        user: Union[None, schemes.User] = Security(
-            auth_dependency, scopes=scopes["delete"]
-        ),
+        model_id: int, user: Union[None, schemes.User] = Security(auth_dependency, scopes=scopes["delete"]),
     ):
         item = await _get_one(model_id, user, True)
         if custom_methods.get("delete"):
@@ -382,9 +357,7 @@ async def get_template(name, user_id=None, obj=None):
         return templates.Template(name, custom_template.text)
     if name in templates.templates:
         return templates.templates[name]
-    raise exceptions.TemplateDoesNotExistError(
-        f"Template {name} does not exist and has no default"
-    )
+    raise exceptions.TemplateDoesNotExistError(f"Template {name} does not exist and has no default")
 
 
 async def get_product_template(store, product, quantity):
@@ -485,10 +458,7 @@ def get_pagination_model(display_model):
 
 
 async def notify(store, text):
-    notification_providers = [
-        await models.Notification.get(notification_id)
-        for notification_id in store.notifications
-    ]
+    notification_providers = [await models.Notification.get(notification_id) for notification_id in store.notifications]
     for provider in notification_providers:
         notifiers.notify(provider.provider, message=text, **provider.data)
 

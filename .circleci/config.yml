@@ -56,7 +56,7 @@ jobs:
           name: run tests
           command: |
             . venv/bin/activate
-            pytest --cov=.
+            make ci
             codecov
 
       - store_artifacts:
