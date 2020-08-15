@@ -1,6 +1,5 @@
 import electroncash
 from aiohttp import web
-
 from base import BaseDaemon, rpc
 
 
@@ -23,16 +22,11 @@ class BCHDaemon(BaseDaemon):
 
     def create_daemon(self):
         return self.electrum.daemon.Daemon(
-            self.electrum_config,
-            self.electrum.daemon.get_fd_or_server(self.electrum_config)[0],
-            False,
-            plugins=[],
+            self.electrum_config, self.electrum.daemon.get_fd_or_server(self.electrum_config)[0], False, plugins=[],
         )
 
     def create_commands(self, config):
-        return self.electrum.commands.Commands(
-            config=config, network=self.network, wallet=None
-        )
+        return self.electrum.commands.Commands(config=config, network=self.network, wallet=None)
 
     async def restore_wallet(self, command_runner, xpub, config, wallet_path):
         command_runner.restore(xpub, wallet_path=wallet_path)
@@ -72,9 +66,7 @@ class BCHDaemon(BaseDaemon):
 
     @rpc
     async def get_transaction(self, tx, wallet=None):
-        result = self.network.synchronous_get(
-            ("blockchain.transaction.get", [tx, True])
-        )
+        result = self.network.synchronous_get(("blockchain.transaction.get", [tx, True]))
         result.update({"confirmations": result.get("confirmations", 0)})
         return result
 

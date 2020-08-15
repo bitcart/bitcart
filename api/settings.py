@@ -9,13 +9,7 @@ import dramatiq
 import redis
 from dramatiq.brokers.redis import RedisBroker
 from dramatiq.brokers.stub import StubBroker
-from dramatiq.middleware import (
-    AgeLimit,
-    Callbacks,
-    Pipelines,
-    Retries,
-    ShutdownNotifications,
-)
+from dramatiq.middleware import AgeLimit, Callbacks, Pipelines, Retries, ShutdownNotifications
 from fastapi import HTTPException
 from notifiers import all_providers, get_notifier
 from starlette.config import Config
@@ -48,6 +42,8 @@ if TEST:
 TORRC_FILE = config("TORRC_FILE", default=None)
 
 # initialize image dir
+
+
 def create_ifn(path):
     if not os.path.exists(path):
         os.mkdir(path)
@@ -78,11 +74,7 @@ with warnings.catch_warnings():  # it is supposed
         crypto_network = config(f"{env_name}_NETWORK", default="mainnet")
         crypto_lightning = config(f"{env_name}_LIGHTNING", cast=bool, default=False)
         crypto_settings[crypto] = {
-            "credentials": {
-                "rpc_url": rpc_url,
-                "rpc_user": rpc_user,
-                "rpc_pass": rpc_password,
-            },
+            "credentials": {"rpc_url": rpc_url, "rpc_user": rpc_user, "rpc_pass": rpc_password},
             "network": crypto_network,
             "lightning": crypto_lightning,
         }
@@ -91,13 +83,11 @@ with warnings.catch_warnings():  # it is supposed
 
 def get_coin(coin, xpub=None):
     coin = coin.lower()
-    if not coin in cryptos:
+    if coin not in cryptos:
         raise HTTPException(422, "Unsupported currency")
     if not xpub:
         return cryptos[coin]
-    return getattr(bitcart, coin.upper())(
-        xpub=xpub, **crypto_settings[coin]["credentials"]
-    )
+    return getattr(bitcart, coin.upper())(xpub=xpub, **crypto_settings[coin]["credentials"])
 
 
 # cache notifiers schema
@@ -151,17 +141,13 @@ class InitDB(dramatiq.Middleware):
         shutdown.set()
 
 
-MIDDLEWARE = [
-    m() for m in (AgeLimit, ShutdownNotifications, Callbacks, Pipelines, Retries)
-]
+MIDDLEWARE = [m() for m in (AgeLimit, ShutdownNotifications, Callbacks, Pipelines, Retries)]
 
 if TEST:
     broker = StubBroker(middleware=MIDDLEWARE)
     broker.emit_after("process_boot")
 else:
-    broker = RedisBroker(
-        connection_pool=redis.ConnectionPool.from_url(REDIS_HOST), middleware=MIDDLEWARE
-    )
+    broker = RedisBroker(connection_pool=redis.ConnectionPool.from_url(REDIS_HOST), middleware=MIDDLEWARE)
 
 broker.add_middleware(InitDB())
 dramatiq.set_broker(broker)

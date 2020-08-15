@@ -1,6 +1,5 @@
 import electrum
 from aiohttp import web
-
 from base import BaseDaemon
 
 

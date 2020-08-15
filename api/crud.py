@@ -26,9 +26,7 @@ async def create_user(user: schemes.CreateUser, auth_user: schemes.User):
     elif auth_user and auth_user.is_superuser:
         is_superuser = user.is_superuser
     return await models.User.create(
-        hashed_password=utils.get_password_hash(user.password),
-        email=user.email,
-        is_superuser=is_superuser,
+        hashed_password=utils.get_password_hash(user.password), email=user.email, is_superuser=is_superuser,
     )
 
 
@@ -72,33 +70,23 @@ async def create_invoice(invoice: schemes.CreateInvoice, user: schemes.User):
         await product_add_related(product)
     created = []
     for key, value in products.items():  # type: ignore
-        created.append(
-            (
-                await models.ProductxInvoice.create(
-                    invoice_id=obj.id, product_id=key, count=value
-                )
-            ).product_id
-        )
+        created.append((await models.ProductxInvoice.create(invoice_id=obj.id, product_id=key, count=value)).product_id)
     obj.products = created
     obj.payments = {}
     task_wallets = {}
     current_date = utils.now()
     discounts = []
     if product:
-        discounts = [
-            await models.Discount.get(discount_id) for discount_id in product.discounts
-        ]
+        discounts = [await models.Discount.get(discount_id) for discount_id in product.discounts]
     discounts = list(filter(lambda x: current_date <= x.end_date, discounts))
     for wallet_id in wallets:
         wallet = await models.Wallet.get(wallet_id)
-        if not wallet.currency in obj.payments:
+        if wallet.currency not in obj.payments:
             coin = settings.get_coin(wallet.currency, wallet.xpub)
             discount_id = None
             price = obj.price / await coin.rate(obj.currency, accurate=True)
             if math.isnan(price):
-                price = obj.price / await coin.rate(
-                    store.default_currency, accurate=True
-                )
+                price = obj.price / await coin.rate(store.default_currency, accurate=True)
             if math.isnan(price):
                 price = obj.price / await coin.rate("USD", accurate=True)
             if math.isnan(price):
@@ -107,11 +95,7 @@ async def create_invoice(invoice: schemes.CreateInvoice, user: schemes.User):
                 try:
                     discount = max(
                         filter(
-                            lambda x: (
-                                not x.currencies
-                                or wallet.currency
-                                in CommaSeparatedStrings(x.currencies)
-                            )
+                            lambda x: (not x.currencies or wallet.currency in CommaSeparatedStrings(x.currencies))
                             and (promocode == x.promocode or not x.promocode),
                             discounts,
                         ),
@@ -122,9 +106,7 @@ async def create_invoice(invoice: schemes.CreateInvoice, user: schemes.User):
                 except ValueError:  # no matched discounts
                     pass
             task_wallets[wallet.currency] = wallet.xpub
-            data_got = await coin.addrequest(
-                str(price), description=product.name if product else ""
-            )
+            data_got = await coin.addrequest(str(price), description=product.name if product else "")
             await models.PaymentMethod.create(
                 invoice_id=obj.id,
                 amount=price,
@@ -148,18 +130,12 @@ async def invoice_add_related(item: models.Invoice):
     # add related products
     if not item:
         return
-    result = (
-        await models.ProductxInvoice.select("product_id")
-        .where(models.ProductxInvoice.invoice_id == item.id)
-        .gino.all()
-    )
+    result = await models.ProductxInvoice.select("product_id").where(models.ProductxInvoice.invoice_id == item.id).gino.all()
     item.products = [product_id for product_id, in result if product_id]
     item.payments = {}
-    payment_methods = await models.PaymentMethod.query.where(
-        models.PaymentMethod.invoice_id == item.id
-    ).gino.all()
+    payment_methods = await models.PaymentMethod.query.where(models.PaymentMethod.invoice_id == item.id).gino.all()
     for method in payment_methods:
-        if not method.currency in item.payments:
+        if method.currency not in item.payments:
             item.payments[method.currency] = {
                 "payment_address": method.payment_address,
                 "payment_url": method.payment_url,
@@ -175,22 +151,16 @@ async def invoices_add_related(items: Iterable[models.Invoice]):
     return items
 
 
-async def get_invoice(
-    model_id: int, user: schemes.User, item: models.Invoice, internal: bool = False
-):
+async def get_invoice(model_id: int, user: schemes.User, item: models.Invoice, internal: bool = False):
     await invoice_add_related(item)
     return item
 
 
 async def get_invoices(pagination: pagination.Pagination, user: schemes.User):
-    return await pagination.paginate(
-        models.Invoice, user.id, postprocess=invoices_add_related
-    )
+    return await pagination.paginate(models.Invoice, user.id, postprocess=invoices_add_related)
 
 
-async def get_store(
-    model_id: int, user: schemes.User, item: models.Store, internal=False
-):
+async def get_store(model_id: int, user: schemes.User, item: models.Store, internal=False):
     if item is None:
         item = await models.Store.get(model_id)  # Extra query to fetch public data
         if item is None:
@@ -206,15 +176,11 @@ async def get_store(
 
 
 async def get_stores(pagination: pagination.Pagination, user: schemes.User):
-    return await pagination.paginate(
-        models.Store, user.id, postprocess=stores_add_related
-    )
+    return await pagination.paginate(models.Store, user.id, postprocess=stores_add_related)
 
 
 async def delete_store(item: schemes.Store, user: schemes.User):
-    await models.WalletxStore.delete.where(
-        models.WalletxStore.store_id == item.id
-    ).gino.status()
+    await models.WalletxStore.delete.where(models.WalletxStore.store_id == item.id).gino.status()
     await item.delete()
     return item
 
@@ -226,18 +192,12 @@ async def create_store(store: schemes.CreateStore, user: schemes.User):
     obj = await models.Store.create(**d, user_id=user.id)
     created_wallets = []
     for i in wallets:  # type: ignore
-        created_wallets.append(
-            (await models.WalletxStore.create(store_id=obj.id, wallet_id=i)).wallet_id
-        )
+        created_wallets.append((await models.WalletxStore.create(store_id=obj.id, wallet_id=i)).wallet_id)
     obj.wallets = created_wallets
     created_notifications = []
     for i in notifications:  # type: ignore
         created_notifications.append(
-            (
-                await models.NotificationxStore.create(
-                    store_id=obj.id, notification_id=i
-                )
-            ).notification_id
+            (await models.NotificationxStore.create(store_id=obj.id, notification_id=i)).notification_id
         )
     obj.notifications = created_notifications
     return obj
@@ -247,20 +207,14 @@ async def store_add_related(item: models.Store):
     # add related wallets
     if not item:
         return
-    result = (
-        await models.WalletxStore.select("wallet_id")
-        .where(models.WalletxStore.store_id == item.id)
-        .gino.all()
-    )
+    result = await models.WalletxStore.select("wallet_id").where(models.WalletxStore.store_id == item.id).gino.all()
     result2 = (
         await models.NotificationxStore.select("notification_id")
         .where(models.NotificationxStore.store_id == item.id)
         .gino.all()
     )
     item.wallets = [wallet_id for wallet_id, in result if wallet_id]
-    item.notifications = [
-        notification_id for notification_id, in result2 if notification_id
-    ]
+    item.notifications = [notification_id for notification_id, in result2 if notification_id]
 
 
 async def stores_add_related(items: Iterable[models.Store]):
@@ -270,9 +224,7 @@ async def stores_add_related(items: Iterable[models.Store]):
 
 
 async def delete_invoice(item: schemes.Invoice, user: schemes.User):
-    await models.ProductxInvoice.delete.where(
-        models.ProductxInvoice.invoice_id == item.id
-    ).gino.status()
+    await models.ProductxInvoice.delete.where(models.ProductxInvoice.invoice_id == item.id).gino.status()
     await item.delete()
     return item
 
@@ -282,9 +234,7 @@ async def product_add_related(item: models.Product):
     if not item:
         return
     result = (
-        await models.DiscountxProduct.select("discount_id")
-        .where(models.DiscountxProduct.product_id == item.id)
-        .gino.all()
+        await models.DiscountxProduct.select("discount_id").where(models.DiscountxProduct.product_id == item.id).gino.all()
     )
     item.discounts = [discount_id for discount_id, in result if discount_id]
 
@@ -296,18 +246,14 @@ async def products_add_related(items: Iterable[models.Product]):
 
 
 async def get_products(pagination: pagination.Pagination, user: schemes.User):
-    return await pagination.paginate(
-        models.Product, user.id, postprocess=products_add_related
-    )
+    return await pagination.paginate(models.Product, user.id, postprocess=products_add_related)
 
 
 async def create_discount(discount: schemes.CreateDiscount, user: schemes.User):
     return await models.Discount.create(**discount.dict(), user_id=user.id)
 
 
-async def create_notification(
-    notification: schemes.CreateNotification, user: schemes.User
-):
+async def create_notification(notification: schemes.CreateNotification, user: schemes.User):
     return await models.Notification.create(**notification.dict(), user_id=user.id)
 
 

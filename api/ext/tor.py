@@ -4,9 +4,7 @@ from collections import namedtuple  # TODO: dataclasses
 
 from .. import settings
 
-HiddenService = namedtuple(
-    "HiddenService", ["name", "directory", "hostname", "port_definition"]
-)
+HiddenService = namedtuple("HiddenService", ["name", "directory", "hostname", "port_definition"])
 PortDefinition = namedtuple("PortDefinition", ["virtual_port", "ip", "port"])
 
 
@@ -69,10 +67,7 @@ def parse_torrc(torrc):
         hidden_service_port = parse_hidden_service_port(line)
         if hidden_service:
             hidden_service = HiddenService(
-                get_service_name(hidden_service),
-                hidden_service,
-                get_hostname(hidden_service),
-                None,
+                get_service_name(hidden_service), hidden_service, get_hostname(hidden_service), None,
             )
             services.append(hidden_service)
         elif hidden_service_port and services:
@@ -89,18 +84,13 @@ class TorService:
 
 def refresh():
     TorService.services = parse_torrc(settings.TORRC_FILE)
-    TorService.services_dict = {
-        service.name: service._asdict() for service in TorService.services
-    }
+    TorService.services_dict = {service.name: service._asdict() for service in TorService.services}
     TorService.anonymous_services_dict = {
-        service.name: {"name": service.name, "hostname": service.hostname}
-        for service in TorService.services
+        service.name: {"name": service.name, "hostname": service.hostname} for service in TorService.services
     }
     TorService.onion_host = TorService.services_dict.get("BitcartCC Merchants API", "")
     if TorService.onion_host:  # pragma: no cover
-        TorService.onion_host = TorService.onion_host[  # pylint: disable=invalid-sequence-index
-            "hostname"
-        ]
+        TorService.onion_host = TorService.onion_host["hostname"]  # pylint: disable=invalid-sequence-index
 
 
 refresh()

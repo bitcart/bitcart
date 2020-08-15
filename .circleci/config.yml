@@ -26,15 +26,15 @@ jobs:
       # Download and cache dependencies
       - restore_cache:
           keys:
-            - v9-dependencies-{{ checksum "requirements/web.txt" }}-{{ checksum "requirements/test.txt" }}-{{ checksum "requirements/daemons/btc.txt" }}-<< parameters.v >>
+            - v11-dependencies-{{ checksum "requirements/web.txt" }}-{{ checksum "requirements/test.txt" }}-{{ checksum "requirements/daemons/btc.txt" }}-<< parameters.v >>
             # fallback to using the latest cache if no exact match is found
-            - v9-dependencies-
+            - v11-dependencies-
 
       - run:
           name: install dependencies
           command: |
-            python3 -m venv venv
-            . venv/bin/activate
+            python3 -m venv ~/venv
+            . ~/venv/bin/activate
             sudo apt install libsecp256k1-dev
             pip install -U -r requirements.txt
             pip install -U -r requirements/daemons/btc.txt
@@ -42,21 +42,21 @@ jobs:
 
       - save_cache:
           paths:
-            - ./venv
-          key: v9-dependencies-{{ checksum "requirements/web.txt" }}-{{ checksum "requirements/test.txt" }}-{{ checksum "requirements/daemons/btc.txt" }}-<< parameters.v >>
+            - ~/venv
+          key: v11-dependencies-{{ checksum "requirements/web.txt" }}-{{ checksum "requirements/test.txt" }}-{{ checksum "requirements/daemons/btc.txt" }}-<< parameters.v >>
 
       - run:
           name: prepare daemon
           command: |
-            . venv/bin/activate
+            . ~/venv/bin/activate
             BTC_DEBUG=true BTC_NETWORK=testnet python3 daemons/btc.py
           background: true
 
       - run:
           name: run tests
           command: |
-            . venv/bin/activate
-            pytest --cov=.
+            . ~/venv/bin/activate
+            make ci
             codecov
 
       - store_artifacts:

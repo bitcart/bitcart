@@ -4,9 +4,7 @@ from typing import TYPE_CHECKING, Callable, Optional, Union
 
 import asyncpg
 from fastapi import Query
-from sqlalchemy import Text, and_, distinct, func, or_, select, text
-from sqlalchemy.sql import join
-from sqlalchemy.sql import select as sql_select
+from sqlalchemy import Text, distinct, func, or_, text
 from starlette.requests import Request
 
 from . import models, utils
@@ -47,18 +45,16 @@ class Pagination:
     async def get_count(self, query) -> int:
         query = query.with_only_columns(
             [db.func.count(distinct(self.model.id))]  # type: ignore
-        ).order_by(None)
+        ).order_by(
+            None
+        )
 
         return await query.gino.scalar() or 0
 
     def get_next_url(self, count) -> Union[None, str]:
         if self.offset + self.limit >= count or self.limit == -1:
             return None
-        return str(
-            self.request.url.include_query_params(
-                limit=self.limit, offset=self.offset + self.limit
-            )
-        )
+        return str(self.request.url.include_query_params(limit=self.limit, offset=self.offset + self.limit))
 
     def get_previous_url(self) -> Union[None, str]:
         if self.offset <= 0:
@@ -67,11 +63,7 @@ class Pagination:
         if self.offset - self.limit <= 0:
             return str(self.request.url.remove_query_params(keys=["offset"]))
 
-        return str(
-            self.request.url.include_query_params(
-                limit=self.limit, offset=self.offset - self.limit
-            )
-        )
+        return str(self.request.url.include_query_params(limit=self.limit, offset=self.offset - self.limit))
 
     async def get_list(self, query) -> list:
         if self.limit != -1:
@@ -90,9 +82,7 @@ class Pagination:
             *[
                 getattr(model, m.key)
                 .cast(Text)
-                .op("~*")(
-                    f"{self.query}"
-                )  # NOTE: not cross-db, postgres case-insensitive regex
+                .op("~*")(f"{self.query}")  # NOTE: not cross-db, postgres case-insensitive regex
                 for model in models
                 for m in model.__table__.columns
             ]
@@ -116,9 +106,7 @@ class Pagination:
         self.model = model
         if model == models.Product and sale:
             query = (
-                model.query.select_from(
-                    model.join(models.DiscountxProduct).join(models.Discount)
-                )
+                model.query.select_from(model.join(models.DiscountxProduct).join(models.Discount))
                 .having(func.count(models.DiscountxProduct.product_id) > 0)
                 .where(models.Discount.end_date > utils.now())
             )
@@ -156,9 +144,7 @@ class Pagination:
                 query = query.where(models.Token.permissions.contains(permissions))
         if count_only:
             return await self.get_count(query)
-        count, data = await asyncio.gather(
-            self.get_count(query), self.get_list(query.group_by(model.id))
-        )
+        count, data = await asyncio.gather(self.get_count(query), self.get_list(query.group_by(model.id)))
         if postprocess:
             data = await postprocess(data)
         return {

@@ -2,21 +2,11 @@
 import json
 import re
 import secrets
-from datetime import timedelta
 from decimal import Decimal
 from typing import List, Optional
 
 import asyncpg
-from fastapi import (
-    APIRouter,
-    Depends,
-    File,
-    Form,
-    HTTPException,
-    Query,
-    Security,
-    UploadFile,
-)
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Security, UploadFile
 from fastapi.security import SecurityScopes
 from pydantic.error_wrappers import ValidationError
 from sqlalchemy import distinct, func, select
@@ -36,37 +26,25 @@ async def get_me(user: models.User = Security(utils.AuthDependency())):
 
 
 @router.get("/wallets/balance", response_model=Decimal)
-async def get_balances(
-    user: models.User = Security(utils.AuthDependency(), scopes=["wallet_management"])
-):
+async def get_balances(user: models.User = Security(utils.AuthDependency(), scopes=["wallet_management"])):
     balances = Decimal()
     async with db.db.acquire() as conn:
         async with conn.transaction():
-            async for wallet in models.Wallet.query.where(
-                models.Wallet.user_id == user.id
-            ).gino.iterate():
-                balance = (
-                    await settings.get_coin(wallet.currency, wallet.xpub).balance()
-                )["confirmed"]
+            async for wallet in models.Wallet.query.where(models.Wallet.user_id == user.id).gino.iterate():
+                balance = (await settings.get_coin(wallet.currency, wallet.xpub).balance())["confirmed"]
                 balances += Decimal(balance)
     return balances
 
 
 @router.get("/stores/{model_id}/ping")
 async def ping_email(
-    model_id: int,
-    user: models.User = Security(utils.AuthDependency(), scopes=["store_management"]),
+    model_id: int, user: models.User = Security(utils.AuthDependency(), scopes=["store_management"]),
 ):
     model = await models.Store.query.where(models.Store.id == model_id).gino.first()
     if not model:
         raise HTTPException(404, f"Store with id {model_id} does not exist!")
     return utils.check_ping(
-        model.email_host,
-        model.email_port,
-        model.email_user,
-        model.email_password,
-        model.email,
-        model.email_use_ssl,
+        model.email_host, model.email_port, model.email_user, model.email_password, model.email, model.email_use_ssl,
     )
 
 
@@ -74,9 +52,7 @@ async def ping_email(
 async def get_product_noauth(model_id: int):
     item = await models.Product.get(model_id)
     if not item:
-        raise HTTPException(
-            status_code=404, detail=f"Object with id {model_id} does not exist!"
-        )
+        raise HTTPException(status_code=404, detail=f"Object with id {model_id} does not exist!")
     await crud.product_add_related(item)
     return item
 
@@ -84,9 +60,7 @@ async def get_product_noauth(model_id: int):
 async def get_invoice_noauth(model_id: int):
     item = await models.Invoice.get(model_id)
     if not item:
-        raise HTTPException(
-            status_code=404, detail=f"Object with id {model_id} does not exist!"
-        )
+        raise HTTPException(status_code=404, detail=f"Object with id {model_id} does not exist!")
     await crud.invoice_add_related(item)
     return item
 
@@ -101,9 +75,7 @@ async def get_products(
     sale: Optional[bool] = False,
 ):
     try:
-        user = await utils.AuthDependency()(
-            request, SecurityScopes(["product_management"])
-        )
+        user = await utils.AuthDependency()(request, SecurityScopes(["product_management"]))
     except HTTPException:
         if store is None:
             raise
@@ -138,13 +110,7 @@ async def create_product(
         obj = await models.Product.create(**d, user_id=user.id)
         created = []
         for i in discounts:
-            created.append(
-                (
-                    await models.DiscountxProduct.create(
-                        product_id=obj.id, discount_id=i
-                    )
-                ).discount_id
-            )
+            created.append((await models.DiscountxProduct.create(product_id=obj.id, discount_id=i)).discount_id)
         obj.discounts = created
         if image:
             filename = utils.get_image_filename(image, False, obj)
@@ -223,16 +189,12 @@ async def products_count(
     query = models.Product.query
     if sale:
         query = (
-            query.select_from(
-                models.Product.join(models.DiscountxProduct).join(models.Discount)
-            )
+            query.select_from(models.Product.join(models.DiscountxProduct).join(models.Discount))
             .having(func.count(models.DiscountxProduct.product_id) > 0)
             .where(models.Discount.end_date > utils.now())
         )
     if store is None:
-        user = await utils.AuthDependency()(
-            request, SecurityScopes(["product_management"])
-        )
+        user = await utils.AuthDependency()(request, SecurityScopes(["product_management"]))
         query = query.where(models.Product.user_id == user.id)
     else:
         query = query.where(models.Product.store_id == store)
@@ -242,25 +204,14 @@ async def products_count(
         query = query.where(models.Product.price >= min_price)
     if max_price is not None:
         query = query.where(models.Product.price <= max_price)
-    return (
-        await (
-            query.with_only_columns([db.db.func.count(distinct(models.Product.id))])
-            .order_by(None)
-            .gino.scalar()
-        )
-        or 0
-    )
+    return await (query.with_only_columns([db.db.func.count(distinct(models.Product.id))]).order_by(None).gino.scalar()) or 0
 
 
 @router.get("/invoices/order_id/{order_id}", response_model=schemes.DisplayInvoice)
 async def get_invoice_by_order_id(order_id: str):
-    item = await models.Invoice.query.where(
-        models.Invoice.order_id == order_id
-    ).gino.first()
+    item = await models.Invoice.query.where(models.Invoice.order_id == order_id).gino.first()
     if not item:
-        raise HTTPException(
-            status_code=404, detail=f"Object with order id {order_id} does not exist!"
-        )
+        raise HTTPException(status_code=404, detail=f"Object with order id {order_id} does not exist!")
     await crud.invoice_add_related(item)
     return item
 
@@ -309,9 +260,7 @@ async def get_notifications_schema():
 
 
 @router.get("/templates/list")
-async def get_template_list(
-    applicable_to: Optional[str] = None, show_all: bool = False
-):
+async def get_template_list(applicable_to: Optional[str] = None, show_all: bool = False):
     result_set = templates.templates_strings
     if applicable_to:
         result_set = result_set.get(applicable_to, [])
@@ -332,11 +281,7 @@ utils.model_view(
     schemes.User,
     schemes.CreateUser,
     display_model=schemes.DisplayUser,
-    custom_methods={
-        "post": crud.create_user,
-        "patch": crud.patch_user,
-        "put": crud.put_user,
-    },
+    custom_methods={"post": crud.create_user, "patch": crud.patch_user, "put": crud.put_user},
     post_auth=False,
     scopes={
         "get_all": ["server_management"],
@@ -439,9 +384,7 @@ utils.model_view(
 
 
 @router.get("/crud/stats")
-async def get_stats(
-    user: models.User = Security(utils.AuthDependency(), scopes=["full_control"])
-):
+async def get_stats(user: models.User = Security(utils.AuthDependency(), scopes=["full_control"])):
     queries = []
     output_formats = []
     for index, (path, orm_model) in enumerate(utils.crud_models):
@@ -466,26 +409,21 @@ async def rate(currency: str = "btc"):
 async def categories(store: int):
     return {
         category
-        for category, in await models.Product.select("category")
-        .where(models.Product.store_id == store)
-        .gino.all()
+        for category, in await models.Product.select("category").where(models.Product.store_id == store).gino.all()
         if category
     }.union({"all"})
 
 
 @router.get("/wallet_history/{model_id}", response_model=List[schemes.TxResponse])
 async def wallet_history(
-    model_id: int,
-    user: models.User = Security(utils.AuthDependency(), scopes=["wallet_management"]),
+    model_id: int, user: models.User = Security(utils.AuthDependency(), scopes=["wallet_management"]),
 ):
     response: List[schemes.TxResponse] = []
     if model_id == 0:
         for model in await models.Wallet.query.gino.all():
             await utils.get_wallet_history(model, response)
     else:
-        model = await models.Wallet.query.where(
-            models.Wallet.id == model_id
-        ).gino.first()
+        model = await models.Wallet.query.where(models.Wallet.id == model_id).gino.first()
         if not model:
             raise HTTPException(404, f"Wallet with id {model_id} does not exist!")
         await utils.get_wallet_history(model, response)
@@ -500,20 +438,12 @@ async def get_tokens(
     redirect_url: Optional[str] = None,
     permissions: List[str] = Query(None),
 ):
-    return await pagination.paginate(
-        models.Token,
-        user.id,
-        app_id=app_id,
-        redirect_url=redirect_url,
-        permissions=permissions,
-    )
+    return await pagination.paginate(models.Token, user.id, app_id=app_id, redirect_url=redirect_url, permissions=permissions,)
 
 
 @router.get("/token/current", response_model=schemes.Token)
 async def get_current_token(request: Request):
-    _, token = await utils.AuthDependency()(
-        request, SecurityScopes(), return_token=True
-    )
+    _, token = await utils.AuthDependency()(request, SecurityScopes(), return_token=True)
     return token
 
 
@@ -526,30 +456,17 @@ async def get_token_count(
     permissions: List[str] = Query(None),
 ):
     return await pagination.paginate(
-        models.Token,
-        user.id,
-        app_id=app_id,
-        redirect_url=redirect_url,
-        permissions=permissions,
-        count_only=True,
+        models.Token, user.id, app_id=app_id, redirect_url=redirect_url, permissions=permissions, count_only=True,
     )
 
 
 @router.patch("/token/{model_id}", response_model=schemes.Token)
 async def patch_token(
-    model_id: str,
-    model: schemes.EditToken,
-    user: models.User = Security(utils.AuthDependency(), scopes=["token_management"]),
+    model_id: str, model: schemes.EditToken, user: models.User = Security(utils.AuthDependency(), scopes=["token_management"]),
 ):
-    item = (
-        await models.Token.query.where(models.Token.user_id == user.id)
-        .where(models.Token.id == model_id)
-        .gino.first()
-    )
+    item = await models.Token.query.where(models.Token.user_id == user.id).where(models.Token.id == model_id).gino.first()
     if not item:
-        raise HTTPException(
-            status_code=404, detail=f"Token with id {model_id} does not exist!"
-        )
+        raise HTTPException(status_code=404, detail=f"Token with id {model_id} does not exist!")
     try:
         await item.update(**model.dict(exclude_unset=True)).apply()
     except (
@@ -563,53 +480,37 @@ async def patch_token(
 
 @router.delete("/token/{model_id}", response_model=schemes.Token)
 async def delete_token(
-    model_id: str,
-    user: models.User = Security(utils.AuthDependency(), scopes=["token_management"]),
+    model_id: str, user: models.User = Security(utils.AuthDependency(), scopes=["token_management"]),
 ):
-    item = (
-        await models.Token.query.where(models.Token.user_id == user.id)
-        .where(models.Token.id == model_id)
-        .gino.first()
-    )
+    item = await models.Token.query.where(models.Token.user_id == user.id).where(models.Token.id == model_id).gino.first()
     if not item:
-        raise HTTPException(
-            status_code=404, detail=f"Token with id {model_id} does not exist!"
-        )
+        raise HTTPException(status_code=404, detail=f"Token with id {model_id} does not exist!")
     await item.delete()
     return item
 
 
 @router.post("/token")
 async def create_token(
-    request: Request,
-    token_data: Optional[schemes.HTTPCreateLoginToken] = schemes.HTTPCreateLoginToken(),
+    request: Request, token_data: Optional[schemes.HTTPCreateLoginToken] = schemes.HTTPCreateLoginToken(),
 ):
     token = None
     try:
-        user, token = await utils.AuthDependency()(
-            request, SecurityScopes(), return_token=True
-        )
+        user, token = await utils.AuthDependency()(request, SecurityScopes(), return_token=True)
     except HTTPException:
-        user, status = await utils.authenticate_user(
-            token_data.email, token_data.password
-        )
+        user, status = await utils.authenticate_user(token_data.email, token_data.password)
         if not user:
             raise HTTPException(401, {"message": "Unauthorized", "status": status})
     token_data = token_data.dict()
     strict = token_data.pop("strict")
     if "server_management" in token_data["permissions"] and not user.is_superuser:
         if strict:
-            raise HTTPException(
-                422, "This application requires access to server settings"
-            )
+            raise HTTPException(422, "This application requires access to server settings")
         token_data["permissions"].remove("server_management")
-    if token and not "full_control" in token.permissions:
+    if token and "full_control" not in token.permissions:
         for permission in token_data["permissions"]:
             if permission not in token.permissions:
                 raise HTTPException(403, "Not enough permissions")
-    token = await models.Token.create(
-        **schemes.CreateDBToken(user_id=user.id, **token_data).dict()
-    )
+    token = await models.Token.create(**schemes.CreateDBToken(user_id=user.id, **token_data).dict())
     return {
         **schemes.Token.from_orm(token).dict(),
         "access_token": token.id,
@@ -618,9 +519,7 @@ async def create_token(
 
 
 @router.post("/manage/update")
-async def update_server(
-    user: models.User = Security(utils.AuthDependency(), scopes=["server_management"])
-):
+async def update_server(user: models.User = Security(utils.AuthDependency(), scopes=["server_management"])):
     if settings.DOCKER_ENV:
         utils.run_host("./update.sh")
         return {"status": "success", "message": "Successfully started update process!"}
@@ -628,9 +527,7 @@ async def update_server(
 
 
 @router.post("/manage/cleanup")
-async def cleanup_server(
-    user: models.User = Security(utils.AuthDependency(), scopes=["server_management"])
-):
+async def cleanup_server(user: models.User = Security(utils.AuthDependency(), scopes=["server_management"])):
     if settings.DOCKER_ENV:
         utils.run_host("./cleanup.sh")
         return {"status": "success", "message": "Successfully started cleanup process!"}
@@ -638,9 +535,7 @@ async def cleanup_server(
 
 
 @router.get("/manage/daemons")
-async def get_daemons(
-    user: models.User = Security(utils.AuthDependency(), scopes=["server_management"])
-):
+async def get_daemons(user: models.User = Security(utils.AuthDependency(), scopes=["server_management"])):
     return settings.crypto_settings
 
 
@@ -651,8 +546,7 @@ async def get_policies():
 
 @router.post("/manage/policies", response_model=schemes.Policy)
 async def set_policies(
-    settings: schemes.Policy,
-    user: models.User = Security(utils.AuthDependency(), scopes=["server_management"]),
+    settings: schemes.Policy, user: models.User = Security(utils.AuthDependency(), scopes=["server_management"]),
 ):
     return await utils.set_setting(settings)
 
@@ -664,8 +558,7 @@ async def get_store_policies():
 
 @router.post("/manage/stores", response_model=schemes.GlobalStorePolicy)
 async def set_store_policies(
-    settings: schemes.GlobalStorePolicy,
-    user: models.User = Security(utils.AuthDependency(), scopes=["server_management"]),
+    settings: schemes.GlobalStorePolicy, user: models.User = Security(utils.AuthDependency(), scopes=["server_management"]),
 ):
     return await utils.set_setting(settings)
 
@@ -673,16 +566,10 @@ async def set_store_policies(
 @router.get("/services")
 async def get_services(request: Request):
     try:
-        user = await utils.AuthDependency()(
-            request, SecurityScopes(["server_management"])
-        )
+        user = await utils.AuthDependency()(request, SecurityScopes(["server_management"]))
     except HTTPException:
         user = None
-    return (
-        tor_ext.TorService.services_dict
-        if user
-        else tor_ext.TorService.anonymous_services_dict
-    )
+    return tor_ext.TorService.services_dict if user else tor_ext.TorService.anonymous_services_dict
 
 
 @router.websocket_route("/ws/wallets/{model_id}")
@@ -699,9 +586,7 @@ class WalletNotify(WebSocketEndpoint):
             await websocket.close(code=WS_1008_POLICY_VIOLATION)
             return
         try:
-            self.user = await utils.AuthDependency(token=self.access_token)(
-                None, SecurityScopes(["wallet_management"])
-            )
+            self.user = await utils.AuthDependency(token=self.access_token)(None, SecurityScopes(["wallet_management"]))
         except HTTPException:
             await websocket.close(code=WS_1008_POLICY_VIOLATION)
             return
@@ -738,9 +623,7 @@ class InvoiceNotify(WebSocketEndpoint):
         except (ValueError, KeyError):
             await websocket.close(code=WS_1008_POLICY_VIOLATION)
             return
-        self.invoice = await models.Invoice.query.where(
-            models.Invoice.id == self.invoice_id
-        ).gino.first()
+        self.invoice = await models.Invoice.query.where(models.Invoice.id == self.invoice_id).gino.first()
         if not self.invoice:
             await websocket.close(code=WS_1008_POLICY_VIOLATION)
             return

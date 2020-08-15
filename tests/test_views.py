@@ -1,5 +1,4 @@
 import json as json_module
-from datetime import datetime, timedelta
 from typing import Dict, List, Union
 
 import pytest
@@ -79,9 +78,7 @@ class ViewTestMixin:
 
     def test_create(self, client: TestClient, token: str):
         for test in self.tests["create"]:
-            resp = self.send_request(
-                f"/{self.name}", client, json=test["data"], method="post", token=token
-            )
+            resp = self.send_request(f"/{self.name}", client, json=test["data"], method="post", token=token)
             self.process_resp(resp, test)
 
     def test_get_all(self, client: TestClient, token: str):
@@ -96,38 +93,22 @@ class ViewTestMixin:
 
     def test_get_one(self, client: TestClient, token: str):
         for test in self.tests["get_one"]:
-            resp = self.send_request(
-                f"/{self.name}/{test['obj_id']}", client, token=token
-            )
+            resp = self.send_request(f"/{self.name}/{test['obj_id']}", client, token=token)
             self.process_resp(resp, test)
 
     def test_partial_update(self, client: TestClient, token: str):
         for test in self.tests["partial_update"]:
-            resp = self.send_request(
-                f"/{self.name}/{test['obj_id']}",
-                client,
-                json=test["data"],
-                method="patch",
-                token=token,
-            )
+            resp = self.send_request(f"/{self.name}/{test['obj_id']}", client, json=test["data"], method="patch", token=token,)
             self.process_resp(resp, test)
 
     def test_full_update(self, client: TestClient, token: str):
         for test in self.tests["full_update"]:
-            resp = self.send_request(
-                f"/{self.name}/{test['obj_id']}",
-                client,
-                json=test["data"],
-                method="put",
-                token=token,
-            )
+            resp = self.send_request(f"/{self.name}/{test['obj_id']}", client, json=test["data"], method="put", token=token,)
             self.process_resp(resp, test)
 
     def test_delete(self, client: TestClient, token: str):
         for test in self.tests["delete"]:
-            resp = self.send_request(
-                f"/{self.name}/{test['obj_id']}", client, method="delete", token=token
-            )
+            resp = self.send_request(f"/{self.name}/{test['obj_id']}", client, method="delete", token=token)
             self.process_resp(resp, test)
 
 
@@ -199,9 +180,7 @@ def test_wallet_history(client: TestClient, token: str):
     assert client.get("/wallet_history/1", headers=headers).status_code == 404
     assert client.get("/wallet_history/4", headers=headers).status_code == 404
     resp = client.get("/wallet_history/2", headers=headers)
-    client.post(
-        "/wallets", json={"name": "test7", "xpub": TEST_XPUB}, headers=headers
-    ).json()
+    client.post("/wallets", json={"name": "test7", "xpub": TEST_XPUB}, headers=headers).json()
     assert resp.status_code == 200
     assert resp.json() == []
     resp1 = client.get("/wallet_history/4", headers=headers)
@@ -209,31 +188,16 @@ def test_wallet_history(client: TestClient, token: str):
     data2 = resp1.json()
     assert len(data2) == 1
     assert data2[0]["amount"] == "0.01"
-    assert (
-        data2[0]["txid"]
-        == "ee4f0c4405f9ba10443958f5c6f6d4552a69a80f3ec3bed1c3d4c98d65abe8f3"
-    )
+    assert data2[0]["txid"] == "ee4f0c4405f9ba10443958f5c6f6d4552a69a80f3ec3bed1c3d4c98d65abe8f3"
     resp2 = client.get("/wallet_history/0", headers=headers)
     assert resp2.status_code == 200
     assert len(resp2.json()) == 1
 
 
 def test_create_token(client: TestClient):
-    assert (
-        client.post(
-            "/token", json={"email": "test44@example.com", "password": 123456}
-        ).status_code
-        == 401
-    )
-    assert (
-        client.post(
-            "/token", json={"email": "test1@example.com", "password": 123456}
-        ).status_code
-        == 401
-    )
-    resp = client.post(
-        "/token", json={"email": "test44@example.com", "password": 12345}
-    )
+    assert client.post("/token", json={"email": "test44@example.com", "password": 123456}).status_code == 401
+    assert client.post("/token", json={"email": "test1@example.com", "password": 123456}).status_code == 401
+    resp = client.post("/token", json={"email": "test44@example.com", "password": 12345})
     assert resp.status_code == 200
     j = resp.json()
     assert j.get("access_token")
@@ -246,34 +210,14 @@ def test_noauth(client: TestClient):
     assert client.get("/stores").status_code == 401
     assert client.get("/products").status_code == 401
     assert client.get("/invoices").status_code == 401
-    assert (
-        client.post(
-            "/users", json={"email": "noauth@example.com", "password": "noauth"}
-        ).status_code
-        == 200
-    )
-    assert (
-        client.post(
-            "/token", json={"email": "noauth@example.com", "password": "noauth"}
-        ).status_code
-        == 200
-    )
+    assert client.post("/users", json={"email": "noauth@example.com", "password": "noauth"}).status_code == 200
+    assert client.post("/token", json={"email": "noauth@example.com", "password": "noauth"}).status_code == 200
 
 
 def test_superuseronly(client: TestClient, token: str):
-    token_usual = client.post(
-        "/token", json={"email": "noauth@example.com", "password": "noauth"}
-    ).json()["access_token"]
-    assert (
-        client.get(
-            "/users", headers={"Authorization": f"Bearer {token_usual}"}
-        ).status_code
-        == 403
-    )
-    assert (
-        client.get("/users", headers={"Authorization": f"Bearer {token}"}).status_code
-        == 200
-    )
+    token_usual = client.post("/token", json={"email": "noauth@example.com", "password": "noauth"}).json()["access_token"]
+    assert client.get("/users", headers={"Authorization": f"Bearer {token_usual}"}).status_code == 403
+    assert client.get("/users", headers={"Authorization": f"Bearer {token}"}).status_code == 200
 
 
 def test_users_me(client: TestClient, token: str):
@@ -327,7 +271,7 @@ def test_ping_email(client: TestClient, token: str):
     assert resp.status_code == 404
     resp1 = client.get("/stores/2/ping", headers={"Authorization": f"Bearer {token}"})
     assert resp1.status_code == 200
-    assert resp1.json() == False
+    assert not resp1.json()
 
 
 def test_crud_count(client: TestClient, token: str):
@@ -352,9 +296,7 @@ def test_categories(client: TestClient):
     assert resp.status_code == 200
     assert resp.json() == ["all"]
     assert resp2.status_code == 200
-    assert set(resp2.json()) == set(
-        ["all", "Test"]
-    )  # TODO: make endpoint output order consistent
+    assert set(resp2.json()) == set(["all", "Test"])  # TODO: make endpoint output order consistent
 
 
 def check_token(result):
@@ -399,16 +341,12 @@ def test_patch_token(client: TestClient, token: str):
     assert client.patch(f"/token/{token}").status_code == 401
     assert (
         client.patch(
-            "/token/{token}",
-            json={"redirect_url": "test"},
-            headers={"Authorization": f"Bearer {token}"},
+            "/token/{token}", json={"redirect_url": "test"}, headers={"Authorization": f"Bearer {token}"},
         ).status_code
         == 404
     )
     resp = client.patch(
-        f"/token/{token}",
-        json={"redirect_url": "google.com:443"},
-        headers={"Authorization": f"Bearer {token}"},
+        f"/token/{token}", json={"redirect_url": "google.com:443"}, headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 200
     j = resp.json()
@@ -418,77 +356,39 @@ def test_patch_token(client: TestClient, token: str):
 
 def test_create_tokens(client: TestClient, token: str):
     assert client.post("/token").status_code == 401
-    assert (
-        client.post("/token", json={"email": "test1", "password": "test2"}).status_code
-        == 401
-    )
-    assert (
-        client.post(
-            "/token", json={"email": "testauth@example.com", "password": "test12345"}
-        ).status_code
-        == 200
-    )
-    assert (
-        client.post("/token", headers={"Authorization": f"Bearer {token}"}).status_code
-        == 200
-    )
+    assert client.post("/token", json={"email": "test1", "password": "test2"}).status_code == 401
+    assert client.post("/token", json={"email": "testauth@example.com", "password": "test12345"}).status_code == 200
+    assert client.post("/token", headers={"Authorization": f"Bearer {token}"}).status_code == 200
     # Selective permissions control is done by client, not by server
-    resp = client.post(
-        "/token",
-        json={"permissions": ["store_management:2"],},
-        headers={"Authorization": f"Bearer {token}"},
-    )
+    resp = client.post("/token", json={"permissions": ["store_management:2"]}, headers={"Authorization": f"Bearer {token}"},)
     assert resp.status_code == 200
     j = resp.json()
     assert j["permissions"] == ["store_management:2"]
     # Limited token can't access higher scopes
     assert (
         client.post(
-            "/token",
-            json={"permissions": ["store_management"]},
-            headers={"Authorization": f"Bearer {j['id']}"},
+            "/token", json={"permissions": ["store_management"]}, headers={"Authorization": f"Bearer {j['id']}"},
         ).status_code
         == 403
     )
 
     assert client.post("/users", json=LIMITED_USER_DATA).status_code == 200
     # Strict mode: non-superuser user can't create superuser token
-    assert (
-        client.post(
-            "/token", json={**LIMITED_USER_DATA, "permissions": ["server_management"]}
-        ).status_code
-        == 422
-    )
+    assert client.post("/token", json={**LIMITED_USER_DATA, "permissions": ["server_management"]}).status_code == 422
     # Non-strict mode: silently removes server_management permission
-    resp = client.post(
-        "/token",
-        json={
-            **LIMITED_USER_DATA,
-            "permissions": ["server_management"],
-            "strict": False,
-        },
-    )
+    resp = client.post("/token", json={**LIMITED_USER_DATA, "permissions": ["server_management"], "strict": False},)
     assert resp.status_code == 200
     assert resp.json()["permissions"] == []
 
 
 def test_delete_token(client: TestClient, token: str):
     assert client.delete("/token/1").status_code == 401
-    assert (
-        client.delete(
-            "/token/1", headers={"Authorization": f"Bearer {token}"}
-        ).status_code
-        == 404
-    )
-    all_tokens = client.get(
-        "/token", headers={"Authorization": f"Bearer {token}"}
-    ).json()["result"]
+    assert client.delete("/token/1", headers={"Authorization": f"Bearer {token}"}).status_code == 404
+    all_tokens = client.get("/token", headers={"Authorization": f"Bearer {token}"}).json()["result"]
     for token_data in all_tokens:
         if token_data["id"] == token:
             continue  # skip our token
-        resp = client.delete(
-            f"/token/{token_data['id']}", headers={"Authorization": f"Bearer {token}"}
-        )
+        resp = client.delete(f"/token/{token_data['id']}", headers={"Authorization": f"Bearer {token}"})
         assert resp.status_code == 200
         assert resp.json() == token_data
     test_token_count(client, token)
@@ -497,30 +397,10 @@ def test_delete_token(client: TestClient, token: str):
 def test_management_commands(client: TestClient, token: str):
     assert client.post("/manage/update").status_code == 401
     limited_user_token = client.post("/token", json=LIMITED_USER_DATA).json()["id"]
-    assert (
-        client.post(
-            "/manage/update", headers={"Authorization": f"Bearer {limited_user_token}"}
-        ).status_code
-        == 403
-    )
-    assert (
-        client.post(
-            "/manage/update", headers={"Authorization": f"Bearer {token}"}
-        ).status_code
-        == 200
-    )
-    assert (
-        client.post(
-            "/manage/cleanup", headers={"Authorization": f"Bearer {token}"}
-        ).status_code
-        == 200
-    )
-    assert (
-        client.get(
-            "/manage/daemons", headers={"Authorization": f"Bearer {token}"}
-        ).status_code
-        == 200
-    )
+    assert client.post("/manage/update", headers={"Authorization": f"Bearer {limited_user_token}"}).status_code == 403
+    assert client.post("/manage/update", headers={"Authorization": f"Bearer {token}"}).status_code == 200
+    assert client.post("/manage/cleanup", headers={"Authorization": f"Bearer {token}"}).status_code == 200
+    assert client.get("/manage/daemons", headers={"Authorization": f"Bearer {token}"}).status_code == 200
 
 
 def test_policies(client: TestClient, token: str):
@@ -528,11 +408,7 @@ def test_policies(client: TestClient, token: str):
     assert resp.status_code == 200
     assert resp.json() == {"disable_registration": False, "discourage_index": False}
     assert client.post("/manage/policies").status_code == 401
-    resp = client.post(
-        "/manage/policies",
-        json={"disable_registration": True},
-        headers={"Authorization": f"Bearer {token}"},
-    )
+    resp = client.post("/manage/policies", json={"disable_registration": True}, headers={"Authorization": f"Bearer {token}"},)
     assert resp.status_code == 200
     assert resp.json() == {"disable_registration": True, "discourage_index": False}
     # Test for loading data from db instead of loading scheme's defaults
@@ -540,66 +416,33 @@ def test_policies(client: TestClient, token: str):
         "disable_registration": True,
         "discourage_index": False,
     }
-    resp = client.post(
-        "/manage/policies",
-        json={"disable_registration": False},
-        headers={"Authorization": f"Bearer {token}"},
-    )
+    resp = client.post("/manage/policies", json={"disable_registration": False}, headers={"Authorization": f"Bearer {token}"},)
     assert resp.status_code == 200
     assert resp.json() == {"disable_registration": False, "discourage_index": False}
     resp = client.get("/manage/stores")
     assert resp.status_code == 200
     assert resp.json() == {"pos_id": 1}
     assert client.post("/manage/stores").status_code == 401
-    resp = client.post(
-        "/manage/stores",
-        json={"pos_id": 2},
-        headers={"Authorization": f"Bearer {token}"},
-    )
+    resp = client.post("/manage/stores", json={"pos_id": 2}, headers={"Authorization": f"Bearer {token}"},)
     assert resp.status_code == 200
     assert resp.json() == {"pos_id": 2}
     assert client.get("/manage/stores").json() == {"pos_id": 2}
-    resp = client.post(
-        "/manage/stores",
-        json={"pos_id": 1},
-        headers={"Authorization": f"Bearer {token}"},
-    )
+    resp = client.post("/manage/stores", json={"pos_id": 1}, headers={"Authorization": f"Bearer {token}"},)
     assert resp.status_code == 200
     assert resp.json() == {"pos_id": 1}
 
 
 def test_no_token_management(client: TestClient, token: str):
     limited_user_token = client.post("/token", json=LIMITED_USER_DATA).json()["id"]
+    assert client.get("/token/current", headers={"Authorization": f"Bearer {limited_user_token}"}).status_code == 200
+    assert client.get("/token", headers={"Authorization": f"Bearer {limited_user_token}"}).status_code == 403
+    assert client.get("/token/count", headers={"Authorization": f"Bearer {limited_user_token}"}).status_code == 403
     assert (
-        client.get(
-            "/token/current", headers={"Authorization": f"Bearer {limited_user_token}"}
-        ).status_code
-        == 200
-    )
-    assert (
-        client.get(
-            "/token", headers={"Authorization": f"Bearer {limited_user_token}"}
-        ).status_code
+        client.patch(f"/token/{limited_user_token}", headers={"Authorization": f"Bearer {limited_user_token}"},).status_code
         == 403
     )
     assert (
-        client.get(
-            "/token/count", headers={"Authorization": f"Bearer {limited_user_token}"}
-        ).status_code
-        == 403
-    )
-    assert (
-        client.patch(
-            f"/token/{limited_user_token}",
-            headers={"Authorization": f"Bearer {limited_user_token}"},
-        ).status_code
-        == 403
-    )
-    assert (
-        client.delete(
-            f"/token/{limited_user_token}",
-            headers={"Authorization": f"Bearer {limited_user_token}"},
-        ).status_code
+        client.delete(f"/token/{limited_user_token}", headers={"Authorization": f"Bearer {limited_user_token}"},).status_code
         == 403
     )
 
@@ -631,9 +474,7 @@ def test_template_list(client: TestClient):
         "result": templates.templates_strings,
     }
     resp1 = client.get("/templates/list?show_all=true")
-    result = [
-        v for template_set in templates.templates_strings.values() for v in template_set
-    ]
+    result = [v for template_set in templates.templates_strings.values() for v in template_set]
     assert resp1.status_code == 200
     assert resp1.json() == {
         "count": len(result),
@@ -671,9 +512,7 @@ def test_services(client: TestClient, token: str):
 @pytest.mark.asyncio
 async def test_wallet_ws(async_client, token: str):
     r = await async_client.post(
-        "/wallets",
-        json={"name": "testws1", "xpub": TEST_XPUB},
-        headers={"Authorization": f"Bearer {token}"},
+        "/wallets", json={"name": "testws1", "xpub": TEST_XPUB}, headers={"Authorization": f"Bearer {token}"},
     )
     assert r.status_code == 200
     wallet_id = r.json()["id"]
@@ -696,11 +535,7 @@ async def test_wallet_ws(async_client, token: str):
 
 @pytest.mark.asyncio
 async def test_invoice_ws(async_client, token: str):
-    r = await async_client.post(
-        "/invoices",
-        json={"store_id": 2, "price": 5},
-        headers={"Authorization": f"Bearer {token}"},
-    )
+    r = await async_client.post("/invoices", json={"store_id": 2, "price": 5}, headers={"Authorization": f"Bearer {token}"},)
     assert r.status_code == 200
     invoice_id = r.json()["id"]
     websocket = async_client.websocket_connect(f"/ws/invoices/{invoice_id}")
@@ -712,6 +547,6 @@ async def test_invoice_ws(async_client, token: str):
     await websocket2.connect()
     await check_ws_response(websocket2)
     with pytest.raises(Exception):
-        websocket = async_client.websocket_connect(f"/ws/invoices/555")
+        websocket = async_client.websocket_connect("/ws/invoices/555")
         await websocket.connect()
         await check_ws_response(websocket)

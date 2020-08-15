@@ -1,6 +1,5 @@
 import electrum_bsty
 from aiohttp import web
-
 from base import BaseDaemon
 
 

@@ -1,6 +1,5 @@
 import electrum_ltc
 from aiohttp import web
-
 from base import BaseDaemon
 
 

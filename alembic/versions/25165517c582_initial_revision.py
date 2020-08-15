@@ -1,13 +1,13 @@
 """Initial revision
 
 Revision ID: 25165517c582
-Revises: 
+Revises:
 Create Date: 2020-01-01 20:14:45.905855
 
 """
-from alembic import op
 import sqlalchemy as sa
 
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "25165517c582"
@@ -71,12 +71,8 @@ def upgrade():
         sa.ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="SET NULL"),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index(
-        op.f("ix_discounts_currencies"), "discounts", ["currencies"], unique=False
-    )
-    op.create_index(
-        op.f("ix_discounts_description"), "discounts", ["description"], unique=False
-    )
+    op.create_index(op.f("ix_discounts_currencies"), "discounts", ["currencies"], unique=False)
+    op.create_index(op.f("ix_discounts_description"), "discounts", ["description"], unique=False)
     op.create_index(op.f("ix_discounts_id"), "discounts", ["id"], unique=False)
     op.create_index(op.f("ix_discounts_name"), "discounts", ["name"], unique=False)
     op.create_table(
@@ -89,9 +85,7 @@ def upgrade():
         sa.Column("payment_url", sa.String(length=10000), nullable=False),
         sa.ForeignKeyConstraint(["invoice_id"], ["invoices.id"], ondelete="SET NULL"),
     )
-    op.create_index(
-        op.f("ix_paymentmethods_currency"), "paymentmethods", ["currency"], unique=False
-    )
+    op.create_index(op.f("ix_paymentmethods_currency"), "paymentmethods", ["currency"], unique=False)
     op.create_table(
         "products",
         sa.Column("id", sa.Integer(), nullable=False),
@@ -105,20 +99,12 @@ def upgrade():
         sa.Column("image", sa.String(length=100000), nullable=True),
         sa.Column("store_id", sa.Integer(), nullable=True),
         sa.Column("status", sa.String(length=1000), nullable=False),
-        sa.ForeignKeyConstraint(
-            ["store_id"],
-            ["stores.id"],
-            ondelete="SET NULL",
-            initially="DEFERRED",
-            deferrable=True,
-        ),
+        sa.ForeignKeyConstraint(["store_id"], ["stores.id"], ondelete="SET NULL", initially="DEFERRED", deferrable=True,),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(op.f("ix_products_id"), "products", ["id"], unique=False)
     op.create_index(op.f("ix_products_name"), "products", ["name"], unique=False)
-    op.create_index(
-        op.f("ix_products_store_id"), "products", ["store_id"], unique=False
-    )
+    op.create_index(op.f("ix_products_store_id"), "products", ["store_id"], unique=False)
     op.create_table(
         "wallets",
         sa.Column("id", sa.Integer(), nullable=False),

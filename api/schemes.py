@@ -3,7 +3,6 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Dict, List, Optional, Union
 
-from fastapi import File, UploadFile
 from pydantic import BaseModel, EmailStr, validator
 
 from .utils import now

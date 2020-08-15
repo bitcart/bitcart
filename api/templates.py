@@ -1,7 +1,9 @@
+from collections import defaultdict
+
 from jinja2 import Template as JinjaTemplate
 from jinja2 import TemplateError
+
 from .exceptions import TemplateLoadError
-from collections import defaultdict
 
 
 class Template:
@@ -32,11 +34,7 @@ ProductTemplate = Template("product", applicable_to="product")
 BaseShopTemplate = Template("shop", applicable_to="store")
 NotificationTemplate = Template("notification", applicable_to="store")
 
-templates = {
-    template.name: template
-    for template in globals().values()
-    if isinstance(template, Template)
-}
+templates = {template.name: template for template in globals().values() if isinstance(template, Template)}
 templates_strings = defaultdict(list)
 for template in templates.values():
     templates_strings[template.applicable_to].append(template.name)

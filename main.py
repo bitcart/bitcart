@@ -14,11 +14,7 @@ app = FastAPI(title="Bitcart", version="1.0", docs_url="/", redoc_url="/redoc")
 app.mount("/images", StaticFiles(directory="images"), name="images")
 app.include_router(router)
 app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"],
 )
 
 
@@ -27,9 +23,7 @@ async def add_onion_host(request: Request, call_next):
     response = await call_next(request)
     host = request.headers.get("host", "").split(":")[0]
     if tor_ext.TorService.onion_host and not tor_ext.is_onion(host):
-        response.headers["Onion-Location"] = (
-            tor_ext.TorService.onion_host + request.url.path
-        )
+        response.headers["Onion-Location"] = tor_ext.TorService.onion_host + request.url.path
     return response
 
 

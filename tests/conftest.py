@@ -36,16 +36,9 @@ def notification_template():
 
 @pytest.fixture(scope="session", autouse=True)
 def token(client):
-    client.post(
-        "/users", json={"email": "testauth@example.com", "password": "test12345"}
-    )
+    client.post("/users", json={"email": "testauth@example.com", "password": "test12345"})
     return client.post(
-        "/token",
-        json={
-            "email": "testauth@example.com",
-            "password": "test12345",
-            "permissions": ["full_control"],
-        },
+        "/token", json={"email": "testauth@example.com", "password": "test12345", "permissions": ["full_control"]},
     ).json()["access_token"]
 
 
