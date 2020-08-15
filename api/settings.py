@@ -4,6 +4,7 @@ import sys
 import warnings
 
 import aioredis
+import bitcart
 import dramatiq
 import redis
 from dramatiq.brokers.redis import RedisBroker
@@ -13,8 +14,6 @@ from fastapi import HTTPException
 from notifiers import all_providers, get_notifier
 from starlette.config import Config
 from starlette.datastructures import CommaSeparatedStrings
-
-import bitcart
 
 config = Config("conf/.env")
 
