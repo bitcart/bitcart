@@ -81,7 +81,7 @@ async def create_invoice(invoice: schemes.CreateInvoice, user: schemes.User):
     discounts = list(filter(lambda x: current_date <= x.end_date, discounts))
     for wallet_id in wallets:
         wallet = await models.Wallet.get(wallet_id)
-        if not wallet.currency in obj.payments:
+        if wallet.currency not in obj.payments:
             coin = settings.get_coin(wallet.currency, wallet.xpub)
             discount_id = None
             price = obj.price / await coin.rate(obj.currency, accurate=True)
@@ -135,7 +135,7 @@ async def invoice_add_related(item: models.Invoice):
     item.payments = {}
     payment_methods = await models.PaymentMethod.query.where(models.PaymentMethod.invoice_id == item.id).gino.all()
     for method in payment_methods:
-        if not method.currency in item.payments:
+        if method.currency not in item.payments:
             item.payments[method.currency] = {
                 "payment_address": method.payment_address,
                 "payment_url": method.payment_url,

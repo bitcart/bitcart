@@ -4,9 +4,7 @@ from typing import TYPE_CHECKING, Callable, Optional, Union
 
 import asyncpg
 from fastapi import Query
-from sqlalchemy import Text, and_, distinct, func, or_, select, text
-from sqlalchemy.sql import join
-from sqlalchemy.sql import select as sql_select
+from sqlalchemy import Text, distinct, func, or_, text
 from starlette.requests import Request
 
 from . import models, utils

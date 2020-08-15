@@ -4,7 +4,7 @@ import json
 import os
 import smtplib
 from collections import defaultdict
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from os.path import join as path_join
 from typing import Callable, Dict, List, Optional, Type, Union
 
@@ -14,7 +14,6 @@ import notifiers
 from aiohttp import ClientSession
 from fastapi import APIRouter, Depends, HTTPException, Security
 from fastapi.security import OAuth2PasswordBearer, SecurityScopes
-from jinja2 import Template
 from passlib.context import CryptContext
 from pydantic import BaseModel
 from pydantic import create_model as create_pydantic_model
@@ -95,7 +94,7 @@ class AuthDependency:
         if security_scopes.scopes:
             authenticate_value = f'Bearer scope="{security_scopes.scope_str}"'
         else:
-            authenticate_value = f"Bearer"
+            authenticate_value = "Bearer"
         token: str = await oauth2_scheme(request) if not self.token else self.token
         data = (
             await models.User.join(models.Token)

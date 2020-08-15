@@ -2,7 +2,6 @@
 import json
 import re
 import secrets
-from datetime import timedelta
 from decimal import Decimal
 from typing import List, Optional
 
@@ -282,7 +281,7 @@ utils.model_view(
     schemes.User,
     schemes.CreateUser,
     display_model=schemes.DisplayUser,
-    custom_methods={"post": crud.create_user, "patch": crud.patch_user, "put": crud.put_user,},
+    custom_methods={"post": crud.create_user, "patch": crud.patch_user, "put": crud.put_user},
     post_auth=False,
     scopes={
         "get_all": ["server_management"],
@@ -507,7 +506,7 @@ async def create_token(
         if strict:
             raise HTTPException(422, "This application requires access to server settings")
         token_data["permissions"].remove("server_management")
-    if token and not "full_control" in token.permissions:
+    if token and "full_control" not in token.permissions:
         for permission in token_data["permissions"]:
             if permission not in token.permissions:
                 raise HTTPException(403, "Not enough permissions")

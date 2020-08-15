@@ -1,5 +1,4 @@
 import json as json_module
-from datetime import datetime, timedelta
 from typing import Dict, List, Union
 
 import pytest
@@ -272,7 +271,7 @@ def test_ping_email(client: TestClient, token: str):
     assert resp.status_code == 404
     resp1 = client.get("/stores/2/ping", headers={"Authorization": f"Bearer {token}"})
     assert resp1.status_code == 200
-    assert resp1.json() == False
+    assert not resp1.json()
 
 
 def test_crud_count(client: TestClient, token: str):
@@ -361,7 +360,7 @@ def test_create_tokens(client: TestClient, token: str):
     assert client.post("/token", json={"email": "testauth@example.com", "password": "test12345"}).status_code == 200
     assert client.post("/token", headers={"Authorization": f"Bearer {token}"}).status_code == 200
     # Selective permissions control is done by client, not by server
-    resp = client.post("/token", json={"permissions": ["store_management:2"],}, headers={"Authorization": f"Bearer {token}"},)
+    resp = client.post("/token", json={"permissions": ["store_management:2"]}, headers={"Authorization": f"Bearer {token}"},)
     assert resp.status_code == 200
     j = resp.json()
     assert j["permissions"] == ["store_management:2"]
@@ -377,7 +376,7 @@ def test_create_tokens(client: TestClient, token: str):
     # Strict mode: non-superuser user can't create superuser token
     assert client.post("/token", json={**LIMITED_USER_DATA, "permissions": ["server_management"]}).status_code == 422
     # Non-strict mode: silently removes server_management permission
-    resp = client.post("/token", json={**LIMITED_USER_DATA, "permissions": ["server_management"], "strict": False,},)
+    resp = client.post("/token", json={**LIMITED_USER_DATA, "permissions": ["server_management"], "strict": False},)
     assert resp.status_code == 200
     assert resp.json()["permissions"] == []
 
@@ -548,6 +547,6 @@ async def test_invoice_ws(async_client, token: str):
     await websocket2.connect()
     await check_ws_response(websocket2)
     with pytest.raises(Exception):
-        websocket = async_client.websocket_connect(f"/ws/invoices/555")
+        websocket = async_client.websocket_connect("/ws/invoices/555")
         await websocket.connect()
         await check_ws_response(websocket)

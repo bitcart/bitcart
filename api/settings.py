@@ -42,6 +42,8 @@ if TEST:
 TORRC_FILE = config("TORRC_FILE", default=None)
 
 # initialize image dir
+
+
 def create_ifn(path):
     if not os.path.exists(path):
         os.mkdir(path)
@@ -72,7 +74,7 @@ with warnings.catch_warnings():  # it is supposed
         crypto_network = config(f"{env_name}_NETWORK", default="mainnet")
         crypto_lightning = config(f"{env_name}_LIGHTNING", cast=bool, default=False)
         crypto_settings[crypto] = {
-            "credentials": {"rpc_url": rpc_url, "rpc_user": rpc_user, "rpc_pass": rpc_password,},
+            "credentials": {"rpc_url": rpc_url, "rpc_user": rpc_user, "rpc_pass": rpc_password},
             "network": crypto_network,
             "lightning": crypto_lightning,
         }
@@ -81,7 +83,7 @@ with warnings.catch_warnings():  # it is supposed
 
 def get_coin(coin, xpub=None):
     coin = coin.lower()
-    if not coin in cryptos:
+    if coin not in cryptos:
         raise HTTPException(422, "Unsupported currency")
     if not xpub:
         return cryptos[coin]

@@ -217,7 +217,7 @@ class BaseDaemon:
         auth = request.headers.get("Authorization")
         user, password = self.decode_auth(auth)
         if not (user == self.LOGIN and password == self.PASSWORD):
-            return web.json_response({"jsonrpc": "2.0", "error": {"code": -32600, "message": "Unauthorized"}, "id": None,})
+            return web.json_response({"jsonrpc": "2.0", "error": {"code": -32600, "message": "Unauthorized"}, "id": None})
         if not LEGACY_AIOHTTP:
             data = await request.json(content_type=None)  # aiohttp 4.0
         else:
@@ -229,14 +229,14 @@ class BaseDaemon:
         xpub = kwargs.pop("xpub", None)
         if not method:
             return web.json_response(
-                {"jsonrpc": "2.0", "error": {"code": -32601, "message": "Procedure not found."}, "id": id,}
+                {"jsonrpc": "2.0", "error": {"code": -32601, "message": "Procedure not found."}, "id": id}
             )
         try:
             wallet, cmd, config = await self.load_wallet(xpub)
         except Exception:
-            if not method in self.supported_methods:
+            if method not in self.supported_methods:
                 return web.json_response(
-                    {"jsonrpc": "2.0", "error": {"code": -32601, "message": "Error loading wallet"}, "id": id,}
+                    {"jsonrpc": "2.0", "error": {"code": -32601, "message": "Error loading wallet"}, "id": id}
                 )
         custom = False
         if method in self.supported_methods:
@@ -247,7 +247,7 @@ class BaseDaemon:
                 exec_method = getattr(cmd, method)
             except AttributeError:
                 return web.json_response(
-                    {"jsonrpc": "2.0", "error": {"code": -32601, "message": "Procedure not found."}, "id": id,}
+                    {"jsonrpc": "2.0", "error": {"code": -32601, "message": "Procedure not found."}, "id": id}
                 )
         try:
             if custom:
@@ -269,7 +269,7 @@ class BaseDaemon:
                 result = await result
         except BaseException:
             return web.json_response(
-                {"jsonrpc": "2.0", "error": {"code": -32601, "message": traceback.format_exc().splitlines()[-1],}, "id": id,}
+                {"jsonrpc": "2.0", "error": {"code": -32601, "message": traceback.format_exc().splitlines()[-1]}, "id": id}
             )
         return web.json_response({"jsonrpc": "2.0", "result": result, "id": id})
 

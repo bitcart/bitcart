@@ -3,7 +3,7 @@ import secrets
 
 from fastapi import HTTPException
 from gino.crud import UpdateRequest
-from sqlalchemy.dialects.postgresql import ARRAY, JSON
+from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import relationship
 
 from . import settings
