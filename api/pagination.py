@@ -1,4 +1,3 @@
-# pylint: disable=no-member
 import asyncio
 from typing import TYPE_CHECKING, Callable, Optional, Union
 

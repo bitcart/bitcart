@@ -90,7 +90,7 @@ def refresh():
     }
     TorService.onion_host = TorService.services_dict.get("BitcartCC Merchants API", "")
     if TorService.onion_host:  # pragma: no cover
-        TorService.onion_host = TorService.onion_host["hostname"]  # pylint: disable=invalid-sequence-index
+        TorService.onion_host = TorService.onion_host["hostname"]
 
 
 refresh()

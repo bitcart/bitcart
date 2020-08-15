@@ -1,4 +1,3 @@
-# pylint: disable=no-member
 import math
 from decimal import Decimal
 from operator import attrgetter

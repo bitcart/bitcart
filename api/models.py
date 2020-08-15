@@ -1,4 +1,3 @@
-# pylint: disable=no-member
 import secrets
 
 from fastapi import HTTPException

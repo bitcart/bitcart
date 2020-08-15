@@ -1,4 +1,3 @@
-# pylint: disable=method-hidden
 import asyncio
 import functools
 import inspect

@@ -1,4 +1,3 @@
-# pylint: disable=no-member, no-name-in-module
 import asyncio
 import json
 import os

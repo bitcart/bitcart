@@ -1,4 +1,3 @@
-# pylint: disable=no-member, no-name-in-module
 import json
 import re
 import secrets
