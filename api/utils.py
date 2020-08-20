@@ -472,3 +472,7 @@ async def run_repeated(func, timeout, start_timeout):
         await asyncio.sleep(start_timeout if first_iter else timeout)
         func()
         first_iter = False
+
+
+def time_diff(dt):
+    return max(0, int(round(dt.days * 86400 + dt.seconds)))

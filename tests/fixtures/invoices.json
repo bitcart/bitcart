@@ -23,6 +23,8 @@
                 "notification_url": "",
                 "redirect_url": "",
                 "currency": "USD",
+                "expiration": 15,
+                "expiration_seconds": 900,
                 "id": 1,
                 "user_id": 1
             }
@@ -56,6 +58,8 @@
                     "notification_url": "",
                     "redirect_url": "",
                     "currency": "USD",
+                    "expiration": 15,
+                    "expiration_seconds": 900,
                     "id": 1,
                     "user_id": 1
                 }
@@ -90,6 +94,8 @@
                 "notification_url": "",
                 "redirect_url": "",
                 "currency": "USD",
+                "expiration": 15,
+                "expiration_seconds": 900,
                 "id": 1,
                 "user_id": 1
             }
@@ -125,6 +131,8 @@
                 "notification_url": "",
                 "redirect_url": "",
                 "currency": "USD",
+                "expiration": 15,
+                "expiration_seconds": 900,
                 "id": 1,
                 "user_id": 1
             }
@@ -193,6 +201,8 @@
                 "notification_url": "",
                 "redirect_url": "",
                 "currency": "USD",
+                "expiration": 15,
+                "expiration_seconds": 900,
                 "id": 1,
                 "user_id": 1
             }
@@ -220,6 +230,8 @@
                 "notification_url": "",
                 "redirect_url": "",
                 "currency": "USD",
+                "expiration": 15,
+                "expiration_seconds": 900,
                 "id": 1,
                 "user_id": 1
             }
