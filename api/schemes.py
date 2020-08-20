@@ -98,6 +98,7 @@ class CreateStore(BaseStore):
     email_password: str = ""
     email_use_ssl: bool = True
     wallets: List[int]
+    expiration: int = 15
     notifications: Optional[List[int]] = []
     templates: Optional[Dict[str, int]] = {}
 
@@ -244,6 +245,9 @@ class Invoice(CreateInvoice):
 
 
 class DisplayInvoice(Invoice):
+    time_left: int
+    expiration: int
+    expiration_seconds: int
     payments: dict = {}
 
 

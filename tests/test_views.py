@@ -57,12 +57,14 @@ class ViewTestMixin:
                         d.pop("date", None)
                         d.pop("end_date", None)
                         d.pop("payments", None)
+                        d.pop("time_left", None)
             elif isinstance(data, dict):
                 if self.invoice:
                     assert data.get("payments")
                 data.pop("date", None)
                 data.pop("end_date", None)
                 data.pop("payments", None)
+                data.pop("time_left", None)
             assert data == test["return_data"]
 
     def send_request(self, url, client, json={}, method="get", token=""):

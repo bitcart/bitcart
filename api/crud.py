@@ -1,4 +1,5 @@
 import math
+from datetime import timedelta
 from decimal import Decimal
 from operator import attrgetter
 from typing import Iterable
@@ -57,6 +58,7 @@ async def create_invoice(invoice: schemes.CreateInvoice, user: schemes.User):
     if not store:
         raise HTTPException(422, f"Store {d['store_id']} doesn't exist!")
     d["currency"] = d["currency"] or store.default_currency or "USD"
+    d["expiration"] = store.expiration
     products = d.get("products", {})
     if isinstance(products, list):
         products = {k: 1 for k in products}
@@ -105,7 +107,7 @@ async def create_invoice(invoice: schemes.CreateInvoice, user: schemes.User):
                 except ValueError:  # no matched discounts
                     pass
             task_wallets[wallet.currency] = wallet.xpub
-            data_got = await coin.addrequest(str(price), description=product.name if product else "")
+            data_got = await coin.addrequest(str(price), description=product.name if product else "", expire=obj.expiration)
             await models.PaymentMethod.create(
                 invoice_id=obj.id,
                 amount=price,
@@ -121,8 +123,15 @@ async def create_invoice(invoice: schemes.CreateInvoice, user: schemes.User):
                 "discount": discount_id,
                 "currency": wallet.currency,
             }
+    add_invoice_expiration(obj)
     tasks.poll_updates.send(obj.id, task_wallets)
     return obj
+
+
+def add_invoice_expiration(obj):
+    obj.expiration_seconds = obj.expiration * 60
+    date = obj.date + timedelta(seconds=obj.expiration_seconds) - utils.now()
+    obj.time_left = utils.time_diff(date)
 
 
 async def invoice_add_related(item: models.Invoice):
@@ -142,6 +151,7 @@ async def invoice_add_related(item: models.Invoice):
                 "discount": method.discount,
                 "currency": method.currency,
             }
+    add_invoice_expiration(item)
 
 
 async def invoices_add_related(items: Iterable[models.Invoice]):
