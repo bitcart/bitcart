@@ -29,6 +29,7 @@ class User(db.Model):
     email = Column(String, unique=True, index=True)
     hashed_password = Column(String)
     is_superuser = Column(Boolean(), default=False)
+    created = Column(DateTime(True), nullable=False)
 
 
 class Wallet(db.Model):
@@ -41,6 +42,7 @@ class Wallet(db.Model):
     balance = Column(Numeric(16, 8), default=0)
     user_id = Column(Integer, ForeignKey(User.id, ondelete="SET NULL"))
     user = relationship(User, backref="wallets")
+    created = Column(DateTime(True), nullable=False)
 
     @classmethod
     async def create(cls, **kwargs):
@@ -61,6 +63,7 @@ class Notification(db.Model):
     name = Column(String(length=1000), index=True)
     provider = Column(String(length=10000))
     data = Column(JSON)
+    created = Column(DateTime(True), nullable=False)
 
 
 class Template(db.Model):
@@ -71,6 +74,7 @@ class Template(db.Model):
     user = relationship(User, backref="templates")
     name = Column(String(length=100000), index=True)
     text = Column(Text())
+    created = Column(DateTime(True), nullable=False)
     _unique_constaint = UniqueConstraint("user_id", "name")
 
 
@@ -131,6 +135,7 @@ class Store(db.Model):
     notifications = relationship("Notification", secondary=NotificationxStore)
     user_id = Column(Integer, ForeignKey(User.id, ondelete="SET NULL"))
     user = relationship(User, backref="stores")
+    created = Column(DateTime(True), nullable=False)
 
 
 class Discount(db.Model):
@@ -145,6 +150,7 @@ class Discount(db.Model):
     promocode = Column(Text)
     currencies = Column(String(length=10000), index=True)
     end_date = Column(DateTime(True), nullable=False)
+    created = Column(DateTime(True), nullable=False)
 
 
 class DiscountxProduct(db.Model):
@@ -179,7 +185,6 @@ class Product(db.Model):
     price = Column(Numeric(16, 8), nullable=False)
     quantity = Column(Numeric(16, 8), nullable=False)
     download_url = Column(String(100000))
-    date = Column(DateTime(True), nullable=False)
     category = Column(Text)
     description = Column(Text)
     image = Column(String(100000))
@@ -192,6 +197,7 @@ class Product(db.Model):
     discounts = relationship("Discount", secondary=DiscountxProduct)
     user_id = Column(Integer, ForeignKey(User.id, ondelete="SET NULL"))
     user = relationship(User, backref="products")
+    created = Column(DateTime(True), nullable=False)
 
 
 class ProductxInvoice(db.Model):
@@ -237,7 +243,6 @@ class Invoice(db.Model):
     price = Column(Numeric(16, 8), nullable=False)
     currency = Column(Text)
     status = Column(String(1000), nullable=False)
-    date = Column(DateTime(True), nullable=False)
     expiration = Column(Integer)
     buyer_email = Column(String(10000))
     discount = Column(Integer)
@@ -252,6 +257,7 @@ class Invoice(db.Model):
     store = relationship("Store", back_populates="invoices")
     user_id = Column(Integer, ForeignKey(User.id, ondelete="SET NULL"))
     user = relationship(User, backref="invoices")
+    created = Column(DateTime(True), nullable=False)
 
     @classmethod
     async def create(cls, **kwargs):
@@ -279,6 +285,7 @@ class Setting(db.Model):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(Text)
     value = Column(Text)
+    created = Column(DateTime(True), nullable=False)
 
 
 class Token(db.Model):
@@ -289,6 +296,7 @@ class Token(db.Model):
     app_id = Column(String)
     redirect_url = Column(String)
     permissions = Column(ARRAY(String))
+    created = Column(DateTime(True), nullable=False)
 
     @classmethod
     async def create(cls, **kwargs):

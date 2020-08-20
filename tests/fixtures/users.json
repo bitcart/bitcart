@@ -46,9 +46,9 @@
             "status": "good",
             "return_data": [
                 {
-                    "email": "testauth@example.com",
-                    "is_superuser": true,
-                    "id": 1
+                    "email": "test44@example.com",
+                    "is_superuser": false,
+                    "id": 3
                 },
                 {
                     "email": "test@example.com",
@@ -56,9 +56,9 @@
                     "id": 2
                 },
                 {
-                    "email": "test44@example.com",
-                    "is_superuser": false,
-                    "id": 3
+                    "email": "testauth@example.com",
+                    "is_superuser": true,
+                    "id": 1
                 }
             ]
         }

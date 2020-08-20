@@ -71,8 +71,8 @@
                 {
                     "currencies": "",
                     "description": "",
-                    "id": 1,
-                    "name": "test",
+                    "id": 2,
+                    "name": "test5",
                     "percent": 50,
                     "promocode": "",
                     "user_id": 1
@@ -80,8 +80,8 @@
                 {
                     "currencies": "",
                     "description": "",
-                    "id": 2,
-                    "name": "test5",
+                    "id": 1,
+                    "name": "test",
                     "percent": 50,
                     "promocode": "",
                     "user_id": 1

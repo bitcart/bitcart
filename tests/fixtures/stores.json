@@ -90,24 +90,6 @@
             "status": "good",
             "return_data": [
                 {
-                    "email": null,
-                    "email_host": "",
-                    "email_password": "",
-                    "email_port": 25,
-                    "email_user": "",
-                    "email_use_ssl": true,
-                    "id": 1,
-                    "name": "test",
-                    "default_currency": "USD",
-                    "user_id": 1,
-                    "expiration": 15,
-                    "wallets": [
-                        2
-                    ],
-                    "notifications": [],
-                    "templates": {}
-                },
-                {
                     "email": "test@example.com",
                     "email_host": "",
                     "email_password": "",
@@ -125,6 +107,24 @@
                     "notifications": [
                         2
                     ],
+                    "templates": {}
+                },
+                {
+                    "email": null,
+                    "email_host": "",
+                    "email_password": "",
+                    "email_port": 25,
+                    "email_user": "",
+                    "email_use_ssl": true,
+                    "id": 1,
+                    "name": "test",
+                    "default_currency": "USD",
+                    "user_id": 1,
+                    "expiration": 15,
+                    "wallets": [
+                        2
+                    ],
+                    "notifications": [],
                     "templates": {}
                 }
             ]

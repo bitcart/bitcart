@@ -50,15 +50,15 @@
             "status": "good",
             "return_data": [
                 {
-                    "id": 2,
-                    "name": "test",
-                    "text": "Test {{template}}",
-                    "user_id": 1
-                },
-                {
                     "id": 3,
                     "name": "template",
                     "text": "Test {{var}}",
+                    "user_id": 1
+                },
+                {
+                    "id": 2,
+                    "name": "test",
+                    "text": "Test {{template}}",
                     "user_id": 1
                 }
             ]

@@ -65,16 +65,16 @@
             "return_data": [
                 {
                     "data": {},
-                    "id": 1,
-                    "name": "Telegram",
-                    "provider": "telegram",
+                    "id": 2,
+                    "name": "Gmail",
+                    "provider": "gmail",
                     "user_id": 1
                 },
                 {
                     "data": {},
-                    "id": 2,
-                    "name": "Gmail",
-                    "provider": "gmail",
+                    "id": 1,
+                    "name": "Telegram",
+                    "provider": "telegram",
                     "user_id": 1
                 }
             ]

@@ -65,10 +65,12 @@ class Pagination:
         return str(self.request.url.include_query_params(limit=self.limit, offset=self.offset - self.limit))
 
     async def get_list(self, query) -> list:
+        if not self.sort:
+            self.sort = "created"
+            self.desc_s = "desc"
         if self.limit != -1:
             query = query.limit(self.limit)
-        if self.sort:
-            query = query.order_by(text(f"{self.sort} {self.desc_s}"))
+        query = query.order_by(text(f"{self.sort} {self.desc_s}"))
         try:
             return await query.offset(self.offset).gino.all()
         except asyncpg.exceptions.UndefinedColumnError:

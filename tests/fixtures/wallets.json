@@ -80,12 +80,12 @@
             "status": "good",
             "return_data": [
                 {
+                    "id": 3,
                     "name": "test1",
                     "user_id": 1,
                     "xpub": "tpubDC9zYPoSZUk5W8Rfaex3k324fi1hDLHapbSjPd4gbr7AE8MLSGEy76fNp5m6sVLBy9p2iTjRkiguVyb8iEHCdUBC7SXnhHdHMpXwFcrVMyA",
                     "currency": "btc",
-                    "balance": 0.0,
-                    "id": 1
+                    "balance": 0
                 },
                 {
                     "id": 2,
@@ -96,12 +96,12 @@
                     "balance": 0
                 },
                 {
-                    "id": 3,
                     "name": "test1",
                     "user_id": 1,
                     "xpub": "tpubDC9zYPoSZUk5W8Rfaex3k324fi1hDLHapbSjPd4gbr7AE8MLSGEy76fNp5m6sVLBy9p2iTjRkiguVyb8iEHCdUBC7SXnhHdHMpXwFcrVMyA",
                     "currency": "btc",
-                    "balance": 0
+                    "balance": 0.0,
+                    "id": 1
                 }
             ]
         }
