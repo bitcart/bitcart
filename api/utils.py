@@ -440,7 +440,7 @@ async def set_setting(scheme):
         await model.update(**data).apply()
     else:
         data["value"] = json.dumps(json_data)
-        await models.Setting.create(**data)
+        await models.Setting.create(**data, created=now())
     return scheme
 
 

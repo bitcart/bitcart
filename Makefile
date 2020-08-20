@@ -22,6 +22,6 @@ rollback:
 	alembic downgrade -1
 
 migration:
-	alembic revision --autogenerate -m ${MESSAGE}
+	alembic revision --autogenerate -m "${MESSAGE}"
 
 ci: checkformat lint test

@@ -25,9 +25,10 @@ async def create_user(user: schemes.CreateUser, auth_user: schemes.User):
         is_superuser = True if count == 0 else False
     elif auth_user and auth_user.is_superuser:
         is_superuser = user.is_superuser
-    return await models.User.create(
-        hashed_password=utils.get_password_hash(user.password), email=user.email, is_superuser=is_superuser,
-    )
+    d = user.dict()
+    d["hashed_password"] = utils.get_password_hash(d.pop("password", None))
+    d["is_superuser"] = is_superuser
+    return await models.User.create(**d)
 
 
 def hash_user(d: dict):
@@ -130,7 +131,7 @@ async def create_invoice(invoice: schemes.CreateInvoice, user: schemes.User):
 
 def add_invoice_expiration(obj):
     obj.expiration_seconds = obj.expiration * 60
-    date = obj.date + timedelta(seconds=obj.expiration_seconds) - utils.now()
+    date = obj.created + timedelta(seconds=obj.expiration_seconds) - utils.now()
     obj.time_left = utils.time_diff(date)
 
 

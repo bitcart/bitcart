@@ -7,7 +7,15 @@ from pydantic import BaseModel, EmailStr, validator
 from .utils import now
 
 
-class BaseUser(BaseModel):
+class CreatedMixin(BaseModel):
+    created: Optional[datetime]
+
+    @validator("created", pre=True, always=True)
+    def set_created(cls, v):
+        return v or now()
+
+
+class BaseUser(CreatedMixin):
     email: EmailStr
     is_superuser: Optional[bool] = False
 
@@ -28,7 +36,7 @@ class DisplayUser(BaseUser):
     id: Optional[int]
 
 
-class HTTPCreateToken(BaseModel):
+class HTTPCreateToken(CreatedMixin):
     app_id: str = ""
     redirect_url: str = ""
     permissions: List[str] = []
@@ -61,7 +69,7 @@ class Token(CreateDBToken):
     id: str
 
 
-class CreateWallet(BaseModel):
+class CreateWallet(CreatedMixin):
     name: str
     xpub: str = ""
     currency: str = "btc"
@@ -76,7 +84,7 @@ class Wallet(CreateWallet):
     balance: Decimal = Decimal(0)
 
 
-class BaseStore(BaseModel):
+class BaseStore(CreatedMixin):
     name: str
     default_currency: str = "USD"
     email: Optional[EmailStr] = ""
@@ -121,7 +129,7 @@ class Store(CreateStore):
     user_id: int
 
 
-class CreateDiscount(BaseModel):
+class CreateDiscount(CreatedMixin):
     name: str
     percent: int
     end_date: datetime
@@ -138,7 +146,7 @@ class Discount(CreateDiscount):
     user_id: int
 
 
-class CreateNotification(BaseModel):
+class CreateNotification(CreatedMixin):
     name: str
     provider: str
     data: dict
@@ -152,7 +160,7 @@ class Notification(CreateNotification):
     user_id: int
 
 
-class CreateTemplate(BaseModel):
+class CreateTemplate(CreatedMixin):
     name: str
     text: str
 
@@ -165,12 +173,11 @@ class Template(CreateTemplate):
     user_id: int
 
 
-class CreateProduct(BaseModel):
+class CreateProduct(CreatedMixin):
     status: str = "active"
     price: Decimal
     quantity: Decimal
     name: str
-    date: Optional[datetime]
     download_url: Optional[str] = ""
     description: str = ""
     category: str = ""
@@ -178,10 +185,6 @@ class CreateProduct(BaseModel):
     store_id: int
     discounts: Optional[List[int]] = []
     templates: Optional[Dict[str, int]] = {}
-
-    @validator("date", pre=True, always=True)
-    def set_date(cls, v):
-        return v or now()
 
     @validator("status", pre=True, always=True)
     def set_status(cls, v):
@@ -205,7 +208,7 @@ class Product(CreateProduct):
     user_id: int
 
 
-class CreateInvoice(BaseModel):
+class CreateInvoice(CreatedMixin):
     price: Decimal
     store_id: int
     currency: str = ""
@@ -216,12 +219,7 @@ class CreateInvoice(BaseModel):
     promocode: Optional[str] = ""
     discount: Optional[int]
     status: str = "Pending"
-    date: Optional[datetime]
     products: Optional[Union[List[int], Dict[int, int]]] = {}
-
-    @validator("date", pre=True, always=True)
-    def set_date(cls, v):
-        return v or now()
 
     @validator("buyer_email", pre=True, always=False)
     def validate_buyer_email(cls, val):

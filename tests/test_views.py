@@ -54,14 +54,16 @@ class ViewTestMixin:
                     if isinstance(d, dict):
                         if self.invoice:
                             assert d.get("payments")
-                        d.pop("date", None)
+                        assert "created" in d
+                        d.pop("created", None)
                         d.pop("end_date", None)
                         d.pop("payments", None)
                         d.pop("time_left", None)
             elif isinstance(data, dict):
                 if self.invoice:
                     assert data.get("payments")
-                data.pop("date", None)
+                assert "created" in data
+                data.pop("created", None)
                 data.pop("end_date", None)
                 data.pop("payments", None)
                 data.pop("time_left", None)
@@ -83,7 +85,7 @@ class ViewTestMixin:
             resp = self.send_request(f"/{self.name}", client, json=test["data"], method="post", token=token)
             self.process_resp(resp, test)
 
-    def test_get_all(self, client: TestClient, token: str):
+    def test_get_all(self, client: TestClient, token: str):  # all responses are sorted in creation order
         for test in self.tests["get_all"]:
             resp = self.send_request(f"/{self.name}", client, token=token)
             self.process_resp(resp, test, True)
@@ -227,7 +229,8 @@ def test_users_me(client: TestClient, token: str):
     resp = client.get("/users/me", headers={"Authorization": f"Bearer {token}"})
     assert resp.status_code == 200
     j = resp.json()
-    assert j == {"is_superuser": True, "id": 1, "email": "testauth@example.com"}
+    assert j.items() > {"is_superuser": True, "id": 1, "email": "testauth@example.com"}.items()
+    assert "created" in j
 
 
 def test_wallets_balance(client: TestClient, token: str):

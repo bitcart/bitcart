@@ -87,11 +87,11 @@
                     "store_id": 2,
                     "name": "test",
                     "image": null,
-                    "category": "",
+                    "category": "Test",
                     "discounts": [],
                     "templates": {},
                     "user_id": 1,
-                    "id": 1
+                    "id": 2
                 },
                 {
                     "price": 0.5,
@@ -102,11 +102,11 @@
                     "store_id": 2,
                     "name": "test",
                     "image": null,
-                    "category": "Test",
+                    "category": "",
                     "discounts": [],
                     "templates": {},
                     "user_id": 1,
-                    "id": 2
+                    "id": 1
                 }
             ]
         }
