@@ -284,7 +284,7 @@ async def export_invoices(
     data = await models.Invoice.query.where(models.User.id == user.id).where(models.Invoice.status == "complete").gino.all()
     await crud.invoices_add_related(data)
     now = utils.now()
-    filename = now.strftime(f"bitcart-export-%Y%m%d-%H%M%S.{export_format}")
+    filename = now.strftime(f"bitcartcc-export-%Y%m%d-%H%M%S.{export_format}")
     headers = {"Content-Disposition": f"attachment; filename={filename}"}
     response.headers.update(headers)
     if export_format == "json":

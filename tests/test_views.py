@@ -514,6 +514,59 @@ def test_services(client: TestClient, token: str):
     assert resp2.json() == jsonable_encoder(tor_ext.TorService.services_dict)
 
 
+def test_export_invoices(client: TestClient, token: str):
+    assert client.get("/invoices/export").status_code == 401
+    json_resp = client.get("/invoices/export", headers={"Authorization": f"Bearer {token}"})
+    assert json_resp.status_code == 200
+    assert json_resp.json() == []
+    assert "bitcartcc-export" in json_resp.headers["content-disposition"]
+    resp2 = client.get("/invoices/export?export_format=json", headers={"Authorization": f"Bearer {token}"})
+    assert resp2.json() == json_resp.json()
+    csv_resp = client.get("/invoices/export?export_format=csv", headers={"Authorization": f"Bearer {token}"})
+    assert csv_resp.status_code == 200
+    assert "bitcartcc-export" in csv_resp.headers["content-disposition"]
+    assert csv_resp.text == "\r\n"
+
+
+def test_batch_commands(client: TestClient, token: str):
+    assert client.post("/invoices/batch").status_code == 401
+    assert client.post("/invoices/batch", headers={"Authorization": f"Bearer {token}"}).status_code == 422
+    assert (
+        client.post(
+            "/invoices/batch", json={"ids": [], "command": "test"}, headers={"Authorization": f"Bearer {token}"}
+        ).status_code
+        == 404
+    )
+    resp1 = client.post("/invoices", json={"store_id": 2, "price": 0.5}, headers={"Authorization": f"Bearer {token}"})
+    assert resp1.status_code == 200
+    invoice_id_1 = resp1.json()["id"]
+    resp2 = client.post("/invoices", json={"store_id": 2, "price": 0.5}, headers={"Authorization": f"Bearer {token}"})
+    assert resp2.status_code == 200
+    invoice_id_2 = resp2.json()["id"]
+    assert (
+        client.post(
+            "/invoices/batch",
+            json={"ids": [invoice_id_1, invoice_id_2], "command": "delete"},
+            headers={"Authorization": f"Bearer {token}"},
+        ).status_code
+        == 200
+    )
+    assert client.get("/invoices", headers={"Authorization": f"Bearer {token}"}).json()["result"] == []
+    resp3 = client.post("/invoices", json={"store_id": 2, "price": 0.5}, headers={"Authorization": f"Bearer {token}"})
+    assert resp3.status_code == 200
+    invoice_id_3 = resp3.json()["id"]
+    assert (
+        client.post(
+            "/invoices/batch",
+            json={"ids": [invoice_id_3], "command": "mark_invalid"},
+            headers={"Authorization": f"Bearer {token}"},
+        ).status_code
+        == 200
+    )
+    assert client.get(f"/invoices/{invoice_id_3}", headers={"Authorization": f"Bearer {token}"}).json()["status"] == "invalid"
+    client.delete(f"/invoices/{invoice_id_3}", headers={"Authorization": f"Bearer {token}"})  # cleanup
+
+
 @pytest.mark.asyncio
 async def test_wallet_ws(async_client, token: str):
     r = await async_client.post(

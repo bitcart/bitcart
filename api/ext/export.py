@@ -20,8 +20,8 @@ def get_leaves(item, key=None):
         return leaves
     elif isinstance(item, list):
         leaves = {}
-        for i in item:
-            leaves.update(get_leaves(i, key))
+        for index, i in enumerate(item):
+            leaves.update(get_leaves(i, merge_keys(key, index)))
         return leaves
     else:
         return {key: item}
