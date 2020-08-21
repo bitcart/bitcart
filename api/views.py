@@ -5,7 +5,8 @@ from decimal import Decimal
 from typing import List, Optional
 
 import asyncpg
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Security, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Response, Security, UploadFile
+from fastapi.responses import StreamingResponse
 from fastapi.security import SecurityScopes
 from pydantic.error_wrappers import ValidationError
 from sqlalchemy import distinct, func, select
@@ -14,6 +15,7 @@ from starlette.requests import Request
 from starlette.status import WS_1008_POLICY_VIOLATION
 
 from . import crud, db, models, pagination, schemes, settings, tasks, templates, utils
+from .ext import export as export_ext
 from .ext import tor as tor_ext
 
 router = APIRouter()
@@ -273,6 +275,28 @@ async def get_template_list(applicable_to: Optional[str] = None, show_all: bool 
     }
 
 
+@router.get("/invoices/export", response_model=List[schemes.DisplayInvoice])
+async def export_invoices(
+    response: Response,
+    export_format: str = "json",
+    user: models.User = Security(utils.AuthDependency(), scopes=["invoice_management"]),
+):
+    data = await models.Invoice.query.where(models.User.id == user.id).where(models.Invoice.status == "complete").gino.all()
+    await crud.invoices_add_related(data)
+    now = utils.now()
+    filename = now.strftime(f"bitcartcc-export-%Y%m%d-%H%M%S.{export_format}")
+    headers = {"Content-Disposition": f"attachment; filename={filename}"}
+    response.headers.update(headers)
+    if export_format == "json":
+        return data
+    else:
+        return StreamingResponse(
+            iter([export_ext.json_to_csv(export_ext.db_to_json(data)).getvalue()]),
+            media_type="application/csv",
+            headers=headers,
+        )
+
+
 utils.model_view(
     router,
     "/users",
@@ -379,6 +403,7 @@ utils.model_view(
     request_handlers={"get_one": get_invoice_noauth},
     post_auth=False,
     scopes=["invoice_management"],
+    custom_commands={"mark_invalid": crud.mark_invoice_invalid},
 )
 
 

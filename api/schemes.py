@@ -262,3 +262,8 @@ class Policy(BaseModel):
 
 class GlobalStorePolicy(BaseModel):
     pos_id: int = 1
+
+
+class BatchSettings(BaseModel):
+    ids: List[int]
+    command: str

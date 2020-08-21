@@ -123,15 +123,8 @@ class AuthDependency:
 
 
 HTTP_METHODS: List[str] = ["GET", "POST", "PUT", "PATCH", "DELETE"]
-ENDPOINTS: List[str] = [
-    "get_all",
-    "get_one",
-    "get_count",
-    "post",
-    "put",
-    "patch",
-    "delete",
-]
+ENDPOINTS: List[str] = ["get_all", "get_one", "get_count", "post", "put", "patch", "delete", "batch_action"]
+CUSTOM_HTTP_METHODS: dict = {"batch_action": "post"}
 crud_models = []
 
 
@@ -142,7 +135,7 @@ def model_view(
     pydantic_model,
     create_model=None,
     display_model=None,
-    allowed_methods: List[str] = ["GET_COUNT", "GET_ONE"] + HTTP_METHODS,
+    allowed_methods: List[str] = ["GET_COUNT", "GET_ONE"] + HTTP_METHODS + ["BATCH_ACTION"],
     custom_methods: Dict[str, Callable] = {},
     background_tasks_mapping: Dict[str, Callable] = {},
     request_handlers: Dict[str, Callable] = {},
@@ -151,6 +144,7 @@ def model_view(
     post_auth=True,
     get_one_model=True,
     scopes=None,
+    custom_commands={},
 ):
     from . import schemes
 
@@ -186,6 +180,7 @@ def model_view(
     }
 
     item_path = path_join(path, "{model_id}")
+    batch_path = path_join(path, "batch")
     count_path = path_join(path, "count")
     paths: Dict[str, str] = {
         "get": path,
@@ -195,6 +190,7 @@ def model_view(
         "put": item_path,
         "patch": item_path,
         "delete": item_path,
+        "batch_action": batch_path,
     }
 
     auth_dependency = AuthDependency(auth)
@@ -313,12 +309,34 @@ def model_view(
             await item.delete()
         return item
 
+    def process_command(command):
+        if command in custom_commands:
+            return custom_commands[command](orm_model)
+        if command == "delete":
+            return orm_model.delete
+
+    async def batch_action(
+        settings: schemes.BatchSettings,
+        user: Union[None, schemes.User] = Security(auth_dependency, scopes=scopes["batch_action"]),
+    ):
+        query = process_command(settings.command)
+        if query is None:
+            raise HTTPException(status_code=404, detail="Batch command not found")
+        if orm_model != models.User and user:
+            query = query.where(orm_model.user_id == user.id)
+        query = query.where(orm_model.id.in_(settings.ids))
+        if custom_methods.get("batch_action"):
+            await custom_methods["batch_action"](query, settings.ids, user)
+        else:
+            await query.gino.status()
+        return True
+
     for method in allowed_methods:
         method_name = method.lower()
         router.add_api_route(
             paths.get(method_name),  # type: ignore
             request_handlers.get(method_name) or locals()[method_name],
-            methods=[method_name if method in HTTP_METHODS else "get"],
+            methods=[method_name if method in HTTP_METHODS else CUSTOM_HTTP_METHODS.get(method_name, "get")],
             response_model=response_models.get(method_name),
         )
 
