@@ -14,7 +14,12 @@ app = FastAPI(title="Bitcart", version="1.0", docs_url="/", redoc_url="/redoc")
 app.mount("/images", StaticFiles(directory="images"), name="images")
 app.include_router(router)
 app.add_middleware(
-    CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"],
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+    expose_headers=["Content-Disposition"],
 )
 
 

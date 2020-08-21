@@ -269,3 +269,7 @@ async def create_notification(notification: schemes.CreateNotification, user: sc
 
 async def create_template(template: schemes.CreateTemplate, user: schemes.User):
     return await models.Template.create(**template.dict(), user_id=user.id)
+
+
+def mark_invoice_invalid(orm_model):
+    return orm_model.update.values({"status": "invalid"})
