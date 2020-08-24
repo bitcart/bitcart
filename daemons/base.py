@@ -144,6 +144,9 @@ class BaseDaemon:
         return wallet
 
     def copy_config_settings(self, config, per_wallet=False):
+        for network in self.NETWORK_MAPPING:
+            config.set_key(network, False)
+        config.set_key(self.NET.lower(), True)
         config.set_key("verbosity", self.VERBOSE)
         config.set_key("lightning", self.LIGHTNING)
         config.set_key("use_exchange", self.EXCHANGE)
@@ -165,6 +168,7 @@ class BaseDaemon:
                 5: 1000,
                 2: 1000,
             }
+        config.path = config.electrum_path()  # to reflect network settings
 
     async def load_wallet(self, xpub):
         if xpub in self.wallets:
@@ -398,3 +402,11 @@ class BaseDaemon:
     @rpc
     def configure_notifications(self, notification_url, wallet=None):
         self.wallets_config[wallet]["notification_url"] = notification_url
+
+    @rpc
+    async def broadcast(self, *args, wallet, **kwargs):  # TODO: remove # see https://github.com/spesmilo/electrum/issues/6529
+        result = await self.wallets[wallet]["cmd"].broadcast(*args, **kwargs)
+        await self.wallets[wallet]["cmd"].addtransaction(
+            *args, **kwargs, wallet_path=self.wallets[wallet]["wallet"].storage.path
+        )
+        return result
