@@ -82,5 +82,5 @@ HiddenServicePort 80 127.0.0.1:80"""
 @pytest.fixture
 def image():
     with open("tests/fixtures/image.png", "rb") as f:
-       data = f.read()
+        data = f.read()
     return data
