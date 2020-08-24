@@ -679,47 +679,45 @@ def test_get_max_product_price(client: TestClient, token: str):
     assert maxprice_resp.json() == price
 
 
-def test_create_product_with_image(client: TestClient, token: str):
-    with open("tests/fixtures/image.png", "rb") as f:
-        image = f.read()
-        new_product = {"name": "sunflower", "price": 0.1, "quantity": 1.0, "store_id": 2}
-        # post
-        create_product_resp = client.post(
-            "/products",
-            data={"data": json_module.dumps(new_product)},
-            files={"image": image},
-            headers={"Authorization": f"Bearer {token}"},
-        )
-        assert create_product_resp.status_code == 200
-        product_dict = create_product_resp.json()
-        assert isinstance(product_dict["image"], str)
-        assert product_dict["image"] == f"images/products/{product_dict['id']}.png"
-        # patch
-        patch_product_resp = client.patch(
-            f"/products/{product_dict['id']}",
-            data={
-                "data": json_module.dumps(
-                    {"price": 0.15, "quantity": 2.0, "user_id": product_dict["user_id"], "name": "sunflower"}
-                )
-            },
-            headers={"Authorization": f"Bearer {token}"},
-        )
-        assert patch_product_resp.status_code == 200
-        # put
-        put_product_data = {
-            "id": product_dict["id"],
-            "name": "banana",
-            "price": 0.01,
-            "quantity": 1.0,
-            "store_id": 2,
-            "discounts": [],
-            "templates": {},
-            "user_id": product_dict["id"],
-        }
-        put_product_resp = client.put(
-            f"/products/{product_dict['id']}",
-            data={"data": json_module.dumps(put_product_data)},
-            files={"image": image},
-            headers={"Authorization": f"Bearer {token}"},
-        )
-        assert put_product_resp.status_code == 200
+def test_create_product_with_image(client: TestClient, token: str, image: bytes):
+    new_product = {"name": "sunflower", "price": 0.1, "quantity": 1.0, "store_id": 2}
+    # post
+    create_product_resp = client.post(
+        "/products",
+        data={"data": json_module.dumps(new_product)},
+        files={"image": image},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert create_product_resp.status_code == 200
+    product_dict = create_product_resp.json()
+    assert isinstance(product_dict["image"], str)
+    assert product_dict["image"] == f"images/products/{product_dict['id']}.png"
+    # patch
+    patch_product_resp = client.patch(
+        f"/products/{product_dict['id']}",
+        data={
+            "data": json_module.dumps(
+                {"price": 0.15, "quantity": 2.0, "user_id": product_dict["user_id"], "name": "sunflower"}
+            )
+        },
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert patch_product_resp.status_code == 200
+    # put
+    put_product_data = {
+        "id": product_dict["id"],
+        "name": "banana",
+        "price": 0.01,
+        "quantity": 1.0,
+        "store_id": 2,
+        "discounts": [],
+        "templates": {},
+        "user_id": product_dict["id"],
+    }
+    put_product_resp = client.put(
+        f"/products/{product_dict['id']}",
+        data={"data": json_module.dumps(put_product_data)},
+        files={"image": image},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert put_product_resp.status_code == 200
