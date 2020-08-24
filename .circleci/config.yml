@@ -119,7 +119,6 @@ workflows:
     jobs:
       - test:
           name: test-<< matrix.v >>
-          context: global
           matrix:
             parameters:
               v:

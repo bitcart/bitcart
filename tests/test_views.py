@@ -416,6 +416,7 @@ def test_policies(client: TestClient, token: str):
     resp = client.post("/manage/policies", json={"disable_registration": True}, headers={"Authorization": f"Bearer {token}"},)
     assert resp.status_code == 200
     assert resp.json() == {"disable_registration": True, "discourage_index": False}
+    assert client.post("/users", json={"email": "noauth@example.com", "password": "noauth"}).status_code == 422
     # Test for loading data from db instead of loading scheme's defaults
     assert client.get("/manage/policies").json() == {
         "disable_registration": True,
@@ -537,6 +538,10 @@ def test_batch_commands(client: TestClient, token: str):
         ).status_code
         == 404
     )
+    assert (
+        client.post("/invoices", json={"store_id": -1, "price": 0.5}, headers={"Authorization": f"Bearer {token}"}).status_code
+        == 422
+    )
     resp1 = client.post("/invoices", json={"store_id": 2, "price": 0.5}, headers={"Authorization": f"Bearer {token}"})
     assert resp1.status_code == 200
     invoice_id_1 = resp1.json()["id"]
@@ -593,7 +598,7 @@ async def test_wallet_ws(async_client, token: str):
 
 @pytest.mark.asyncio
 async def test_invoice_ws(async_client, token: str):
-    r = await async_client.post("/invoices", json={"store_id": 2, "price": 5}, headers={"Authorization": f"Bearer {token}"},)
+    r = await async_client.post("/invoices", json={"store_id": 2, "price": 5}, headers={"Authorization": f"Bearer {token}"})
     assert r.status_code == 200
     invoice_id = r.json()["id"]
     websocket = async_client.websocket_connect(f"/ws/invoices/{invoice_id}")
@@ -608,3 +613,111 @@ async def test_invoice_ws(async_client, token: str):
         websocket = async_client.websocket_connect("/ws/invoices/555")
         await websocket.connect()
         await check_ws_response(websocket)
+
+
+def test_create_invoice_discount(client: TestClient, token: str):
+    # create discount
+    new_discount = {"name": "apple", "percent": 50, "end_date": "2099-12-31 00:00:00.000000"}
+    create_discount_resp = client.post("/discounts", json=new_discount, headers={"Authorization": f"Bearer {token}"})
+    assert create_discount_resp.status_code == 200
+    discount_id = create_discount_resp.json()["id"]
+    # create product
+    new_product = {"name": "apple", "price": 0.80, "quantity": 1.0, "store_id": 2, "discounts": [discount_id]}
+    create_product_resp = client.post(
+        "/products", data={"data": json_module.dumps(new_product)}, headers={"Authorization": f"Bearer {token}"}
+    )
+    assert create_product_resp.status_code == 200
+    product_id = create_product_resp.json()["id"]
+    invoice_resp = client.post(
+        "/invoices",
+        json={"store_id": 2, "price": 0.5, "products": [product_id], "discount": discount_id},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert invoice_resp.status_code == 200
+    assert {
+        "price": 0.5,
+        "store_id": 2,
+        "discount": discount_id,
+        "products": [product_id],
+    }.items() < invoice_resp.json().items()
+    assert (
+        client.delete(f"/invoices/{invoice_resp.json()['id']}", headers={"Authorization": f"Bearer {token}"}).status_code
+        == 200
+    )
+
+
+@pytest.mark.parametrize("order_id,expect_status_code", [(-1, 404), (10, 200)])
+def test_get_invoice_by_order_id(client: TestClient, token: str, order_id: int, expect_status_code):
+    resp = None
+    if expect_status_code == 200:
+        resp = client.post(
+            "/invoices",
+            json={"store_id": 2, "price": 0.98, "order_id": str(order_id)},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert resp.status_code == 200
+    assert (
+        client.get(f"/invoices/order_id/{order_id}", headers={"Authorization": f"Bearer {token}"}).status_code
+        == expect_status_code
+    )
+    if resp:
+        assert client.delete(f"/invoices/{resp.json()['id']}", headers={"Authorization": f"Bearer {token}"}).status_code == 200
+
+
+def test_get_max_product_price(client: TestClient, token: str):
+    # create product
+    price = 999999.0
+    new_product = {"name": "apple", "price": price, "quantity": 1.0, "store_id": 2}
+    create_product_resp = client.post(
+        "/products", data={"data": json_module.dumps(new_product)}, headers={"Authorization": f"Bearer {token}"}
+    )
+    assert create_product_resp.status_code == 200
+    maxprice_resp = client.get(
+        f"/products/maxprice?store={new_product['store_id']}", headers={"Authorization": f"Bearer {token}"}
+    )
+    assert maxprice_resp.status_code == 200
+    assert maxprice_resp.json() == price
+
+
+def test_create_product_with_image(client: TestClient, token: str, image: bytes):
+    new_product = {"name": "sunflower", "price": 0.1, "quantity": 1.0, "store_id": 2}
+    # post
+    create_product_resp = client.post(
+        "/products",
+        data={"data": json_module.dumps(new_product)},
+        files={"image": image},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert create_product_resp.status_code == 200
+    product_dict = create_product_resp.json()
+    assert isinstance(product_dict["image"], str)
+    assert product_dict["image"] == f"images/products/{product_dict['id']}.png"
+    # patch
+    patch_product_resp = client.patch(
+        f"/products/{product_dict['id']}",
+        data={
+            "data": json_module.dumps(
+                {"price": 0.15, "quantity": 2.0, "user_id": product_dict["user_id"], "name": "sunflower"}
+            )
+        },
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert patch_product_resp.status_code == 200
+    # put
+    put_product_data = {
+        "id": product_dict["id"],
+        "name": "banana",
+        "price": 0.01,
+        "quantity": 1.0,
+        "store_id": 2,
+        "discounts": [],
+        "templates": {},
+        "user_id": product_dict["id"],
+    }
+    put_product_resp = client.put(
+        f"/products/{product_dict['id']}",
+        data={"data": json_module.dumps(put_product_data)},
+        files={"image": image},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert put_product_resp.status_code == 200
