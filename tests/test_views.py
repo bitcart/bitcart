@@ -672,56 +672,54 @@ def test_get_max_product_price(client: TestClient, token: str):
         "/products", data={"data": json_module.dumps(new_product)}, headers={"Authorization": f"Bearer {token}"}
     )
     assert create_product_resp.status_code == 200
-    maxprice_resp = client.get(f"/products/maxprice?store={2}", headers={"Authorization": f"Bearer {token}"})
+    maxprice_resp = client.get(
+        f"/products/maxprice?store={new_product['store_id']}", headers={"Authorization": f"Bearer {token}"}
+    )
     assert maxprice_resp.status_code == 200
     assert maxprice_resp.json() == price
 
 
 def test_create_product_with_image(client: TestClient, token: str):
-    image = (
-        b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x02\x00\x00\x00\x90wS"
-        b"\xde\x00\x00\x00\x0cIDATx\x9cc```\x00\x00\x00\x04\x00\x01\xf6\x178U\x00\x00\x00\x00IEND\xaeB`\x82"
-    )
-    new_product = {"name": "sunflower", "price": 0.1, "quantity": 1.0, "store_id": 2}
-    # post
-    create_product_resp = client.post(
-        "/products",
-        data={"data": json_module.dumps(new_product)},
-        files={"image": image},
-        headers={"Authorization": f"Bearer {token}"},
-    )
-    assert create_product_resp.status_code == 200
-    product_dict = create_product_resp.json()
-    # patch
-    patch_product_resp = client.patch(
-        f"/products/{product_dict['id']}",
-        data={
-            "data": json_module.dumps(
-                {"price": 0.15, "quantity": 2.0, "user_id": product_dict["user_id"], "name": "sunflower"}
-            )
-        },
-        headers={"Authorization": f"Bearer {token}"},
-    )
-    assert patch_product_resp.status_code == 200
-    # put
-    put_product_data = {
-        "price": 0.01,
-        "quantity": 1,
-        "name": "banana",
-        "download_url": "",
-        "description": "",
-        "category": "",
-        "image": None,
-        "store_id": 2,
-        "discounts": [],
-        "templates": {},
-        "id": product_dict["id"],
-        "user_id": product_dict["id"],
-    }
-    put_product_resp = client.put(
-        f"/products/{product_dict['id']}",
-        data={"data": json_module.dumps(put_product_data)},
-        files={"image": image},
-        headers={"Authorization": f"Bearer {token}"},
-    )
-    assert put_product_resp.status_code == 200
+    with open("tests/fixtures/image.png", "rb") as f:
+        image = f.read()
+        new_product = {"name": "sunflower", "price": 0.1, "quantity": 1.0, "store_id": 2}
+        # post
+        create_product_resp = client.post(
+            "/products",
+            data={"data": json_module.dumps(new_product)},
+            files={"image": image},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert create_product_resp.status_code == 200
+        product_dict = create_product_resp.json()
+        assert isinstance(product_dict["image"], str)
+        assert product_dict["image"] == f"images/products/{product_dict['id']}.png"
+        # patch
+        patch_product_resp = client.patch(
+            f"/products/{product_dict['id']}",
+            data={
+                "data": json_module.dumps(
+                    {"price": 0.15, "quantity": 2.0, "user_id": product_dict["user_id"], "name": "sunflower"}
+                )
+            },
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert patch_product_resp.status_code == 200
+        # put
+        put_product_data = {
+            "id": product_dict["id"],
+            "name": "banana",
+            "price": 0.01,
+            "quantity": 1.0,
+            "store_id": 2,
+            "discounts": [],
+            "templates": {},
+            "user_id": product_dict["id"],
+        }
+        put_product_resp = client.put(
+            f"/products/{product_dict['id']}",
+            data={"data": json_module.dumps(put_product_data)},
+            files={"image": image},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert put_product_resp.status_code == 200
