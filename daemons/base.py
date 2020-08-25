@@ -169,6 +169,7 @@ class BaseDaemon:
                 2: 1000,
             }
         config.path = config.electrum_path()  # to reflect network settings
+        config.user_config = self.electrum.simple_config.read_user_config(config.path)  # reread config
 
     async def load_wallet(self, xpub):
         if xpub in self.wallets:
