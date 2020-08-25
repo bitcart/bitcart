@@ -31,4 +31,7 @@ regtest:
 testnet:
 	BTC_DEBUG=true BTC_NETWORK=testnet BTC_LIGHTNING=true python3 daemons/btc.py
 
+mainnet:
+	BTC_DEBUG=true BTC_LIGHTNING=true python3 daemons/btc.py
+
 ci: checkformat lint test
