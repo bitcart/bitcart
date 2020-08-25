@@ -143,12 +143,16 @@ class BaseDaemon:
         wallet.start_network(self.network)
         return wallet
 
-    def copy_config_settings(self, config, per_wallet=False):
-        config.path = config.electrum_path()  # to reflect network settings
-        config.user_config = self.electrum.simple_config.read_user_config(config.path)  # reread config
+    def set_network_in_config(self, config):
         for network in self.NETWORK_MAPPING:
             config.set_key(network, False)
         config.set_key(self.NET.lower(), True)
+
+    def copy_config_settings(self, config, per_wallet=False):
+        self.set_network_in_config(config)
+        config.path = config.electrum_path()  # to reflect network settings
+        config.user_config = self.electrum.simple_config.read_user_config(config.path)  # reread config
+        self.set_network_in_config(config)  # set in new config file
         config.set_key("verbosity", self.VERBOSE)
         config.set_key("lightning", self.LIGHTNING)
         config.set_key("use_exchange", self.EXCHANGE)
@@ -404,10 +408,23 @@ class BaseDaemon:
     def configure_notifications(self, notification_url, wallet=None):
         self.wallets_config[wallet]["notification_url"] = notification_url
 
-    @rpc
-    async def broadcast(self, *args, wallet, **kwargs):  # TODO: remove # see https://github.com/spesmilo/electrum/issues/6529
-        result = await self.wallets[wallet]["cmd"].broadcast(*args, **kwargs)
-        await self.wallets[wallet]["cmd"].addtransaction(
-            *args, **kwargs, wallet_path=self.wallets[wallet]["wallet"].storage.path
-        )
+    ### Start workaround ###
+    # TODO: remove, see https://github.com/spesmilo/electrum/issues/6529
+
+    async def _add_tx_wrapper(self, func, wallet, *args, **kwargs):
+        wallet_path = self.wallets[wallet]["wallet"].storage.path
+        for_broadcast = kwargs.pop("for_broadcast", True)
+        result = await getattr(self.wallets[wallet]["cmd"], func)(*args, **kwargs, wallet_path=wallet_path)
+        if for_broadcast:
+            await self.wallets[wallet]["cmd"].addtransaction(result, wallet_path=wallet_path)
         return result
+
+    @rpc
+    async def payto(self, *args, wallet, **kwargs):
+        return await self._add_tx_wrapper("payto", wallet, *args, **kwargs)
+
+    @rpc
+    async def paytomany(self, *args, wallet, **kwargs):
+        return await self._add_tx_wrapper("paytomany", wallet, *args, **kwargs)
+
+    ### End workaround ###
