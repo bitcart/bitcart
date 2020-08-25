@@ -144,6 +144,8 @@ class BaseDaemon:
         return wallet
 
     def copy_config_settings(self, config, per_wallet=False):
+        config.path = config.electrum_path()  # to reflect network settings
+        config.user_config = self.electrum.simple_config.read_user_config(config.path)  # reread config
         for network in self.NETWORK_MAPPING:
             config.set_key(network, False)
         config.set_key(self.NET.lower(), True)
@@ -168,8 +170,6 @@ class BaseDaemon:
                 5: 1000,
                 2: 1000,
             }
-        config.path = config.electrum_path()  # to reflect network settings
-        config.user_config = self.electrum.simple_config.read_user_config(config.path)  # reread config
 
     async def load_wallet(self, xpub):
         if xpub in self.wallets:
