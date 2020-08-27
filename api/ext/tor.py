@@ -67,7 +67,10 @@ def parse_torrc(torrc):
         hidden_service_port = parse_hidden_service_port(line)
         if hidden_service:
             hidden_service = HiddenService(
-                get_service_name(hidden_service), hidden_service, get_hostname(hidden_service), None,
+                get_service_name(hidden_service),
+                hidden_service,
+                get_hostname(hidden_service),
+                None,
             )
             services.append(hidden_service)
         elif hidden_service_port and services:

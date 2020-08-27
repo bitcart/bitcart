@@ -22,7 +22,14 @@ def upgrade():
     op.add_column("invoices", sa.Column("store_id", sa.Integer(), nullable=True))
     op.create_index(op.f("ix_invoices_store_id"), "invoices", ["store_id"], unique=False)
     op.create_foreign_key(
-        None, "invoices", "stores", ["store_id"], ["id"], ondelete="SET NULL", initially="DEFERRED", deferrable=True,
+        None,
+        "invoices",
+        "stores",
+        ["store_id"],
+        ["id"],
+        ondelete="SET NULL",
+        initially="DEFERRED",
+        deferrable=True,
     )
     # ### end Alembic commands ###
 

@@ -99,7 +99,13 @@ def upgrade():
         sa.Column("image", sa.String(length=100000), nullable=True),
         sa.Column("store_id", sa.Integer(), nullable=True),
         sa.Column("status", sa.String(length=1000), nullable=False),
-        sa.ForeignKeyConstraint(["store_id"], ["stores.id"], ondelete="SET NULL", initially="DEFERRED", deferrable=True,),
+        sa.ForeignKeyConstraint(
+            ["store_id"],
+            ["stores.id"],
+            ondelete="SET NULL",
+            initially="DEFERRED",
+            deferrable=True,
+        ),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(op.f("ix_products_id"), "products", ["id"], unique=False)

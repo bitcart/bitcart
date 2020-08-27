@@ -109,7 +109,9 @@ class AuthDependency:
             )
         user, token = data  # first validate data, then unpack
         forbidden_exception = HTTPException(
-            status_code=HTTP_403_FORBIDDEN, detail="Not enough permissions", headers={"WWW-Authenticate": authenticate_value},
+            status_code=HTTP_403_FORBIDDEN,
+            detail="Not enough permissions",
+            headers={"WWW-Authenticate": authenticate_value},
         )
         if "full_control" not in token.permissions:
             for scope in security_scopes.scopes:
@@ -236,7 +238,8 @@ def model_view(
         return await _get_one(model_id, user)
 
     async def post(
-        model: create_model, request: Request,  # type: ignore,
+        model: create_model,
+        request: Request,  # type: ignore,
     ):
         try:
             user = await auth_dependency(request, SecurityScopes(scopes["post"]))
@@ -288,9 +291,7 @@ def model_view(
             if custom_methods.get("patch"):
                 await custom_methods["patch"](item, model, user)  # pragma: no cover
             else:
-                await item.update(
-                    **model.dict(exclude_unset=True)  # type: ignore
-                ).apply()
+                await item.update(**model.dict(exclude_unset=True)).apply()  # type: ignore
         except (  # pragma: no cover
             asyncpg.exceptions.UniqueViolationError,
             asyncpg.exceptions.NotNullViolationError,
@@ -300,7 +301,8 @@ def model_view(
         return item
 
     async def delete(
-        model_id: int, user: Union[None, schemes.User] = Security(auth_dependency, scopes=scopes["delete"]),
+        model_id: int,
+        user: Union[None, schemes.User] = Security(auth_dependency, scopes=scopes["delete"]),
     ):
         item = await _get_one(model_id, user, True)
         if custom_methods.get("delete"):

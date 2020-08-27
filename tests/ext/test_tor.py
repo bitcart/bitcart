@@ -58,5 +58,10 @@ def test_parse_torrc(torrc):
     assert not parse_torrc(None)
     assert not parse_torrc("test")
     assert parse_torrc(torrc) == [
-        HiddenService("test 1", "test-1", "http://test.onion", PortDefinition(80, ipaddress.ip_address("127.0.0.1"), 80),)
+        HiddenService(
+            "test 1",
+            "test-1",
+            "http://test.onion",
+            PortDefinition(80, ipaddress.ip_address("127.0.0.1"), 80),
+        )
     ]

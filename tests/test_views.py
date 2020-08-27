@@ -102,12 +102,24 @@ class ViewTestMixin:
 
     def test_partial_update(self, client: TestClient, token: str):
         for test in self.tests["partial_update"]:
-            resp = self.send_request(f"/{self.name}/{test['obj_id']}", client, json=test["data"], method="patch", token=token,)
+            resp = self.send_request(
+                f"/{self.name}/{test['obj_id']}",
+                client,
+                json=test["data"],
+                method="patch",
+                token=token,
+            )
             self.process_resp(resp, test)
 
     def test_full_update(self, client: TestClient, token: str):
         for test in self.tests["full_update"]:
-            resp = self.send_request(f"/{self.name}/{test['obj_id']}", client, json=test["data"], method="put", token=token,)
+            resp = self.send_request(
+                f"/{self.name}/{test['obj_id']}",
+                client,
+                json=test["data"],
+                method="put",
+                token=token,
+            )
             self.process_resp(resp, test)
 
     def test_delete(self, client: TestClient, token: str):
@@ -346,12 +358,16 @@ def test_patch_token(client: TestClient, token: str):
     assert client.patch(f"/token/{token}").status_code == 401
     assert (
         client.patch(
-            "/token/{token}", json={"redirect_url": "test"}, headers={"Authorization": f"Bearer {token}"},
+            "/token/{token}",
+            json={"redirect_url": "test"},
+            headers={"Authorization": f"Bearer {token}"},
         ).status_code
         == 404
     )
     resp = client.patch(
-        f"/token/{token}", json={"redirect_url": "google.com:443"}, headers={"Authorization": f"Bearer {token}"},
+        f"/token/{token}",
+        json={"redirect_url": "google.com:443"},
+        headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 200
     j = resp.json()
@@ -365,14 +381,20 @@ def test_create_tokens(client: TestClient, token: str):
     assert client.post("/token", json={"email": "testauth@example.com", "password": "test12345"}).status_code == 200
     assert client.post("/token", headers={"Authorization": f"Bearer {token}"}).status_code == 200
     # Selective permissions control is done by client, not by server
-    resp = client.post("/token", json={"permissions": ["store_management:2"]}, headers={"Authorization": f"Bearer {token}"},)
+    resp = client.post(
+        "/token",
+        json={"permissions": ["store_management:2"]},
+        headers={"Authorization": f"Bearer {token}"},
+    )
     assert resp.status_code == 200
     j = resp.json()
     assert j["permissions"] == ["store_management:2"]
     # Limited token can't access higher scopes
     assert (
         client.post(
-            "/token", json={"permissions": ["store_management"]}, headers={"Authorization": f"Bearer {j['id']}"},
+            "/token",
+            json={"permissions": ["store_management"]},
+            headers={"Authorization": f"Bearer {j['id']}"},
         ).status_code
         == 403
     )
@@ -381,7 +403,10 @@ def test_create_tokens(client: TestClient, token: str):
     # Strict mode: non-superuser user can't create superuser token
     assert client.post("/token", json={**LIMITED_USER_DATA, "permissions": ["server_management"]}).status_code == 422
     # Non-strict mode: silently removes server_management permission
-    resp = client.post("/token", json={**LIMITED_USER_DATA, "permissions": ["server_management"], "strict": False},)
+    resp = client.post(
+        "/token",
+        json={**LIMITED_USER_DATA, "permissions": ["server_management"], "strict": False},
+    )
     assert resp.status_code == 200
     assert resp.json()["permissions"] == []
 
@@ -413,7 +438,11 @@ def test_policies(client: TestClient, token: str):
     assert resp.status_code == 200
     assert resp.json() == {"disable_registration": False, "discourage_index": False}
     assert client.post("/manage/policies").status_code == 401
-    resp = client.post("/manage/policies", json={"disable_registration": True}, headers={"Authorization": f"Bearer {token}"},)
+    resp = client.post(
+        "/manage/policies",
+        json={"disable_registration": True},
+        headers={"Authorization": f"Bearer {token}"},
+    )
     assert resp.status_code == 200
     assert resp.json() == {"disable_registration": True, "discourage_index": False}
     assert client.post("/users", json={"email": "noauth@example.com", "password": "noauth"}).status_code == 422
@@ -422,18 +451,30 @@ def test_policies(client: TestClient, token: str):
         "disable_registration": True,
         "discourage_index": False,
     }
-    resp = client.post("/manage/policies", json={"disable_registration": False}, headers={"Authorization": f"Bearer {token}"},)
+    resp = client.post(
+        "/manage/policies",
+        json={"disable_registration": False},
+        headers={"Authorization": f"Bearer {token}"},
+    )
     assert resp.status_code == 200
     assert resp.json() == {"disable_registration": False, "discourage_index": False}
     resp = client.get("/manage/stores")
     assert resp.status_code == 200
     assert resp.json() == {"pos_id": 1}
     assert client.post("/manage/stores").status_code == 401
-    resp = client.post("/manage/stores", json={"pos_id": 2}, headers={"Authorization": f"Bearer {token}"},)
+    resp = client.post(
+        "/manage/stores",
+        json={"pos_id": 2},
+        headers={"Authorization": f"Bearer {token}"},
+    )
     assert resp.status_code == 200
     assert resp.json() == {"pos_id": 2}
     assert client.get("/manage/stores").json() == {"pos_id": 2}
-    resp = client.post("/manage/stores", json={"pos_id": 1}, headers={"Authorization": f"Bearer {token}"},)
+    resp = client.post(
+        "/manage/stores",
+        json={"pos_id": 1},
+        headers={"Authorization": f"Bearer {token}"},
+    )
     assert resp.status_code == 200
     assert resp.json() == {"pos_id": 1}
 
@@ -444,11 +485,17 @@ def test_no_token_management(client: TestClient, token: str):
     assert client.get("/token", headers={"Authorization": f"Bearer {limited_user_token}"}).status_code == 403
     assert client.get("/token/count", headers={"Authorization": f"Bearer {limited_user_token}"}).status_code == 403
     assert (
-        client.patch(f"/token/{limited_user_token}", headers={"Authorization": f"Bearer {limited_user_token}"},).status_code
+        client.patch(
+            f"/token/{limited_user_token}",
+            headers={"Authorization": f"Bearer {limited_user_token}"},
+        ).status_code
         == 403
     )
     assert (
-        client.delete(f"/token/{limited_user_token}", headers={"Authorization": f"Bearer {limited_user_token}"},).status_code
+        client.delete(
+            f"/token/{limited_user_token}",
+            headers={"Authorization": f"Bearer {limited_user_token}"},
+        ).status_code
         == 403
     )
 
@@ -575,7 +622,9 @@ def test_batch_commands(client: TestClient, token: str):
 @pytest.mark.asyncio
 async def test_wallet_ws(async_client, token: str):
     r = await async_client.post(
-        "/wallets", json={"name": "testws1", "xpub": TEST_XPUB}, headers={"Authorization": f"Bearer {token}"},
+        "/wallets",
+        json={"name": "testws1", "xpub": TEST_XPUB},
+        headers={"Authorization": f"Bearer {token}"},
     )
     assert r.status_code == 200
     wallet_id = r.json()["id"]

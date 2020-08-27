@@ -42,11 +42,7 @@ class Pagination:
         self.model: Optional["ModelType"] = None
 
     async def get_count(self, query) -> int:
-        query = query.with_only_columns(
-            [db.func.count(distinct(self.model.id))]  # type: ignore
-        ).order_by(
-            None
-        )
+        query = query.with_only_columns([db.func.count(distinct(self.model.id))]).order_by(None)  # type: ignore
 
         return await query.gino.scalar() or 0
 

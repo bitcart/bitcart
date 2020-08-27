@@ -34,7 +34,10 @@ def upgrade():
     op.drop_index("ix_notifications_id", table_name="notifications")
     op.drop_index("ix_notifications_name", table_name="notifications")
     op.create_index(
-        op.f("paymentmethods_currency_idx"), "paymentmethods", ["currency"], unique=False,
+        op.f("paymentmethods_currency_idx"),
+        "paymentmethods",
+        ["currency"],
+        unique=False,
     )
     op.drop_index("ix_paymentmethods_currency", table_name="paymentmethods")
     op.create_index(op.f("products_id_idx"), "products", ["id"], unique=False)

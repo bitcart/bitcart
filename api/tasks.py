@@ -78,7 +78,9 @@ async def poll_updates(obj: Union[int, models.Invoice], task_wallets: Dict[str, 
                                 quantity = relation.count
                                 messages.append(await utils.get_product_template(store, product, quantity))
                             utils.send_mail(
-                                store, obj.buyer_email, await utils.get_store_template(store, messages),
+                                store,
+                                obj.buyer_email,
+                                await utils.get_store_template(store, messages),
                             )
                 return
         await asyncio.sleep(1)

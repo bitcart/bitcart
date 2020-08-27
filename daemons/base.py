@@ -62,9 +62,15 @@ class BaseDaemon:
             self.config(f"{self.env_name}_LIGHTNING_LISTEN", cast=str, default="") if self.LIGHTNING_SUPPORTED else ""
         )
         self.DEFAULT_CURRENCY = self.config(f"{self.env_name}_FIAT_CURRENCY", default="USD")
-        self.EXCHANGE = self.config(f"{self.env_name}_FIAT_EXCHANGE", default=self.electrum.exchange_rate.DEFAULT_EXCHANGE,)
+        self.EXCHANGE = self.config(
+            f"{self.env_name}_FIAT_EXCHANGE",
+            default=self.electrum.exchange_rate.DEFAULT_EXCHANGE,
+        )
         self.VERBOSE = self.config(f"{self.env_name}_DEBUG", cast=bool, default=False)
-        self.HOST = self.config(f"{self.env_name}_HOST", default="0.0.0.0" if os.getenv("IN_DOCKER") else "127.0.0.1",)
+        self.HOST = self.config(
+            f"{self.env_name}_HOST",
+            default="0.0.0.0" if os.getenv("IN_DOCKER") else "127.0.0.1",
+        )
         self.PORT = self.config(f"{self.env_name}_PORT", cast=int, default=self.DEFAULT_PORT)
         self.SERVER = self.config(f"{self.env_name}_SERVER", default="")
         self.ONESERVER = self.config(f"{self.env_name}_ONESERVER", cast=bool, default=False)
@@ -272,7 +278,9 @@ class BaseDaemon:
                     if need_path:
                         if isinstance(params, dict) and params.get("wallet_path"):
                             params["wallet_path"] = os.path.join(
-                                self.electrum_config.electrum_path(), "wallets", params.get("wallet_path"),
+                                self.electrum_config.electrum_path(),
+                                "wallets",
+                                params.get("wallet_path"),
                             )
                     exec_method = functools.partial(exec_method, wallet_path=path)
 
@@ -334,7 +342,8 @@ class BaseDaemon:
                     if (
                         self.wallets_config[i]["notification_url"]
                         and asyncio.run_coroutine_threadsafe(
-                            self.send_notification(data, self.wallets_config[i]["notification_url"]), self.loop,
+                            self.send_notification(data, self.wallets_config[i]["notification_url"]),
+                            self.loop,
                         ).result()
                     ):
                         pass

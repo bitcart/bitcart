@@ -189,7 +189,9 @@ class Product(db.Model):
     description = Column(Text)
     image = Column(String(100000))
     store_id = Column(
-        Integer, ForeignKey("stores.id", deferrable=True, initially="DEFERRED", ondelete="SET NULL"), index=True,
+        Integer,
+        ForeignKey("stores.id", deferrable=True, initially="DEFERRED", ondelete="SET NULL"),
+        index=True,
     )
     status = Column(String(1000), nullable=False)
     templates = Column(JSON)
@@ -251,7 +253,9 @@ class Invoice(db.Model):
     redirect_url = Column(Text)
     products = relationship("Product", secondary=ProductxInvoice)
     store_id = Column(
-        Integer, ForeignKey("stores.id", deferrable=True, initially="DEFERRED", ondelete="SET NULL"), index=True,
+        Integer,
+        ForeignKey("stores.id", deferrable=True, initially="DEFERRED", ondelete="SET NULL"),
+        index=True,
     )
     order_id = Column(Text)
     store = relationship("Store", back_populates="invoices")

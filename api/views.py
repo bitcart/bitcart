@@ -39,13 +39,19 @@ async def get_balances(user: models.User = Security(utils.AuthDependency(), scop
 
 @router.get("/stores/{model_id}/ping")
 async def ping_email(
-    model_id: int, user: models.User = Security(utils.AuthDependency(), scopes=["store_management"]),
+    model_id: int,
+    user: models.User = Security(utils.AuthDependency(), scopes=["store_management"]),
 ):
     model = await models.Store.query.where(models.Store.id == model_id).gino.first()
     if not model:
         raise HTTPException(404, f"Store with id {model_id} does not exist!")
     return utils.check_ping(
-        model.email_host, model.email_port, model.email_user, model.email_password, model.email, model.email_use_ssl,
+        model.email_host,
+        model.email_port,
+        model.email_user,
+        model.email_password,
+        model.email,
+        model.email_use_ssl,
     )
 
 
@@ -440,7 +446,8 @@ async def categories(store: int):
 
 @router.get("/wallet_history/{model_id}", response_model=List[schemes.TxResponse])
 async def wallet_history(
-    model_id: int, user: models.User = Security(utils.AuthDependency(), scopes=["wallet_management"]),
+    model_id: int,
+    user: models.User = Security(utils.AuthDependency(), scopes=["wallet_management"]),
 ):
     response: List[schemes.TxResponse] = []
     if model_id == 0:
@@ -462,7 +469,13 @@ async def get_tokens(
     redirect_url: Optional[str] = None,
     permissions: List[str] = Query(None),
 ):
-    return await pagination.paginate(models.Token, user.id, app_id=app_id, redirect_url=redirect_url, permissions=permissions,)
+    return await pagination.paginate(
+        models.Token,
+        user.id,
+        app_id=app_id,
+        redirect_url=redirect_url,
+        permissions=permissions,
+    )
 
 
 @router.get("/token/current", response_model=schemes.Token)
@@ -480,13 +493,20 @@ async def get_token_count(
     permissions: List[str] = Query(None),
 ):
     return await pagination.paginate(
-        models.Token, user.id, app_id=app_id, redirect_url=redirect_url, permissions=permissions, count_only=True,
+        models.Token,
+        user.id,
+        app_id=app_id,
+        redirect_url=redirect_url,
+        permissions=permissions,
+        count_only=True,
     )
 
 
 @router.patch("/token/{model_id}", response_model=schemes.Token)
 async def patch_token(
-    model_id: str, model: schemes.EditToken, user: models.User = Security(utils.AuthDependency(), scopes=["token_management"]),
+    model_id: str,
+    model: schemes.EditToken,
+    user: models.User = Security(utils.AuthDependency(), scopes=["token_management"]),
 ):
     item = await models.Token.query.where(models.Token.user_id == user.id).where(models.Token.id == model_id).gino.first()
     if not item:
@@ -504,7 +524,8 @@ async def patch_token(
 
 @router.delete("/token/{model_id}", response_model=schemes.Token)
 async def delete_token(
-    model_id: str, user: models.User = Security(utils.AuthDependency(), scopes=["token_management"]),
+    model_id: str,
+    user: models.User = Security(utils.AuthDependency(), scopes=["token_management"]),
 ):
     item = await models.Token.query.where(models.Token.user_id == user.id).where(models.Token.id == model_id).gino.first()
     if not item:
@@ -515,7 +536,8 @@ async def delete_token(
 
 @router.post("/token")
 async def create_token(
-    request: Request, token_data: Optional[schemes.HTTPCreateLoginToken] = schemes.HTTPCreateLoginToken(),
+    request: Request,
+    token_data: Optional[schemes.HTTPCreateLoginToken] = schemes.HTTPCreateLoginToken(),
 ):
     token = None
     try:
@@ -570,7 +592,8 @@ async def get_policies():
 
 @router.post("/manage/policies", response_model=schemes.Policy)
 async def set_policies(
-    settings: schemes.Policy, user: models.User = Security(utils.AuthDependency(), scopes=["server_management"]),
+    settings: schemes.Policy,
+    user: models.User = Security(utils.AuthDependency(), scopes=["server_management"]),
 ):
     return await utils.set_setting(settings)
 
@@ -582,7 +605,8 @@ async def get_store_policies():
 
 @router.post("/manage/stores", response_model=schemes.GlobalStorePolicy)
 async def set_store_policies(
-    settings: schemes.GlobalStorePolicy, user: models.User = Security(utils.AuthDependency(), scopes=["server_management"]),
+    settings: schemes.GlobalStorePolicy,
+    user: models.User = Security(utils.AuthDependency(), scopes=["server_management"]),
 ):
     return await utils.set_setting(settings)
 

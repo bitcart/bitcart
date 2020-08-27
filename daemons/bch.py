@@ -22,7 +22,10 @@ class BCHDaemon(BaseDaemon):
 
     def create_daemon(self):
         return self.electrum.daemon.Daemon(
-            self.electrum_config, self.electrum.daemon.get_fd_or_server(self.electrum_config)[0], False, plugins=[],
+            self.electrum_config,
+            self.electrum.daemon.get_fd_or_server(self.electrum_config)[0],
+            False,
+            plugins=[],
         )
 
     def create_commands(self, config):
