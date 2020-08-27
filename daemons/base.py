@@ -58,6 +58,9 @@ class BaseDaemon:
         self.LIGHTNING = (
             self.config(f"{self.env_name}_LIGHTNING", cast=bool, default=False) if self.LIGHTNING_SUPPORTED else False
         )
+        self.LIGHTNING_LISTEN = (
+            self.config(f"{self.env_name}_LIGHTNING_LISTEN", cast=str, default="") if self.LIGHTNING_SUPPORTED else ""
+        )
         self.DEFAULT_CURRENCY = self.config(f"{self.env_name}_FIAT_CURRENCY", default="USD")
         self.EXCHANGE = self.config(f"{self.env_name}_FIAT_EXCHANGE", default=self.electrum.exchange_rate.DEFAULT_EXCHANGE,)
         self.VERBOSE = self.config(f"{self.env_name}_DEBUG", cast=bool, default=False)
@@ -155,6 +158,7 @@ class BaseDaemon:
         self.set_network_in_config(config)  # set in new config file
         config.set_key("verbosity", self.VERBOSE)
         config.set_key("lightning", self.LIGHTNING)
+        config.set_key("lightning_listen", self.LIGHTNING_LISTEN)
         config.set_key("use_exchange", self.EXCHANGE)
         config.set_key("currency", self.DEFAULT_CURRENCY)
         config.set_key("server", self.SERVER)
