@@ -311,15 +311,15 @@ class BaseDaemon:
             if mapped_event in self.wallets_config[i]["events"]:
                 if not wallet or wallet == self.wallets[i]["wallet"]:
                     if self.wallets_config[i]["notification_url"] and await self.send_notification(
-                        data, self.wallets_config[i]["notification_url"]
+                        data, i, self.wallets_config[i]["notification_url"]
                     ):
                         pass
                     else:
                         self.wallets_updates[i].append(data)
 
-    async def send_notification(self, data, notification_url):
+    async def send_notification(self, data, xpub, notification_url):
         try:
-            await self.client_session.post(notification_url, json=data)
+            await self.client_session.post(notification_url, json={"updates": [data], "wallet": xpub, "currency": self.name})
             return True
         except Exception:
             return False
@@ -342,7 +342,7 @@ class BaseDaemon:
                     if (
                         self.wallets_config[i]["notification_url"]
                         and asyncio.run_coroutine_threadsafe(
-                            self.send_notification(data, self.wallets_config[i]["notification_url"]),
+                            self.send_notification(data, i, self.wallets_config[i]["notification_url"]),
                             self.loop,
                         ).result()
                     ):
