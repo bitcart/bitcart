@@ -51,7 +51,7 @@ class JsonResponse:
             return self.send_error_response()
 
     def send_error_response(self):
-        return web.json_response({"jsonrpc": "2.0", "error": {self.code: -32600, "message": self.error}, "id": self.id})
+        return web.json_response({"jsonrpc": "2.0", "error": {"code": self.code, "message": self.error}, "id": self.id})
 
     def send_ok_response(self):
         return web.json_response({"jsonrpc": "2.0", "result": self.result, "id": self.id})
@@ -273,16 +273,15 @@ class BaseDaemon:
         return id, method, args, kwargs, error
 
     async def get_exec_method(self, cmd, id, req_method):
-        exec_method, custom = (
-            (self.supported_methods[req_method], True)
-            if req_method in self.supported_methods
-            else (getattr(cmd, req_method, JsonResponse(code=-32601, error="Procedure not found", id=id)), False)
-        )
+        if req_method in self.supported_methods:
+            exec_method, custom = self.supported_methods[req_method], True
+        else:
+            exec_method = getattr(cmd, req_method, JsonResponse(code=-32601, error="Procedure not found", id=id))
+            custom = False
         error = exec_method if isinstance(exec_method, JsonResponse) else None
         return exec_method, custom, error
 
-    async def get_exec_result(self, req_method, req_args, req_kwargs, exec_method, custom, **kwargs):
-        xpub = req_kwargs.pop("xpub", None)
+    async def get_exec_result(self, xpub, req_method, req_args, req_kwargs, exec_method, custom, **kwargs):
         if custom:
             exec_method = functools.partial(exec_method, wallet=xpub)
         else:
@@ -295,9 +294,8 @@ class BaseDaemon:
         result = exec_method(*req_args, **req_kwargs)
         return await result if inspect.isawaitable(result) else result
 
-    async def _get_wallet(self, id, req_method, req_kwargs):
+    async def _get_wallet(self, id, req_method, xpub):
         wallet = cmd = config = error = None
-        xpub = req_kwargs.get("xpub", None)
         try:
             wallet, cmd, config = await self.load_wallet(xpub)
         except Exception:
@@ -310,7 +308,8 @@ class BaseDaemon:
         id, req_method, req_args, req_kwargs, error = await self.get_handle_request_params(request)
         if error:
             return error.send()
-        wallet, cmd, config, error = await self._get_wallet(id, req_method, req_kwargs)
+        xpub = req_kwargs.get("xpub", None)
+        wallet, cmd, config, error = await self._get_wallet(id, req_method, xpub)
         if error:
             return error.send()
         exec_method, custom, error = await self.get_exec_method(cmd, id, req_method)
@@ -318,7 +317,7 @@ class BaseDaemon:
             return error.send()
         try:
             result = await self.get_exec_result(
-                req_method, req_args, req_kwargs, exec_method, custom, wallet=wallet, config=config
+                xpub, req_method, req_args, req_kwargs, exec_method, custom, wallet=wallet, config=config
             )
             return JsonResponse(result=result, id=id).send()
         except BaseException:

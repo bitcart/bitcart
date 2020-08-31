@@ -133,7 +133,7 @@ class Pagination:
                     modelx = getattr(models, field.key[:-3].capitalize())
                     models_l.append(modelx)
         queries = self.search(models_l)
-        query = query.where(queries) if queries else query
+        query = query.where(queries) if queries != [] else query  # sqlalchemy core requires explicit checks
         return query
 
     def get_queryset(self, model, user_id, sale, store_id, category, min_price, max_price, app_id, redirect_url, permissions):

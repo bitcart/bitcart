@@ -32,13 +32,13 @@ async def poll_updates(obj: Union[int, models.Invoice], task_wallets: Dict[str, 
         await asyncio.sleep(1)
         await obj.update(status="test").apply()
         await utils.publish_message(obj.id, {"status": "test"})
-    else:
-        payment_methods = await models.PaymentMethod.query.where(models.PaymentMethod.invoice_id == obj.id).gino.all()
-        if not payment_methods:
-            return
-        for ind, method in enumerate(payment_methods):
-            payment_methods[ind].coin = settings.get_coin(method.currency, task_wallets[method.currency])
-        return process_invoice(obj, task_wallets, payment_methods)
+        return
+    payment_methods = await models.PaymentMethod.query.where(models.PaymentMethod.invoice_id == obj.id).gino.all()
+    if not payment_methods:
+        return
+    for ind, method in enumerate(payment_methods):
+        payment_methods[ind].coin = settings.get_coin(method.currency, task_wallets[method.currency])
+    return await process_invoice(obj, task_wallets, payment_methods)
 
 
 async def process_invoice(invoice: models.Invoice, task_wallets: Dict[str, str], payment_methods: List[models.PaymentMethod]):
