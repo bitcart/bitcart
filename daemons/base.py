@@ -39,16 +39,16 @@ def authenticate(f):
 class JsonResponse:
     id: int
     code: Optional[int] = None
-    error: Optional[str] = ""
+    error: Optional[str] = None
     result: Optional[Any] = None
 
     def send(self):
-        if self.result and self.error:
-            raise ValueError(f"result={self.result} and error={self.result} cannot be both set")
-        if self.result is not None:
-            return self.send_ok_response()
-        else:
+        if self.result is not None and self.error is not None:
+            raise ValueError(f"result={self.result} and error={self.error} cannot be both set")
+        if self.error is not None:
             return self.send_error_response()
+        else:
+            return self.send_ok_response()
 
     def send_error_response(self):
         return web.json_response({"jsonrpc": "2.0", "error": {"code": self.code, "message": self.error}, "id": self.id})
