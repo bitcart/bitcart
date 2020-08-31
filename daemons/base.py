@@ -29,7 +29,7 @@ def authenticate(f):
         auth = request.headers.get("Authorization")
         user, password = daemon.decode_auth(auth)
         if not (user == daemon.LOGIN and password == daemon.PASSWORD):
-            return daemon.send_error_response(code=-32600, message="Unauthorized")
+            return JsonResponse(code=-32600, error="Unauthorized").send()
         return f(daemon, request)
 
     return wrapper
@@ -37,7 +37,7 @@ def authenticate(f):
 
 @dataclass
 class JsonResponse:
-    id: int
+    id: Optional[int] = None
     code: Optional[int] = None
     error: Optional[str] = None
     result: Optional[Any] = None
