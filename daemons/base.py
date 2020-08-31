@@ -273,12 +273,15 @@ class BaseDaemon:
         return id, method, args, kwargs, error
 
     async def get_exec_method(self, cmd, id, req_method):
+        error = None
         if req_method in self.supported_methods:
             exec_method, custom = self.supported_methods[req_method], True
         else:
-            exec_method = getattr(cmd, req_method, JsonResponse(code=-32601, error="Procedure not found", id=id))
             custom = False
-        error = exec_method if isinstance(exec_method, JsonResponse) else None
+            if hasattr(cmd, req_method):
+                exec_method = getattr(cmd, req_method)
+            else:
+                error = JsonResponse(code=-32601, error="Procedure not found", id=id)
         return exec_method, custom, error
 
     async def get_exec_result(self, xpub, req_method, req_args, req_kwargs, exec_method, custom, **kwargs):

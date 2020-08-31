@@ -38,7 +38,7 @@ async def poll_updates(obj: Union[int, models.Invoice], task_wallets: Dict[str, 
         return
     for ind, method in enumerate(payment_methods):
         payment_methods[ind].coin = settings.get_coin(method.currency, task_wallets[method.currency])
-    return await process_invoice(obj, task_wallets, payment_methods)
+    await process_invoice(obj, task_wallets, payment_methods)
 
 
 async def process_invoice(invoice: models.Invoice, task_wallets: Dict[str, str], payment_methods: List[models.PaymentMethod]):
