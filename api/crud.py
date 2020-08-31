@@ -81,18 +81,23 @@ async def create_invoice(invoice: schemes.CreateInvoice, user: schemes.User):
     if product:
         discounts = [await models.Discount.get(discount_id) for discount_id in product.discounts]
     discounts = list(filter(lambda x: current_date <= x.end_date, discounts))
+    await update_invoice_payments(obj, wallets, discounts, task_wallets, store, product, promocode)
+    return obj
+
+
+async def update_invoice_payments(invoice, wallets, discounts, task_wallets, store, product, promocode):
     for wallet_id in wallets:
         wallet = await models.Wallet.get(wallet_id)
-        if wallet.currency not in obj.payments:
+        if wallet.currency not in invoice.payments:
             coin = settings.get_coin(wallet.currency, wallet.xpub)
             discount_id = None
-            price = obj.price / await coin.rate(obj.currency, accurate=True)
+            price = invoice.price / await coin.rate(invoice.currency, accurate=True)
             if math.isnan(price):
-                price = obj.price / await coin.rate(store.default_currency, accurate=True)
+                price = invoice.price / await coin.rate(store.default_currency, accurate=True)
             if math.isnan(price):
-                price = obj.price / await coin.rate("USD", accurate=True)
+                price = invoice.price / await coin.rate("USD", accurate=True)
             if math.isnan(price):
-                price = obj.price
+                price = invoice.price
             if discounts:
                 try:
                     discount = max(
@@ -108,25 +113,26 @@ async def create_invoice(invoice: schemes.CreateInvoice, user: schemes.User):
                 except ValueError:  # no matched discounts
                     pass
             task_wallets[wallet.currency] = wallet.xpub
-            data_got = await coin.addrequest(str(price), description=product.name if product else "", expire=obj.expiration)
+            data_got = await coin.addrequest(
+                str(price), description=product.name if product else "", expire=invoice.expiration
+            )
             await models.PaymentMethod.create(
-                invoice_id=obj.id,
+                invoice_id=invoice.id,
                 amount=price,
                 discount=discount_id,
                 currency=wallet.currency,
                 payment_address=data_got["address"],
                 payment_url=data_got["URI"],
             )
-            obj.payments[wallet.currency] = {
+            invoice.payments[wallet.currency] = {
                 "payment_address": data_got["address"],
                 "payment_url": data_got["URI"],
                 "amount": price,
                 "discount": discount_id,
                 "currency": wallet.currency,
             }
-    add_invoice_expiration(obj)
-    tasks.poll_updates.send(obj.id, task_wallets)
-    return obj
+    add_invoice_expiration(invoice)
+    tasks.poll_updates.send(invoice.id, task_wallets)
 
 
 def add_invoice_expiration(obj):
