@@ -308,7 +308,7 @@ class BaseDaemon:
         id, req_method, req_args, req_kwargs, error = await self.get_handle_request_params(request)
         if error:
             return error.send()
-        xpub = req_kwargs.get("xpub", None)
+        xpub = req_kwargs.pop("xpub", None)
         wallet, cmd, config, error = await self._get_wallet(id, req_method, xpub)
         if error:
             return error.send()
