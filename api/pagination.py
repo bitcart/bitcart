@@ -99,46 +99,10 @@ class Pagination:
         redirect_url=None,
         permissions=None,
         count_only=False,
-    ) -> dict:
-        self.model = model
-        if model == models.Product and sale:
-            query = (
-                model.query.select_from(model.join(models.DiscountxProduct).join(models.Discount))
-                .having(func.count(models.DiscountxProduct.product_id) > 0)
-                .where(models.Discount.end_date > utils.now())
-            )
-        else:
-            query = model.query
-        models_l = [model]
-        if model != models.User:
-            for field in self.model.__table__.c:
-                if field.key.endswith("_id") and field.key not in [
-                    "order_id",
-                    "app_id",
-                ]:
-                    modelx = getattr(models, field.key[:-3].capitalize())
-                    models_l.append(modelx)
-        queries = self.search(models_l)
-        if queries != []:
-            query = query.where(queries)
-        if user_id and model != models.User:
-            query = query.where(model.user_id == user_id)
-        if model == models.Product:
-            if store_id:
-                query = query.where(models.Product.store_id == store_id)
-            if category and category != "all":
-                query = query.where(models.Product.category == category)
-            if min_price:
-                query = query.where(models.Product.price >= min_price)
-            if max_price:
-                query = query.where(models.Product.price <= max_price)
-        elif model == models.Token:
-            if app_id is not None:
-                query = query.where(models.Token.app_id == app_id)
-            if redirect_url is not None:
-                query = query.where(models.Token.redirect_url == redirect_url)
-            if permissions:
-                query = query.where(models.Token.permissions.contains(permissions))
+    ) -> Union[dict, int]:
+        query = self.get_queryset(
+            model, user_id, sale, store_id, category, min_price, max_price, app_id, redirect_url, permissions
+        )
         if count_only:
             return await self.get_count(query)
         count, data = await asyncio.gather(self.get_count(query), self.get_list(query.group_by(model.id)))
@@ -150,3 +114,56 @@ class Pagination:
             "previous": self.get_previous_url(),
             "result": data,
         }
+
+    def get_base_query(self, model, sale):
+        self.model = model
+        query = (
+            (
+                model.query.select_from(model.join(models.DiscountxProduct).join(models.Discount))
+                .having(func.count(models.DiscountxProduct.product_id) > 0)
+                .where(models.Discount.end_date > utils.now())
+            )
+            if model == models.Product and sale
+            else model.query
+        )
+        models_l = [model]
+        if model != models.User:
+            for field in self.model.__table__.c:
+                if field.key.endswith("_id") and field.key not in ["order_id", "app_id"]:
+                    modelx = getattr(models, field.key[:-3].capitalize())
+                    models_l.append(modelx)
+        queries = self.search(models_l)
+        query = query.where(queries) if queries else query
+        return query
+
+    def get_queryset(self, model, user_id, sale, store_id, category, min_price, max_price, app_id, redirect_url, permissions):
+        query = self.get_base_query(model, sale)
+        if user_id and model != models.User:
+            query = query.where(model.user_id == user_id)
+        if model == models.Product:
+            query = self._filter_in_product(query, store_id, category, min_price, max_price)
+        elif model == models.Token:
+            query = self._filter_in_token(query, app_id, redirect_url, permissions)
+        return query
+
+    @staticmethod
+    def _filter_in_product(query, store_id, category, min_price, max_price):
+        if store_id:
+            query = query.where(models.Product.store_id == store_id)
+        if category and category != "all":
+            query = query.where(models.Product.category == category)
+        if min_price:
+            query = query.where(models.Product.price >= min_price)
+        if max_price:
+            query = query.where(models.Product.price <= max_price)
+        return query
+
+    @staticmethod
+    def _filter_in_token(query, app_id, redirect_url, permissions):
+        if app_id is not None:
+            query = query.where(models.Token.app_id == app_id)
+        if redirect_url is not None:
+            query = query.where(models.Token.redirect_url == redirect_url)
+        if permissions:
+            query = query.where(models.Token.permissions.contains(permissions))
+        return query

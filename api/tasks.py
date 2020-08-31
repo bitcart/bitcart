@@ -1,5 +1,5 @@
 import asyncio
-from typing import Dict, Union
+from typing import Dict, List, Union
 
 import dramatiq
 
@@ -24,21 +24,24 @@ STATUS_MAPPING = {
 @dramatiq.actor(actor_name="poll_updates", max_retries=MAX_RETRIES)
 @settings.run_sync
 async def poll_updates(obj: Union[int, models.Invoice], task_wallets: Dict[str, str]):
-    test = settings.TEST
     obj = await models.Invoice.get(obj)
     if not obj:
         return
     await crud.invoice_add_related(obj)
-    payment_methods = await models.PaymentMethod.query.where(models.PaymentMethod.invoice_id == obj.id).gino.all()
-    if not payment_methods:
-        return
-    for ind, method in enumerate(payment_methods):
-        payment_methods[ind].coin = settings.get_coin(method.currency, task_wallets[method.currency])
-    if test:
+    if settings.TEST:
         await asyncio.sleep(1)
         await obj.update(status="test").apply()
         await utils.publish_message(obj.id, {"status": "test"})
-        return
+    else:
+        payment_methods = await models.PaymentMethod.query.where(models.PaymentMethod.invoice_id == obj.id).gino.all()
+        if not payment_methods:
+            return
+        for ind, method in enumerate(payment_methods):
+            payment_methods[ind].coin = settings.get_coin(method.currency, task_wallets[method.currency])
+        return process_invoice(obj, task_wallets, payment_methods)
+
+
+async def process_invoice(invoice: models.Invoice, task_wallets: Dict[str, str], payment_methods: List[models.PaymentMethod]):
     while not settings.shutdown.is_set():
         for method in payment_methods:
             invoice_data = await method.coin.getrequest(method.payment_address)
@@ -50,41 +53,45 @@ async def poll_updates(obj: Union[int, models.Invoice], task_wallets: Dict[str, 
                     status = STATUS_MAPPING[status]
                 if not status:
                     status = "expired"
-                await obj.update(status=status, discount=method.discount).apply()
-                await crud.invoice_add_related(obj)
-                await utils.publish_message(obj.id, {"status": status})
-                await utils.send_ipn(obj, status)
-                if status == "complete":
-                    store = await models.Store.get(obj.store_id)
-                    await crud.store_add_related(store)
-                    await utils.notify(store, await utils.get_notify_template(store, obj))
-                    if obj.products:
-                        if utils.check_ping(
-                            store.email_host,
-                            store.email_port,
-                            store.email_user,
-                            store.email_password,
-                            store.email,
-                            store.email_use_ssl,
-                        ):
-                            messages = []
-                            for product_id in obj.products:
-                                product = await models.Product.get(product_id)
-                                relation = (
-                                    await models.ProductxInvoice.query.where(models.ProductxInvoice.invoice_id == obj.id)
-                                    .where(models.ProductxInvoice.product_id == product_id)
-                                    .gino.first()
-                                )
-                                quantity = relation.count
-                                messages.append(await utils.get_product_template(store, product, quantity))
-                            utils.send_mail(
-                                store,
-                                obj.buyer_email,
-                                await utils.get_store_template(store, messages),
-                            )
+                await invoice.update(status=status, discount=method.discount).apply()
+                await invoice_notification(invoice, status)
                 return
         await asyncio.sleep(1)
-    poll_updates.send_with_options(args=(obj.id, task_wallets), delay=1000)  # to run on next startup
+    poll_updates.send_with_options(args=(invoice.id, task_wallets), delay=1000)  # to run on next startup
+
+
+async def invoice_notification(invoice: models.Invoice, status: str):
+    await crud.invoice_add_related(invoice)
+    await utils.publish_message(invoice.id, {"status": status})
+    await utils.send_ipn(invoice, status)
+    if status == "complete":
+        store = await models.Store.get(invoice.store_id)
+        await crud.store_add_related(store)
+        await utils.notify(store, await utils.get_notify_template(store, invoice))
+        if invoice.products:
+            if utils.check_ping(
+                store.email_host,
+                store.email_port,
+                store.email_user,
+                store.email_password,
+                store.email,
+                store.email_use_ssl,
+            ):
+                messages = []
+                for product_id in invoice.products:
+                    product = await models.Product.get(product_id)
+                    relation = (
+                        await models.ProductxInvoice.query.where(models.ProductxInvoice.invoice_id == invoice.id)
+                        .where(models.ProductxInvoice.product_id == product_id)
+                        .gino.first()
+                    )
+                    quantity = relation.count
+                    messages.append(await utils.get_product_template(store, product, quantity))
+                utils.send_mail(
+                    store,
+                    invoice.buyer_email,
+                    await utils.get_store_template(store, messages),
+                )
 
 
 @dramatiq.actor(actor_name="sync_wallet", max_retries=0)

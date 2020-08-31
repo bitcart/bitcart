@@ -5,8 +5,9 @@ import os
 import sys
 import traceback
 from base64 import b64decode
+from dataclasses import dataclass
 from types import ModuleType
-from typing import Union
+from typing import Any, Optional, Union
 from urllib.parse import urlparse
 
 from aiohttp import ClientSession
@@ -21,6 +22,39 @@ LEGACY_AIOHTTP = parse_version(aiohttp_version) < parse_version("4.0.0a0")
 def rpc(f):
     f.is_handler = True
     return f
+
+
+def authenticate(f):
+    def wrapper(daemon, request):
+        auth = request.headers.get("Authorization")
+        user, password = daemon.decode_auth(auth)
+        if not (user == daemon.LOGIN and password == daemon.PASSWORD):
+            return daemon.send_error_response(code=-32600, message="Unauthorized")
+        return f(daemon, request)
+
+    return wrapper
+
+
+@dataclass
+class JsonResponse:
+    id: int
+    code: Optional[int] = None
+    error: Optional[str] = ""
+    result: Optional[Any] = None
+
+    def send(self):
+        if self.result and self.error:
+            raise ValueError(f"result={self.result} and error={self.result} cannot be both set")
+        if self.result is not None:
+            return self.send_ok_response()
+        else:
+            return self.send_error_response()
+
+    def send_error_response(self):
+        return web.json_response({"jsonrpc": "2.0", "error": {self.code: -32600, "message": self.error}, "id": self.id})
+
+    def send_ok_response(self):
+        return web.json_response({"jsonrpc": "2.0", "result": self.result, "id": self.id})
 
 
 class BaseDaemon:
@@ -231,67 +265,64 @@ class BaseDaemon:
             args = ()
         return args, kwargs
 
-    async def handle_request(self, request):
-        auth = request.headers.get("Authorization")
-        user, password = self.decode_auth(auth)
-        if not (user == self.LOGIN and password == self.PASSWORD):
-            return web.json_response({"jsonrpc": "2.0", "error": {"code": -32600, "message": "Unauthorized"}, "id": None})
-        if not LEGACY_AIOHTTP:
-            data = await request.json(content_type=None)  # aiohttp 4.0
-        else:
-            data = await request.json()
-        method = data.get("method")
-        id = data.get("id", None)
-        params = data.get("params", [])
+    async def get_handle_request_params(self, request):
+        data = await (request.json() if LEGACY_AIOHTTP else request.json(content_type=None))
+        method, id, params = data.get("method"), data.get("id", None), data.get("params", [])
+        error = None if method else JsonResponse(code=-32601, error="Procedure not found", id=id)
         args, kwargs = self.parse_params(params)
-        xpub = kwargs.pop("xpub", None)
-        if not method:
-            return web.json_response(
-                {"jsonrpc": "2.0", "error": {"code": -32601, "message": "Procedure not found."}, "id": id}
-            )
+        return id, method, args, kwargs, error
+
+    async def get_exec_method(self, cmd, id, req_method):
+        exec_method, custom = (
+            (self.supported_methods[req_method], True)
+            if req_method in self.supported_methods
+            else (getattr(cmd, req_method, JsonResponse(code=-32601, error="Procedure not found", id=id)), False)
+        )
+        error = exec_method if isinstance(exec_method, JsonResponse) else None
+        return exec_method, custom, error
+
+    async def get_exec_result(self, req_method, req_args, req_kwargs, exec_method, custom, **kwargs):
+        xpub = req_kwargs.pop("xpub", None)
+        if custom:
+            exec_method = functools.partial(exec_method, wallet=xpub)
+        else:
+            if self.NEW_ELECTRUM and self.electrum.commands.known_commands[req_method].requires_wallet:
+                wallet, config = kwargs.get("wallet"), kwargs.get("config")
+                cmd_name = self.electrum.commands.known_commands[req_method].name
+                need_path = cmd_name in ["create", "restore"]
+                path = wallet.storage.path if wallet else (config.get_wallet_path() if need_path else None)
+                exec_method = functools.partial(exec_method, wallet_path=path)
+        result = exec_method(*req_args, **req_kwargs)
+        return await result if inspect.isawaitable(result) else result
+
+    async def _get_wallet(self, id, req_method, req_kwargs):
+        wallet = cmd = config = error = None
+        xpub = req_kwargs.get("xpub", None)
         try:
             wallet, cmd, config = await self.load_wallet(xpub)
         except Exception:
-            if method not in self.supported_methods:
-                return web.json_response(
-                    {"jsonrpc": "2.0", "error": {"code": -32601, "message": "Error loading wallet"}, "id": id}
-                )
-        custom = False
-        if method in self.supported_methods:
-            exec_method = self.supported_methods[method]
-            custom = True
-        else:
-            try:
-                exec_method = getattr(cmd, method)
-            except AttributeError:
-                return web.json_response(
-                    {"jsonrpc": "2.0", "error": {"code": -32601, "message": "Procedure not found."}, "id": id}
-                )
-        try:
-            if custom:
-                exec_method = functools.partial(exec_method, wallet=xpub)
-            else:
-                if self.NEW_ELECTRUM and self.electrum.commands.known_commands[method].requires_wallet:
-                    cmd_name = self.electrum.commands.known_commands[method].name
-                    need_path = cmd_name == "create" or cmd_name == "restore"
-                    path = wallet.storage.path if wallet else (config.get_wallet_path() if need_path else None)
-                    if need_path:
-                        if isinstance(params, dict) and params.get("wallet_path"):
-                            params["wallet_path"] = os.path.join(
-                                self.electrum_config.electrum_path(),
-                                "wallets",
-                                params.get("wallet_path"),
-                            )
-                    exec_method = functools.partial(exec_method, wallet_path=path)
+            if req_method not in self.supported_methods:
+                error = JsonResponse(code=-32601, error="Error loading wallet", id=id)
+        return wallet, cmd, config, error
 
-            result = exec_method(*args, **kwargs)
-            if inspect.isawaitable(result):
-                result = await result
-        except BaseException:
-            return web.json_response(
-                {"jsonrpc": "2.0", "error": {"code": -32601, "message": traceback.format_exc().splitlines()[-1]}, "id": id}
+    @authenticate
+    async def handle_request(self, request):
+        id, req_method, req_args, req_kwargs, error = await self.get_handle_request_params(request)
+        if error:
+            return error.send()
+        wallet, cmd, config, error = await self._get_wallet(id, req_method, req_kwargs)
+        if error:
+            return error.send()
+        exec_method, custom, error = await self.get_exec_method(cmd, id, req_method)
+        if error:
+            return error.send()
+        try:
+            result = await self.get_exec_result(
+                req_method, req_args, req_kwargs, exec_method, custom, wallet=wallet, config=config
             )
-        return web.json_response({"jsonrpc": "2.0", "result": result, "id": id})
+            return JsonResponse(result=result, id=id).send()
+        except BaseException:
+            return JsonResponse(code=-32601, error=traceback.format_exc().splitlines()[-1], id=id).send()
 
     async def _process_events(self, event, *args):
         mapped_event = self.EVENT_MAPPING.get(event)
