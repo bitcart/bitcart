@@ -654,7 +654,7 @@ class WalletNotify(WebSocketEndpoint):
             msg = await self.channel.get_json()
             await websocket.send_json(msg)
 
-    async def on_disconnect(self, websocket, close_code):  # pragma: no cover
+    async def on_disconnect(self, websocket, close_code):
         if self.subscriber:
             await self.subscriber.unsubscribe(f"channel:{self.wallet_id}")
 
@@ -688,6 +688,6 @@ class InvoiceNotify(WebSocketEndpoint):
             msg = await self.channel.get_json()
             await websocket.send_json(msg)
 
-    async def on_disconnect(self, websocket, close_code):  # pragma: no cover
+    async def on_disconnect(self, websocket, close_code):
         if self.subscriber:
             await self.subscriber.unsubscribe(f"channel:{self.invoice_id}")
