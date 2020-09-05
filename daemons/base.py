@@ -1,6 +1,7 @@
 import asyncio
 import functools
 import inspect
+import json
 import os
 import sys
 import traceback
@@ -19,9 +20,15 @@ from pkg_resources import parse_version
 LEGACY_AIOHTTP = parse_version(aiohttp_version) < parse_version("4.0.0a0")
 
 
-def rpc(f):
-    f.is_handler = True
-    return f
+def rpc(f=None, requires_wallet=False):
+    def wrapper(f):
+        f.is_handler = True
+        f.requires_wallet = bool(requires_wallet)
+        return f
+
+    if f:
+        return wrapper(f)
+    return wrapper
 
 
 def authenticate(f):
@@ -128,7 +135,15 @@ class BaseDaemon:
         self.electrum_config = self.electrum.simple_config.SimpleConfig()
         self.copy_config_settings(self.electrum_config)
         self.configure_logging(self.electrum_config)
-
+        # Load spec file
+        self.spec_file = f"daemons/spec/{self.name.lower()}.json"
+        if not os.path.exists(self.spec_file):
+            self.spec_file = "daemons/spec/btc.json"  # fallback to btc spec
+        try:
+            with open(self.spec_file) as f:
+                self.spec = json.loads(f.read())
+        except (OSError, json.JSONDecodeError) as e:
+            sys.exit(e)
         # initialize wallet storages
         self.wallets = {}
         self.wallets_config = {}
@@ -274,6 +289,7 @@ class BaseDaemon:
 
     async def get_exec_method(self, cmd, id, req_method):
         error = None
+        exec_method = None
         if req_method in self.supported_methods:
             exec_method, custom = self.supported_methods[req_method], True
         else:
@@ -302,8 +318,8 @@ class BaseDaemon:
         try:
             wallet, cmd, config = await self.load_wallet(xpub)
         except Exception:
-            if req_method not in self.supported_methods:
-                error = JsonResponse(code=-32601, error="Error loading wallet", id=id)
+            if req_method not in self.supported_methods or self.supported_methods[req_method].requires_wallet:
+                error = JsonResponse(code=-32005, error="Error loading wallet", id=id)
         return wallet, cmd, config, error
 
     @authenticate
@@ -324,7 +340,27 @@ class BaseDaemon:
             )
             return JsonResponse(result=result, id=id).send()
         except BaseException:
-            return JsonResponse(code=-32601, error=traceback.format_exc().splitlines()[-1], id=id).send()
+            last_line = traceback.format_exc().splitlines()[-1]
+            return JsonResponse(code=self.get_error_code(last_line), error=last_line, id=id).send()
+
+    def get_error_code(self, error):
+        for error_message in self.spec["electrum_map"]:
+            if error_message in error:
+                return self.spec["electrum_map"][error_message]
+        return -32603  # fallback
+
+    @authenticate
+    async def handle_spec(self, request):
+        return web.json_response(self.spec)
+
+    def configure_app(self, app):
+        app.router.add_post("/", self.handle_request)
+        app.router.add_get("/spec", self.handle_spec)
+        app.on_startup.append(self.on_startup)
+        app.on_shutdown.append(self.on_shutdown)
+
+    def start(self, app):
+        web.run_app(app, host=self.HOST, port=self.PORT)
 
     async def _process_events(self, event, *args):
         mapped_event = self.EVENT_MAPPING.get(event)
@@ -407,18 +443,18 @@ class BaseDaemon:
     def validatekey(self, key, wallet=None):
         return self.electrum.keystore.is_master_key(key) or self.electrum.keystore.is_seed(key)
 
-    @rpc
+    @rpc(requires_wallet=True)
     def get_updates(self, wallet):
         updates = self.wallets_updates[wallet]
         self.wallets_updates[wallet] = []
         return updates
 
-    @rpc
-    def subscribe(self, events, wallet=None):
+    @rpc(requires_wallet=True)
+    def subscribe(self, events, wallet):
         self.wallets_config[wallet]["events"].update(events)
 
-    @rpc
-    def unsubscribe(self, events=None, wallet=None):
+    @rpc(requires_wallet=True)
+    def unsubscribe(self, wallet, events=None):
         if events is None:
             events = self.EVENT_MAPPING.keys()
         self.wallets_config[wallet]["events"] = set(i for i in self.wallets_config[wallet]["events"] if i not in events)
@@ -450,8 +486,8 @@ class BaseDaemon:
     def get_default_fee(self, tx: Union[dict, int], wallet=None) -> float:
         return self.electrum_config.estimate_fee(self.get_tx_size(tx) if isinstance(tx, dict) else tx)
 
-    @rpc
-    def configure_notifications(self, notification_url, wallet=None):
+    @rpc(requires_wallet=True)
+    def configure_notifications(self, notification_url, wallet):
         self.wallets_config[wallet]["notification_url"] = notification_url
 
     ### Start workaround ###
@@ -465,11 +501,11 @@ class BaseDaemon:
             await self.wallets[wallet]["cmd"].addtransaction(result, wallet_path=wallet_path)
         return result
 
-    @rpc
+    @rpc(requires_wallet=True)
     async def payto(self, *args, wallet, **kwargs):
         return await self._add_tx_wrapper("payto", wallet, *args, **kwargs)
 
-    @rpc
+    @rpc(requires_wallet=True)
     async def paytomany(self, *args, wallet, **kwargs):
         return await self._add_tx_wrapper("paytomany", wallet, *args, **kwargs)
 

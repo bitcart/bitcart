@@ -1,0 +1,71 @@
+{
+    "version": "0.0.1",
+    "electrum_map": {
+        "wallet not loaded": -32000,
+        "should be a transaction hash": -32001,
+        "No such mempool or blockchain transaction. Use gettransaction for wallet transactions.": -32002,
+        "No such mempool transaction.": -32002,
+        "Request not found": -32003,
+        "Invalid Bitcoin address or alias": -32004,
+        "Invalid bitcoin address:": -32004,
+        "Invalid Bitcoin address": -32004,
+        "Insufficient funds": -32006,
+        "Invalid node ID, must be 33 bytes and hexadecimal": -32007,
+        "Remove the existing wallet first!": -32008,
+        "Bad bech32 checksum": -32009,
+        "Does not start with ln": -32009,
+        "Wrong Lightning invoice HRP": -32009,
+        "Too short to contain signature": -32009,
+        "No path found": -32010
+    },
+    "exceptions": {
+        "-32601": {
+            "exc_name": "ProcedureNotFoundError",
+            "docstring": "Procedure not found"
+        },
+        "-32000": {
+            "exc_name": "WalletNotLoadedError",
+            "docstring": "Wallet not loaded. No xpub was provided and this function requires wallet"
+        },
+        "-32001": {
+            "exc_name": "InvalidTxHashError",
+            "docstring": "Invalid tx hash provided"
+        },
+        "-32002": {
+            "exc_name": "TxNotFoundError",
+            "docstring": "No such mempool or blockchain transaction"
+        },
+        "-32003": {
+            "exc_name": "RequestNotFoundError",
+            "docstring": "Payment request not found"
+        },
+        "-32004": {
+            "exc_name": "InvalidAddressError",
+            "docstring": "Invalid address or alias"
+        },
+        "-32005": {
+            "exc_name": "LoadingWalletError",
+            "docstring": "Error loading wallet: seed or key not recognized"
+        },
+        "-32006": {
+            "exc_name": "NotEnoughFundsError",
+            "docstring": "Insufficient funds"
+        },
+        "-32007": {
+            "exc_name": "InvalidNodeIDError",
+            "docstring": "Invalid node ID"
+        },
+        "-32008": {
+            "exc_name": "WalletExistsError",
+            "docstring": "This wallet already exists"
+        },
+        "-32009": {
+            "exc_name": "InvalidLightningInvoiceError",
+            "docstring": "Invalid lightning invoice"
+        },
+        "-32010": {
+            "exc_name": "NoPathFoundError",
+            "docstring": "No path found to pay the invoice"
+        }
+    }
+}
