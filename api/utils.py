@@ -3,9 +3,10 @@ import json
 import os
 import smtplib
 from collections import defaultdict
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from os.path import join as path_join
-from typing import Callable, Dict, List, Optional, Type, Union
+from typing import Any, Callable, ClassVar, Dict, List, Optional, Type, Union
 
 import aioredis
 import asyncpg
@@ -127,220 +128,299 @@ class AuthDependency:
 HTTP_METHODS: List[str] = ["GET", "POST", "PUT", "PATCH", "DELETE"]
 ENDPOINTS: List[str] = ["get_all", "get_one", "get_count", "post", "put", "patch", "delete", "batch_action"]
 CUSTOM_HTTP_METHODS: dict = {"batch_action": "post"}
-crud_models = []
 
 
-def model_view(
-    router: APIRouter,
-    path: str,
-    orm_model,
-    pydantic_model,
-    create_model=None,
-    display_model=None,
-    allowed_methods: List[str] = ["GET_COUNT", "GET_ONE"] + HTTP_METHODS + ["BATCH_ACTION"],
-    custom_methods: Dict[str, Callable] = {},
-    background_tasks_mapping: Dict[str, Callable] = {},
-    request_handlers: Dict[str, Callable] = {},
-    auth=True,
-    get_one_auth=True,
-    post_auth=True,
-    get_one_model=True,
-    scopes=None,
-    custom_commands={},
-):
+@dataclass
+class ModelView:
     from . import schemes
 
-    if scopes is None:
-        scopes = {i: [] for i in ENDPOINTS}
-    crud_models.append((path, orm_model))
+    crud_models: ClassVar[list] = []
 
-    display_model = pydantic_model if not display_model else display_model
-    if isinstance(scopes, list):
-        scopes_list = scopes.copy()
-        scopes = {i: scopes_list for i in ENDPOINTS}
-    scopes = defaultdict(list, **scopes)
+    router: APIRouter
+    path: str
+    orm_model: db.db.Model
+    create_model: Any
+    pydantic_model: Any
+    display_model: Any
+    allowed_methods: List[str]
+    custom_methods: Dict[str, Callable]
+    background_tasks_mapping: Dict[str, Callable]
+    request_handlers: Dict[str, Callable]
+    auth_dependency: AuthDependency
+    get_one_auth: bool
+    post_auth: bool
+    get_one_model: bool
+    scopes: Union[List, Dict]
+    custom_commands: Dict[str, Callable]
 
-    PaginationResponse = create_pydantic_model(
-        f"PaginationResponse_{display_model.__name__}",
-        count=(int, ...),
-        next=(Optional[str], None),
-        previous=(Optional[str], None),
-        result=(List[display_model], ...),
-        __base__=BaseModel,
-    )
+    @classmethod
+    def register(
+        cls,
+        router: APIRouter,
+        path: str,
+        orm_model,
+        pydantic_model,
+        create_model=None,
+        display_model=None,
+        allowed_methods: List[str] = ["GET_COUNT", "GET_ONE"] + HTTP_METHODS + ["BATCH_ACTION"],
+        custom_methods: Dict[str, Callable] = {},
+        background_tasks_mapping: Dict[str, Callable] = {},
+        request_handlers: Dict[str, Callable] = {},
+        auth=True,
+        get_one_auth=True,
+        post_auth=True,
+        get_one_model=True,
+        scopes=None,
+        custom_commands={},
+    ):
+        # add to crud_models
+        if scopes is None:
+            scopes = {i: [] for i in ENDPOINTS}
+        cls.crud_models.append((path, orm_model))
+        # set scopes
+        if isinstance(scopes, list):
+            scopes_list = scopes.copy()
+            scopes = {i: scopes_list for i in ENDPOINTS}
+        scopes = defaultdict(list, **scopes)
 
-    if not create_model:
-        create_model = pydantic_model  # pragma: no cover
-    response_models: Dict[str, Type] = {
-        "get": PaginationResponse,
-        "get_count": int,
-        "get_one": display_model if get_one_model else None,
-        "post": display_model,
-        "put": display_model,
-        "patch": display_model,
-        "delete": display_model,
-    }
+        if not create_model:
+            create_model = pydantic_model  # pragma: no cover
 
-    item_path = path_join(path, "{model_id}")
-    batch_path = path_join(path, "batch")
-    count_path = path_join(path, "count")
-    paths: Dict[str, str] = {
-        "get": path,
-        "get_count": count_path,
-        "get_one": item_path,
-        "post": path,
-        "put": item_path,
-        "patch": item_path,
-        "delete": item_path,
-        "batch_action": batch_path,
-    }
+        cls.create_model = create_model
+        cls.pydantic_model = pydantic_model
+        cls(
+            router=router,
+            path=path,
+            orm_model=orm_model,
+            pydantic_model=pydantic_model,
+            create_model=create_model,
+            display_model=display_model,
+            allowed_methods=allowed_methods,
+            custom_methods=custom_methods,
+            background_tasks_mapping=background_tasks_mapping,
+            request_handlers=request_handlers,
+            auth_dependency=AuthDependency(auth),
+            get_one_auth=get_one_auth,
+            post_auth=post_auth,
+            get_one_model=get_one_model,
+            scopes=scopes,
+            custom_commands=custom_commands,
+        ).add_api_route()
 
-    auth_dependency = AuthDependency(auth)
+    def add_api_route(self):
+        for method in self.allowed_methods:
+            method_name = method.lower()
+            self.router.add_api_route(
+                self.paths.get(method_name),  # type: ignore
+                self.request_handlers.get(method_name)
+                or getattr(self, method_name, None)
+                or getattr(self, f"_{method_name}")(),
+                methods=[method_name if method in HTTP_METHODS else CUSTOM_HTTP_METHODS.get(method_name, "get")],
+                response_model=self.response_models.get(method_name),
+            )
 
-    async def _get_one(model_id: int, user: schemes.User, internal: bool = False):
-        query = orm_model.query
-        if orm_model != models.User and user:
-            query = query.where(orm_model.user_id == user.id)
-        item = await query.where(orm_model.id == model_id).gino.first()
-        if custom_methods.get("get_one"):
-            item = await custom_methods["get_one"](model_id, user, item, internal)
+    @property
+    def paths(self) -> Dict[str, str]:
+        item_path = path_join(self.path, "{model_id}")
+        batch_path = path_join(self.path, "batch")
+        count_path = path_join(self.path, "count")
+        return {
+            "get": self.path,
+            "get_count": count_path,
+            "get_one": item_path,
+            "post": self.path,
+            "put": item_path,
+            "patch": item_path,
+            "delete": item_path,
+            "batch_action": batch_path,
+        }
+
+    @property
+    def response_models(self) -> Dict[str, Type]:
+        display_model = self.pydantic_model if not self.display_model else self.display_model
+        pagination_response = create_pydantic_model(
+            f"PaginationResponse_{display_model.__name__}",
+            count=(int, ...),
+            next=(Optional[str], None),
+            previous=(Optional[str], None),
+            result=(List[display_model], ...),
+            __base__=BaseModel,
+        )
+        return {
+            "get": pagination_response,
+            "get_count": int,
+            "get_one": display_model if self.get_one_model else None,
+            "post": display_model,
+            "put": display_model,
+            "patch": display_model,
+            "delete": display_model,
+        }
+
+    async def _get_one(self, model_id: int, user: schemes.User, internal: bool = False):
+        query = self.orm_model.query
+        if self.orm_model != models.User and user:
+            query = query.where(self.orm_model.user_id == user.id)
+        item = await query.where(self.orm_model.id == model_id).gino.first()
+        if self.custom_methods.get("get_one"):
+            item = await self.custom_methods["get_one"](model_id, user, item, internal)
         if not item:
             raise HTTPException(status_code=404, detail=f"Object with id {model_id} does not exist!")
         return item
 
-    async def get(
-        pagination: pagination.Pagination = Depends(),
-        user: Union[None, schemes.User] = Security(auth_dependency, scopes=scopes["get_all"]),
-    ):
-        if custom_methods.get("get"):
-            return await custom_methods["get"](pagination, user)
-        else:
-            return await pagination.paginate(orm_model, user.id)
+    def _get(self):
+        async def get(
+            pagination: pagination.Pagination = Depends(),
+            user: Union[None, ModelView.schemes.User] = Security(self.auth_dependency, scopes=self.scopes["get_all"]),
+        ):
+            if self.custom_methods.get("get"):
+                return await self.custom_methods["get"](pagination, user)
+            else:
+                return await pagination.paginate(self.orm_model, user.id)
 
-    async def get_count(user: Union[None, schemes.User] = Security(auth_dependency, scopes=scopes["get_count"])):
-        return (
-            await (
-                (orm_model.query.where(orm_model.user_id == user.id) if orm_model != models.User else orm_model.query)
-                .with_only_columns([db.db.func.count(distinct(orm_model.id))])
-                .order_by(None)
-                .gino.scalar()
+        return get
+
+    def _get_count(self):
+        async def get_count(
+            user: Union[None, ModelView.schemes.User] = Security(self.auth_dependency, scopes=self.scopes["get_count"])
+        ):
+            return (
+                await (
+                    (
+                        self.orm_model.query.where(self.orm_model.user_id == user.id)
+                        if self.orm_model != models.User
+                        else self.orm_model.query
+                    )
+                    .with_only_columns([db.db.func.count(distinct(self.orm_model.id))])
+                    .order_by(None)
+                    .gino.scalar()
+                )
+                or 0
             )
-            or 0
-        )
 
-    async def get_one(model_id: int, request: Request):
+        return get_count
+
+    async def get_one(self, model_id: int, request: Request):
         try:
-            user = await auth_dependency(request, SecurityScopes(scopes["get_one"]))
+            user = await self.auth_dependency(request, SecurityScopes(self.scopes["get_one"]))
         except HTTPException:
-            if get_one_auth:
+            if self.get_one_auth:
                 raise
             user = None
-        return await _get_one(model_id, user)
+        return await self._get_one(model_id, user)
 
-    async def post(
-        model: create_model,
-        request: Request,  # type: ignore,
-    ):
-        try:
-            user = await auth_dependency(request, SecurityScopes(scopes["post"]))
-        except HTTPException:
-            if post_auth:
-                raise
-            user = None
-        try:
-            if custom_methods.get("post"):
-                obj = await custom_methods["post"](model, user)
+    def _post(self):
+        model_type = self.create_model
+
+        async def post(model: model_type, request: Request):
+            try:
+                user = await self.auth_dependency(request, SecurityScopes(self.scopes["post"]))
+            except HTTPException:
+                if self.post_auth:
+                    raise
+                user = None
+            try:
+                if self.custom_methods.get("post"):
+                    obj = await self.custom_methods["post"](model, user)
+                else:
+                    obj = await self.orm_model.create(**model.dict())  # type: ignore
+            except (
+                asyncpg.exceptions.UniqueViolationError,
+                asyncpg.exceptions.NotNullViolationError,
+                asyncpg.exceptions.ForeignKeyViolationError,
+            ) as e:
+                raise HTTPException(422, e.message)
+            if self.background_tasks_mapping.get("post"):
+                self.background_tasks_mapping["post"].send(obj.id)
+            return obj
+
+        return post
+
+    def _put(self):
+        model_type = self.pydantic_model
+
+        async def put(
+            model_id: int,
+            model: model_type,
+            user: Union[None, ModelView.schemes.User] = Security(self.auth_dependency, scopes=self.scopes["put"]),
+        ):  # type: ignore
+            item = await self._get_one(model_id, user, True)
+            try:
+                if self.custom_methods.get("put"):
+                    await self.custom_methods["put"](item, model, user)  # pragma: no cover
+                else:
+                    await item.update(**model.dict()).apply()  # type: ignore
+            except (
+                asyncpg.exceptions.UniqueViolationError,
+                asyncpg.exceptions.NotNullViolationError,
+                asyncpg.exceptions.ForeignKeyViolationError,
+            ) as e:
+                raise HTTPException(422, e.message)
+            return item
+
+        return put
+
+    def _patch(self):
+        model_type = self.pydantic_model
+
+        async def patch(
+            model_id: int,
+            model: model_type,
+            user: Union[None, ModelView.schemes.User] = Security(self.auth_dependency, scopes=self.scopes["patch"]),
+        ):  # type: ignore
+            item = await self._get_one(model_id, user, True)
+            try:
+                if self.custom_methods.get("patch"):
+                    await self.custom_methods["patch"](item, model, user)  # pragma: no cover
+                else:
+                    await item.update(**model.dict(exclude_unset=True)).apply()  # type: ignore
+            except (  # pragma: no cover
+                asyncpg.exceptions.UniqueViolationError,
+                asyncpg.exceptions.NotNullViolationError,
+                asyncpg.exceptions.ForeignKeyViolationError,
+            ) as e:
+                raise HTTPException(422, e.message)  # pragma: no cover
+            return item
+
+        return patch
+
+    def _delete(self):
+        async def delete(
+            model_id: int,
+            user: Union[None, ModelView.schemes.User] = Security(self.auth_dependency, scopes=self.scopes["delete"]),
+        ):
+            item = await self._get_one(model_id, user, True)
+            if self.custom_methods.get("delete"):
+                await self.custom_methods["delete"](item, user)
             else:
-                obj = await orm_model.create(**model.dict())  # type: ignore
-        except (
-            asyncpg.exceptions.UniqueViolationError,
-            asyncpg.exceptions.NotNullViolationError,
-            asyncpg.exceptions.ForeignKeyViolationError,
-        ) as e:
-            raise HTTPException(422, e.message)
-        if background_tasks_mapping.get("post"):
-            background_tasks_mapping["post"].send(obj.id)
-        return obj
+                await item.delete()
+            return item
 
-    async def put(
-        model_id: int,
-        model: pydantic_model,
-        user: Union[None, schemes.User] = Security(auth_dependency, scopes=scopes["put"]),
-    ):  # type: ignore
-        item = await _get_one(model_id, user, True)
-        try:
-            if custom_methods.get("put"):
-                await custom_methods["put"](item, model, user)  # pragma: no cover
-            else:
-                await item.update(**model.dict()).apply()  # type: ignore
-        except (
-            asyncpg.exceptions.UniqueViolationError,
-            asyncpg.exceptions.NotNullViolationError,
-            asyncpg.exceptions.ForeignKeyViolationError,
-        ) as e:
-            raise HTTPException(422, e.message)
-        return item
+        return delete
 
-    async def patch(
-        model_id: int,
-        model: pydantic_model,
-        user: Union[None, schemes.User] = Security(auth_dependency, scopes=scopes["patch"]),
-    ):  # type: ignore
-        item = await _get_one(model_id, user, True)
-        try:
-            if custom_methods.get("patch"):
-                await custom_methods["patch"](item, model, user)  # pragma: no cover
-            else:
-                await item.update(**model.dict(exclude_unset=True)).apply()  # type: ignore
-        except (  # pragma: no cover
-            asyncpg.exceptions.UniqueViolationError,
-            asyncpg.exceptions.NotNullViolationError,
-            asyncpg.exceptions.ForeignKeyViolationError,
-        ) as e:
-            raise HTTPException(422, e.message)  # pragma: no cover
-        return item
-
-    async def delete(
-        model_id: int,
-        user: Union[None, schemes.User] = Security(auth_dependency, scopes=scopes["delete"]),
-    ):
-        item = await _get_one(model_id, user, True)
-        if custom_methods.get("delete"):
-            await custom_methods["delete"](item, user)
-        else:
-            await item.delete()
-        return item
-
-    def process_command(command):
-        if command in custom_commands:
-            return custom_commands[command](orm_model)
+    def process_command(self, command):
+        if command in self.custom_commands:
+            return self.custom_commands[command](self.orm_model)
         if command == "delete":
-            return orm_model.delete
+            return self.orm_model.delete
 
-    async def batch_action(
-        settings: schemes.BatchSettings,
-        user: Union[None, schemes.User] = Security(auth_dependency, scopes=scopes["batch_action"]),
-    ):
-        query = process_command(settings.command)
-        if query is None:
-            raise HTTPException(status_code=404, detail="Batch command not found")
-        if orm_model != models.User and user:
-            query = query.where(orm_model.user_id == user.id)
-        query = query.where(orm_model.id.in_(settings.ids))
-        if custom_methods.get("batch_action"):
-            await custom_methods["batch_action"](query, settings.ids, user)
-        else:
-            await query.gino.status()
-        return True
+    def _batch_action(self):
+        async def batch_action(
+            settings: ModelView.schemes.BatchSettings,
+            user: Union[None, ModelView.schemes.User] = Security(self.auth_dependency, scopes=self.scopes["batch_action"]),
+        ):
+            query = self.process_command(settings.command)
+            if query is None:
+                raise HTTPException(status_code=404, detail="Batch command not found")
+            if self.orm_model != models.User and user:
+                query = query.where(self.orm_model.user_id == user.id)
+            query = query.where(self.orm_model.id.in_(settings.ids))
+            if self.custom_methods.get("batch_action"):
+                await self.custom_methods["batch_action"](query, settings.ids, user)
+            else:
+                await query.gino.status()
+            return True
 
-    for method in allowed_methods:
-        method_name = method.lower()
-        router.add_api_route(
-            paths.get(method_name),  # type: ignore
-            request_handlers.get(method_name) or locals()[method_name],
-            methods=[method_name if method in HTTP_METHODS else CUSTOM_HTTP_METHODS.get(method_name, "get")],
-            response_model=response_models.get(method_name),
-        )
+        return batch_action
 
 
 async def get_wallet_history(model, response):

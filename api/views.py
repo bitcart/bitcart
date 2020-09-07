@@ -303,7 +303,7 @@ async def export_invoices(
         )
 
 
-utils.model_view(
+utils.ModelView.register(
     router,
     "/users",
     models.User,
@@ -322,7 +322,7 @@ utils.model_view(
         "delete": ["server_management"],
     },
 )
-utils.model_view(
+utils.ModelView.register(
     router,
     "/wallets",
     models.Wallet,
@@ -333,7 +333,7 @@ utils.model_view(
     custom_methods={"post": crud.create_wallet},
     scopes=["wallet_management"],
 )
-utils.model_view(
+utils.ModelView.register(
     router,
     "/stores",
     models.Store,
@@ -349,7 +349,7 @@ utils.model_view(
     get_one_auth=False,
     scopes=["store_management"],
 )
-utils.model_view(
+utils.ModelView.register(
     router,
     "/discounts",
     models.Discount,
@@ -358,7 +358,7 @@ utils.model_view(
     custom_methods={"post": crud.create_discount},
     scopes=["discount_management"],
 )
-utils.model_view(
+utils.ModelView.register(
     router,
     "/notifications",
     models.Notification,
@@ -367,7 +367,7 @@ utils.model_view(
     custom_methods={"post": crud.create_notification},
     scopes=["notification_management"],
 )
-utils.model_view(
+utils.ModelView.register(
     router,
     "/templates",
     models.Template,
@@ -376,7 +376,7 @@ utils.model_view(
     custom_methods={"post": crud.create_template},
     scopes=["template_management"],
 )
-utils.model_view(
+utils.ModelView.register(
     router,
     "/products",
     models.Product,
@@ -393,7 +393,7 @@ utils.model_view(
     },
     scopes=["product_management"],
 )
-utils.model_view(
+utils.ModelView.register(
     router,
     "/invoices",
     models.Invoice,
@@ -417,7 +417,7 @@ utils.model_view(
 async def get_stats(user: models.User = Security(utils.AuthDependency(), scopes=["full_control"])):
     queries = []
     output_formats = []
-    for index, (path, orm_model) in enumerate(utils.crud_models):
+    for index, (path, orm_model) in enumerate(utils.ModelView.crud_models):
         query = select([func.count(distinct(orm_model.id))])
         if orm_model != models.User:
             query = query.where(orm_model.user_id == user.id)
