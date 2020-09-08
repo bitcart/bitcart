@@ -1,8 +1,7 @@
 all: ci
 
 lint:
-	flake8 --select=C --exit-zero
-	flake8 --extend-ignore=C901
+	flake8
 
 checkformat:
 	black --check .
