@@ -185,9 +185,6 @@ class ModelView:
 
         if not create_model:
             create_model = pydantic_model  # pragma: no cover
-
-        cls.create_model = create_model
-        cls.pydantic_model = pydantic_model
         cls(
             router=router,
             path=path,
@@ -205,22 +202,23 @@ class ModelView:
             get_one_model=get_one_model,
             scopes=scopes,
             custom_commands=custom_commands,
-        ).add_api_route()
+        ).register_routes()
 
-    def add_api_route(self):
+    def register_routes(self):
+        response_models = self.get_response_models()
+        paths = self.get_paths()
         for method in self.allowed_methods:
             method_name = method.lower()
             self.router.add_api_route(
-                self.paths.get(method_name),  # type: ignore
+                paths.get(method_name),  # type: ignore
                 self.request_handlers.get(method_name)
                 or getattr(self, method_name, None)
                 or getattr(self, f"_{method_name}")(),
                 methods=[method_name if method in HTTP_METHODS else CUSTOM_HTTP_METHODS.get(method_name, "get")],
-                response_model=self.response_models.get(method_name),
+                response_model=response_models.get(method_name),
             )
 
-    @property
-    def paths(self) -> Dict[str, str]:
+    def get_paths(self) -> Dict[str, str]:
         item_path = path_join(self.path, "{model_id}")
         batch_path = path_join(self.path, "batch")
         count_path = path_join(self.path, "count")
@@ -235,8 +233,7 @@ class ModelView:
             "batch_action": batch_path,
         }
 
-    @property
-    def response_models(self) -> Dict[str, Type]:
+    def get_response_models(self) -> Dict[str, Type]:
         display_model = self.pydantic_model if not self.display_model else self.display_model
         pagination_response = create_pydantic_model(
             f"PaginationResponse_{display_model.__name__}",
