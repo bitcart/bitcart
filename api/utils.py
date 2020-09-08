@@ -309,9 +309,7 @@ class ModelView:
         return await self._get_one(model_id, user)
 
     def _post(self):
-        model_type = self.create_model
-
-        async def post(model: model_type, request: Request):
+        async def post(model: self.create_model, request: Request):
             try:
                 user = await self.auth_dependency(request, SecurityScopes(self.scopes["post"]))
             except HTTPException:
@@ -336,11 +334,9 @@ class ModelView:
         return post
 
     def _put(self):
-        model_type = self.pydantic_model
-
         async def put(
             model_id: int,
-            model: model_type,
+            model: self.pydantic_model,
             user: Union[None, ModelView.schemes.User] = Security(self.auth_dependency, scopes=self.scopes["put"]),
         ):  # type: ignore
             item = await self._get_one(model_id, user, True)
@@ -360,11 +356,9 @@ class ModelView:
         return put
 
     def _patch(self):
-        model_type = self.pydantic_model
-
         async def patch(
             model_id: int,
-            model: model_type,
+            model: self.pydantic_model,
             user: Union[None, ModelView.schemes.User] = Security(self.auth_dependency, scopes=self.scopes["patch"]),
         ):  # type: ignore
             item = await self._get_one(model_id, user, True)
