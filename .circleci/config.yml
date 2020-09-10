@@ -94,24 +94,24 @@ jobs:
           name: retag and upload
           command: |
             docker login --username=$DOCKER_USER --password=$DOCKER_PASS
-            docker pull mrnaif/bitcart:latest
-            docker pull mrnaif/bitcart-btc:latest
-            docker pull mrnaif/bitcart-bch:latest
-            docker pull mrnaif/bitcart-ltc:latest
-            docker pull mrnaif/bitcart-gzro:latest
-            docker pull mrnaif/bitcart-bsty:latest
-            docker tag mrnaif/bitcart:latest mrnaif/bitcart:stable
-            docker tag mrnaif/bitcart-btc:latest mrnaif/bitcart-btc:stable
-            docker tag mrnaif/bitcart-bch:latest mrnaif/bitcart-bch:stable
-            docker tag mrnaif/bitcart-ltc:latest mrnaif/bitcart-ltc:stable
-            docker tag mrnaif/bitcart-gzro:latest mrnaif/bitcart-gzro:stable
-            docker tag mrnaif/bitcart-bsty:latest mrnaif/bitcart-bsty:stable
-            docker push mrnaif/bitcart:stable
-            docker push mrnaif/bitcart-btc:stable
-            docker push mrnaif/bitcart-bch:stable
-            docker push mrnaif/bitcart-ltc:stable
-            docker push mrnaif/bitcart-gzro:stable
-            docker push mrnaif/bitcart-bsty:stable
+            docker pull bitcartcc/bitcart:latest
+            docker pull bitcartcc/bitcart-btc:latest
+            docker pull bitcartcc/bitcart-bch:latest
+            docker pull bitcartcc/bitcart-ltc:latest
+            docker pull bitcartcc/bitcart-gzro:latest
+            docker pull bitcartcc/bitcart-bsty:latest
+            docker tag bitcartcc/bitcart:latest bitcartcc/bitcart:stable
+            docker tag bitcartcc/bitcart-btc:latest bitcartcc/bitcart-btc:stable
+            docker tag bitcartcc/bitcart-bch:latest bitcartcc/bitcart-bch:stable
+            docker tag bitcartcc/bitcart-ltc:latest bitcartcc/bitcart-ltc:stable
+            docker tag bitcartcc/bitcart-gzro:latest bitcartcc/bitcart-gzro:stable
+            docker tag bitcartcc/bitcart-bsty:latest bitcartcc/bitcart-bsty:stable
+            docker push bitcartcc/bitcart:stable
+            docker push bitcartcc/bitcart-btc:stable
+            docker push bitcartcc/bitcart-bch:stable
+            docker push bitcartcc/bitcart-ltc:stable
+            docker push bitcartcc/bitcart-gzro:stable
+            docker push bitcartcc/bitcart-bsty:stable
 
 workflows:
   version: 2
