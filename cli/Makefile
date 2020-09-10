@@ -1,7 +1,7 @@
 all: get-deps build
 
 get-deps:
-	go get github.com/MrNaif2018/jsonrpc
+	go get github.com/bitcartcc/jsonrpc
 	go get github.com/urfave/cli
 
 build:

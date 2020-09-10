@@ -22,15 +22,15 @@ Have you identified a reproducible problem in BitcartCC? Have a feature request?
 
 ### Identify Where to Report
 
-The BitcartCC project is distributed across multiple repositories. Try to file the issue against the correct repository. Check the list of [Linked repositories](https://github.com/MrNaif2018/bitcart/blob/master/README.md#linked-repositories) if you aren't sure which repo is correct.
+The BitcartCC project is distributed across multiple repositories. Try to file the issue against the correct repository. Check the list of [Linked repositories](https://github.com/bitcartcc/bitcart/blob/master/README.md#linked-repositories) if you aren't sure which repo is correct.
 
-If the issue is related to BitcartCC deployment and not to some individual components, or you are not sure, you can open an issue on our [central repository](https://github.com/MrNaif2018/bitcart)
+If the issue is related to BitcartCC deployment and not to some individual components, or you are not sure, you can open an issue on our [central repository](https://github.com/bitcartcc/bitcart)
 
 ### Look For an Existing Issue
 
-Before you create a new issue, please do a search in [open issues](https://github.com/MrNaif2018/bitcart/issues) to see if the issue or feature request has already been filed.
+Before you create a new issue, please do a search in [open issues](https://github.com/bitcartcc/bitcart/issues) to see if the issue or feature request has already been filed.
 
-Be sure to scan through the [most popular](https://github.com/MrNaif2018/bitcart/issues?q=is%3Aopen+is%3Aissue+label%3Afeature-request+sort%3Areactions-%2B1-desc) feature requests.
+Be sure to scan through the [most popular](https://github.com/bitcartcc/bitcart/issues?q=is%3Aopen+is%3Aissue+label%3Afeature-request+sort%3Areactions-%2B1-desc) feature requests.
 
 If you find your issue already exists, make relevant comments and add your [reaction](https://github.com/blog/2119-add-reactions-to-pull-requests-issues-and-comments). Use a reaction in place of a "+1" comment:
 
@@ -79,7 +79,7 @@ Don't feel bad if the developers can't reproduce the issue right away. They will
 ## Contributing Fixes
 
 If you are interested in writing code to fix issues,
-please see [How to Contribute](https://github.com/MrNaif2018/bitcart/wiki/How-to-Contribute) in the wiki.
+please see [How to Contribute](https://github.com/bitcartcc/bitcart/wiki/How-to-Contribute) in the wiki.
 
 # Thank You!
 

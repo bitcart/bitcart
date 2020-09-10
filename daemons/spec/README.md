@@ -23,7 +23,7 @@ error name got from `exc_name` key with error message got from `docstring` ley.
 
 - If error code isn't in the spec, raise `UnknownError` and pass server response as error message. This should also be done when spec is invalid, it works because of fallback spec.
 
-Reference implementation can be found in [SDK repo](https://github.com/MrNaif2018/bitcart-sdk)
+Reference implementation can be found in [SDK repo](https://github.com/bitcartcc/bitcart-sdk)
 
 ## Spec schema
 

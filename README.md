@@ -1,7 +1,7 @@
 # BitcartCC
-![Github All Contributors](https://img.shields.io/github/all-contributors/MrNaif2018/bitcart?style=flat-square)
-[![CircleCI](https://circleci.com/gh/MrNaif2018/bitcart.svg?style=svg)](https://circleci.com/gh/MrNaif2018/bitcart)
-![Codecov](https://img.shields.io/codecov/c/github/MrNaif2018/bitcart?style=flat-square)
+![Github All Contributors](https://img.shields.io/github/all-contributors/bitcartcc/bitcart?style=flat-square)
+[![CircleCI](https://circleci.com/gh/bitcartcc/bitcart.svg?style=svg)](https://circleci.com/gh/bitcartcc/bitcart)
+![Codecov](https://img.shields.io/codecov/c/github/bitcartcc/bitcart?style=flat-square)
 [![Python versions](https://img.shields.io/pypi/pyversions/bitcart?style=flat-square)](https://docs.bitcartcc.com)
 
 BitcartCC is a platform for merchants, users and developers which offers easy setup and use.
@@ -14,29 +14,29 @@ It is recommended to propose feature requests to BitcartCC ecosystem as a whole 
 
 Full list of our repositories:
 
-https://github.com/MrNaif2018/bitcart - BitcartCC Core Daemons and Merchants API
+https://github.com/bitcartcc/bitcart - BitcartCC Core Daemons and Merchants API
 
-https://github.com/MrNaif2018/bitcart-admin - The admin panel of BitcartCC
+https://github.com/bitcartcc/bitcart-admin - The admin panel of BitcartCC
 
-https://github.com/MrNaif2018/bitcart-frontend - BitcartCC ready store
+https://github.com/bitcartcc/bitcart-frontend - BitcartCC ready store
 
-https://github.com/MrNaif2018/bitcart-docker - Docker packaging, base for all deployment methods
+https://github.com/bitcartcc/bitcart-docker - Docker packaging, base for all deployment methods
 
-https://github.com/MrNaif2018/bitcart-sdk - Python library for coins connection
+https://github.com/bitcartcc/bitcart-sdk - Python library for coins connection
 
-https://github.com/MrNaif2018/bitccl - The BitCCL scripting language for checkout flow automation
+https://github.com/bitcartcc/bitccl - The BitCCL scripting language for checkout flow automation
 
-https://github.com/MrNaif2018/bitcart-docs - [BitcartCC documentation](https://docs.bitcartcc.com)
+https://github.com/bitcartcc/bitcart-docs - [BitcartCC documentation](https://docs.bitcartcc.com)
 
-https://github.com/MrNaif2018/bitcart-site - [BitcartCC official site](https://bitcartcc.com)
+https://github.com/bitcartcc/bitcart-site - [BitcartCC official site](https://bitcartcc.com)
 
 Docs
 ----
-Docs are available at https://docs.bitcartcc.com or in our [docs repository](https://github.com/MrNaif2018/bitcart-docs)
+Docs are available at https://docs.bitcartcc.com or in our [docs repository](https://github.com/bitcartcc/bitcart-docs)
 
 Contributing
 ------------
-See [our contributing guidelines](https://github.com/MrNaif2018/bitcart/blob/master/CONTRIBUTING.md) for details.
+See [our contributing guidelines](https://github.com/bitcartcc/bitcart/blob/master/CONTRIBUTING.md) for details.
 
 ## Contributors ✨
 
@@ -47,10 +47,10 @@ Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/d
 <!-- markdownlint-disable -->
 <table>
   <tr>
-    <td align="center"><a href="https://github.com/MrNaif2018"><img src="https://avatars3.githubusercontent.com/u/39452697?v=4?s=100" width="100px;" alt=""/><br /><sub><b>MrNaif2018</b></sub></a><br /><a href="#maintenance-MrNaif2018" title="Maintenance">🚧</a> <a href="https://github.com/MrNaif2018/bitcart/commits?author=MrNaif2018" title="Code">💻</a> <a href="https://github.com/MrNaif2018/bitcart/commits?author=MrNaif2018" title="Documentation">📖</a></td>
-    <td align="center"><a href="https://github.com/tomasmor42"><img src="https://avatars2.githubusercontent.com/u/42064734?v=4?s=100" width="100px;" alt=""/><br /><sub><b>tomasmor42</b></sub></a><br /><a href="https://github.com/MrNaif2018/bitcart/commits?author=tomasmor42" title="Code">💻</a></td>
-    <td align="center"><a href="https://github.com/yagicandegirmenci"><img src="https://avatars3.githubusercontent.com/u/62724709?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Yağız Değirmenci</b></sub></a><br /><a href="https://github.com/MrNaif2018/bitcart/commits?author=yagicandegirmenci" title="Code">💻</a></td>
-    <td align="center"><a href="https://www.linkedin.com/pub/weidong-sun/b3/83/21b"><img src="https://avatars0.githubusercontent.com/u/3086064?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Weidong Sun</b></sub></a><br /><a href="https://github.com/MrNaif2018/bitcart/commits?author=xiaoxianma" title="Code">💻</a></td>
+    <td align="center"><a href="https://github.com/MrNaif2018"><img src="https://avatars3.githubusercontent.com/u/39452697?v=4?s=100" width="100px;" alt=""/><br /><sub><b>MrNaif2018</b></sub></a><br /><a href="#maintenance-MrNaif2018" title="Maintenance">🚧</a> <a href="https://github.com/bitcartcc/bitcart/commits?author=MrNaif2018" title="Code">💻</a> <a href="https://github.com/bitcartcc/bitcart/commits?author=MrNaif2018" title="Documentation">📖</a></td>
+    <td align="center"><a href="https://github.com/tomasmor42"><img src="https://avatars2.githubusercontent.com/u/42064734?v=4?s=100" width="100px;" alt=""/><br /><sub><b>tomasmor42</b></sub></a><br /><a href="https://github.com/bitcartcc/bitcart/commits?author=tomasmor42" title="Code">💻</a></td>
+    <td align="center"><a href="https://github.com/yagicandegirmenci"><img src="https://avatars3.githubusercontent.com/u/62724709?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Yağız Değirmenci</b></sub></a><br /><a href="https://github.com/bitcartcc/bitcart/commits?author=yagicandegirmenci" title="Code">💻</a></td>
+    <td align="center"><a href="https://www.linkedin.com/pub/weidong-sun/b3/83/21b"><img src="https://avatars0.githubusercontent.com/u/3086064?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Weidong Sun</b></sub></a><br /><a href="https://github.com/bitcartcc/bitcart/commits?author=xiaoxianma" title="Code">💻</a></td>
   </tr>
 </table>
 

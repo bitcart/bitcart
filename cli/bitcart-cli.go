@@ -7,7 +7,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/MrNaif2018/jsonrpc"
+	"github.com/bitcartcc/jsonrpc"
 	"github.com/urfave/cli"
 )
 
