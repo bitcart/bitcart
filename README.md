@@ -18,7 +18,7 @@ https://github.com/bitcartcc/bitcart - BitcartCC Core Daemons and Merchants API
 
 https://github.com/bitcartcc/bitcart-admin - The admin panel of BitcartCC
 
-https://github.com/bitcartcc/bitcart-frontend - BitcartCC ready store
+https://github.com/bitcartcc/bitcart-store - BitcartCC ready store
 
 https://github.com/bitcartcc/bitcart-docker - Docker packaging, base for all deployment methods
 
