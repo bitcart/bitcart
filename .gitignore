@@ -1,34 +1,20 @@
-#virtualenv
+# virtualenv
 env/
 venv
-#old db
-db.sqlite3
-#cache
+# cache
 __pycache__/
-#collected static and media
-/static/
-/media/
-#python optimizations
+# python optimizations
 *.pyo
 *.pyc
-#real config
+# real config
 .env
-#vs code
+# vs code
 .vscode/
-#pytest
-#backups
+# backups
 backups/
 backup/
-#locales,for now
-locales/
-#logs
-debug.log
-#docs builds
-/docs/_build
-/docs/_static
-/docs/_templates
 .idea/
-#tests and coverage
+# tests and coverage
 .pytest_cache/
 htmlcov/
 .coverage
