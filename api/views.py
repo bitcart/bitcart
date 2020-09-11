@@ -227,7 +227,7 @@ async def get_invoice_by_order_id(order_id: str):
 async def get_max_product_price(store: int):
     return (
         await (
-            models.Product.query.where(models.Store.id == store)
+            models.Product.query.where(models.Product.store_id == store)
             .with_only_columns([db.db.func.max(distinct(models.Product.price))])
             .order_by(None)
             .gino.scalar()
