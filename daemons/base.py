@@ -84,7 +84,15 @@ class BaseDaemon:
         "new_transaction": "new_transaction",
         "payment_received": "new_payment",
     }
-    LIGHTNING_WALLET_METHODS = ["open_channel", "close_channel", "lnpay", "list_channels"]
+    LIGHTNING_WALLET_METHODS = [
+        "add_peer",
+        "nodeid",
+        "add_lightning_request",
+        "open_channel",
+        "close_channel",
+        "lnpay",
+        "list_channels",
+    ]
     NETWORK_MAPPING: dict = {}
 
     def __init__(self):
