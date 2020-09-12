@@ -17,6 +17,9 @@ class BCHDaemon(BaseDaemon):
     }
     latest_height = -1
 
+    def register_callbacks(self):
+        self.network.register_callback(self._process_events, self.AVAILABLE_EVENTS)
+
     def configure_logging(self, electrum_config):
         self.electrum.util.set_verbosity(electrum_config.get("verbosity"))
 

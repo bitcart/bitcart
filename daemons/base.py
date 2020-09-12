@@ -84,6 +84,7 @@ class BaseDaemon:
         "new_transaction": "new_transaction",
         "payment_received": "new_payment",
     }
+    LIGHTNING_WALLET_METHODS = ["open_channel", "close_channel", "lnpay", "list_channels"]
     NETWORK_MAPPING: dict = {}
 
     def __init__(self):
@@ -177,11 +178,14 @@ class BaseDaemon:
                 sys.exit(f"Invalid proxy URL. Original traceback:\n{traceback.format_exc()}")
         config.set_key("proxy", proxy)
 
+    def register_callbacks(self):
+        self.electrum.util.register_callback(self._process_events, self.AVAILABLE_EVENTS)
+
     async def on_startup(self, app):
         self.client_session = ClientSession()
         self.daemon = self.create_daemon()
         self.network = self.daemon.network
-        self.network.register_callback(self._process_events, self.AVAILABLE_EVENTS)
+        self.register_callbacks()
         self.fx = self.daemon.fx
 
     async def on_shutdown(self, app):
@@ -197,7 +201,15 @@ class BaseDaemon:
         self.daemon.add_wallet(wallet)
 
     def create_wallet(self, storage, config):
-        wallet = self.electrum.wallet.Wallet(storage, config=config)
+        db = self.electrum.wallet_db.WalletDB(storage.read(), manual_upgrades=False)
+        wallet = self.electrum.wallet.Wallet(db=db, storage=storage, config=config)
+        if self.LIGHTNING:
+            try:
+                wallet.init_lightning()
+                wallet = self.electrum.wallet.Wallet(db=db, storage=storage, config=config)  # to load lightning keys
+                wallet.has_lightning = True
+            except AssertionError:
+                wallet.has_lightning = False
         wallet.start_network(self.network)
         return wallet
 
@@ -301,15 +313,18 @@ class BaseDaemon:
         return exec_method, custom, error
 
     async def get_exec_result(self, xpub, req_method, req_args, req_kwargs, exec_method, custom, **kwargs):
+        wallet = kwargs.get("wallet")
         if custom:
             exec_method = functools.partial(exec_method, wallet=xpub)
         else:
             if self.NEW_ELECTRUM and self.electrum.commands.known_commands[req_method].requires_wallet:
-                wallet, config = kwargs.get("wallet"), kwargs.get("config")
+                config = kwargs.get("config")
                 cmd_name = self.electrum.commands.known_commands[req_method].name
                 need_path = cmd_name in ["create", "restore"]
                 path = wallet.storage.path if wallet else (config.get_wallet_path() if need_path else None)
-                exec_method = functools.partial(exec_method, wallet_path=path)
+                exec_method = functools.partial(exec_method, wallet=path)
+        if self.LIGHTNING and req_method in self.LIGHTNING_WALLET_METHODS and not wallet.has_lightning:
+            raise Exception("Lightning not supported in this wallet type")
         result = exec_method(*req_args, **req_kwargs)
         return await result if inspect.isawaitable(result) else result
 
@@ -462,7 +477,9 @@ class BaseDaemon:
     @rpc
     async def get_transaction(self, tx, wallet=None):
         result = await self.network.interface.session.send_request("blockchain.transaction.get", [tx, True])
-        result_formatted = self.electrum.transaction.Transaction(result).deserialize()
+        tx = self.electrum.transaction.Transaction(result["hex"])
+        tx.deserialize()
+        result_formatted = tx.to_json()
         result_formatted.update({"confirmations": result.get("confirmations", 0)})
         return result_formatted
 
@@ -489,24 +506,3 @@ class BaseDaemon:
     @rpc(requires_wallet=True)
     def configure_notifications(self, notification_url, wallet):
         self.wallets_config[wallet]["notification_url"] = notification_url
-
-    ### Start workaround ###
-    # TODO: remove, see https://github.com/spesmilo/electrum/issues/6529
-
-    async def _add_tx_wrapper(self, func, wallet, *args, **kwargs):
-        wallet_path = self.wallets[wallet]["wallet"].storage.path
-        for_broadcast = kwargs.pop("for_broadcast", True)
-        result = await getattr(self.wallets[wallet]["cmd"], func)(*args, **kwargs, wallet_path=wallet_path)
-        if for_broadcast:
-            await self.wallets[wallet]["cmd"].addtransaction(result, wallet_path=wallet_path)
-        return result
-
-    @rpc(requires_wallet=True)
-    async def payto(self, *args, wallet, **kwargs):
-        return await self._add_tx_wrapper("payto", wallet, *args, **kwargs)
-
-    @rpc(requires_wallet=True)
-    async def paytomany(self, *args, wallet, **kwargs):
-        return await self._add_tx_wrapper("paytomany", wallet, *args, **kwargs)
-
-    ### End workaround ###

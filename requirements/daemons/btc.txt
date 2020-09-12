@@ -1,1 +1,1 @@
-https://github.com/spesmilo/electrum/archive/1773bd6cd6b9aaa693c6c1cb865f88fc3597e09f.zip # TODO: refer back to stable release when out
+https://github.com/spesmilo/electrum/archive/4.0.3.zip#egg=electrum[crypto]
