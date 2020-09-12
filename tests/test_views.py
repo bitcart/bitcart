@@ -5,7 +5,7 @@ import pytest
 from fastapi.encoders import jsonable_encoder
 from starlette.testclient import TestClient
 
-from api import settings, templates
+from api import models, settings, tasks, templates
 from api.ext import tor as tor_ext
 
 TEST_XPUB = "tpubDD5MNJWw35y3eoJA7m3kFWsyX5SaUgx2Y3AaGwFk1pjYsHvpgDwRhrStRbCGad8dYzZCkLCvbGKfPuBiG7BabswmLofb7c2yfQFhjqSjaGi"
@@ -770,3 +770,25 @@ def test_create_product_with_image(client: TestClient, token: str, image: bytes)
         headers={"Authorization": f"Bearer {token}"},
     )
     assert put_product_resp.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_create_invoice_and_pay(async_client, token: str, mocker):
+    # get an existing wallet
+    wallet = await models.Wallet.query.where(models.Wallet.name == "test5").gino.first()
+    # create invoice
+    r = await async_client.post("/invoices", json={"store_id": 2, "price": 9.9}, headers={"Authorization": f"Bearer {token}"})
+    assert r.status_code == 200
+    invoice_id = r.json()["id"]
+    invoice = await models.Invoice.get(invoice_id)
+    # get payment
+    payment_method = await models.PaymentMethod.query.where(models.PaymentMethod.invoice_id == invoice_id).gino.first()
+    payment_method.coin = settings.get_coin(payment_method.currency, xpub=wallet.xpub)
+    assert not (await models.Invoice.get(invoice_id)).paid_currency
+    # mock transaction complete
+    mocker.patch.object(payment_method.coin, "getrequest", return_value={"status": "complete"})
+    # process invoice
+    await tasks.process_invoice(invoice, {}, [payment_method], notify=False)
+    # validate invoice paid_currency
+    assert (await models.Invoice.get(invoice_id)).paid_currency == payment_method.currency
+    await async_client.delete(f"/invoices/{invoice_id}", headers={"Authorization": f"Bearer {token}"})

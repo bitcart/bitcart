@@ -1,6 +1,7 @@
 pytest
 pytest-asyncio
 pytest-cov
+pytest-mock
 flake8
 black
 isort>=5

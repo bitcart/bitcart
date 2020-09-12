@@ -244,6 +244,7 @@ class Invoice(db.Model):
     id = Column(Integer, primary_key=True, index=True)
     price = Column(Numeric(16, 8), nullable=False)
     currency = Column(Text)
+    paid_currency = Column(String(length=1000))
     status = Column(String(1000), nullable=False)
     expiration = Column(Integer)
     buyer_email = Column(String(10000))

@@ -1,4 +1,5 @@
 import asyncio
+import inspect
 from typing import Dict, List, Union
 
 import dramatiq
@@ -41,10 +42,13 @@ async def poll_updates(obj: Union[int, models.Invoice], task_wallets: Dict[str, 
     await process_invoice(obj, task_wallets, payment_methods)
 
 
-async def process_invoice(invoice: models.Invoice, task_wallets: Dict[str, str], payment_methods: List[models.PaymentMethod]):
+async def process_invoice(
+    invoice: models.Invoice, task_wallets: Dict[str, str], payment_methods: List[models.PaymentMethod], notify: bool = True
+):
     while not settings.shutdown.is_set():
         for method in payment_methods:
-            invoice_data = await method.coin.getrequest(method.payment_address)
+            invoice_data = method.coin.getrequest(method.payment_address)
+            invoice_data = await invoice_data if inspect.isawaitable(invoice_data) else invoice_data
             if invoice_data["status"] != "Pending" and invoice_data["status"] != 0:
                 status = invoice_data["status"]
                 if isinstance(status, int):
@@ -54,7 +58,10 @@ async def process_invoice(invoice: models.Invoice, task_wallets: Dict[str, str],
                 if not status:
                     status = "expired"
                 await invoice.update(status=status, discount=method.discount).apply()
-                await invoice_notification(invoice, status)
+                if status == "complete":
+                    await invoice.update(paid_currency=method.currency).apply()
+                if notify:
+                    await invoice_notification(invoice, status)
                 return
         await asyncio.sleep(1)
     poll_updates.send_with_options(args=(invoice.id, task_wallets), delay=1000)  # to run on next startup

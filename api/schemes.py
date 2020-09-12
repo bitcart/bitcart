@@ -212,6 +212,7 @@ class CreateInvoice(CreatedMixin):
     price: Decimal
     store_id: int
     currency: str = ""
+    paid_currency: Optional[str] = ""
     order_id: Optional[str] = ""
     notification_url: Optional[str] = ""
     redirect_url: Optional[str] = ""
