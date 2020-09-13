@@ -26,9 +26,9 @@ jobs:
       # Download and cache dependencies
       - restore_cache:
           keys:
-            - v11-dependencies-{{ checksum "requirements/web.txt" }}-{{ checksum "requirements/test.txt" }}-{{ checksum "requirements/daemons/btc.txt" }}-<< parameters.v >>
+            - v12-dependencies-{{ checksum "requirements/web.txt" }}-{{ checksum "requirements/test.txt" }}-{{ checksum "requirements/daemons/btc.txt" }}-<< parameters.v >>
             # fallback to using the latest cache if no exact match is found
-            - v11-dependencies-
+            - v12-dependencies-
 
       - run:
           name: install dependencies
@@ -43,7 +43,7 @@ jobs:
       - save_cache:
           paths:
             - ~/venv
-          key: v11-dependencies-{{ checksum "requirements/web.txt" }}-{{ checksum "requirements/test.txt" }}-{{ checksum "requirements/daemons/btc.txt" }}-<< parameters.v >>
+          key: v12-dependencies-{{ checksum "requirements/web.txt" }}-{{ checksum "requirements/test.txt" }}-{{ checksum "requirements/daemons/btc.txt" }}-<< parameters.v >>
 
       - run:
           name: prepare daemon
@@ -122,13 +122,13 @@ workflows:
           matrix:
             parameters:
               v:
-                - "3.6.10"
+                - "3.6"
                 - "3.7"
                 - "3.8"
       - deploy:
           context: global
           requires:
-            - test-3.6.10
+            - test-3.6
             - test-3.7
             - test-3.8
           filters:
