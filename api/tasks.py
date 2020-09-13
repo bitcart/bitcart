@@ -1,5 +1,4 @@
 import asyncio
-import inspect
 from typing import Dict, List, Union
 
 import dramatiq
@@ -47,8 +46,7 @@ async def process_invoice(
 ):
     while not settings.shutdown.is_set():
         for method in payment_methods:
-            invoice_data = method.coin.getrequest(method.payment_address)
-            invoice_data = await invoice_data if inspect.isawaitable(invoice_data) else invoice_data
+            invoice_data = await method.coin.getrequest(method.payment_address)
             if invoice_data["status"] != "Pending" and invoice_data["status"] != 0:
                 status = invoice_data["status"]
                 if isinstance(status, int):

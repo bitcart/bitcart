@@ -1,4 +1,6 @@
+import asyncio
 import json as json_module
+import platform
 from typing import Dict, List, Union
 
 import pytest
@@ -786,7 +788,15 @@ async def test_create_invoice_and_pay(async_client, token: str, mocker):
     payment_method.coin = settings.get_coin(payment_method.currency, xpub=wallet.xpub)
     assert not (await models.Invoice.get(invoice_id)).paid_currency
     # mock transaction complete
-    mocker.patch.object(payment_method.coin, "getrequest", return_value={"status": "complete"})
+
+    def wrapper():
+        ret = {"status": "complete"}
+        future = asyncio.Future()
+        future.set_result(ret)
+        minor_ver = int(platform.python_version_tuple()[1])
+        return future if minor_ver < 8 else ret
+
+    mocker.patch.object(payment_method.coin, "getrequest", return_value=wrapper())
     # process invoice
     await tasks.process_invoice(invoice, {}, [payment_method], notify=False)
     # validate invoice paid_currency
