@@ -1,13 +1,23 @@
 import ipaddress
 import os
-from collections import namedtuple  # TODO: dataclasses
+from dataclasses import dataclass
 
 from .. import settings
 
-HiddenService = namedtuple("HiddenService", ["name", "directory", "hostname", "port_definition"])
-PortDefinition = namedtuple("PortDefinition", ["virtual_port", "ip", "port"])
-#this is a commit test
+@dataclass(frozen=True)
+class PortDefinition:
+    virtual_port: int
+    ip: None
+    port: int
 
+@dataclass
+class HiddenService:
+    name: str
+    directory: str
+    hostname: str
+    port_definition: PortDefinition
+
+        
 def is_onion(host):
     return host.lower().endswith(".onion")
 
@@ -78,11 +88,12 @@ def parse_torrc(torrc):
     return services
 
 
+@dataclass
 class TorService:
-    services = []
-    services_dict = {}
-    anonymous_services_dict = {}
-    onion_host = ""
+    services: list
+    services_dict: dict
+    anonymous_services_dict: dict
+    onion_host: str
 
 
 def refresh():
