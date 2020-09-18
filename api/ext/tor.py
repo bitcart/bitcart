@@ -1,13 +1,14 @@
 import ipaddress
 import os
 from dataclasses import dataclass
+from typing import Any, Optional, Union
 
 from .. import settings
 
 @dataclass(frozen=True)
 class PortDefinition:
     virtual_port: int
-    ip: None
+    ip: Union[ipaddress.IPv4Address,ipaddress.IPv6Address]
     port: int
 
 @dataclass
@@ -84,27 +85,27 @@ def parse_torrc(torrc):
             )
             services.append(hidden_service)
         elif hidden_service_port and services:
-            services[-1] = services[-1]._replace(port_definition=hidden_service_port)
+            services[-1].port_definition = hidden_service_port
     return services
 
 
 @dataclass
 class TorService:
-    services: list
-    services_dict: dict
-    anonymous_services_dict: dict
-    onion_host: str
+    services: Optional[list] = None
+    services_dict: Optional[dict] = None
+    anonymous_services_dict: Optional[dict] = None
+    onion_host: Optional[str] = None
 
 
-def refresh():
-    TorService.services = parse_torrc(settings.TORRC_FILE)
-    TorService.services_dict = {service.name: service._asdict() for service in TorService.services}
-    TorService.anonymous_services_dict = {
-        service.name: {"name": service.name, "hostname": service.hostname} for service in TorService.services
+def refresh(torService):
+    torService.services = parse_torrc(settings.TORRC_FILE)
+    torService.services_dict = {service.name: service._asdict() for service in torService.services}
+    torService.anonymous_services_dict = {
+        service.name: {"name": service.name, "hostname": service.hostname} for service in torService.services
     }
-    TorService.onion_host = TorService.services_dict.get("BitcartCC Merchants API", "")
-    if TorService.onion_host:  # pragma: no cover
-        TorService.onion_host = TorService.onion_host["hostname"]
+    torService.onion_host = torService.services_dict.get("BitcartCC Merchants API", "")
+    if torService.onion_host:  # pragma: no cover
+        torService.onion_host = torService.onion_host["hostname"]
 
-
-refresh()
+torService = TorService()
+refresh(torService)
