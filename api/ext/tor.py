@@ -1,5 +1,6 @@
 import ipaddress
 import os
+from dataclasses import asdict as dataclass_asdict
 from dataclasses import dataclass
 from typing import Optional, Union
 
@@ -99,7 +100,7 @@ class TorService:
 
 def refresh():
     TorService.services = parse_torrc(settings.TORRC_FILE)
-    TorService.services_dict = {service.name: service._asdict() for service in TorService.services}
+    TorService.services_dict = {service.name: dataclass_asdict(service) for service in TorService.services}
     TorService.anonymous_services_dict = {
         service.name: {"name": service.name, "hostname": service.hostname} for service in TorService.services
     }
