@@ -5,20 +5,22 @@ from typing import Optional, Union
 
 from .. import settings
 
+
 @dataclass(frozen=True)
 class PortDefinition:
     virtual_port: int
-    ip: Union[ipaddress.IPv4Address,ipaddress.IPv6Address]
+    ip: Union[ipaddress.IPv4Address, ipaddress.IPv6Address]
     port: int
+
 
 @dataclass
 class HiddenService:
     name: str
     directory: str
     hostname: str
-    port_definition: Optional[PortDefinition]
+    port_definition: Optional[PortDefinition] = None
 
-        
+
 def is_onion(host):
     return host.lower().endswith(".onion")
 
@@ -81,7 +83,6 @@ def parse_torrc(torrc):
                 get_service_name(hidden_service),
                 hidden_service,
                 get_hostname(hidden_service),
-                None,
             )
             services.append(hidden_service)
         elif hidden_service_port and services:
@@ -89,23 +90,22 @@ def parse_torrc(torrc):
     return services
 
 
-@dataclass
 class TorService:
-    services: Optional[list] = None
-    services_dict: Optional[dict] = None
-    anonymous_services_dict: Optional[dict] = None
-    onion_host: Optional[str] = None
+    services = []
+    services_dict = {}
+    anonymous_services_dict = {}
+    onion_host = ""
 
 
-def refresh(torService):
-    torService.services = parse_torrc(settings.TORRC_FILE)
-    torService.services_dict = {service.name: service._asdict() for service in torService.services}
-    torService.anonymous_services_dict = {
-        service.name: {"name": service.name, "hostname": service.hostname} for service in torService.services
+def refresh():
+    TorService.services = parse_torrc(settings.TORRC_FILE)
+    TorService.services_dict = {service.name: service._asdict() for service in TorService.services}
+    TorService.anonymous_services_dict = {
+        service.name: {"name": service.name, "hostname": service.hostname} for service in TorService.services
     }
-    torService.onion_host = torService.services_dict.get("BitcartCC Merchants API", "")
-    if torService.onion_host:  # pragma: no cover
-        torService.onion_host = torService.onion_host["hostname"]
+    TorService.onion_host = TorService.services_dict.get("BitcartCC Merchants API", "")
+    if TorService.onion_host:  # pragma: no cover
+        TorService.onion_host = TorService.onion_host["hostname"]
 
-torService = TorService()
-refresh(torService)
+
+refresh()
