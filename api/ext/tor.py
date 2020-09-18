@@ -1,11 +1,25 @@
 import ipaddress
 import os
-from collections import namedtuple  # TODO: dataclasses
+from dataclasses import asdict as dataclass_asdict
+from dataclasses import dataclass
+from typing import Optional, Union
 
 from .. import settings
 
-HiddenService = namedtuple("HiddenService", ["name", "directory", "hostname", "port_definition"])
-PortDefinition = namedtuple("PortDefinition", ["virtual_port", "ip", "port"])
+
+@dataclass(frozen=True)
+class PortDefinition:
+    virtual_port: int
+    ip: Union[ipaddress.IPv4Address, ipaddress.IPv6Address]
+    port: int
+
+
+@dataclass
+class HiddenService:
+    name: str
+    directory: str
+    hostname: str
+    port_definition: Optional[PortDefinition] = None
 
 
 def is_onion(host):
@@ -70,11 +84,10 @@ def parse_torrc(torrc):
                 get_service_name(hidden_service),
                 hidden_service,
                 get_hostname(hidden_service),
-                None,
             )
             services.append(hidden_service)
         elif hidden_service_port and services:
-            services[-1] = services[-1]._replace(port_definition=hidden_service_port)
+            services[-1].port_definition = hidden_service_port
     return services
 
 
@@ -87,7 +100,7 @@ class TorService:
 
 def refresh():
     TorService.services = parse_torrc(settings.TORRC_FILE)
-    TorService.services_dict = {service.name: service._asdict() for service in TorService.services}
+    TorService.services_dict = {service.name: dataclass_asdict(service) for service in TorService.services}
     TorService.anonymous_services_dict = {
         service.name: {"name": service.name, "hostname": service.hostname} for service in TorService.services
     }
