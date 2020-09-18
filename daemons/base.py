@@ -103,6 +103,7 @@ class BaseDaemon:
         # load env variables
         self.env_name = self.name.upper()
         self.config = AutoConfig(search_path="conf")
+        self.DATA_PATH = self.config(f"{self.env_name}_DATA_PATH", default=None)
         self.LOGIN = self.config(f"{self.env_name}_LOGIN", default="electrum")
         self.PASSWORD = self.config(f"{self.env_name}_PASSWORD", default="electrumz")
         self.NET = self.config(f"{self.env_name}_NETWORK", default="mainnet")
@@ -228,6 +229,7 @@ class BaseDaemon:
         config.set_key(self.NET.lower(), True)
 
     def copy_config_settings(self, config, per_wallet=False):
+        config.set_key("electrum_path", self.DATA_PATH)
         self.set_network_in_config(config)
         config.path = config.electrum_path()  # to reflect network settings
         config.user_config = self.electrum.simple_config.read_user_config(config.path)  # reread config

@@ -28,7 +28,7 @@ regtest:
 	BTC_DEBUG=true BTC_NETWORK=regtest BTC_SERVER=127.0.0.1:51001:t BTC_LIGHTNING=true python3 daemons/btc.py
 
 regtestln:
-	BTC_NETWORK=regtest BTC_SERVER=127.0.0.1:51001:t BTC_LIGHTNING=true BTC_LIGHTNING_LISTEN=0.0.0.0:9735 BTC_PORT=5110 python3 daemons/btc.py
+	BTC_DATA_PATH=/tmp/bitcartln BTC_NETWORK=regtest BTC_SERVER=127.0.0.1:51001:t BTC_LIGHTNING=true BTC_LIGHTNING_LISTEN=0.0.0.0:9735 BTC_PORT=5110 python3 daemons/btc.py
 
 testnet:
 	BTC_DEBUG=true BTC_NETWORK=testnet BTC_LIGHTNING=true python3 daemons/btc.py
