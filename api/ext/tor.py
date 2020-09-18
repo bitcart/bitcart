@@ -1,7 +1,7 @@
 import ipaddress
 import os
 from dataclasses import dataclass
-from typing import Any, Optional, Union
+from typing import Optional, Union
 
 from .. import settings
 
@@ -16,7 +16,7 @@ class HiddenService:
     name: str
     directory: str
     hostname: str
-    port_definition: PortDefinition
+    port_definition: Optional[PortDefinition]
 
         
 def is_onion(host):
