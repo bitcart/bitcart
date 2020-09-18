@@ -1,1 +1,1 @@
-https://github.com/GZR0/electrum/archive/275e1b21e3ace5918d8319f85251a23c4da25ee6.zip
+https://github.com/GZR0/electrum/archive/5dcdfcea5c94d239c44f8b4894dae761d714ce12.zip#egg=electrum-gzro[crypto]

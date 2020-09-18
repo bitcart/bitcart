@@ -1,1 +1,1 @@
-https://github.com/spesmilo/electrum/archive/4.0.3.zip#egg=electrum[crypto]
+https://github.com/spesmilo/electrum/archive/6bd1a04aee3d1adc052731793e7ebfb5023f7f56.zip#egg=electrum[crypto] # TODO: pin to 4.0.4 when out

@@ -78,11 +78,11 @@ class BaseDaemon:
     # whether client is using asyncio or is synchronous
     ASYNC_CLIENT = True
     DEFAULT_PORT = 5000
-    AVAILABLE_EVENTS = ["blockchain_updated", "new_transaction", "payment_received"]
+    AVAILABLE_EVENTS = ["blockchain_updated", "new_transaction", "request_status"]
     EVENT_MAPPING = {
         "blockchain_updated": "new_block",
         "new_transaction": "new_transaction",
-        "payment_received": "new_payment",
+        "request_status": "new_payment",
     }
     LIGHTNING_WALLET_METHODS = [
         "add_peer",
@@ -94,6 +94,7 @@ class BaseDaemon:
         "list_channels",
     ]
     NETWORK_MAPPING: dict = {}
+    latest_height = -1
 
     def __init__(self):
         # if client is sync, use sync _process_events
@@ -442,12 +443,21 @@ class BaseDaemon:
                     else:
                         self.wallets_updates[i].append(data)
 
+    def process_new_block(self):
+        height = self.network.get_local_height()
+        if height > self.latest_height:
+            self.latest_height = height
+            return height
+
     def process_events(self, event, *args):
         """Override in your subclass if needed"""
         wallet = None
         data = {}
         if event == "new_block":
-            data["height"] = self.network.get_local_height()
+            height = self.process_new_block()
+            if not isinstance(height, int):
+                return None, None
+            data["height"] = height
         elif event == "new_transaction":
             wallet, tx = args
             data["tx"] = tx.txid()
@@ -456,7 +466,7 @@ class BaseDaemon:
             data = {
                 "address": address,
                 "status": status,
-                "status_str": self.electrum.util.pr_tooltips[status],
+                "status_str": self.electrum.invoices.pr_tooltips[status],
             }
         else:
             return None, None
