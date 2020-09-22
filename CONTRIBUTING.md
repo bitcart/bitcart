@@ -89,7 +89,7 @@ After cloning and setting up environment, check out the [issues list](https://gi
 
 If you want to understand how BitcartCC works or want to debug an issue, you'll want to get the source, and set up dependencies.
 
-As BitcartCC ecosystem consists of many repositories, installation instructions will differ. This wiki contains coding guidelines for all repositories, plus instructions how to setup the environment in central repository.
+As BitcartCC ecosystem consists of many repositories, installation instructions will differ. This file contains coding guidelines for all repositories, plus instructions how to setup the environment in central repository.
 
 ### Getting the sources
 
