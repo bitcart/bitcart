@@ -1,4 +1,7 @@
+import tempfile
+
 import aioredis
+import fastapi
 import pytest
 
 from api import exceptions, settings, utils
@@ -37,6 +40,11 @@ async def test_make_subscriber():
 
 class MockStore:
     templates = {"notification": 1}
+    user_id = 2
+
+
+class MockProduct:
+    templates = {"notification": 2}
 
 
 @pytest.mark.asyncio
@@ -53,7 +61,7 @@ async def test_get_template(notification_template, async_client, token):
         headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 200
-    template2 = await utils.get_template("templ")
+    template2 = await utils.get_template("templ", user_id=1)
     assert template2.name == "templ"
     assert template2.template_text == "Hello {{var1}}!"
     assert template2.render() == "Hello !"
@@ -62,3 +70,42 @@ async def test_get_template(notification_template, async_client, token):
     assert template3.name == "notification"
     assert template3.template_text == template2.template_text
     await async_client.delete("/templates/1", headers={"Authorization": f"Bearer {token}"})  # cleanup
+
+
+@pytest.mark.asyncio
+async def test_notify_template():
+    template = await utils.get_notify_template(MockStore(), "invoice")
+    assert template.startswith("New order from")
+
+
+@pytest.mark.asyncio
+async def test_product_template(async_client, token):
+    qty = 10
+    resp = await async_client.post(
+        "/templates", json={"name": "product", "text": "hello"}, headers={"Authorization": f"Bearer {token}"}
+    )
+    assert resp.status_code == 200
+    template = await utils.get_product_template(MockStore(), MockProduct(), qty)
+    assert template == f"Thanks for buying  x {qty}!\nIt'll ship shortly!\n"
+    await async_client.delete(f"/templates/{resp.json()['id']}", headers={"Authorization": f"Bearer {token}"})  # cleanup
+
+
+@pytest.mark.asyncio
+async def test_store_template(async_client, token):
+    resp = await async_client.post(
+        "/templates", json={"name": "shop", "text": "hello"}, headers={"Authorization": f"Bearer {token}"}
+    )
+    assert resp.status_code == 200
+    template = await utils.get_store_template(MockStore(), [MockProduct()])
+    assert template.startswith("Welcome to our shop")
+    await async_client.delete(f"/templates/{resp.json()['id']}", headers={"Authorization": f"Bearer {token}"})  # cleanup
+
+
+@pytest.mark.parametrize("exist", [True, False])
+def test_run_host(exist):
+    if exist:
+        with tempfile.NamedTemporaryFile() as temp:
+            utils.run_host("echo hello", target_file=temp.name)
+    else:
+        with pytest.raises(fastapi.HTTPException):
+            utils.run_host("echo hello")

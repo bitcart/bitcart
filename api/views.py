@@ -4,7 +4,6 @@ import secrets
 from decimal import Decimal
 from typing import List, Optional
 
-import asyncpg
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Response, Security, UploadFile
 from fastapi.responses import StreamingResponse
 from fastapi.security import SecurityScopes
@@ -113,7 +112,7 @@ async def create_product(
     data.image = filename
     d = data.dict()
     discounts = d.pop("discounts", None)
-    try:
+    with utils.safe_db_write():
         obj = await models.Product.create(**d, user_id=user.id)
         created = []
         for i in discounts:
@@ -123,12 +122,6 @@ async def create_product(
             filename = utils.get_image_filename(image, False, obj)
             await obj.update(image=filename).apply()
             await utils.save_image(filename, image)
-    except (
-        asyncpg.exceptions.UniqueViolationError,
-        asyncpg.exceptions.NotNullViolationError,
-        asyncpg.exceptions.ForeignKeyViolationError,
-    ) as e:
-        raise HTTPException(422, e.message)
     return obj
 
 
@@ -146,17 +139,11 @@ async def process_edit_product(model_id, data, image, user, patch=True):
     else:
         utils.safe_remove(item.image)
         model.image = None
-    try:
+    with utils.safe_db_write():
         if patch:
             await item.update(**model.dict(exclude_unset=True)).apply()  # type: ignore
         else:
             await item.update(**model.dict()).apply()
-    except (  # pragma: no cover
-        asyncpg.exceptions.UniqueViolationError,
-        asyncpg.exceptions.NotNullViolationError,
-        asyncpg.exceptions.ForeignKeyViolationError,
-    ) as e:
-        raise HTTPException(422, e.message)  # pragma: no cover
     return item
 
 
@@ -511,14 +498,8 @@ async def patch_token(
     item = await models.Token.query.where(models.Token.user_id == user.id).where(models.Token.id == model_id).gino.first()
     if not item:
         raise HTTPException(status_code=404, detail=f"Token with id {model_id} does not exist!")
-    try:
+    with utils.safe_db_write():
         await item.update(**model.dict(exclude_unset=True)).apply()
-    except (
-        asyncpg.exceptions.UniqueViolationError,
-        asyncpg.exceptions.NotNullViolationError,
-        asyncpg.exceptions.ForeignKeyViolationError,
-    ) as e:
-        raise HTTPException(422, e.message)
     return item
 
 
@@ -566,7 +547,7 @@ async def create_token(
 
 @router.post("/manage/update")
 async def update_server(user: models.User = Security(utils.AuthDependency(), scopes=["server_management"])):
-    if settings.DOCKER_ENV:
+    if settings.DOCKER_ENV:  # pragma: no cover
         utils.run_host("./update.sh")
         return {"status": "success", "message": "Successfully started update process!"}
     return {"status": "error", "message": "Not running in docker"}
@@ -574,7 +555,7 @@ async def update_server(user: models.User = Security(utils.AuthDependency(), sco
 
 @router.post("/manage/cleanup")
 async def cleanup_server(user: models.User = Security(utils.AuthDependency(), scopes=["server_management"])):
-    if settings.DOCKER_ENV:
+    if settings.DOCKER_ENV:  # pragma: no cover
         utils.run_host("./cleanup.sh")
         return {"status": "success", "message": "Successfully started cleanup process!"}
     return {"status": "error", "message": "Not running in docker"}

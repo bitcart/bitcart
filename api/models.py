@@ -101,8 +101,6 @@ class StoreUpdateRequest(UpdateRequest):
     async def apply(self):
         if self.wallets:
             await WalletxStore.delete.where(WalletxStore.store_id == self._instance.id).gino.status()
-        if self.wallets is None:
-            self.wallets = []
         for i in self.wallets:
             await WalletxStore.create(store_id=self._instance.id, wallet_id=i)
         self._instance.wallets = self.wallets
@@ -270,10 +268,10 @@ class Invoice(db.Model):
 
         store_id = kwargs["store_id"]
         kwargs["status"] = "Pending"
-        if not store_id:
+        if not store_id:  # pragma: no cover, crud.create_invoice checked
             raise HTTPException(422, "No store id provided")
         store = await Store.get(store_id)
-        if not store:
+        if not store:  # pragma: no cover, crud.create_invoice checked
             raise HTTPException(422, f"Store {store_id} doesn't exist!")
         await crud.get_store(None, None, store, True)
         if not store.wallets:
