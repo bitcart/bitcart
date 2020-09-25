@@ -92,6 +92,7 @@ class BaseDaemon:
         "close_channel",
         "lnpay",
         "list_channels",
+        "list_peers",
     ]
     NETWORK_MAPPING: dict = {}
     latest_height = -1
