@@ -672,19 +672,15 @@ async def test_wallet_ws(async_client, token: str):
     assert r.status_code == 200
     wallet_id = r.json()["id"]
     async with async_client.websocket_connect(f"/ws/wallets/{wallet_id}?token={token}") as websocket:
-        await websocket.connect()
         await check_ws_response2(websocket)
-        with pytest.raises(Exception):
-            websocket = async_client.websocket_connect(f"/ws/wallets/{wallet_id}")
-            await websocket.connect()
+    with pytest.raises(Exception):
+        async with async_client.websocket_connect(f"/ws/wallets/{wallet_id}") as websocket:
             await check_ws_response2(websocket)
-        with pytest.raises(Exception):
-            websocket = async_client.websocket_connect(f"/ws/wallets/{wallet_id}?token=x")
-            await websocket.connect()
+    with pytest.raises(Exception):
+        async with async_client.websocket_connect(f"/ws/wallets/{wallet_id}?token=x") as websocket:
             await check_ws_response2(websocket)
-        with pytest.raises(Exception):
-            websocket = async_client.websocket_connect(f"/ws/wallets/555?token={token}")
-            await websocket.connect()
+    with pytest.raises(Exception):
+        async with async_client.websocket_connect(f"/ws/wallets/555?token={token}") as websocket:
             await check_ws_response2(websocket)
 
 
@@ -694,20 +690,16 @@ async def test_invoice_ws(async_client, token: str):
     assert r.status_code == 200
     invoice_id = r.json()["id"]
     async with async_client.websocket_connect(f"/ws/invoices/{invoice_id}") as websocket:
-        await websocket.connect()
         await check_ws_response(websocket)
-        websocket2 = async_client.websocket_connect(
+        async with async_client.websocket_connect(
             f"/ws/invoices/{invoice_id}"
-        )  # test if after invoice was completed websocket returns immediately
-        await websocket2.connect()
-        await check_ws_response(websocket2)
-        with pytest.raises(Exception):
-            websocket = async_client.websocket_connect("/ws/invoices/555")
-            await websocket.connect()
+        ) as websocket2:  # test if after invoice was completed websocket returns immediately
+            await check_ws_response(websocket2)
+    with pytest.raises(Exception):
+        async with async_client.websocket_connect("/ws/invoices/555") as websocket:
             await check_ws_response(websocket)
-        with pytest.raises(Exception):
-            websocket = async_client.websocket_connect("/ws/invoices/invalid_id")
-            await websocket.connect()
+    with pytest.raises(Exception):
+        async with async_client.websocket_connect("/ws/invoices/invalid_id") as websocket:
             await check_ws_response(websocket)
 
 
