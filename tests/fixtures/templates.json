@@ -13,7 +13,7 @@
             },
             "status": "good",
             "return_data": {
-                "id": 4,
+                "id": 5,
                 "name": "test",
                 "text": "Test {{template}}",
                 "user_id": 1
@@ -26,7 +26,7 @@
             },
             "status": "good",
             "return_data": {
-                "id": 5,
+                "id": 6,
                 "name": "template",
                 "text": "Test {{var}}",
                 "user_id": 1
@@ -50,13 +50,13 @@
             "status": "good",
             "return_data": [
                 {
-                    "id": 5,
+                    "id": 6,
                     "name": "template",
                     "text": "Test {{var}}",
                     "user_id": 1
                 },
                 {
-                    "id": 4,
+                    "id": 5,
                     "name": "test",
                     "text": "Test {{template}}",
                     "user_id": 1
@@ -72,17 +72,17 @@
     ],
     "get_one": [
         {
-            "obj_id": 4,
+            "obj_id": 5,
             "status": "good",
             "return_data": {
-                "id": 4,
+                "id": 5,
                 "name": "test",
                 "text": "Test {{template}}",
                 "user_id": 1
             }
         },
         {
-            "obj_id": 6,
+            "obj_id": 7,
             "status": "not found"
         },
         {
@@ -92,7 +92,7 @@
     ],
     "partial_update": [
         {
-            "obj_id": 4,
+            "obj_id": 5,
             "data": {
                 "name": "test2",
                 "text": "Test {{template}}",
@@ -100,14 +100,14 @@
             },
             "status": "good",
             "return_data": {
-                "id": 4,
+                "id": 5,
                 "name": "test2",
                 "text": "Test {{template}}",
                 "user_id": 1
             }
         },
         {
-            "obj_id": 6,
+            "obj_id": 7,
             "data": {
                 "name": "test3",
                 "text": "Test {{template}}",
@@ -116,7 +116,7 @@
             "status": "not found"
         },
         {
-            "obj_id": 6,
+            "obj_id": 7,
             "data": {
                 "name": "test2",
                 "text": "Test {{template}}",
@@ -127,16 +127,16 @@
     ],
     "full_update": [
         {
-            "obj_id": 4,
+            "obj_id": 5,
             "data": {
                 "name": "test3",
                 "text": "Test {{template}}",
                 "user_id": 1,
-                "id": 4
+                "id": 5
             },
             "status": "good",
             "return_data": {
-                "id": 4,
+                "id": 5,
                 "name": "test3",
                 "text": "Test {{template}}",
                 "user_id": 1
@@ -150,16 +150,16 @@
             "status": "bad"
         },
         {
-            "obj_id": 4,
+            "obj_id": 5,
             "data": {
-                "id": 4,
+                "id": 5,
                 "name": "test",
                 "text": "Test {{template}}",
                 "user_id": 1
             },
             "status": "good",
             "return_data": {
-                "id": 4,
+                "id": 5,
                 "name": "test",
                 "text": "Test {{template}}",
                 "user_id": 1
@@ -172,17 +172,17 @@
             "status": "not found"
         },
         {
-            "obj_id": 4,
+            "obj_id": 5,
             "status": "good",
             "return_data": {
-                "id": 4,
+                "id": 5,
                 "name": "test",
                 "text": "Test {{template}}",
                 "user_id": 1
             }
         },
         {
-            "obj_id": 4,
+            "obj_id": 5,
             "status": "not found"
         }
     ]

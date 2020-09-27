@@ -94,7 +94,7 @@ class NotificationxStore(db.Model):
 
 class StoreUpdateRequest(UpdateRequest):
     def update(self, **kwargs):
-        self.wallets = kwargs.pop("wallets", None)
+        self.wallets = kwargs.pop("wallets", [])
         self.notifications = kwargs.pop("notifications", None)
         return super().update(**kwargs)
 
@@ -268,11 +268,7 @@ class Invoice(db.Model):
 
         store_id = kwargs["store_id"]
         kwargs["status"] = "Pending"
-        if not store_id:  # pragma: no cover, crud.create_invoice checked
-            raise HTTPException(422, "No store id provided")
         store = await Store.get(store_id)
-        if not store:  # pragma: no cover, crud.create_invoice checked
-            raise HTTPException(422, f"Store {store_id} doesn't exist!")
         await crud.get_store(None, None, store, True)
         if not store.wallets:
             raise HTTPException(422, "No wallet linked")

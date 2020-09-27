@@ -303,7 +303,7 @@ class ModelView:
         except HTTPException:
             if self.get_one_auth:
                 raise
-            user = None  # pragma: no cover
+            user = None
         return await self._get_one(model_id, user)
 
     def _post(self):
@@ -333,7 +333,6 @@ class ModelView:
         ):  # type: ignore
             item = await self._get_one(model_id, user, True)
             with safe_db_write():
-
                 if self.custom_methods.get("put"):
                     await self.custom_methods["put"](item, model, user)  # pragma: no cover
                 else:

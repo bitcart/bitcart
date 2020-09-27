@@ -1,4 +1,5 @@
 import tempfile
+from dataclasses import dataclass
 
 import aioredis
 import fastapi
@@ -38,13 +39,26 @@ async def test_make_subscriber():
     assert await utils.publish_message("test", {"hello": "world"}) == 1
 
 
+@dataclass
+class MockTemplateObj:
+    template_name: str
+    create_id: int
+    mock_name: str = "MockTemplateObj"
+    user_id: int = 1
+
+    @property
+    def templates(self):
+        return {self.template_name: self.create_id}
+
+    def __str__(self):
+        return self.mock_name
+
+
 class MockStore:
-    templates = {"notification": 1}
-    user_id = 2
+    user_id = 1
 
-
-class MockProduct:
-    templates = {"notification": 2}
+    def __str__(self):
+        return "MockStore"
 
 
 @pytest.mark.asyncio
@@ -66,46 +80,78 @@ async def test_get_template(notification_template, async_client, token):
     assert template2.template_text == "Hello {{var1}}!"
     assert template2.render() == "Hello !"
     assert template2.render(var1="world") == "Hello world!"
-    template3 = await utils.get_template("notification", obj=MockStore())
+    template3 = await utils.get_template("notification", obj=MockTemplateObj(template_name="notification", create_id=1))
     assert template3.name == "notification"
     assert template3.template_text == template2.template_text
     await async_client.delete("/templates/1", headers={"Authorization": f"Bearer {token}"})  # cleanup
 
 
 @pytest.mark.asyncio
-async def test_notify_template():
-    template = await utils.get_notify_template(MockStore(), "invoice")
-    assert template.startswith("New order from")
-
-
-@pytest.mark.asyncio
 async def test_product_template(async_client, token):
     qty = 10
+    product_template = MockTemplateObj(template_name="product", create_id=2, mock_name="MockProduct")
+    store = MockStore()
+    # default product template
+    template = await utils.get_product_template(store, product_template, qty)
+    assert template == f"Thanks for buying  x {qty}!\nIt'll ship shortly!\n"
+    # custom template
     resp = await async_client.post(
-        "/templates", json={"name": "product", "text": "hello"}, headers={"Authorization": f"Bearer {token}"}
+        "/templates",
+        json={"name": "product", "text": "store={{store}}|product={{product}}|quantity={{quantity}}"},
+        headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 200
-    template = await utils.get_product_template(MockStore(), MockProduct(), qty)
-    assert template == f"Thanks for buying  x {qty}!\nIt'll ship shortly!\n"
+    template = await utils.get_product_template(store, product_template, qty)
+    assert template == f"store={store}|product={product_template}|quantity={qty}"
     await async_client.delete(f"/templates/{resp.json()['id']}", headers={"Authorization": f"Bearer {token}"})  # cleanup
 
 
 @pytest.mark.asyncio
 async def test_store_template(async_client, token):
+    shop = MockTemplateObj(template_name="shop", create_id=3, mock_name="MockShop")
+    product = "my product"
+    # default store template
+    template = await utils.get_store_template(shop, [product])
+    assert template.startswith("Welcome to our shop")
+    # custom template
     resp = await async_client.post(
-        "/templates", json={"name": "shop", "text": "hello"}, headers={"Authorization": f"Bearer {token}"}
+        "/templates",
+        json={"name": "shop", "text": "store={{store}}|products={{products}}"},
+        headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 200
-    template = await utils.get_store_template(MockStore(), [MockProduct()])
-    assert template.startswith("Welcome to our shop")
+    template = await utils.get_store_template(shop, product)
+    assert template == f"store={shop}|products={product}"
+    await async_client.delete(f"/templates/{resp.json()['id']}", headers={"Authorization": f"Bearer {token}"})  # cleanup
+
+
+@pytest.mark.asyncio
+async def test_notification_template(async_client, token):
+    invoice = "my invoice"
+    notification = MockTemplateObj(template_name="notification", create_id=4, mock_name="MockNotification")
+    # default notification template
+    template = await utils.get_notify_template(notification, invoice)
+    assert template.strip() == "New order from"
+    # custom template
+    resp = await async_client.post(
+        "/templates",
+        json={"name": "notification", "text": "store={{store}}|invoice={{invoice}}"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 200
+    template = await utils.get_notify_template(notification, invoice)
+    assert template == f"store={notification}|invoice={invoice}"
     await async_client.delete(f"/templates/{resp.json()['id']}", headers={"Authorization": f"Bearer {token}"})  # cleanup
 
 
 @pytest.mark.parametrize("exist", [True, False])
 def test_run_host(exist):
+    content = "echo hello"
     if exist:
         with tempfile.NamedTemporaryFile() as temp:
-            utils.run_host("echo hello", target_file=temp.name)
+            utils.run_host(content, target_file=temp.name)
+            with open(temp.name, "r") as f:
+                assert f.read().strip() == content
     else:
         with pytest.raises(fastapi.HTTPException):
-            utils.run_host("echo hello")
+            utils.run_host(content)

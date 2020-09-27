@@ -18,7 +18,7 @@ def test_next_prev_url(client: TestClient, token: str):
     next_url = resp.json()["next"]
     next_endpoint = next_url.split("testserver")[-1]
     assert next_endpoint == "/users?limit=1&offset=1"
-    # next
+    # previous
     resp = client.get(next_endpoint, headers={"Authorization": f"Bearer {token}"})
     prev_url = resp.json()["previous"]
     prev_endpoint = prev_url.split("testserver")[-1]
