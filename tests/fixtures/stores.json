@@ -61,6 +61,29 @@
             }
         },
         {
+            "data": {
+                "name": "no_wallet",
+                "wallets": []
+            },
+            "status": "good",
+            "return_data": {
+                "email": null,
+                "email_host": "",
+                "email_password": "",
+                "email_port": 25,
+                "email_user": "",
+                "email_use_ssl": true,
+                "id": 3,
+                "name": "no_wallet",
+                "default_currency": "USD",
+                "user_id": 1,
+                "expiration": 15,
+                "wallets": [],
+                "notifications": [],
+                "templates": {}
+            }
+        },
+        {
             "data": {},
             "status": "bad"
         },
@@ -89,6 +112,22 @@
         {
             "status": "good",
             "return_data": [
+                {
+                    "email": null,
+                    "email_host": "",
+                    "email_password": "",
+                    "email_port": 25,
+                    "email_user": "",
+                    "email_use_ssl": true,
+                    "id": 3,
+                    "name": "no_wallet",
+                    "default_currency": "USD",
+                    "user_id": 1,
+                    "expiration": 15,
+                    "wallets": [],
+                    "notifications": [],
+                    "templates": {}
+                },
                 {
                     "email": "test@example.com",
                     "email_host": "",
@@ -133,12 +172,12 @@
     "get_count": [
         {
             "status": "good",
-            "return_data": 2
+            "return_data": 3
         }
     ],
     "get_one": [
         {
-            "obj_id": 3,
+            "obj_id": 4,
             "status": "not found"
         },
         {
@@ -205,6 +244,9 @@
                 "wallets": [
                     2
                 ],
+                "notifications": [
+                    2
+                ],
                 "email": "test1@example.com",
                 "user_id": 1
             },
@@ -224,7 +266,9 @@
                 "wallets": [
                     2
                 ],
-                "notifications": [],
+                "notifications": [
+                    2
+                ],
                 "templates": {}
             }
         },
@@ -311,7 +355,7 @@
     ],
     "delete": [
         {
-            "obj_id": 3,
+            "obj_id": 4,
             "status": "not found"
         },
         {
@@ -332,7 +376,9 @@
                 "wallets": [
                     2
                 ],
-                "notifications": [],
+                "notifications": [
+                    2
+                ],
                 "templates": {}
             }
         },

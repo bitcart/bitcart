@@ -1,6 +1,7 @@
 import asyncio
 import json as json_module
 import platform
+from decimal import Decimal
 from typing import Dict, List, Union
 
 import pytest
@@ -15,6 +16,13 @@ LIMITED_USER_DATA = {
     "email": "testauthlimited@example.com",
     "password": "test12345",
 }
+
+
+def get_future_return_value(return_val):
+    future = asyncio.Future()
+    future.set_result(return_val)
+    minor_ver = int(platform.python_version_tuple()[1])
+    return future if minor_ver < 8 else return_val
 
 
 class ViewTestMixin:
@@ -228,6 +236,13 @@ def test_noauth(client: TestClient):
     assert client.get("/stores").status_code == 401
     assert client.get("/products").status_code == 401
     assert client.get("/invoices").status_code == 401
+    assert (
+        client.post(
+            "/discounts", json={"name": "test_no_auth", "percent": 20, "end_date": "2020-01-01 21:19:34.503627"}
+        ).status_code
+        == 401
+    )
+    assert client.get("/products?&store=2").status_code == 200
     assert client.post("/users", json={"email": "noauth@example.com", "password": "noauth"}).status_code == 200
     assert client.post("/token", json={"email": "noauth@example.com", "password": "noauth"}).status_code == 200
 
@@ -273,6 +288,21 @@ def test_fiatlist(client: TestClient):
     assert "USD" in j3
 
 
+def test_fiatlist_multi_coins(client: TestClient, mocker):
+    class DummyCoin:
+        async def list_fiat(self):
+            ...
+
+    btc, ltc = DummyCoin(), DummyCoin()
+    orig_cryptos = settings.cryptos
+    settings.cryptos = {"BTC": btc, "LTC": ltc}
+    mocker.patch.object(btc, "list_fiat", return_value=get_future_return_value(["USD", "RMB", "JPY"]))
+    mocker.patch.object(ltc, "list_fiat", return_value=get_future_return_value(["USD", "RUA", "AUD"]))
+    resp = client.get("/fiatlist")
+    assert resp.json() == ["USD"]
+    settings.cryptos = orig_cryptos
+
+
 async def check_ws_response(ws):
     data = await ws.receive_json()
     assert data == {"status": "test"}
@@ -298,7 +328,7 @@ def test_crud_count(client: TestClient, token: str):
     assert resp.status_code == 200
     assert resp.json() == {
         "wallets": 3,
-        "stores": 1,
+        "stores": 2,
         "discounts": 1,
         "products": 1,
         "invoices": 0,
@@ -321,7 +351,8 @@ def test_categories(client: TestClient):
 def check_token(result):
     assert isinstance(result, dict)
     assert result["user_id"] == 1
-    assert result["app_id"] == result["redirect_url"] == ""
+    assert result["app_id"] == "1"
+    assert result["redirect_url"] == "test.com"
     assert result["permissions"] == ["full_control"]
 
 
@@ -502,6 +533,16 @@ def test_no_token_management(client: TestClient, token: str):
     )
 
 
+def test_non_superuser_permissions(client: TestClient):
+    resp = client.post(
+        "/token",
+        json={**LIMITED_USER_DATA, "permissions": ["full_control"], "strict": False},
+    )
+    token = resp.json()["access_token"]
+    assert client.get("/services", headers={"Authorization": f"Bearer {token}"}).json() == {}
+    assert client.get("/users/2", headers={"Authorization": f"Bearer {token}"}).status_code == 403
+
+
 def test_notification_list(client: TestClient):
     resp = client.get("/notifications/list")
     assert resp.status_code == 200
@@ -630,21 +671,17 @@ async def test_wallet_ws(async_client, token: str):
     )
     assert r.status_code == 200
     wallet_id = r.json()["id"]
-    websocket = async_client.websocket_connect(f"/ws/wallets/{wallet_id}?token={token}")
-    await websocket.connect()
-    await check_ws_response2(websocket)
-    with pytest.raises(Exception):
-        websocket = async_client.websocket_connect(f"/ws/wallets/{wallet_id}")
-        await websocket.connect()
+    async with async_client.websocket_connect(f"/ws/wallets/{wallet_id}?token={token}") as websocket:
         await check_ws_response2(websocket)
     with pytest.raises(Exception):
-        websocket = async_client.websocket_connect(f"/ws/wallets/{wallet_id}?token=x")
-        await websocket.connect()
-        await check_ws_response2(websocket)
+        async with async_client.websocket_connect(f"/ws/wallets/{wallet_id}") as websocket:
+            await check_ws_response2(websocket)
     with pytest.raises(Exception):
-        websocket = async_client.websocket_connect(f"/ws/wallets/555?token={token}")
-        await websocket.connect()
-        await check_ws_response2(websocket)
+        async with async_client.websocket_connect(f"/ws/wallets/{wallet_id}?token=x") as websocket:
+            await check_ws_response2(websocket)
+    with pytest.raises(Exception):
+        async with async_client.websocket_connect(f"/ws/wallets/555?token={token}") as websocket:
+            await check_ws_response2(websocket)
 
 
 @pytest.mark.asyncio
@@ -652,23 +689,24 @@ async def test_invoice_ws(async_client, token: str):
     r = await async_client.post("/invoices", json={"store_id": 2, "price": 5}, headers={"Authorization": f"Bearer {token}"})
     assert r.status_code == 200
     invoice_id = r.json()["id"]
-    websocket = async_client.websocket_connect(f"/ws/invoices/{invoice_id}")
-    await websocket.connect()
-    await check_ws_response(websocket)
-    websocket2 = async_client.websocket_connect(
-        f"/ws/invoices/{invoice_id}"
-    )  # test if after invoice was completed websocket returns immediately
-    await websocket2.connect()
-    await check_ws_response(websocket2)
-    with pytest.raises(Exception):
-        websocket = async_client.websocket_connect("/ws/invoices/555")
-        await websocket.connect()
+    async with async_client.websocket_connect(f"/ws/invoices/{invoice_id}") as websocket:
         await check_ws_response(websocket)
+        async with async_client.websocket_connect(
+            f"/ws/invoices/{invoice_id}"
+        ) as websocket2:  # test if after invoice was completed websocket returns immediately
+            await check_ws_response(websocket2)
+    with pytest.raises(Exception):
+        async with async_client.websocket_connect("/ws/invoices/555") as websocket:
+            await check_ws_response(websocket)
+    with pytest.raises(Exception):
+        async with async_client.websocket_connect("/ws/invoices/invalid_id") as websocket:
+            await check_ws_response(websocket)
 
 
-def test_create_invoice_discount(client: TestClient, token: str):
+@pytest.mark.parametrize("currencies", ["", "DUMMY", "btc"])
+def test_create_invoice_discount(client: TestClient, token: str, currencies: str):
     # create discount
-    new_discount = {"name": "apple", "percent": 50, "end_date": "2099-12-31 00:00:00.000000"}
+    new_discount = {"name": "apple", "percent": 50, "currencies": currencies, "end_date": "2099-12-31 00:00:00.000000"}
     create_discount_resp = client.post("/discounts", json=new_discount, headers={"Authorization": f"Bearer {token}"})
     assert create_discount_resp.status_code == 200
     discount_id = create_discount_resp.json()["id"]
@@ -763,7 +801,7 @@ def test_create_product_with_image(client: TestClient, token: str, image: bytes)
         "store_id": 2,
         "discounts": [],
         "templates": {},
-        "user_id": product_dict["id"],
+        "user_id": product_dict["user_id"],
     }
     put_product_resp = client.put(
         f"/products/{product_dict['id']}",
@@ -772,6 +810,22 @@ def test_create_product_with_image(client: TestClient, token: str, image: bytes)
         headers={"Authorization": f"Bearer {token}"},
     )
     assert put_product_resp.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_create_invoice_without_coin_rate(async_client, token: str, mocker):
+    price = 9.9
+    # mock coin rate missing
+    mocker.patch("bitcart.BTC.rate", return_value=get_future_return_value(Decimal("nan")))
+    # create invoice
+    r = await async_client.post(
+        "/invoices", json={"store_id": 2, "price": price, "currency": "DUMMY"}, headers={"Authorization": f"Bearer {token}"}
+    )
+    assert r.status_code == 200
+    result = r.json()
+    invoice_id = result["id"]
+    assert result["price"] == price
+    await async_client.delete(f"/invoices/{invoice_id}", headers={"Authorization": f"Bearer {token}"})
 
 
 @pytest.mark.asyncio
@@ -788,17 +842,31 @@ async def test_create_invoice_and_pay(async_client, token: str, mocker):
     payment_method.coin = settings.get_coin(payment_method.currency, xpub=wallet.xpub)
     assert not (await models.Invoice.get(invoice_id)).paid_currency
     # mock transaction complete
-
-    def wrapper():
-        ret = {"status": "complete"}
-        future = asyncio.Future()
-        future.set_result(ret)
-        minor_ver = int(platform.python_version_tuple()[1])
-        return future if minor_ver < 8 else ret
-
-    mocker.patch.object(payment_method.coin, "getrequest", return_value=wrapper())
+    mocker.patch.object(payment_method.coin, "getrequest", return_value=get_future_return_value({"status": "complete"}))
     # process invoice
     await tasks.process_invoice(invoice, {}, [payment_method], notify=False)
     # validate invoice paid_currency
     assert (await models.Invoice.get(invoice_id)).paid_currency == payment_method.currency
     await async_client.delete(f"/invoices/{invoice_id}", headers={"Authorization": f"Bearer {token}"})
+
+
+def test_get_public_store(client: TestClient):
+    user_id = client.post("/users", json={"email": "test2auth@example.com", "password": "test12345"}).json()["id"]
+    new_token = client.post(
+        "/token",
+        json={"email": "test2auth@example.com", "password": "test12345", "permissions": ["full_control"]},
+    ).json()["access_token"]
+    store = client.get("/stores/2", headers={"Authorization": f"Bearer {new_token}"})
+    assert list(store.json().keys()) == ["created", "name", "default_currency", "email", "id", "user_id"]
+    client.delete(f"/users/{user_id}")
+    # get store without user
+    store = client.get("/stores/2")
+    assert list(store.json().keys()) == ["created", "name", "default_currency", "email", "id", "user_id"]
+
+
+def test_product_count_params(client: TestClient, token: str):
+    resp = client.get(
+        "/products/count?sale=true&store=2&category=Test&min_price=0.0001&max_price=100.0",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.json() == 0

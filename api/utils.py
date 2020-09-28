@@ -3,6 +3,7 @@ import json
 import os
 import smtplib
 from collections import defaultdict
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from os.path import join as path_join
@@ -174,7 +175,7 @@ class ModelView:
         custom_commands={},
     ):
         # add to crud_models
-        if scopes is None:
+        if scopes is None:  # pragma: no cover
             scopes = {i: [] for i in ENDPOINTS}
         cls.crud_models.append((path, orm_model))
         # set scopes
@@ -313,17 +314,11 @@ class ModelView:
                 if self.post_auth:
                     raise
                 user = None
-            try:
+            with safe_db_write():
                 if self.custom_methods.get("post"):
                     obj = await self.custom_methods["post"](model, user)
                 else:
-                    obj = await self.orm_model.create(**model.dict())  # type: ignore
-            except (
-                asyncpg.exceptions.UniqueViolationError,
-                asyncpg.exceptions.NotNullViolationError,
-                asyncpg.exceptions.ForeignKeyViolationError,
-            ) as e:
-                raise HTTPException(422, e.message)
+                    obj = await self.orm_model.create(**model.dict())  # type: ignore # pragma: no cover
             if self.background_tasks_mapping.get("post"):
                 self.background_tasks_mapping["post"].send(obj.id)
             return obj
@@ -337,17 +332,11 @@ class ModelView:
             user: Union[None, ModelView.schemes.User] = Security(self.auth_dependency, scopes=self.scopes["put"]),
         ):  # type: ignore
             item = await self._get_one(model_id, user, True)
-            try:
+            with safe_db_write():
                 if self.custom_methods.get("put"):
                     await self.custom_methods["put"](item, model, user)  # pragma: no cover
                 else:
                     await item.update(**model.dict()).apply()  # type: ignore
-            except (
-                asyncpg.exceptions.UniqueViolationError,
-                asyncpg.exceptions.NotNullViolationError,
-                asyncpg.exceptions.ForeignKeyViolationError,
-            ) as e:
-                raise HTTPException(422, e.message)
             return item
 
         return put
@@ -359,17 +348,11 @@ class ModelView:
             user: Union[None, ModelView.schemes.User] = Security(self.auth_dependency, scopes=self.scopes["patch"]),
         ):  # type: ignore
             item = await self._get_one(model_id, user, True)
-            try:
+            with safe_db_write():
                 if self.custom_methods.get("patch"):
                     await self.custom_methods["patch"](item, model, user)  # pragma: no cover
                 else:
                     await item.update(**model.dict(exclude_unset=True)).apply()  # type: ignore
-            except (  # pragma: no cover
-                asyncpg.exceptions.UniqueViolationError,
-                asyncpg.exceptions.NotNullViolationError,
-                asyncpg.exceptions.ForeignKeyViolationError,
-            ) as e:
-                raise HTTPException(422, e.message)  # pragma: no cover
             return item
 
         return patch
@@ -406,7 +389,7 @@ class ModelView:
                 query = query.where(self.orm_model.user_id == user.id)
             query = query.where(self.orm_model.id.in_(settings.ids))
             if self.custom_methods.get("batch_action"):
-                await self.custom_methods["batch_action"](query, settings.ids, user)
+                await self.custom_methods["batch_action"](query, settings.ids, user)  # pragma: no cover
             else:
                 await query.gino.status()
             return True
@@ -421,7 +404,7 @@ async def get_wallet_history(model, response):
         response.append({"date": i["date"], "txid": i["txid"], "amount": i["bc_value"]})
 
 
-def check_ping(host, port, user, password, email, ssl=True):
+def check_ping(host, port, user, password, email, ssl=True):  # pragma: no cover
     try:
         server = smtplib.SMTP(host=host, port=port, timeout=2)
         if ssl:
@@ -459,7 +442,7 @@ async def get_store_template(store, products):
     return template.render(store=store, products=products)
 
 
-def send_mail(store, where, message, subject="Thank you for your purchase"):
+def send_mail(store, where, message, subject="Thank you for your purchase"):  # pragma: no cover
     message = f"Subject: {subject}\n\n{message}"
     server = smtplib.SMTP(host=store.email_host, port=store.email_port, timeout=2)
     if store.email_use_ssl:
@@ -470,14 +453,10 @@ def send_mail(store, where, message, subject="Thank you for your purchase"):
 
 
 def get_image_filename(image, create=True, model=None):
-    filename = None
     if create:
         filename = "images/products/temp.png" if image else None
     else:
-        if image:
-            filename = f"images/products/{model.id}.png"
-        else:
-            filename = model.image
+        filename = f"images/products/{model.id}.png" if image else model.image
     return filename
 
 
@@ -493,7 +472,7 @@ def safe_remove(filename):
         pass
 
 
-async def send_ipn(obj, status):
+async def send_ipn(obj, status):  # pragma: no cover
     if obj.notification_url:
         data = {"id": obj.id, "status": status}
         try:
@@ -503,10 +482,10 @@ async def send_ipn(obj, status):
             pass
 
 
-def run_host(command):
-    if not os.path.exists("queue"):
+def run_host(command, target_file="queue"):
+    if not os.path.exists(target_file):
         raise HTTPException(422, "No pipe existing")
-    with open("queue", "w") as f:
+    with open(target_file, "w") as f:
         f.write(f"{command}\n")
 
 
@@ -546,7 +525,7 @@ def get_pagination_model(display_model):
     )
 
 
-async def notify(store, text):
+async def notify(store, text):  # pragma: no cover
     notification_providers = [await models.Notification.get(notification_id) for notification_id in store.notifications]
     for provider in notification_providers:
         notifiers.notify(provider.provider, message=text, **provider.data)
@@ -567,3 +546,11 @@ async def run_repeated(func, timeout, start_timeout):
 
 def time_diff(dt):
     return max(0, int(round(dt.days * 86400 + dt.seconds)))
+
+
+@contextmanager
+def safe_db_write():
+    try:
+        yield
+    except asyncpg.exceptions.IntegrityConstraintViolationError as e:
+        raise HTTPException(422, e.message)

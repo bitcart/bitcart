@@ -31,6 +31,36 @@
             }
         },
         {
+            "data": {
+                "price": 0.5,
+                "store_id": null,
+                "products": [
+                    2
+                ]
+            },
+            "status": "bad"
+        },
+        {
+            "data": {
+                "price": 0.5,
+                "store_id": 999,
+                "products": [
+                    2
+                ]
+            },
+            "status": "bad"
+        },
+        {
+            "data": {
+                "price": 0.5,
+                "store_id": 3,
+                "products": [
+                    2
+                ]
+            },
+            "status": "bad"
+        },
+        {
             "data": {},
             "status": "bad"
         },

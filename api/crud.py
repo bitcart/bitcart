@@ -261,10 +261,6 @@ async def products_add_related(items: Iterable[models.Product]):
     return items
 
 
-async def get_products(pagination: pagination.Pagination, user: schemes.User):
-    return await pagination.paginate(models.Product, user.id, postprocess=products_add_related)
-
-
 async def create_discount(discount: schemes.CreateDiscount, user: schemes.User):
     return await models.Discount.create(**discount.dict(), user_id=user.id)
 
