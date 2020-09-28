@@ -78,13 +78,24 @@ class BaseDaemon:
     # whether client is using asyncio or is synchronous
     ASYNC_CLIENT = True
     DEFAULT_PORT = 5000
-    AVAILABLE_EVENTS = ["blockchain_updated", "new_transaction", "payment_received"]
+    AVAILABLE_EVENTS = ["blockchain_updated", "new_transaction", "request_status"]
     EVENT_MAPPING = {
         "blockchain_updated": "new_block",
         "new_transaction": "new_transaction",
-        "payment_received": "new_payment",
+        "request_status": "new_payment",
     }
+    LIGHTNING_WALLET_METHODS = [
+        "add_peer",
+        "nodeid",
+        "add_lightning_request",
+        "open_channel",
+        "close_channel",
+        "lnpay",
+        "list_channels",
+        "list_peers",
+    ]
     NETWORK_MAPPING: dict = {}
+    latest_height = -1
 
     def __init__(self):
         # if client is sync, use sync _process_events
@@ -93,6 +104,7 @@ class BaseDaemon:
         # load env variables
         self.env_name = self.name.upper()
         self.config = AutoConfig(search_path="conf")
+        self.DATA_PATH = self.config(f"{self.env_name}_DATA_PATH", default=None)
         self.LOGIN = self.config(f"{self.env_name}_LOGIN", default="electrum")
         self.PASSWORD = self.config(f"{self.env_name}_PASSWORD", default="electrumz")
         self.NET = self.config(f"{self.env_name}_NETWORK", default="mainnet")
@@ -177,11 +189,14 @@ class BaseDaemon:
                 sys.exit(f"Invalid proxy URL. Original traceback:\n{traceback.format_exc()}")
         config.set_key("proxy", proxy)
 
+    def register_callbacks(self):
+        self.electrum.util.register_callback(self._process_events, self.AVAILABLE_EVENTS)
+
     async def on_startup(self, app):
         self.client_session = ClientSession()
         self.daemon = self.create_daemon()
         self.network = self.daemon.network
-        self.network.register_callback(self._process_events, self.AVAILABLE_EVENTS)
+        self.register_callbacks()
         self.fx = self.daemon.fx
 
     async def on_shutdown(self, app):
@@ -197,7 +212,15 @@ class BaseDaemon:
         self.daemon.add_wallet(wallet)
 
     def create_wallet(self, storage, config):
-        wallet = self.electrum.wallet.Wallet(storage, config=config)
+        db = self.electrum.wallet_db.WalletDB(storage.read(), manual_upgrades=False)
+        wallet = self.electrum.wallet.Wallet(db=db, storage=storage, config=config)
+        if self.LIGHTNING:
+            try:
+                wallet.init_lightning()
+                wallet = self.electrum.wallet.Wallet(db=db, storage=storage, config=config)  # to load lightning keys
+                wallet.has_lightning = True
+            except AssertionError:
+                wallet.has_lightning = False
         wallet.start_network(self.network)
         return wallet
 
@@ -207,6 +230,7 @@ class BaseDaemon:
         config.set_key(self.NET.lower(), True)
 
     def copy_config_settings(self, config, per_wallet=False):
+        config.set_key("electrum_path", self.DATA_PATH)
         self.set_network_in_config(config)
         config.path = config.electrum_path()  # to reflect network settings
         config.user_config = self.electrum.simple_config.read_user_config(config.path)  # reread config
@@ -301,15 +325,18 @@ class BaseDaemon:
         return exec_method, custom, error
 
     async def get_exec_result(self, xpub, req_method, req_args, req_kwargs, exec_method, custom, **kwargs):
+        wallet = kwargs.get("wallet")
         if custom:
             exec_method = functools.partial(exec_method, wallet=xpub)
         else:
             if self.NEW_ELECTRUM and self.electrum.commands.known_commands[req_method].requires_wallet:
-                wallet, config = kwargs.get("wallet"), kwargs.get("config")
+                config = kwargs.get("config")
                 cmd_name = self.electrum.commands.known_commands[req_method].name
                 need_path = cmd_name in ["create", "restore"]
                 path = wallet.storage.path if wallet else (config.get_wallet_path() if need_path else None)
-                exec_method = functools.partial(exec_method, wallet_path=path)
+                exec_method = functools.partial(exec_method, wallet=path)
+        if self.LIGHTNING and req_method in self.LIGHTNING_WALLET_METHODS and not wallet.has_lightning:
+            raise Exception("Lightning not supported in this wallet type")
         result = exec_method(*req_args, **req_kwargs)
         return await result if inspect.isawaitable(result) else result
 
@@ -419,12 +446,21 @@ class BaseDaemon:
                     else:
                         self.wallets_updates[i].append(data)
 
+    def process_new_block(self):
+        height = self.network.get_local_height()
+        if height > self.latest_height:
+            self.latest_height = height
+            return height
+
     def process_events(self, event, *args):
         """Override in your subclass if needed"""
         wallet = None
         data = {}
         if event == "new_block":
-            data["height"] = self.network.get_local_height()
+            height = self.process_new_block()
+            if not isinstance(height, int):
+                return None, None
+            data["height"] = height
         elif event == "new_transaction":
             wallet, tx = args
             data["tx"] = tx.txid()
@@ -433,7 +469,7 @@ class BaseDaemon:
             data = {
                 "address": address,
                 "status": status,
-                "status_str": self.electrum.util.pr_tooltips[status],
+                "status_str": self.electrum.invoices.pr_tooltips[status],
             }
         else:
             return None, None
@@ -462,7 +498,9 @@ class BaseDaemon:
     @rpc
     async def get_transaction(self, tx, wallet=None):
         result = await self.network.interface.session.send_request("blockchain.transaction.get", [tx, True])
-        result_formatted = self.electrum.transaction.Transaction(result).deserialize()
+        tx = self.electrum.transaction.Transaction(result["hex"])
+        tx.deserialize()
+        result_formatted = tx.to_json()
         result_formatted.update({"confirmations": result.get("confirmations", 0)})
         return result_formatted
 
@@ -489,24 +527,3 @@ class BaseDaemon:
     @rpc(requires_wallet=True)
     def configure_notifications(self, notification_url, wallet):
         self.wallets_config[wallet]["notification_url"] = notification_url
-
-    ### Start workaround ###
-    # TODO: remove, see https://github.com/spesmilo/electrum/issues/6529
-
-    async def _add_tx_wrapper(self, func, wallet, *args, **kwargs):
-        wallet_path = self.wallets[wallet]["wallet"].storage.path
-        for_broadcast = kwargs.pop("for_broadcast", True)
-        result = await getattr(self.wallets[wallet]["cmd"], func)(*args, **kwargs, wallet_path=wallet_path)
-        if for_broadcast:
-            await self.wallets[wallet]["cmd"].addtransaction(result, wallet_path=wallet_path)
-        return result
-
-    @rpc(requires_wallet=True)
-    async def payto(self, *args, wallet, **kwargs):
-        return await self._add_tx_wrapper("payto", wallet, *args, **kwargs)
-
-    @rpc(requires_wallet=True)
-    async def paytomany(self, *args, wallet, **kwargs):
-        return await self._add_tx_wrapper("paytomany", wallet, *args, **kwargs)
-
-    ### End workaround ###

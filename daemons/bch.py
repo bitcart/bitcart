@@ -15,7 +15,15 @@ class BCHDaemon(BaseDaemon):
         "mainnet": electrum.networks.set_mainnet,
         "testnet": electrum.networks.set_testnet,
     }
-    latest_height = -1
+    AVAILABLE_EVENTS = ["blockchain_updated", "new_transaction", "payment_received"]
+    EVENT_MAPPING = {
+        "blockchain_updated": "new_block",
+        "new_transaction": "new_transaction",
+        "payment_received": "new_payment",
+    }
+
+    def register_callbacks(self):
+        self.network.register_callback(self._process_events, self.AVAILABLE_EVENTS)
 
     def configure_logging(self, electrum_config):
         self.electrum.util.set_verbosity(electrum_config.get("verbosity"))
@@ -47,12 +55,10 @@ class BCHDaemon(BaseDaemon):
         wallet = None
         data = {}
         if event == "new_block":
-            height = self.network.get_local_height()
-            if height > self.latest_height:
-                self.latest_height = height
-                data["height"] = height
-            else:
+            height = self.process_new_block()
+            if not isinstance(height, int):
                 return None, None
+            data["height"] = height
         elif event == "new_transaction":
             tx, wallet = args
             data["tx"] = tx.txid()

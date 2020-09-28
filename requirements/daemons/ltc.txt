@@ -1,1 +1,2 @@
-https://github.com/pooler/electrum-ltc/archive/77e06be6e6a7e0746b532661855453ffff0c9381.zip
+https://github.com/pooler/electrum-ltc/archive/1fc26a0fd2bb198b98263573a696433808ca45b3.zip#egg=electrum-ltc[crypto]
+scrypt>=0.6.0
