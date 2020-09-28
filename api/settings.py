@@ -4,9 +4,9 @@ import sys
 import warnings
 
 import aioredis
-import bitcart
 import dramatiq
 import redis
+from bitcart import COINS
 from dramatiq.brokers.redis import RedisBroker
 from dramatiq.brokers.stub import StubBroker
 from dramatiq.middleware import AgeLimit, Callbacks, Pipelines, Retries, ShutdownNotifications
@@ -59,7 +59,7 @@ with warnings.catch_warnings():  # it is supposed
     warnings.simplefilter("ignore")
     for crypto in ENABLED_CRYPTOS:
         env_name = crypto.upper()
-        coin = getattr(bitcart, env_name)
+        coin = COINS[env_name]
         default_url = coin.RPC_URL
         default_user = coin.RPC_USER
         default_password = coin.RPC_PASS
@@ -87,7 +87,7 @@ def get_coin(coin, xpub=None):
         raise HTTPException(422, "Unsupported currency")
     if not xpub:
         return cryptos[coin]
-    return getattr(bitcart, coin.upper())(xpub=xpub, **crypto_settings[coin]["credentials"])
+    return COINS[coin.upper()](xpub=xpub, **crypto_settings[coin]["credentials"])
 
 
 # cache notifiers schema

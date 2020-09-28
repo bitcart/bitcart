@@ -539,7 +539,7 @@ def test_non_superuser_permissions(client: TestClient):
         json={**LIMITED_USER_DATA, "permissions": ["full_control"], "strict": False},
     )
     token = resp.json()["access_token"]
-    assert client.get("/services", headers={"Authorization": f"Bearer {token}"}).json() == {}
+    assert client.get("/token", headers={"Authorization": f"Bearer {token}"}).status_code == 200
     assert client.get("/users/2", headers={"Authorization": f"Bearer {token}"}).status_code == 403
 
 
@@ -842,7 +842,7 @@ async def test_create_invoice_and_pay(async_client, token: str, mocker):
     payment_method.coin = settings.get_coin(payment_method.currency, xpub=wallet.xpub)
     assert not (await models.Invoice.get(invoice_id)).paid_currency
     # mock transaction complete
-    mocker.patch.object(payment_method.coin, "getrequest", return_value=get_future_return_value({"status": "complete"}))
+    mocker.patch.object(payment_method.coin, "get_request", return_value=get_future_return_value({"status": "complete"}))
     # process invoice
     await tasks.process_invoice(invoice, {}, [payment_method], notify=False)
     # validate invoice paid_currency

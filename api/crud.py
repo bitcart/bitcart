@@ -91,11 +91,11 @@ async def update_invoice_payments(invoice, wallets, discounts, task_wallets, sto
         if wallet.currency not in invoice.payments:
             coin = settings.get_coin(wallet.currency, wallet.xpub)
             discount_id = None
-            price = invoice.price / await coin.rate(invoice.currency, accurate=True)
+            price = invoice.price / await coin.rate(invoice.currency)
             if math.isnan(price):
-                price = invoice.price / await coin.rate(store.default_currency, accurate=True)
+                price = invoice.price / await coin.rate(store.default_currency)
             if math.isnan(price):
-                price = invoice.price / await coin.rate("USD", accurate=True)
+                price = invoice.price / await coin.rate("USD")
             if math.isnan(price):
                 price = invoice.price
             if discounts:
@@ -113,9 +113,7 @@ async def update_invoice_payments(invoice, wallets, discounts, task_wallets, sto
                 except ValueError:  # no matched discounts
                     pass
             task_wallets[wallet.currency] = wallet.xpub
-            data_got = await coin.addrequest(
-                str(price), description=product.name if product else "", expire=invoice.expiration
-            )
+            data_got = await coin.add_request(price, description=product.name if product else "", expire=invoice.expiration)
             await models.PaymentMethod.create(
                 invoice_id=invoice.id,
                 amount=price,

@@ -46,7 +46,7 @@ async def process_invoice(
 ):
     while not settings.shutdown.is_set():
         for method in payment_methods:
-            invoice_data = await method.coin.getrequest(method.payment_address)
+            invoice_data = await method.coin.get_request(method.payment_address)
             if invoice_data["status"] != "Pending" and invoice_data["status"] != 0:
                 status = invoice_data["status"]
                 if isinstance(status, int):
@@ -111,4 +111,6 @@ async def sync_wallet(model: Union[int, models.Wallet]):
     await model.update(balance=balance["confirmed"]).apply()
     if test:
         await asyncio.sleep(1)
-    await utils.publish_message(model.id, {"status": "success", "balance": balance["confirmed"]})
+    await utils.publish_message(
+        model.id, {"status": "success", "balance": str(balance["confirmed"])}
+    )  # convert for json serialization
