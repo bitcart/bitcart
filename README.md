@@ -55,6 +55,9 @@ Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/d
     <td align="center"><a href="https://github.com/arynn-gupta"><img src="https://avatars0.githubusercontent.com/u/61794851?v=4" width="100px;" alt=""/><br /><sub><b>CYBORG</b></sub></a><br /><a href="#design-arynn-gupta" title="Design">🎨</a></td>
     <td align="center"><a href="https://github.com/SakshamSingh-v2"><img src="https://avatars1.githubusercontent.com/u/55451173?v=4" width="100px;" alt=""/><br /><sub><b>Saksham Singh</b></sub></a><br /><a href="#design-SakshamSingh-v2" title="Design">🎨</a></td>
   </tr>
+  <tr>
+    <td align="center"><a href="https://github.com/orestischaral"><img src="https://avatars1.githubusercontent.com/u/33599092?v=4" width="100px;" alt=""/><br /><sub><b>Orestis Charalampakos</b></sub></a><br /><a href="#design-orestischaral" title="Design">🎨</a></td>
+  </tr>
 </table>
 
 <!-- markdownlint-enable -->
