@@ -53,6 +53,7 @@ Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/d
     <td align="center"><a href="https://www.linkedin.com/pub/weidong-sun/b3/83/21b"><img src="https://avatars0.githubusercontent.com/u/3086064?v=4" width="100px;" alt=""/><br /><sub><b>Weidong Sun</b></sub></a><br /><a href="https://github.com/bitcartcc/bitcart/commits?author=xiaoxianma" title="Code">💻</a></td>
     <td align="center"><a href="https://github.com/kartecianos"><img src="https://avatars2.githubusercontent.com/u/43797783?v=4" width="100px;" alt=""/><br /><sub><b>kartecianos</b></sub></a><br /><a href="https://github.com/bitcartcc/bitcart/commits?author=kartecianos" title="Code">💻</a></td>
     <td align="center"><a href="https://github.com/arynn-gupta"><img src="https://avatars0.githubusercontent.com/u/61794851?v=4" width="100px;" alt=""/><br /><sub><b>CYBORG</b></sub></a><br /><a href="#design-arynn-gupta" title="Design">🎨</a></td>
+    <td align="center"><a href="https://github.com/SakshamSingh-v2"><img src="https://avatars1.githubusercontent.com/u/55451173?v=4" width="100px;" alt=""/><br /><sub><b>Saksham Singh</b></sub></a><br /><a href="#design-SakshamSingh-v2" title="Design">🎨</a></td>
   </tr>
 </table>
 
