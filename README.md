@@ -57,6 +57,7 @@ Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/d
   </tr>
   <tr>
     <td align="center"><a href="https://github.com/orestischaral"><img src="https://avatars1.githubusercontent.com/u/33599092?v=4" width="100px;" alt=""/><br /><sub><b>Orestis Charalampakos</b></sub></a><br /><a href="#design-orestischaral" title="Design">🎨</a> <a href="https://github.com/bitcartcc/bitcart/commits?author=orestischaral" title="Code">💻</a></td>
+    <td align="center"><a href="http://tobyase.de/"><img src="https://avatars0.githubusercontent.com/u/6002167?v=4" width="100px;" alt=""/><br /><sub><b>TobyAsE</b></sub></a><br /><a href="https://github.com/bitcartcc/bitcart/commits?author=TobyAsE" title="Code">💻</a> <a href="#design-TobyAsE" title="Design">🎨</a></td>
   </tr>
 </table>
 
