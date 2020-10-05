@@ -13,7 +13,8 @@
       "contributions": [
         "maintenance",
         "code",
-        "doc"
+        "doc",
+        "design"
       ]
     },
     {
@@ -87,6 +88,15 @@
       "profile": "http://tobyase.de/",
       "contributions": [
         "code",
+        "design"
+      ]
+    },
+    {
+      "login": "Shadman-Ahmed-Chowdhury",
+      "name": "Shadman Ahmed",
+      "avatar_url": "https://avatars3.githubusercontent.com/u/46925021?v=4",
+      "profile": "https://github.com/Shadman-Ahmed-Chowdhury",
+      "contributions": [
         "design"
       ]
     }

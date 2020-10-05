@@ -47,7 +47,7 @@ Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/d
 <!-- markdownlint-disable -->
 <table>
   <tr>
-    <td align="center"><a href="https://github.com/MrNaif2018"><img src="https://avatars3.githubusercontent.com/u/39452697?v=4" width="100px;" alt=""/><br /><sub><b>MrNaif2018</b></sub></a><br /><a href="#maintenance-MrNaif2018" title="Maintenance">🚧</a> <a href="https://github.com/bitcartcc/bitcart/commits?author=MrNaif2018" title="Code">💻</a> <a href="https://github.com/bitcartcc/bitcart/commits?author=MrNaif2018" title="Documentation">📖</a></td>
+    <td align="center"><a href="https://github.com/MrNaif2018"><img src="https://avatars3.githubusercontent.com/u/39452697?v=4" width="100px;" alt=""/><br /><sub><b>MrNaif2018</b></sub></a><br /><a href="#maintenance-MrNaif2018" title="Maintenance">🚧</a> <a href="https://github.com/bitcartcc/bitcart/commits?author=MrNaif2018" title="Code">💻</a> <a href="https://github.com/bitcartcc/bitcart/commits?author=MrNaif2018" title="Documentation">📖</a> <a href="#design-MrNaif2018" title="Design">🎨</a></td>
     <td align="center"><a href="https://github.com/tomasmor42"><img src="https://avatars2.githubusercontent.com/u/42064734?v=4" width="100px;" alt=""/><br /><sub><b>tomasmor42</b></sub></a><br /><a href="https://github.com/bitcartcc/bitcart/commits?author=tomasmor42" title="Code">💻</a></td>
     <td align="center"><a href="https://github.com/yagicandegirmenci"><img src="https://avatars3.githubusercontent.com/u/62724709?v=4" width="100px;" alt=""/><br /><sub><b>Yağız Değirmenci</b></sub></a><br /><a href="https://github.com/bitcartcc/bitcart/commits?author=yagicandegirmenci" title="Code">💻</a></td>
     <td align="center"><a href="https://www.linkedin.com/pub/weidong-sun/b3/83/21b"><img src="https://avatars0.githubusercontent.com/u/3086064?v=4" width="100px;" alt=""/><br /><sub><b>Weidong Sun</b></sub></a><br /><a href="https://github.com/bitcartcc/bitcart/commits?author=xiaoxianma" title="Code">💻</a></td>
@@ -58,6 +58,7 @@ Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/d
   <tr>
     <td align="center"><a href="https://github.com/orestischaral"><img src="https://avatars1.githubusercontent.com/u/33599092?v=4" width="100px;" alt=""/><br /><sub><b>Orestis Charalampakos</b></sub></a><br /><a href="#design-orestischaral" title="Design">🎨</a> <a href="https://github.com/bitcartcc/bitcart/commits?author=orestischaral" title="Code">💻</a></td>
     <td align="center"><a href="http://tobyase.de/"><img src="https://avatars0.githubusercontent.com/u/6002167?v=4" width="100px;" alt=""/><br /><sub><b>TobyAsE</b></sub></a><br /><a href="https://github.com/bitcartcc/bitcart/commits?author=TobyAsE" title="Code">💻</a> <a href="#design-TobyAsE" title="Design">🎨</a></td>
+    <td align="center"><a href="https://github.com/Shadman-Ahmed-Chowdhury"><img src="https://avatars3.githubusercontent.com/u/46925021?v=4" width="100px;" alt=""/><br /><sub><b>Shadman Ahmed</b></sub></a><br /><a href="#design-Shadman-Ahmed-Chowdhury" title="Design">🎨</a></td>
   </tr>
 </table>
 
