@@ -5,7 +5,7 @@ from starlette.middleware.cors import CORSMiddleware
 from starlette.staticfiles import StaticFiles
 
 from api import settings
-from api.db import CONNECTION_STR, db
+from api.db import db
 from api.ext import tor as tor_ext
 from api.utils import run_repeated
 from api.views import router
@@ -34,7 +34,7 @@ async def add_onion_host(request: Request, call_next):
 
 @app.on_event("startup")
 async def startup():
-    await db.set_bind(CONNECTION_STR, min_size=3, max_size=3, loop=settings.loop)
+    await settings.init_db()
     asyncio.ensure_future(run_repeated(tor_ext.refresh, 120, 10))
     if settings.TEST:
         await db.gino.create_all()
