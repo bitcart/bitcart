@@ -125,12 +125,14 @@ workflows:
                 - "3.6"
                 - "3.7"
                 - "3.8"
+                - "3.9"
       - deploy:
           context: global
           requires:
             - test-3.6
             - test-3.7
             - test-3.8
+            - test-3.9
           filters:
             branches:
               only: master
