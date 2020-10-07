@@ -131,7 +131,7 @@ shutdown = asyncio.Event(loop=loop)
 async def init_db():
     from . import db
 
-    await db.db.set_bind(db.CONNECTION_STR, min_size=3, max_size=3, loop=loop)
+    await db.db.set_bind(db.CONNECTION_STR, min_size=0, max_size=3, loop=loop)
 
 
 class InitDB(dramatiq.Middleware):
