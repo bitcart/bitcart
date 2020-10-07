@@ -15,6 +15,8 @@ from notifiers import all_providers, get_notifier
 from starlette.config import Config
 from starlette.datastructures import CommaSeparatedStrings
 
+from .ext.notifiers import parse_notifier_schema
+
 config = Config("conf/.env")
 
 # bitcart-related
@@ -95,11 +97,13 @@ def get_coin(coin, xpub=None):
 notifiers = {}
 for provider in all_providers():
     notifier = get_notifier(provider)
+    properties = parse_notifier_schema(notifier.schema)
+    required = []
     if "required" in notifier.required:
         required = notifier.required["required"]
         if "message" in required:
             required.remove("message")
-        notifiers[notifier.name] = required
+    notifiers[notifier.name] = {"properties": properties, "required": required}
 
 # initialize redis pool
 loop = asyncio.get_event_loop()
