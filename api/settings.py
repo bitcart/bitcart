@@ -128,12 +128,16 @@ def run_sync(f):
 shutdown = asyncio.Event(loop=loop)
 
 
+async def init_db():
+    from . import db
+
+    await db.db.set_bind(db.CONNECTION_STR, min_size=1, loop=loop)
+
+
 class InitDB(dramatiq.Middleware):
     def before_worker_boot(self, broker, worker):
         async def run():
-            from . import db
-
-            await db.db.set_bind(db.CONNECTION_STR)
+            await init_db()
 
         loop.run_until_complete(run())
 
