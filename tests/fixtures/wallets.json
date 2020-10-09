@@ -172,7 +172,7 @@
             "data": {
                 "name": "test"
             },
-            "status": "good",
+            "status": "bad",
             "return_data": {
                 "name": "test",
                 "user_id": 1,
@@ -195,7 +195,7 @@
                 "id": null,
                 "name": "test"
             },
-            "status": "good",
+            "status": "bad",
             "return_data": {
                 "name": "test",
                 "user_id": 1,

@@ -554,3 +554,7 @@ def safe_db_write():
         yield
     except asyncpg.exceptions.IntegrityConstraintViolationError as e:
         raise HTTPException(422, e.message)
+
+
+async def get_wallet_balance(coin):
+    return (await coin.balance())["confirmed"]

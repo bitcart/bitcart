@@ -108,7 +108,6 @@ async def sync_wallet(model: Union[int, models.Wallet]):
         return
     coin = settings.get_coin(model.currency, model.xpub)
     balance = await coin.balance()
-    await model.update(balance=balance["confirmed"]).apply()
     if test:
         await asyncio.sleep(1)
     await utils.publish_message(

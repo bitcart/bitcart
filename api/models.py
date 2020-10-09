@@ -32,14 +32,23 @@ class User(db.Model):
     created = Column(DateTime(True), nullable=False)
 
 
+class WalletUpdateRequest(UpdateRequest):
+    async def apply(self):
+        coin = settings.get_coin(self._instance.currency)
+        if await coin.validate_key(self._instance.xpub):
+            return await super().apply()
+        else:
+            raise HTTPException(422, "Wallet key invalid")
+
+
 class Wallet(db.Model):
     __tablename__ = "wallets"
+    _update_request_cls = WalletUpdateRequest
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(length=1000), index=True)
     xpub = Column(String(length=1000), index=True)
     currency = Column(String(length=1000), index=True)
-    balance = Column(Numeric(16, 8), default=0)
     user_id = Column(Integer, ForeignKey(User.id, ondelete="SET NULL"))
     user = relationship(User, backref="wallets")
     created = Column(DateTime(True), nullable=False)

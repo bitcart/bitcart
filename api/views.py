@@ -31,8 +31,7 @@ async def get_balances(user: models.User = Security(utils.AuthDependency(), scop
     async with db.db.acquire() as conn:
         async with conn.transaction():
             async for wallet in models.Wallet.query.where(models.Wallet.user_id == user.id).gino.iterate():
-                balance = (await settings.get_coin(wallet.currency, wallet.xpub).balance())["confirmed"]
-                balances += Decimal(balance)
+                balances += await utils.get_wallet_balance(settings.get_coin(wallet.currency, wallet.xpub))
     return balances
 
 
@@ -317,7 +316,7 @@ utils.ModelView.register(
     schemes.CreateWallet,
     schemes.Wallet,
     background_tasks_mapping={"post": tasks.sync_wallet},
-    custom_methods={"post": crud.create_wallet},
+    custom_methods={"get": crud.get_wallets, "get_one": crud.get_wallet, "post": crud.create_wallet},
     scopes=["wallet_management"],
 )
 utils.ModelView.register(

@@ -50,7 +50,9 @@ async def patch_user(item: models.User, model: schemes.User, user: schemes.Displ
 
 
 async def create_wallet(wallet: schemes.CreateWallet, user: schemes.User):
-    return await models.Wallet.create(**wallet.dict(), user_id=user.id)
+    wallet = await models.Wallet.create(**wallet.dict(), user_id=user.id)
+    await wallet_add_related(wallet)
+    return wallet
 
 
 async def create_invoice(invoice: schemes.CreateInvoice, user: schemes.User):
@@ -273,3 +275,24 @@ async def create_template(template: schemes.CreateTemplate, user: schemes.User):
 
 def mark_invoice_invalid(orm_model):
     return orm_model.update.values({"status": "invalid"})
+
+
+async def wallet_add_related(item: models.Wallet):
+    if not item:
+        return
+    item.balance = await utils.get_wallet_balance(settings.get_coin(item.currency, item.xpub))
+
+
+async def wallets_add_related(items: Iterable[models.Wallet]):
+    for item in items:
+        await wallet_add_related(item)
+    return items
+
+
+async def get_wallet(model_id: int, user: schemes.User, item: models.Wallet, internal: bool = False):
+    await wallet_add_related(item)
+    return item
+
+
+async def get_wallets(pagination: pagination.Pagination, user: schemes.User):
+    return await pagination.paginate(models.Wallet, user.id, postprocess=wallets_add_related)
