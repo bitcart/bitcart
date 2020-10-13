@@ -11,7 +11,7 @@ from types import ModuleType
 from typing import Any, Optional, Union
 from urllib.parse import urlparse
 
-from aiohttp import ClientSession
+from aiohttp import ClientSession, WSMsgType
 from aiohttp import __version__ as aiohttp_version
 from aiohttp import web
 from decouple import AutoConfig
@@ -281,7 +281,7 @@ class BaseDaemon:
         ):  # when daemon is syncing or is synced and wallet is not, prevent running commands to avoid unexpected results
             await asyncio.sleep(0.1)
         self.wallets[xpub] = {"wallet": wallet, "cmd": command_runner, "config": config}
-        self.wallets_config[xpub] = {"events": set(), "notification_url": None}
+        self.wallets_config[xpub] = {"notification_url": None}
         self.wallets_updates[xpub] = []
         return wallet, command_runner, config
 
@@ -370,6 +370,24 @@ class BaseDaemon:
             last_line = traceback.format_exc().splitlines()[-1]
             return JsonResponse(code=self.get_error_code(last_line), error=last_line, id=id).send()
 
+    @authenticate
+    async def handle_websocket(self, request):
+        ws = web.WebSocketResponse()
+        await ws.prepare(request)
+        ws.config = {"xpub": None}
+        request.app["websockets"].add(ws)
+        try:
+            async for msg in ws:
+                if msg.type == WSMsgType.TEXT:
+                    try:
+                        data = msg.json()
+                        if data.get("xpub"):
+                            ws.config["xpub"] = data["xpub"]
+                    except json.JSONDecodeError:
+                        pass
+        finally:
+            request.app["websockets"].remove(ws)
+
     def get_error_code(self, error):
         for error_message in self.spec["electrum_map"]:
             if error_message in error:
@@ -381,7 +399,10 @@ class BaseDaemon:
         return web.json_response(self.spec)
 
     def configure_app(self, app):
+        self.app = app
+        app["websockets"] = set()
         app.router.add_post("/", self.handle_request)
+        app.router.add_get("/ws", self.handle_websocket)
         app.router.add_get("/spec", self.handle_spec)
         app.on_startup.append(self.on_startup)
         app.on_shutdown.append(self.on_shutdown)
@@ -404,18 +425,31 @@ class BaseDaemon:
             return
         data.update(data_got)
         for i in self.wallets_config:
-            if mapped_event in self.wallets_config[i]["events"]:
-                if not wallet or wallet == self.wallets[i]["wallet"]:
-                    if self.wallets_config[i]["notification_url"] and await self.send_notification(
-                        data, i, self.wallets_config[i]["notification_url"]
-                    ):
-                        pass
-                    else:
-                        self.wallets_updates[i].append(data)
+            await self.notify_websockets(data, i)
+            if not wallet or wallet == self.wallets[i]["wallet"]:
+
+                if self.wallets_config[i]["notification_url"] and await self.send_notification(
+                    data, i, self.wallets_config[i]["notification_url"]
+                ):
+                    pass
+                else:
+                    self.wallets_updates[i].append(data)
+
+    def build_notification(self, data, xpub):
+        return {"updates": [data], "wallet": xpub, "currency": self.name}
+
+    async def notify_websockets(self, data, xpub):
+        coros = [
+            ws.send_json(self.build_notification(data, xpub))
+            for ws in self.app["websockets"]
+            if not ws.closed and not ws.config["xpub"] or ws.config["xpub"] == xpub
+        ]
+        coros and await asyncio.gather(*coros)
+        return True
 
     async def send_notification(self, data, xpub, notification_url):
         try:
-            await self.client_session.post(notification_url, json={"updates": [data], "wallet": xpub, "currency": self.name})
+            await self.client_session.post(notification_url, json=self.build_notification(data, xpub))
             return True
         except Exception:
             return False
@@ -433,18 +467,18 @@ class BaseDaemon:
             return
         data.update(data_got)
         for i in self.wallets_config:
-            if mapped_event in self.wallets_config[i]["events"]:
-                if not wallet or wallet == self.wallets[i]["wallet"]:
-                    if (
-                        self.wallets_config[i]["notification_url"]
-                        and asyncio.run_coroutine_threadsafe(
-                            self.send_notification(data, i, self.wallets_config[i]["notification_url"]),
-                            self.loop,
-                        ).result()
-                    ):
-                        pass
-                    else:
-                        self.wallets_updates[i].append(data)
+            asyncio.run_coroutine_threadsafe(self.notify_websockets(data, i), self.loop)
+            if not wallet or wallet == self.wallets[i]["wallet"]:
+                if (
+                    self.wallets_config[i]["notification_url"]
+                    and asyncio.run_coroutine_threadsafe(
+                        self.send_notification(data, i, self.wallets_config[i]["notification_url"]),
+                        self.loop,
+                    ).result()
+                ):
+                    pass
+                else:
+                    self.wallets_updates[i].append(data)
 
     def process_new_block(self):
         height = self.network.get_local_height()
@@ -484,16 +518,6 @@ class BaseDaemon:
         updates = self.wallets_updates[wallet]
         self.wallets_updates[wallet] = []
         return updates
-
-    @rpc(requires_wallet=True)
-    def subscribe(self, events, wallet):
-        self.wallets_config[wallet]["events"].update(events)
-
-    @rpc(requires_wallet=True)
-    def unsubscribe(self, wallet, events=None):
-        if events is None:
-            events = self.EVENT_MAPPING.keys()
-        self.wallets_config[wallet]["events"] = set(i for i in self.wallets_config[wallet]["events"] if i not in events)
 
     @rpc
     async def get_transaction(self, tx, wallet=None):
