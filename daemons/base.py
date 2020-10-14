@@ -158,7 +158,6 @@ class BaseDaemon:
             sys.exit(e)
         # initialize wallet storages
         self.wallets = {}
-        self.wallets_config = {}
         self.wallets_updates = {}
         # initialize not yet created network
         self.loop = asyncio.get_event_loop()
@@ -281,7 +280,6 @@ class BaseDaemon:
         ):  # when daemon is syncing or is synced and wallet is not, prevent running commands to avoid unexpected results
             await asyncio.sleep(0.1)
         self.wallets[xpub] = {"wallet": wallet, "cmd": command_runner, "config": config}
-        self.wallets_config[xpub] = {"notification_url": None}
         self.wallets_updates[xpub] = []
         return wallet, command_runner, config
 
@@ -424,16 +422,10 @@ class BaseDaemon:
         if data_got is None:
             return
         data.update(data_got)
-        for i in self.wallets_config:
-            await self.notify_websockets(data, i)
+        for i in self.wallets:
             if not wallet or wallet == self.wallets[i]["wallet"]:
-
-                if self.wallets_config[i]["notification_url"] and await self.send_notification(
-                    data, i, self.wallets_config[i]["notification_url"]
-                ):
-                    pass
-                else:
-                    self.wallets_updates[i].append(data)
+                await self.notify_websockets(data, i)
+                self.wallets_updates[i].append(data)
 
     def build_notification(self, data, xpub):
         return {"updates": [data], "wallet": xpub, "currency": self.name}
@@ -447,13 +439,6 @@ class BaseDaemon:
         coros and await asyncio.gather(*coros)
         return True
 
-    async def send_notification(self, data, xpub, notification_url):
-        try:
-            await self.client_session.post(notification_url, json=self.build_notification(data, xpub))
-            return True
-        except Exception:
-            return False
-
     def _process_events_sync(self, event, *args):
         """For non-asyncio clients"""
         mapped_event = self.EVENT_MAPPING.get(event)
@@ -466,19 +451,10 @@ class BaseDaemon:
         if data_got is None:
             return
         data.update(data_got)
-        for i in self.wallets_config:
-            asyncio.run_coroutine_threadsafe(self.notify_websockets(data, i), self.loop)
+        for i in self.wallets:
             if not wallet or wallet == self.wallets[i]["wallet"]:
-                if (
-                    self.wallets_config[i]["notification_url"]
-                    and asyncio.run_coroutine_threadsafe(
-                        self.send_notification(data, i, self.wallets_config[i]["notification_url"]),
-                        self.loop,
-                    ).result()
-                ):
-                    pass
-                else:
-                    self.wallets_updates[i].append(data)
+                asyncio.run_coroutine_threadsafe(self.notify_websockets(data, i), self.loop)
+                self.wallets_updates[i].append(data)
 
     def process_new_block(self):
         height = self.network.get_local_height()
@@ -547,7 +523,3 @@ class BaseDaemon:
     @rpc
     def get_default_fee(self, tx: Union[dict, int], wallet=None) -> float:
         return self.electrum_config.estimate_fee(self.get_tx_size(tx) if isinstance(tx, dict) else tx)
-
-    @rpc(requires_wallet=True)
-    def configure_notifications(self, notification_url, wallet):
-        self.wallets_config[wallet]["notification_url"] = notification_url
