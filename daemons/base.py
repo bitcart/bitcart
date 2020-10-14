@@ -453,7 +453,7 @@ class BaseDaemon:
         data.update(data_got)
         for i in self.wallets:
             if not wallet or wallet == self.wallets[i]["wallet"]:
-                asyncio.run_coroutine_threadsafe(self.notify_websockets(data, i), self.loop)
+                asyncio.run_coroutine_threadsafe(self.notify_websockets(data, i), self.loop).result()
                 self.wallets_updates[i].append(data)
 
     def process_new_block(self):
