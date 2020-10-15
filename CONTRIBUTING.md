@@ -166,7 +166,7 @@ To test the changes you will need to run the server with applying changes to db 
 alembic upgrade head
 ```
 
-Then, open 2 terminals, and run one command in each of them:
+Then, open 3 terminals, and run one command in each of them:
 
 ```bash
 BTC_NETWORK=testnet python3 daemons/btc.py
@@ -174,6 +174,10 @@ BTC_NETWORK=testnet python3 daemons/btc.py
 
 ```bash
 uvicorn --reload main:app
+```
+
+```bash
+python3 worker.py
 ```
 
 ### Coding guidelines for python code
