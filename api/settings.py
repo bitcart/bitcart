@@ -77,6 +77,7 @@ with warnings.catch_warnings():  # it is supposed
             "lightning": crypto_lightning,
         }
         cryptos[crypto] = coin(**crypto_settings[crypto]["credentials"])
+        manager.wallets[env_name][""] = cryptos[crypto]
 
 
 def get_coin(coin, xpub=None):
