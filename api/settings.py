@@ -4,12 +4,7 @@ import sys
 import warnings
 
 import aioredis
-import dramatiq
-import redis
-from bitcart import COINS
-from dramatiq.brokers.redis import RedisBroker
-from dramatiq.brokers.stub import StubBroker
-from dramatiq.middleware import AgeLimit, Callbacks, Pipelines, Retries, ShutdownNotifications
+from bitcart import COINS, APIManager
 from fastapi import HTTPException
 from notifiers import all_providers, get_notifier
 from starlette.config import Config
@@ -59,6 +54,7 @@ cryptos = {}
 crypto_settings = {}
 with warnings.catch_warnings():  # it is supposed
     warnings.simplefilter("ignore")
+    manager = APIManager({crypto.upper(): [] for crypto in ENABLED_CRYPTOS})
     for crypto in ENABLED_CRYPTOS:
         env_name = crypto.upper()
         coin = COINS[env_name]
@@ -118,44 +114,7 @@ async def init_redis():
 loop.create_task(init_redis())
 
 
-def run_sync(f):
-    def wrapper(*args, **kwargs):
-        if not TEST:
-            result = loop.run_until_complete(f(*args, **kwargs))
-        else:
-            result = loop.create_task(f(*args, **kwargs))
-        return result
-
-    return wrapper
-
-
-shutdown = asyncio.Event(loop=loop)
-
-
 async def init_db():
     from . import db
 
     await db.db.set_bind(db.CONNECTION_STR, min_size=1, loop=loop)
-
-
-class InitDB(dramatiq.Middleware):
-    def before_worker_boot(self, broker, worker):
-        async def run():
-            await init_db()
-
-        loop.run_until_complete(run())
-
-    def before_worker_shutdown(self, broker, worker):
-        shutdown.set()
-
-
-MIDDLEWARE = [m() for m in (AgeLimit, ShutdownNotifications, Callbacks, Pipelines, Retries)]
-
-if TEST:
-    broker = StubBroker(middleware=MIDDLEWARE)
-    broker.emit_after("process_boot")
-else:
-    broker = RedisBroker(connection_pool=redis.ConnectionPool.from_url(REDIS_HOST), middleware=MIDDLEWARE)
-
-broker.add_middleware(InitDB())
-dramatiq.set_broker(broker)

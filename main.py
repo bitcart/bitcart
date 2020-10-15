@@ -4,7 +4,7 @@ from fastapi import FastAPI, Request
 from starlette.middleware.cors import CORSMiddleware
 from starlette.staticfiles import StaticFiles
 
-from api import settings
+from api import invoices, settings
 from api.db import db
 from api.ext import tor as tor_ext
 from api.utils import run_repeated
@@ -23,6 +23,9 @@ app.add_middleware(
 )
 
 
+settings.manager.add_event_handler("new_payment", invoices.new_payment_handler)
+
+
 @app.middleware("http")
 async def add_onion_host(request: Request, call_next):
     response = await call_next(request)
@@ -36,6 +39,7 @@ async def add_onion_host(request: Request, call_next):
 async def startup():
     await settings.init_db()
     asyncio.ensure_future(run_repeated(tor_ext.refresh, 120, 10))
+    asyncio.ensure_future(settings.manager.start_websocket(reconnect_callback=invoices.check_pending, force_connect=True))
     if settings.TEST:
         await db.gino.create_all()
 

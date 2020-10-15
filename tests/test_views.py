@@ -5,10 +5,11 @@ from decimal import Decimal
 from typing import Dict, List, Union
 
 import pytest
+from bitcart import BTC
 from fastapi.encoders import jsonable_encoder
 from starlette.testclient import TestClient
 
-from api import models, settings, tasks, templates
+from api import invoices, models, settings, templates, utils
 from api.ext import tor as tor_ext
 
 TEST_XPUB = "tpubDD5MNJWw35y3eoJA7m3kFWsyX5SaUgx2Y3AaGwFk1pjYsHvpgDwRhrStRbCGad8dYzZCkLCvbGKfPuBiG7BabswmLofb7c2yfQFhjqSjaGi"
@@ -16,6 +17,10 @@ LIMITED_USER_DATA = {
     "email": "testauthlimited@example.com",
     "password": "test12345",
 }
+
+
+class DummyInstance:
+    coin_name = "BTC"
 
 
 def get_future_return_value(return_val):
@@ -672,6 +677,10 @@ async def test_wallet_ws(async_client, token: str):
     assert r.status_code == 200
     wallet_id = r.json()["id"]
     async with async_client.websocket_connect(f"/ws/wallets/{wallet_id}?token={token}") as websocket:
+        await asyncio.sleep(1)
+        await utils.publish_message(
+            wallet_id, {"status": "success", "balance": str((await BTC(xpub=TEST_XPUB).balance())["confirmed"])}
+        )
         await check_ws_response2(websocket)
     with pytest.raises(Exception):
         async with async_client.websocket_connect(f"/ws/wallets/{wallet_id}") as websocket:
@@ -688,8 +697,13 @@ async def test_wallet_ws(async_client, token: str):
 async def test_invoice_ws(async_client, token: str):
     r = await async_client.post("/invoices", json={"store_id": 2, "price": 5}, headers={"Authorization": f"Bearer {token}"})
     assert r.status_code == 200
-    invoice_id = r.json()["id"]
+    data = r.json()
+    invoice_id = data["id"]
     async with async_client.websocket_connect(f"/ws/invoices/{invoice_id}") as websocket:
+        await asyncio.sleep(1)
+        await invoices.new_payment_handler(
+            DummyInstance(), None, data["payments"]["btc"]["payment_address"], "test", None, notify=False
+        )  # emulate paid invoice
         await check_ws_response(websocket)
         async with async_client.websocket_connect(
             f"/ws/invoices/{invoice_id}"
@@ -829,22 +843,17 @@ async def test_create_invoice_without_coin_rate(async_client, token: str, mocker
 
 
 @pytest.mark.asyncio
-async def test_create_invoice_and_pay(async_client, token: str, mocker):
-    # get an existing wallet
-    wallet = await models.Wallet.query.where(models.Wallet.name == "test5").gino.first()
+async def test_create_invoice_and_pay(async_client, token: str):
     # create invoice
     r = await async_client.post("/invoices", json={"store_id": 2, "price": 9.9}, headers={"Authorization": f"Bearer {token}"})
     assert r.status_code == 200
-    invoice_id = r.json()["id"]
-    invoice = await models.Invoice.get(invoice_id)
+    data = r.json()
+    invoice_id = data["id"]
     # get payment
     payment_method = await models.PaymentMethod.query.where(models.PaymentMethod.invoice_id == invoice_id).gino.first()
-    payment_method.coin = settings.get_coin(payment_method.currency, xpub=wallet.xpub)
-    assert not (await models.Invoice.get(invoice_id)).paid_currency
-    # mock transaction complete
-    mocker.patch.object(payment_method.coin, "get_request", return_value=get_future_return_value({"status": "complete"}))
-    # process invoice
-    await tasks.process_invoice(invoice, {}, [payment_method], notify=False)
+    await invoices.new_payment_handler(
+        DummyInstance(), None, data["payments"]["btc"]["payment_address"], "complete", None, notify=False
+    )  # pay the invoice
     # validate invoice paid_currency
     assert (await models.Invoice.get(invoice_id)).paid_currency == payment_method.currency
     await async_client.delete(f"/invoices/{invoice_id}", headers={"Authorization": f"Bearer {token}"})
