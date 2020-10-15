@@ -34,8 +34,8 @@ Be sure to scan through the [most popular](https://github.com/bitcartcc/bitcart/
 
 If you find your issue already exists, make relevant comments and add your [reaction](https://github.com/blog/2119-add-reactions-to-pull-requests-issues-and-comments). Use a reaction in place of a "+1" comment:
 
-* 👍 - upvote
-* 👎 - downvote
+- 👍 - upvote
+- 👎 - downvote
 
 If you cannot find an existing issue that describes your bug or feature, create a new issue using the guidelines below.
 
@@ -49,39 +49,40 @@ The more information you can provide, the more likely someone will be successful
 
 Please include the following with each issue:
 
-* Version of BitcartCC
+- Version of BitcartCC
 
-* Your operating system  
+- Your operating system
 
-* Deployment method: Docker, manual or others
+- Deployment method: Docker, manual or others
 
-* Reproducible steps (1... 2... 3...) that cause the issue
+- Reproducible steps (1... 2... 3...) that cause the issue
 
-* What you expected to see, versus what you actually saw
+- What you expected to see, versus what you actually saw
 
-* Images, animations, or a link to a video showing the issue occurring
-
+- Images, animations, or a link to a video showing the issue occurring
 
 ### Final Checklist
 
 Please remember to do the following:
 
-* [ ] Search the issue repository to ensure your report is a new issue
+- [ ] Search the issue repository to ensure your report is a new issue
 
-* [ ] Try to isolate the problem
+- [ ] Try to isolate the problem
 
-* [ ] Try to gather as much information as possible to reproduce your issue
+- [ ] Try to gather as much information as possible to reproduce your issue
 
-* [ ] Open an issue and communicate with developers to solve it
+- [ ] Open an issue and communicate with developers to solve it
 
 Don't feel bad if the developers can't reproduce the issue right away. They will simply ask for more information!
 
 ## Contributing Fixes
+
 There are many ways to contribute to the BitcartCC project:
-* finding bugs
-* submitting pull requests
-* reporting issues
-* creating feature requests
+
+- finding bugs
+- submitting pull requests
+- reporting issues
+- creating feature requests
 
 After cloning and setting up environment, check out the [issues list](https://github.com/bitcartcc/bitcart/issues?utf8=%E2%9C%93&q=is%3Aopen+is%3Aissue). Issues labeled [`help wanted`](https://github.com/bitcartcc/bitcart/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22) are good issues to submit a PR for. Issues labeled [`good first issue`](https://github.com/bitcartcc/bitcart/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) are great candidates to pick up if you are in the code for the first time. If you are contributing significant changes, please discuss with the assignee of the issue first before starting to work on the issue.
 
@@ -114,7 +115,7 @@ Manage any merge conflicts, commit them, and then commit them to your fork.
 You'll need the following tools to develop BitcartCC locally:
 
 - [Git](https://git-scm.com)
-- [Python](https://www.python.org/downloads) at least version 3.6 (version 2 is __*not*__ supported)
+- [Python](https://www.python.org/downloads) at least version 3.6 (version 2 is **_not_** supported)
 - [Pip](https://pip.readthedocs.io/en/stable/installing/), with setuptools and wheel installed
 - [VirtualEnv](https://virtualenv.pypa.io/en/latest/installation/), not required, but recommended for development
 
@@ -129,7 +130,6 @@ sudo pip3 install setuptools wheel
 
 It is recommended to work with a virtualenv, repository's .gitignore assumes that your virtual environment is named
 env, try to don't change it's name to don't add new files to .gitignore.
-
 
 From a terminal, where you have cloned the `bitcart` repository, execute the following command to create the virtual
 environment and activate it(may differ on different platforms):
@@ -177,7 +177,7 @@ uvicorn --reload main:app
 ```
 
 ```bash
-dramatiq api.tasks --watch .
+python3 worker.py
 ```
 
 ### Coding guidelines for python code
@@ -185,12 +185,15 @@ dramatiq api.tasks --watch .
 Make sure to read our [coding guidelines for python code](CODING_STANDARDS.md#coding-guidelines-for-python-code) before contributing. By following these guidelines you will make reviewing process easier both for you and maintainers.
 
 ### Work Branches
+
 Even if you have push rights on the bitcartcc/bitcart repository, you should create a personal fork and create feature branches there when you need them. This keeps the main repository clean and your personal workflow cruft out of sight.
 
 ### Pull Requests
+
 To enable us to quickly review and accept your pull requests, always create one pull request per issue and [link the issue in the pull request](https://github.com/blog/957-introducing-issue-mentions). Never merge multiple requests in one unless they have the same root cause. Be sure to follow our [[Coding Guidelines|Coding-Guidelines]] and keep code changes as small as possible. Avoid pure formatting changes to code that has not been modified otherwise. Pull requests should contain tests whenever possible.
 
 ### Where to Contribute
+
 Check out the [full issues list](https://github.com/bitcartcc/bitcart/issues?utf8=%E2%9C%93&q=is%3Aopen+is%3Aissue) for a list of all potential areas for contributions.
 
 To improve the chances to get a pull request merged you should select an issue that is labelled with the [`help-wanted`](https://github.com/bitcartcc/bitcart/issues?q=is%3Aopen+is%3Aissue+label%3A%22help+wanted%22) or [`bug`](https://github.com/bitcartcc/bitcart/issues?q=is%3Aopen+is%3Aissue+label%3A%22bug%22) labels. If the issue you want to work on is not labelled with `help-wanted` or `bug`, you can start a conversation with the issue owner asking whether an external contribution will be considered.
@@ -198,17 +201,18 @@ To improve the chances to get a pull request merged you should select an issue t
 To avoid multiple pull requests resolving the same issue, let others know you are working on it by saying so in a comment.
 
 ### Packaging
+
 BitcartCC can be packaged for all the platforms docker supports, and for all the platforms python supports.
 
 For packaging we usually use docker images, refer to [Docker packaging repository](https://github.com/bitcartcc/bitcart-docker) for more details.
 
 ### Suggestions
+
 We're also interested in your feedback for the future of BitcartCC. You can submit a suggestion or feature request through the issue tracker. To make this process more effective, we're asking that these include more information to help define them more clearly.
 
 ### Discussion Etiquette
 
 In order to keep the conversation clear and transparent, please limit discussion to English and keep things on topic with the issue. Be considerate to others and try to be courteous and professional at all times.
-
 
 # Thank You!
 

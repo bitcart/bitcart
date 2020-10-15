@@ -10,7 +10,7 @@ jobs:
         type: string
         default: "3.6"
     docker:
-      - image: circleci/python:<< parameters.v >>
+      - image: cimg/python:<< parameters.v >>
       - image: circleci/redis:latest
       - image: circleci/postgres:9-alpine-ram
         environment:
@@ -26,15 +26,16 @@ jobs:
       # Download and cache dependencies
       - restore_cache:
           keys:
-            - v14-dependencies-{{ checksum "requirements/web.txt" }}-{{ checksum "requirements/test.txt" }}-{{ checksum "requirements/daemons/btc.txt" }}-<< parameters.v >>
+            - v15-dependencies-{{ checksum "requirements/web.txt" }}-{{ checksum "requirements/test.txt" }}-{{ checksum "requirements/daemons/btc.txt" }}-<< parameters.v >>
             # fallback to using the latest cache if no exact match is found
-            - v14-dependencies-
+            - v15-dependencies-
 
       - run:
           name: install dependencies
           command: |
             python3 -m venv ~/venv
             . ~/venv/bin/activate
+            sudo apt update
             sudo apt install libsecp256k1-dev
             pip install -U -r requirements.txt
             pip install -U -r requirements/daemons/btc.txt
@@ -43,7 +44,7 @@ jobs:
       - save_cache:
           paths:
             - ~/venv
-          key: v14-dependencies-{{ checksum "requirements/web.txt" }}-{{ checksum "requirements/test.txt" }}-{{ checksum "requirements/daemons/btc.txt" }}-<< parameters.v >>
+          key: v15-dependencies-{{ checksum "requirements/web.txt" }}-{{ checksum "requirements/test.txt" }}-{{ checksum "requirements/daemons/btc.txt" }}-<< parameters.v >>
 
       - run:
           name: prepare daemon
@@ -65,7 +66,7 @@ jobs:
 
   deploy:
     docker:
-      - image: circleci/python:3.6.8
+      - image: cimg/python:3.6
     working_directory: ~/repo
     steps:
       - checkout
@@ -86,7 +87,7 @@ jobs:
 
   deploy_stable:
     docker:
-      - image: circleci/python:3.6.8
+      - image: cimg/python:3.6
     working_directory: ~/repo
     steps:
       - setup_remote_docker

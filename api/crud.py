@@ -7,7 +7,7 @@ from typing import Iterable
 from fastapi import HTTPException
 from starlette.datastructures import CommaSeparatedStrings
 
-from . import models, pagination, schemes, settings, tasks, utils
+from . import models, pagination, schemes, settings, utils
 from .db import db
 
 
@@ -132,7 +132,6 @@ async def update_invoice_payments(invoice, wallets, discounts, task_wallets, sto
                 "currency": wallet.currency,
             }
     add_invoice_expiration(invoice)
-    tasks.poll_updates.send(invoice.id, task_wallets)
 
 
 def add_invoice_expiration(obj):
