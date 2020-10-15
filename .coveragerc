@@ -12,6 +12,7 @@ omit =
     *wsgi.py,
     *tasks.py,
     manage.py,
+    worker.py,
     venv/*,
     env/*,
     *__init__.py
