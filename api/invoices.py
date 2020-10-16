@@ -1,3 +1,5 @@
+import logging
+
 from sqlalchemy import select
 
 from . import crud, db, models, settings, utils
@@ -83,21 +85,27 @@ async def update_status(invoice, method, status, notify=True):
 
 
 async def check_pending(currency):  # pragma: no cover
-    async with db.db.acquire() as conn:
-        async with conn.transaction():
-            async for method, invoice, xpub in (
-                select(
-                    [
-                        models.PaymentMethod,
-                        models.Invoice,
-                        models.Wallet.xpub,
-                    ]
-                )
-                .where(models.PaymentMethod.invoice_id == models.Invoice.id)
-                .where(models.Invoice.status == "Pending")
-                .where(models.PaymentMethod.currency == currency.lower())
-                .gino.load((models.PaymentMethod, models.Invoice, models.Wallet.xpub))
-                .iterate()
-            ):
-                invoice_data = await settings.get_coin(method.currency, xpub).get_request(method.payment_address)
-                await update_status(invoice, method, invoice_data["status"])
+    try:
+        async with db.db.acquire() as conn:
+            async with conn.transaction():
+                async for method, invoice, xpub in (
+                    select(
+                        [
+                            models.PaymentMethod,
+                            models.Invoice,
+                            models.Wallet.xpub,
+                        ]
+                    )
+                    .where(models.PaymentMethod.invoice_id == models.Invoice.id)
+                    .where(models.Invoice.status == "Pending")
+                    .where(models.PaymentMethod.currency == currency.lower())
+                    .where(models.WalletxStore.wallet_id == models.Wallet.id)
+                    .where(models.WalletxStore.store_id == models.Invoice.store_id)
+                    .where(models.Wallet.currency == models.PaymentMethod.currency)
+                    .gino.load((models.PaymentMethod, models.Invoice, models.Wallet.xpub))
+                    .iterate()
+                ):
+                    invoice_data = await settings.get_coin(method.currency, xpub).get_request(method.payment_address)
+                    await update_status(invoice, method, invoice_data["status"])
+    except Exception as e:
+        logging.error(e)
