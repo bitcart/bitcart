@@ -16,6 +16,7 @@ from starlette.status import WS_1008_POLICY_VIOLATION
 from . import crud, db, models, pagination, schemes, settings, tasks, templates, utils
 from .ext import export as export_ext
 from .ext import tor as tor_ext
+from .ext import update as update_ext
 
 router = APIRouter()
 
@@ -671,3 +672,9 @@ class InvoiceNotify(WebSocketEndpoint):
     async def on_disconnect(self, websocket, close_code):
         if self.subscriber:
             await self.subscriber.unsubscribe(f"channel:{self.invoice_id}")
+
+
+@router.get("/updatecheck")
+async def check_updates():
+    new_update_tag = update_ext.UpdateExtension.new_update_tag
+    return {"update_available": bool(new_update_tag), "tag": new_update_tag}
