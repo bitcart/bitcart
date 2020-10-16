@@ -19,7 +19,7 @@ STATUS_MAPPING = {
 }
 
 
-async def make_expired_task(invoice, method):
+async def make_expired_task(invoice, method):  # pragma: no cover
     crud.add_invoice_expiration(invoice)  # to ensure it is the most recent one
     left = invoice.time_left + 1  # to ensure it's already expired at that moment
     if left > 0:
@@ -43,7 +43,7 @@ async def new_payment_handler(instance, event, address, status, status_str, noti
         .gino.load((models.Invoice, models.PaymentMethod))
         .first()
     )
-    if not data:  # received payment but no matching invoice
+    if not data:  # received payment but no matching invoice # pragma: no cover
         return
     invoice, method = data
     await update_status(invoice, method, status, notify=notify)
