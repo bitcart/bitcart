@@ -474,7 +474,7 @@ def test_management_commands(client: TestClient, token: str):
 def test_policies(client: TestClient, token: str):
     resp = client.get("/manage/policies")
     assert resp.status_code == 200
-    assert resp.json() == {"disable_registration": False, "discourage_index": False}
+    assert resp.json() == {"disable_registration": False, "discourage_index": False, "check_updates": True}
     assert client.post("/manage/policies").status_code == 401
     resp = client.post(
         "/manage/policies",
@@ -482,12 +482,13 @@ def test_policies(client: TestClient, token: str):
         headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 200
-    assert resp.json() == {"disable_registration": True, "discourage_index": False}
+    assert resp.json() == {"disable_registration": True, "discourage_index": False, "check_updates": True}
     assert client.post("/users", json={"email": "noauth@example.com", "password": "noauth"}).status_code == 422
     # Test for loading data from db instead of loading scheme's defaults
     assert client.get("/manage/policies").json() == {
         "disable_registration": True,
         "discourage_index": False,
+        "check_updates": True,
     }
     resp = client.post(
         "/manage/policies",
@@ -495,7 +496,11 @@ def test_policies(client: TestClient, token: str):
         headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 200
-    assert resp.json() == {"disable_registration": False, "discourage_index": False}
+    assert resp.json() == {
+        "disable_registration": False,
+        "discourage_index": False,
+        "check_updates": True,
+    }
     resp = client.get("/manage/stores")
     assert resp.status_code == 200
     assert resp.json() == {"pos_id": 1}
@@ -879,3 +884,9 @@ def test_product_count_params(client: TestClient, token: str):
         headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.json() == 0
+
+
+def test_updatecheck(client: TestClient):
+    resp = client.get("/updatecheck")
+    assert resp.status_code == 200
+    assert resp.json() == {"update_available": False, "tag": None}

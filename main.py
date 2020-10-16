@@ -37,11 +37,11 @@ async def add_onion_host(request: Request, call_next):
 @app.on_event("startup")
 async def startup():
     await settings.init_db()
+    if settings.TEST:
+        await db.gino.create_all()
     await update_ext.refresh()
     asyncio.ensure_future(run_repeated(tor_ext.refresh, 120, 10))
     asyncio.ensure_future(run_repeated(update_ext.refresh, 60 * 60 * 24))
-    if settings.TEST:
-        await db.gino.create_all()
 
 
 @app.on_event("shutdown")

@@ -11,7 +11,7 @@ RELEASE_REGEX = r"^([0-9]+(.[0-9]+)*(-[0-9]+)?)$"
 async def get_update_data():
     try:
         async with ClientSession() as session:
-            async with session.get(settings.UPDATE_URL) as resp:
+            async with session.get(settings.UPDATE_URL) as resp:  # pragma: no cover
                 data = await resp.json()
                 tag = data["tag_name"]
                 if re.match(RELEASE_REGEX, tag):

@@ -544,7 +544,7 @@ async def run_repeated(func, timeout, start_timeout=None):
     while True:
         await asyncio.sleep(start_timeout if first_iter else timeout)
         result = func()
-        if inspect.isawaitable(result):
+        if inspect.isawaitable(result):  # pragma: no cover
             await result
         first_iter = False
 
