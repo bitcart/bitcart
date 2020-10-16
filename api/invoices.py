@@ -1,3 +1,4 @@
+import asyncio
 import logging
 
 from sqlalchemy import select
@@ -16,6 +17,20 @@ STATUS_MAPPING = {
     "Unknown": "invalid",
     "Expired": "expired",
 }
+
+
+async def make_expired_task(invoice, method):
+    crud.add_invoice_expiration(invoice)  # to ensure it is the most recent one
+    left = invoice.time_left + 1  # to ensure it's already expired at that moment
+    if left > 0:
+        await asyncio.sleep(left)
+    try:
+        invoice = await models.Invoice.get(invoice.id)  # refresh data to get new status
+        await crud.invoice_add_related(invoice)
+    except Exception:
+        return  # invoice deleted meantime
+    if invoice.status == "Pending":  # to ensure there are no duplicate notifications
+        await update_status(invoice, method, "expired")
 
 
 async def new_payment_handler(instance, event, address, status, status_str, notify=True):
@@ -86,6 +101,7 @@ async def update_status(invoice, method, status, notify=True):
         await utils.publish_message(invoice.id, {"status": status})
         if notify:  # pragma: no cover
             await invoice_notification(invoice, status)
+        return True
 
 
 async def check_pending(currency):  # pragma: no cover
@@ -110,6 +126,7 @@ async def check_pending(currency):  # pragma: no cover
                     .iterate()
                 ):
                     invoice_data = await settings.get_coin(method.currency, xpub).get_request(method.payment_address)
-                    await update_status(invoice, method, invoice_data["status"])
+                    if not await update_status(invoice, method, invoice_data["status"]) and invoice.status != "expired":
+                        asyncio.ensure_future(make_expired_task(invoice, method))
     except Exception as e:
         logging.error(e)

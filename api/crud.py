@@ -1,3 +1,4 @@
+import asyncio
 import math
 from datetime import timedelta
 from decimal import Decimal
@@ -7,7 +8,7 @@ from typing import Iterable
 from fastapi import HTTPException
 from starlette.datastructures import CommaSeparatedStrings
 
-from . import models, pagination, schemes, settings, utils
+from . import invoices, models, pagination, schemes, settings, utils
 from .db import db
 
 
@@ -88,6 +89,7 @@ async def create_invoice(invoice: schemes.CreateInvoice, user: schemes.User):
 
 
 async def update_invoice_payments(invoice, wallets, discounts, task_wallets, store, product, promocode):
+    method = None
     for wallet_id in wallets:
         wallet = await models.Wallet.get(wallet_id)
         if wallet.currency not in invoice.payments:
@@ -116,7 +118,7 @@ async def update_invoice_payments(invoice, wallets, discounts, task_wallets, sto
                     pass
             task_wallets[wallet.currency] = wallet.xpub
             data_got = await coin.add_request(price, description=product.name if product else "", expire=invoice.expiration)
-            await models.PaymentMethod.create(
+            method = await models.PaymentMethod.create(
                 invoice_id=invoice.id,
                 amount=price,
                 discount=discount_id,
@@ -132,6 +134,7 @@ async def update_invoice_payments(invoice, wallets, discounts, task_wallets, sto
                 "currency": wallet.currency,
             }
     add_invoice_expiration(invoice)
+    asyncio.ensure_future(invoices.make_expired_task(invoice, method))
 
 
 def add_invoice_expiration(obj):
