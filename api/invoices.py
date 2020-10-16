@@ -19,14 +19,18 @@ STATUS_MAPPING = {
 
 
 async def new_payment_handler(instance, event, address, status, status_str, notify=True):
-    invoice, method = (
+    data = (
         await select([models.Invoice, models.PaymentMethod])
         .where(models.PaymentMethod.invoice_id == models.Invoice.id)
         .where(models.PaymentMethod.currency == instance.coin_name.lower())
         .where(models.PaymentMethod.payment_address == address)
+        .where(models.Invoice.status == "Pending")
         .gino.load((models.Invoice, models.PaymentMethod))
         .first()
     )
+    if not data:  # received payment but no matching invoice
+        return
+    invoice, method = data
     await update_status(invoice, method, status, notify=notify)
 
 
