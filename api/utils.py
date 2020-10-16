@@ -1,4 +1,5 @@
 import asyncio
+import inspect
 import json
 import os
 import smtplib
@@ -536,11 +537,15 @@ async def get_notify_template(store, invoice):
     return template.render(store=store, invoice=invoice)
 
 
-async def run_repeated(func, timeout, start_timeout):
+async def run_repeated(func, timeout, start_timeout=None):
+    if not start_timeout:
+        start_timeout = timeout
     first_iter = True
     while True:
         await asyncio.sleep(start_timeout if first_iter else timeout)
-        func()
+        result = func()
+        if inspect.isawaitable(result):
+            await result
         first_iter = False
 
 

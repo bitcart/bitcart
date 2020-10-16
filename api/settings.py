@@ -35,6 +35,10 @@ DB_PORT = config("DB_PORT", default="5432")
 if TEST:
     DB_NAME = "bitcart_test"
 
+# Update check
+
+UPDATE_URL = config("UPDATE_URL", default=None)
+
 # Tor support
 TORRC_FILE = config("TORRC_FILE", default=None)
 

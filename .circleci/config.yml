@@ -1,8 +1,5 @@
 version: 2.1
 
-orbs:
-  circle-compare-url: iynere/compare-url@1.2.0
-
 jobs:
   test:
     parameters:
@@ -69,7 +66,6 @@ jobs:
     working_directory: ~/repo
     steps:
       - checkout
-      - circle-compare-url/reconstruct
       - run:
           name: set up build environment
           command: |
@@ -77,41 +73,12 @@ jobs:
             cd bitcart-docker
             ./dev-setup.sh $CIRCLE_BRANCH
       - setup_remote_docker
-      - circle-compare-url/use:
-          step-name: Publish modified docker images
-          custom-logic: |
+      - run:
+          name: Publish docker images
+          command: |
             cd .circleci
             docker login --username=$DOCKER_USER --password=$DOCKER_PASS
-            COMMIT_RANGE="$COMMIT_RANGE" python3 build.py
-
-  deploy_stable:
-    docker:
-      - image: cimg/python:3.6
-    working_directory: ~/repo
-    steps:
-      - setup_remote_docker
-      - run:
-          name: retag and upload
-          command: |
-            docker login --username=$DOCKER_USER --password=$DOCKER_PASS
-            docker pull bitcartcc/bitcart:latest
-            docker pull bitcartcc/bitcart-btc:latest
-            docker pull bitcartcc/bitcart-bch:latest
-            docker pull bitcartcc/bitcart-ltc:latest
-            docker pull bitcartcc/bitcart-gzro:latest
-            docker pull bitcartcc/bitcart-bsty:latest
-            docker tag bitcartcc/bitcart:latest bitcartcc/bitcart:stable
-            docker tag bitcartcc/bitcart-btc:latest bitcartcc/bitcart-btc:stable
-            docker tag bitcartcc/bitcart-bch:latest bitcartcc/bitcart-bch:stable
-            docker tag bitcartcc/bitcart-ltc:latest bitcartcc/bitcart-ltc:stable
-            docker tag bitcartcc/bitcart-gzro:latest bitcartcc/bitcart-gzro:stable
-            docker tag bitcartcc/bitcart-bsty:latest bitcartcc/bitcart-bsty:stable
-            docker push bitcartcc/bitcart:stable
-            docker push bitcartcc/bitcart-btc:stable
-            docker push bitcartcc/bitcart-bch:stable
-            docker push bitcartcc/bitcart-ltc:stable
-            docker push bitcartcc/bitcart-gzro:stable
-            docker push bitcartcc/bitcart-bsty:stable
+            python3 build.py
 
 workflows:
   version: 2
@@ -135,13 +102,6 @@ workflows:
             - test-3.9
           filters:
             branches:
-              only: master
-      - deploy_stable:
-          context: global
-          requires:
-            - deploy
-          filters:
-            branches:
               ignore: /.*/
             tags:
-              only: /v[1-9]+(\.[0-9]+)*/
+              only: /[0-9]+(\.[0-9]+)*/

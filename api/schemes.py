@@ -259,6 +259,7 @@ class TxResponse(BaseModel):
 class Policy(BaseModel):
     disable_registration: bool = False
     discourage_index: bool = False
+    check_updates: bool = True
 
 
 class GlobalStorePolicy(BaseModel):
