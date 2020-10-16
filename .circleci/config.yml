@@ -36,7 +36,7 @@ jobs:
             pip install -U -r requirements.txt
             pip install -U -r requirements/daemons/btc.txt
             pip install -U -r requirements/test.txt
-            alembic upgrade head
+            TEST=true alembic upgrade head
 
       - save_cache:
           paths:
