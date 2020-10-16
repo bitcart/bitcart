@@ -6,7 +6,7 @@ passlib[bcrypt]
 bitcart~=1.1
 aioredis
 uvicorn[standard]
-alembic==1.4.2
+alembic==1.4.3
 psycopg2-binary==2.8.6
 Jinja2
 python-multipart
