@@ -4,7 +4,11 @@ from dataclasses import asdict as dataclass_asdict
 from dataclasses import dataclass
 from typing import Optional, Union
 
+from api.logger import get_logger
+
 from .. import settings
+
+logger = get_logger(__name__)
 
 
 @dataclass(frozen=True)
@@ -99,6 +103,7 @@ class TorService:
 
 
 def refresh():
+    logger.info("Refreshing hidden services list...")
     TorService.services = parse_torrc(settings.TORRC_FILE)
     TorService.services_dict = {service.name: dataclass_asdict(service) for service in TorService.services}
     TorService.anonymous_services_dict = {
@@ -107,6 +112,7 @@ def refresh():
     TorService.onion_host = TorService.services_dict.get("BitcartCC Merchants API", "")
     if TorService.onion_host:  # pragma: no cover
         TorService.onion_host = TorService.onion_host["hostname"]
+    logger.info(f"Parsed hidden services: {TorService.services}; onion_host={TorService.onion_host}")
 
 
 refresh()

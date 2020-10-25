@@ -1,4 +1,5 @@
 import json
+import os
 import re
 import secrets
 from decimal import Decimal
@@ -236,6 +237,16 @@ async def get_fiatlist(query: Optional[str] = None):
         pattern = re.compile(query, re.IGNORECASE)
         s = [x for x in s if pattern.match(x)]
     return sorted(s)
+
+
+@router.get("/cryptos")
+async def get_cryptos():
+    return {
+        "count": len(settings.cryptos),
+        "next": None,
+        "previous": None,
+        "result": list(settings.cryptos.keys()),
+    }
 
 
 @router.get("/notifications/list")
@@ -678,3 +689,22 @@ class InvoiceNotify(WebSocketEndpoint):
 async def check_updates():
     new_update_tag = update_ext.UpdateExtension.new_update_tag
     return {"update_available": bool(new_update_tag), "tag": new_update_tag}
+
+
+@router.get("/manage/logs")
+async def get_logs_list(user: models.User = Security(utils.AuthDependency(), scopes=["server_management"])):
+    if not settings.LOG_FILE:
+        return []
+    return [f for f in os.listdir(os.path.dirname(settings.LOG_FILE)) if f.startswith("bitcart-log.log")]
+
+
+@router.get("/manage/logs/{log}")
+async def get_log_contents(log: str, user: models.User = Security(utils.AuthDependency(), scopes=["server_management"])):
+    if not settings.LOG_FILE:
+        raise HTTPException(400, "Log file unconfigured")
+    try:
+        with open(os.path.join(os.path.dirname(settings.LOG_FILE), log)) as f:
+            contents = f.read()
+        return contents
+    except OSError:
+        raise HTTPException(404, "This log doesn't exist")

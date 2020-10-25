@@ -10,6 +10,9 @@ from starlette.datastructures import CommaSeparatedStrings
 
 from . import invoices, models, pagination, schemes, settings, utils
 from .db import db
+from .logger import get_logger
+
+logger = get_logger(__name__)
 
 
 async def user_count():
@@ -57,6 +60,8 @@ async def create_wallet(wallet: schemes.CreateWallet, user: schemes.User):
 
 
 async def create_invoice(invoice: schemes.CreateInvoice, user: schemes.User):
+    logger.info("Started creating invoice")
+    logger.debug(invoice)
     d = invoice.dict()
     store = await models.Store.get(d["store_id"])
     if not store:
@@ -78,17 +83,17 @@ async def create_invoice(invoice: schemes.CreateInvoice, user: schemes.User):
         created.append((await models.ProductxInvoice.create(invoice_id=obj.id, product_id=key, count=value)).product_id)
     obj.products = created
     obj.payments = {}
-    task_wallets = {}
     current_date = utils.now()
     discounts = []
     if product:
         discounts = [await models.Discount.get(discount_id) for discount_id in product.discounts]
     discounts = list(filter(lambda x: current_date <= x.end_date, discounts))
-    await update_invoice_payments(obj, wallets, discounts, task_wallets, store, product, promocode)
+    await update_invoice_payments(obj, wallets, discounts, store, product, promocode)
     return obj
 
 
-async def update_invoice_payments(invoice, wallets, discounts, task_wallets, store, product, promocode):
+async def update_invoice_payments(invoice, wallets, discounts, store, product, promocode):
+    logger.info(f"Started adding invoice payments for invoice {invoice.id}")
     method = None
     for wallet_id in wallets:
         wallet = await models.Wallet.get(wallet_id)
@@ -112,11 +117,11 @@ async def update_invoice_payments(invoice, wallets, discounts, task_wallets, sto
                         ),
                         key=attrgetter("percent"),
                     )
+                    logger.info(f"Payment method {wallet.currency} of invoice {invoice.id}: matched discount {discount.id}")
                     discount_id = discount.id
                     price -= price * (Decimal(discount.percent) / Decimal(100))
                 except ValueError:  # no matched discounts
                     pass
-            task_wallets[wallet.currency] = wallet.xpub
             data_got = await coin.add_request(price, description=product.name if product else "", expire=invoice.expiration)
             method = await models.PaymentMethod.create(
                 invoice_id=invoice.id,
@@ -133,6 +138,7 @@ async def update_invoice_payments(invoice, wallets, discounts, task_wallets, sto
                 "discount": discount_id,
                 "currency": wallet.currency,
             }
+    logger.info(f"Successfully added {len(invoice.payments)} payment methods to invoice {invoice.id}")
     add_invoice_expiration(invoice)
     asyncio.ensure_future(invoices.make_expired_task(invoice, method))
 

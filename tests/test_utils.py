@@ -45,6 +45,7 @@ class MockTemplateObj:
     create_id: int
     mock_name: str = "MockTemplateObj"
     user_id: int = 1
+    id: int = 1
 
     @property
     def templates(self):

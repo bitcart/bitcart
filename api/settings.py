@@ -1,6 +1,7 @@
 import asyncio
 import os
 import sys
+import traceback
 import warnings
 
 import aioredis
@@ -11,6 +12,9 @@ from starlette.config import Config
 from starlette.datastructures import CommaSeparatedStrings
 
 from .ext.notifiers import parse_notifier_schema
+from .logger import get_logger
+
+logger = get_logger(__name__)
 
 config = Config("conf/.env")
 
@@ -34,6 +38,10 @@ DB_HOST = config("DB_HOST", default="127.0.0.1")
 DB_PORT = config("DB_PORT", default="5432")
 if TEST:
     DB_NAME = "bitcart_test"
+
+# Logs
+
+LOG_FILE = config("LOG_FILE", default=None)
 
 # Update check
 
@@ -83,6 +91,8 @@ with warnings.catch_warnings():  # it is supposed
         cryptos[crypto] = coin(**crypto_settings[crypto]["credentials"])
         manager.wallets[env_name][""] = cryptos[crypto]
 
+logger.info(f"Successfully loaded {len(cryptos)} cryptos")
+
 
 def get_coin(coin, xpub=None):
     coin = coin.lower()
@@ -106,6 +116,8 @@ for provider in all_providers():
             required.remove("message")
     notifiers[notifier.name] = {"properties": properties, "required": required}
 
+logger.info(f"{len(notifiers)} notification providers available")
+
 # initialize redis pool
 loop = asyncio.get_event_loop()
 redis_pool = None
@@ -123,3 +135,24 @@ async def init_db():
     from . import db
 
     await db.db.set_bind(db.CONNECTION_STR, min_size=1, loop=loop)
+
+
+def excepthook_handler(excepthook):
+    def internal_error_handler(type_, value, tb):
+        logger.error("".join(traceback.format_exception(type_, value, tb)))
+        return excepthook(type_, value, tb)
+
+    return internal_error_handler
+
+
+def handle_exception(loop, context):
+    if "exception" in context:
+        exc = context["exception"]
+        msg = "".join(traceback.format_exception(etype=type(exc), value=exc, tb=exc.__traceback__))
+    else:
+        msg = context["message"]
+    logger.error(msg)
+
+
+sys.excepthook = excepthook_handler(sys.excepthook)
+loop.set_exception_handler(handle_exception)

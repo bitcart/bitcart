@@ -26,3 +26,5 @@ bitcart-cli-*
 images/products/*.png
 # message queue for processing maintenance commands
 queue
+# logs
+logs/bitcart-log.log*

@@ -232,6 +232,10 @@ class CreateInvoice(CreatedMixin):
     def set_discount(cls, val):
         return val or None
 
+    @validator("products", pre=True, always=True)
+    def set_products(cls, v):
+        return v or []
+
     class Config:
         orm_mode = True
 

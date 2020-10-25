@@ -1,16 +1,21 @@
 import asyncio
+import traceback
 
 from fastapi import FastAPI, Request
 from starlette.middleware.cors import CORSMiddleware
+from starlette.responses import PlainTextResponse
 from starlette.staticfiles import StaticFiles
 
 from api import settings
 from api.db import db
 from api.ext import tor as tor_ext
 from api.ext import update as update_ext
+from api.logger import get_logger
 from api.utils import run_repeated
 from api.version import VERSION
 from api.views import router
+
+logger = get_logger(__name__)
 
 app = FastAPI(title="Bitcart", version=VERSION, docs_url="/", redoc_url="/redoc")
 app.mount("/images", StaticFiles(directory="images"), name="images")
@@ -48,3 +53,9 @@ async def startup():
 async def shutdown():
     if settings.TEST:
         await db.gino.drop_all()
+
+
+@app.exception_handler(500)
+async def exception_handler(request, exc):
+    logger.error(traceback.format_exc())
+    return PlainTextResponse("Internal Server Error", status_code=500)

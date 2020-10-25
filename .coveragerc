@@ -15,5 +15,6 @@ omit =
     worker.py,
     venv/*,
     env/*,
+    api/ext/update.py,
     *__init__.py
     

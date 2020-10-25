@@ -4,6 +4,9 @@ import logging
 from sqlalchemy import select
 
 from . import crud, db, models, settings, utils
+from .logger import get_logger
+
+logger = get_logger(__name__)
 
 STATUS_MAPPING = {
     0: "Pending",
@@ -53,6 +56,7 @@ async def invoice_notification(invoice: models.Invoice, status: str):  # pragma:
     await crud.invoice_add_related(invoice)
     await utils.send_ipn(invoice, status)
     if status == "complete":
+        logger.info(f"Invoice {invoice.id} complete, sending notifications...")
         store = await models.Store.get(invoice.store_id)
         await crud.store_add_related(store)
         await utils.notify(store, await utils.get_notify_template(store, invoice))
@@ -74,11 +78,18 @@ async def invoice_notification(invoice: models.Invoice, status: str):  # pragma:
                         .gino.first()
                     )
                     quantity = relation.count
-                    messages.append(await utils.get_product_template(store, product, quantity))
+                    product_template = await utils.get_product_template(store, product, quantity)
+                    messages.append(product_template)
+                    logger.debug(
+                        f"Invoice {invoice.id} email notification: rendered product template for product {product_id}:\n"
+                        f"{product_template}"
+                    )
+                store_template = await utils.get_store_template(store, messages)
+                logger.debug(f"Invoice {invoice.id} email notification: rendered final template:\n{store_template}")
                 utils.send_mail(
                     store,
                     invoice.buyer_email,
-                    await utils.get_store_template(store, messages),
+                    store_template,
                 )
 
 
@@ -95,6 +106,7 @@ def convert_status(status):  # pragma: no cover
 async def update_status(invoice, method, status, notify=True):
     status = convert_status(status)
     if status != "Pending" and invoice.status != "complete":
+        logger.info(f"Updating status of invoice {invoice.id} with payment method {method.currency} to {status}")
         await invoice.update(status=status, discount=method.discount).apply()
         if status == "complete":
             await invoice.update(paid_currency=method.currency).apply()

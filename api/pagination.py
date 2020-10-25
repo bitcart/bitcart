@@ -72,16 +72,15 @@ class Pagination:
         except asyncpg.exceptions.UndefinedColumnError:
             return []
 
-    def search(self, models):
+    def search(self):
         if not self.query:
             return []
         return or_(
             *[
-                getattr(model, m.key)
+                getattr(self.model, m.key)
                 .cast(Text)
                 .op("~*")(f"{self.query}")  # NOTE: not cross-db, postgres case-insensitive regex
-                for model in models
-                for m in model.__table__.columns
+                for m in self.model.__table__.columns
             ]
         )
 
@@ -126,13 +125,7 @@ class Pagination:
             if model == models.Product and sale
             else model.query
         )
-        models_l = [model]
-        if model != models.User:
-            for field in self.model.__table__.c:
-                if field.key.endswith("_id") and field.key not in ["order_id", "app_id"]:
-                    modelx = getattr(models, field.key[:-3].capitalize())
-                    models_l.append(modelx)
-        queries = self.search(models_l)
+        queries = self.search()
         query = query.where(queries) if queries != [] else query  # sqlalchemy core requires explicit checks
         return query
 

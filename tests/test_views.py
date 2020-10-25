@@ -890,3 +890,35 @@ def test_updatecheck(client: TestClient):
     resp = client.get("/updatecheck")
     assert resp.status_code == 200
     assert resp.json() == {"update_available": False, "tag": None}
+
+
+def test_logs_list(client: TestClient, token: str):
+    assert client.get("/manage/logs").status_code == 401
+    resp = client.get("/manage/logs", headers={"Authorization": f"Bearer {token}"})
+    assert resp.status_code == 200
+    assert resp.json() == []
+    settings.LOG_FILE = "tests/fixtures/bitcart-log.log"
+    assert client.get("/manage/logs", headers={"Authorization": f"Bearer {token}"}).json() == ["bitcart-log.log"]
+    settings.LOG_FILE = None  # cleanup
+
+
+def test_logs_get(client: TestClient, token: str):
+    assert client.get("/manage/logs/1").status_code == 401
+    assert client.get("/manage/logs/1", headers={"Authorization": f"Bearer {token}"}).status_code == 400
+    settings.LOG_FILE = "tests/fixtures/bitcart-log.log"
+    assert client.get("/manage/logs/1", headers={"Authorization": f"Bearer {token}"}).status_code == 404
+    resp = client.get("/manage/logs/bitcart-log.log", headers={"Authorization": f"Bearer {token}"})
+    assert resp.status_code == 200
+    assert resp.json() == "Test"
+    settings.LOG_FILE = None  # cleanup
+
+
+def test_cryptos(client: TestClient):
+    resp = client.get("/cryptos")
+    assert resp.status_code == 200
+    assert resp.json() == {
+        "count": len(settings.cryptos),
+        "next": None,
+        "previous": None,
+        "result": list(settings.cryptos.keys()),
+    }

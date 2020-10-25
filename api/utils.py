@@ -3,6 +3,7 @@ import inspect
 import json
 import os
 import smtplib
+import traceback
 from collections import defaultdict
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -24,6 +25,9 @@ from starlette.requests import Request
 from starlette.status import HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN
 
 from . import db, exceptions, models, pagination, settings, templates
+from .logger import get_logger
+
+logger = get_logger(__name__)
 
 
 async def make_subscriber(name):
@@ -405,7 +409,15 @@ async def get_wallet_history(model, response):
         response.append({"date": i["date"], "txid": i["txid"], "amount": i["bc_value"]})
 
 
+def get_email_dsn(host, port, user, password, email, ssl=True):
+    return f"{user}:{password}@{host}:{port}?email={email}&ssl={ssl}"
+
+
 def check_ping(host, port, user, password, email, ssl=True):  # pragma: no cover
+    dsn = get_email_dsn(host, port, user, password, email, ssl)
+    if not (host and port and user and password and email):
+        logger.debug("Checking ping failed: some parameters empty")
+        return False
     try:
         server = smtplib.SMTP(host=host, port=port, timeout=2)
         if ssl:
@@ -413,9 +425,23 @@ def check_ping(host, port, user, password, email, ssl=True):  # pragma: no cover
         server.login(user, password)
         server.verify(email)
         server.quit()
+        logger.debug(f"Checking ping successful for {dsn}")
         return True
     except OSError:
+        logger.debug(f"Checking ping error for {dsn}\n{traceback.format_exc()}")
         return False
+
+
+def get_object_name(obj):
+    return obj.__class__.__name__.lower()
+
+
+def get_template_matching_str(name, obj):
+    template_str = f'Template matching "{name}"'
+    if obj and hasattr(obj, "id"):
+        template_str += f" for {get_object_name(obj)} {obj.id}"
+    template_str += ":"
+    return template_str
 
 
 async def get_template(name, user_id=None, obj=None):
@@ -427,8 +453,10 @@ async def get_template(name, user_id=None, obj=None):
         query = query.where(models.Template.user_id == user_id)
     custom_template = await query.gino.first()
     if custom_template:
+        logger.info(f"{get_template_matching_str(name,obj)} selected custom template " f'"{custom_template.name}"')
         return templates.Template(name, custom_template.text)
     if name in templates.templates:
+        logger.info(f"{get_template_matching_str(name,obj)} selected default template")
         return templates.templates[name]
     raise exceptions.TemplateDoesNotExistError(f"Template {name} does not exist and has no default")
 
