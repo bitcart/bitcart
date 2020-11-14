@@ -6,7 +6,6 @@ from typing import Dict, List, Union
 
 import pytest
 from bitcart import BTC
-from fastapi.encoders import jsonable_encoder
 from starlette.testclient import TestClient
 
 from api import invoices, models, settings, templates, utils
@@ -606,13 +605,14 @@ def test_template_list(client: TestClient):
     }
 
 
-def test_services(client: TestClient, token: str):
-    resp = client.get("/services")
+@pytest.mark.asyncio
+async def test_services(async_client: TestClient, token: str):
+    resp = await async_client.get("/services")
     assert resp.status_code == 200
-    assert resp.json() == tor_ext.TorService.anonymous_services_dict
-    resp2 = client.get("/services", headers={"Authorization": f"Bearer {token}"})
+    assert resp.json() == json_module.loads(await settings.redis_pool.hget(tor_ext.REDIS_KEY, "anonymous_services_dict"))
+    resp2 = await async_client.get("/services", headers={"Authorization": f"Bearer {token}"})
     assert resp2.status_code == 200
-    assert resp2.json() == jsonable_encoder(tor_ext.TorService.services_dict)
+    assert resp2.json() == json_module.loads(await settings.redis_pool.hget(tor_ext.REDIS_KEY, "services_dict"))
 
 
 def test_export_invoices(client: TestClient, token: str):

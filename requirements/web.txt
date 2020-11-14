@@ -12,3 +12,4 @@ Jinja2
 python-multipart
 aiofiles
 notifiers
+msgpack==1.0.0

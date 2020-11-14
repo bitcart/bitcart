@@ -1,20 +1,23 @@
 import ipaddress
+import json
 import os
 from dataclasses import asdict as dataclass_asdict
 from dataclasses import dataclass
-from typing import Optional, Union
+from typing import Optional
 
 from api.logger import get_logger
 
-from .. import settings
+from .. import settings, utils
 
 logger = get_logger(__name__)
+
+REDIS_KEY = "bitcartcc_tor_ext"
 
 
 @dataclass(frozen=True)
 class PortDefinition:
     virtual_port: int
-    ip: Union[ipaddress.IPv4Address, ipaddress.IPv6Address]
+    ip: str
     port: int
 
 
@@ -51,7 +54,7 @@ def parse_hidden_service_port(line):
         if len(address_port) != 2:
             return
         port = int(address_port[1])
-        ip_address = ipaddress.ip_address(address_port[0].strip())
+        ip_address = str(ipaddress.ip_address(address_port[0].strip()))
         return PortDefinition(virtual_port, ip_address, port)
     except ValueError:
         return  # all parsing exceptions are ValueError
@@ -95,24 +98,23 @@ def parse_torrc(torrc):
     return services
 
 
-class TorService:
-    services = []
-    services_dict = {}
-    anonymous_services_dict = {}
-    onion_host = ""
-
-
-def refresh():
-    logger.info("Refreshing hidden services list...")
-    TorService.services = parse_torrc(settings.TORRC_FILE)
-    TorService.services_dict = {service.name: dataclass_asdict(service) for service in TorService.services}
-    TorService.anonymous_services_dict = {
-        service.name: {"name": service.name, "hostname": service.hostname} for service in TorService.services
-    }
-    TorService.onion_host = TorService.services_dict.get("BitcartCC Merchants API", "")
-    if TorService.onion_host:  # pragma: no cover
-        TorService.onion_host = TorService.onion_host["hostname"]
-    logger.info(f"Parsed hidden services: {TorService.services}; onion_host={TorService.onion_host}")
-
-
-refresh()
+async def refresh(log=True):  # pragma: no cover: used in production only
+    async with utils.wait_for_redis():
+        if log:
+            logger.info("Refreshing hidden services list...")
+        services = parse_torrc(settings.TORRC_FILE)
+        services_dict = {service.name: dataclass_asdict(service) for service in services}
+        anonymous_services_dict = {service.name: {"name": service.name, "hostname": service.hostname} for service in services}
+        onion_host = services_dict.get("BitcartCC Merchants API", "")
+        if onion_host:
+            onion_host = onion_host["hostname"] or ""
+        await settings.redis_pool.hmset_dict(
+            REDIS_KEY,
+            {
+                "onion_host": onion_host,
+                "services_dict": json.dumps(services_dict),
+                "anonymous_services_dict": json.dumps(anonymous_services_dict),
+            },
+        )
+        if log:
+            logger.info(f"Parsed hidden services: {services}; onion_host={onion_host}")

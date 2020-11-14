@@ -1,5 +1,6 @@
 import asyncio
 import os
+import platform
 import sys
 import traceback
 import warnings
@@ -10,6 +11,8 @@ from fastapi import HTTPException
 from notifiers import all_providers, get_notifier
 from starlette.config import Config
 from starlette.datastructures import CommaSeparatedStrings
+
+from api.version import GIT_REPO_URL, VERSION, WEBSITE
 
 from .ext.notifiers import parse_notifier_schema
 from .logger import get_logger
@@ -91,8 +94,6 @@ with warnings.catch_warnings():  # it is supposed
         cryptos[crypto] = coin(**crypto_settings[crypto]["credentials"])
         manager.wallets[env_name][""] = cryptos[crypto]
 
-logger.info(f"Successfully loaded {len(cryptos)} cryptos")
-
 
 def get_coin(coin, xpub=None):
     coin = coin.lower()
@@ -116,8 +117,6 @@ for provider in all_providers():
             required.remove("message")
     notifiers[notifier.name] = {"properties": properties, "required": required}
 
-logger.info(f"{len(notifiers)} notification providers available")
-
 # initialize redis pool
 loop = asyncio.get_event_loop()
 redis_pool = None
@@ -134,12 +133,13 @@ loop.create_task(init_redis())
 async def init_db():
     from . import db
 
-    await db.db.set_bind(db.CONNECTION_STR, min_size=1, loop=loop)
+    await db.db.set_bind(db.CONNECTION_STR, min_size=1, loop=asyncio.get_event_loop())
 
 
 def excepthook_handler(excepthook):
     def internal_error_handler(type_, value, tb):
-        logger.error("".join(traceback.format_exception(type_, value, tb)))
+        if type_ != KeyboardInterrupt:
+            logger.error("\n" + "".join(traceback.format_exception(type_, value, tb)))
         return excepthook(type_, value, tb)
 
     return internal_error_handler
@@ -148,10 +148,20 @@ def excepthook_handler(excepthook):
 def handle_exception(loop, context):
     if "exception" in context:
         exc = context["exception"]
-        msg = "".join(traceback.format_exception(etype=type(exc), value=exc, tb=exc.__traceback__))
+        msg = "\n" + "".join(traceback.format_exception(etype=type(exc), value=exc, tb=exc.__traceback__))
     else:
         msg = context["message"]
     logger.error(msg)
+
+
+def log_startup_info():
+    logger.info(f"BitcartCC version: {VERSION} - {WEBSITE} - {GIT_REPO_URL}")
+    logger.info(f"Python version: {sys.version}. On platform: {platform.platform()}")
+    logger.info(
+        f"BITCART_CRYPTOS={','.join([item for item in ENABLED_CRYPTOS])}; IN_DOCKER={DOCKER_ENV}; " f"LOG_FILE={LOG_FILE}"
+    )
+    logger.info(f"Successfully loaded {len(cryptos)} cryptos")
+    logger.info(f"{len(notifiers)} notification providers available")
 
 
 sys.excepthook = excepthook_handler(sys.excepthook)

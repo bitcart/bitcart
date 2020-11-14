@@ -609,7 +609,9 @@ async def get_services(request: Request):
         user = await utils.AuthDependency()(request, SecurityScopes(["server_management"]))
     except HTTPException:
         user = None
-    return tor_ext.TorService.services_dict if user else tor_ext.TorService.anonymous_services_dict
+    key = "services_dict" if user else "anonymous_services_dict"
+    async with utils.wait_for_redis():
+        return json.loads(await settings.redis_pool.hget(tor_ext.REDIS_KEY, key))
 
 
 @router.websocket_route("/ws/wallets/{model_id}")
@@ -687,15 +689,20 @@ class InvoiceNotify(WebSocketEndpoint):
 
 @router.get("/updatecheck")
 async def check_updates():
-    new_update_tag = update_ext.UpdateExtension.new_update_tag
-    return {"update_available": bool(new_update_tag), "tag": new_update_tag}
+    async with utils.wait_for_redis():
+        new_update_tag = await settings.redis_pool.hget(update_ext.REDIS_KEY, "new_update_tag")
+        return {"update_available": bool(new_update_tag), "tag": new_update_tag}
 
 
 @router.get("/manage/logs")
 async def get_logs_list(user: models.User = Security(utils.AuthDependency(), scopes=["server_management"])):
     if not settings.LOG_FILE:
         return []
-    return [f for f in os.listdir(os.path.dirname(settings.LOG_FILE)) if f.startswith("bitcart-log.log")]
+    dirname = os.path.dirname(settings.LOG_FILE)
+    data = sorted([f for f in os.listdir(dirname) if f.startswith("bitcart-log.log.")], reverse=True)
+    if os.path.exists(os.path.join(dirname, "bitcart-log.log")):
+        data = ["bitcart-log.log"] + data
+    return data
 
 
 @router.get("/manage/logs/{log}")

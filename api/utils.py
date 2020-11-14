@@ -38,7 +38,8 @@ async def make_subscriber(name):
 
 
 async def publish_message(channel, message):
-    return await settings.redis_pool.publish_json(f"channel:{channel}", message)
+    async with wait_for_redis():
+        return await settings.redis_pool.publish_json(f"channel:{channel}", message)
 
 
 def now():
@@ -565,7 +566,7 @@ async def get_notify_template(store, invoice):
     return template.render(store=store, invoice=invoice)
 
 
-async def run_repeated(func, timeout, start_timeout=None):
+async def run_repeated(func, timeout, start_timeout=None):  # pragma: no cover
     if not start_timeout:
         start_timeout = timeout
     first_iter = True
@@ -591,3 +592,15 @@ def safe_db_write():
 
 async def get_wallet_balance(coin):
     return (await coin.balance())["confirmed"]
+
+
+class WaitForRedis:  # pragma: no cover
+    async def __aenter__(self):
+        while not settings.redis_pool:
+            await asyncio.sleep(0.01)
+
+    async def __aexit__(self, exc_type, exc, tb):
+        pass
+
+
+wait_for_redis = WaitForRedis

@@ -9,6 +9,7 @@ from api.version import VERSION
 logger = get_logger(__name__)
 
 RELEASE_REGEX = r"^([0-9]+(.[0-9]+)*(-[0-9]+)?)$"
+REDIS_KEY = "bitcartcc_update_ext"
 
 
 async def get_update_data():
@@ -23,16 +24,16 @@ async def get_update_data():
         logger.error(f"Update check failed: {e}")
 
 
-class UpdateExtension:
-    new_update_tag = None
-
-
 async def refresh():
     from api import schemes, utils
 
-    if settings.UPDATE_URL and (await utils.get_setting(schemes.Policy)).check_updates:
-        logger.info("Checking for updates...")
-        latest_tag = await get_update_data()
-        if latest_tag and VERSION != latest_tag:
-            logger.info(f"New update available: {latest_tag}")
-            UpdateExtension.new_update_tag = latest_tag
+    async with utils.wait_for_redis():
+        if settings.UPDATE_URL and (await utils.get_setting(schemes.Policy)).check_updates:
+            logger.info("Checking for updates...")
+            latest_tag = await get_update_data()
+            if latest_tag and VERSION != latest_tag:
+                logger.info(f"New update available: {latest_tag}")
+                await settings.redis_pool.hset(REDIS_KEY, "new_update_tag", latest_tag)
+            else:
+                logger.info("No updates found")
+                await settings.redis_pool.hdel(REDIS_KEY, "new_update_tag")  # clean after previous checks

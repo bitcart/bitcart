@@ -38,7 +38,7 @@ def test_parse_hidden_service_port():
     assert not parse_hidden_service_port("HiddenServicePort 80 127.0.0.1")
     assert not parse_hidden_service_port("HiddenServicePort 80 127.0.0.1:t")
     assert parse_hidden_service_port("HiddenServicePort 80 127.0.0.1:80") == PortDefinition(
-        80, ipaddress.ip_address("127.0.0.1"), 80
+        80, str(ipaddress.ip_address("127.0.0.1")), 80
     )
 
 
@@ -62,6 +62,6 @@ def test_parse_torrc(torrc):
             "test 1",
             "test-1",
             "http://test.onion",
-            PortDefinition(80, ipaddress.ip_address("127.0.0.1"), 80),
+            PortDefinition(80, str(ipaddress.ip_address("127.0.0.1")), 80),
         )
     ]
