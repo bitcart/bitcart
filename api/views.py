@@ -611,7 +611,7 @@ async def get_services(request: Request):
         user = None
     key = "services_dict" if user else "anonymous_services_dict"
     async with utils.wait_for_redis():
-        return json.loads(await settings.redis_pool.hget(tor_ext.REDIS_KEY, key))
+        return await tor_ext.get_data(key, {}, json_decode=True)
 
 
 @router.websocket_route("/ws/wallets/{model_id}")

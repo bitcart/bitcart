@@ -609,10 +609,10 @@ def test_template_list(client: TestClient):
 async def test_services(async_client: TestClient, token: str):
     resp = await async_client.get("/services")
     assert resp.status_code == 200
-    assert resp.json() == json_module.loads(await settings.redis_pool.hget(tor_ext.REDIS_KEY, "anonymous_services_dict"))
+    assert resp.json() == await tor_ext.get_data("anonymous_services_dict", {}, json_decode=True)
     resp2 = await async_client.get("/services", headers={"Authorization": f"Bearer {token}"})
     assert resp2.status_code == 200
-    assert resp2.json() == json_module.loads(await settings.redis_pool.hget(tor_ext.REDIS_KEY, "services_dict"))
+    assert resp2.json() == await tor_ext.get_data("services_dict", {}, json_decode=True)
 
 
 def test_export_invoices(client: TestClient, token: str):

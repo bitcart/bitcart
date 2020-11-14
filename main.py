@@ -32,7 +32,7 @@ async def add_onion_host(request: Request, call_next):
     response = await call_next(request)
     async with utils.wait_for_redis():
         host = request.headers.get("host", "").split(":")[0]
-        onion_host = await settings.redis_pool.hget(tor_ext.REDIS_KEY, "onion_host", encoding="utf-8")
+        onion_host = await tor_ext.get_data("onion_host", "")
         if onion_host and not tor_ext.is_onion(host):
             response.headers["Onion-Location"] = onion_host + request.url.path
         return response

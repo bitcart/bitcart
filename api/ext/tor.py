@@ -118,3 +118,9 @@ async def refresh(log=True):  # pragma: no cover: used in production only
         )
         if log:
             logger.info(f"Parsed hidden services: {services}; onion_host={onion_host}")
+
+
+async def get_data(key, default=None, json_decode=False):
+    data = await settings.redis_pool.hget(REDIS_KEY, key, encoding="utf-8")
+    data = json.loads(data) if json_decode and data else data
+    return data if data else default
