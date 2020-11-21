@@ -12,7 +12,7 @@ from notifiers import all_providers, get_notifier
 from starlette.config import Config
 from starlette.datastructures import CommaSeparatedStrings
 
-from api.version import GIT_REPO_URL, VERSION, WEBSITE
+from api.constants import GIT_REPO_URL, LOG_FILE_NAME, VERSION, WEBSITE
 
 from .ext.notifiers import parse_notifier_schema
 from .logger import get_logger
@@ -44,7 +44,8 @@ if TEST:
 
 # Logs
 
-LOG_FILE = config("LOG_FILE", default=None)
+LOG_DIR = config("LOG_DIR", default=None)
+LOG_FILE = os.path.join(LOG_DIR, LOG_FILE_NAME) if LOG_DIR else None
 
 # Update check
 

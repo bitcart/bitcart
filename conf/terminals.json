@@ -1,0 +1,26 @@
+{
+    "autorun": false,
+    "terminals": [
+        {
+            "name": "BTC Daemon",
+            "description": "BTC Daemon",
+            "command": "python3 daemons/btc.py"
+        },
+        {
+            "name": "LTC Daemon",
+            "description": "LTC Daemon",
+            "command": "python3 daemons/ltc.py"
+        },
+        {
+            "name": "Uvicorn debug",
+            "description": "Uvicorn debug",
+            "focus": true,
+            "command": "uvicorn --reload main:app"
+        },
+        {
+            "name": "Worker",
+            "description": "Worker",
+            "command": "python3 worker.py"
+        }
+    ]
+}

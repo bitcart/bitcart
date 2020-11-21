@@ -6,10 +6,10 @@ from starlette.responses import PlainTextResponse
 from starlette.staticfiles import StaticFiles
 
 from api import settings, utils
+from api.constants import VERSION
 from api.db import db
 from api.ext import tor as tor_ext
 from api.logger import get_logger
-from api.version import VERSION
 from api.views import router
 
 logger = get_logger(__name__)

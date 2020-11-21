@@ -3,8 +3,8 @@ import re
 from aiohttp import ClientSession
 
 from api import settings
+from api.constants import VERSION
 from api.logger import get_logger
-from api.version import VERSION
 
 logger = get_logger(__name__)
 

@@ -1,5 +1,6 @@
 import asyncio
 import json as json_module
+import os
 import platform
 from decimal import Decimal
 from typing import Dict, List, Union
@@ -461,13 +462,19 @@ def test_delete_token(client: TestClient, token: str):
     test_token_count(client, token)
 
 
-def test_management_commands(client: TestClient, token: str):
+def test_management_commands(client: TestClient, log_file_deleting: str, token: str):
     assert client.post("/manage/update").status_code == 401
     limited_user_token = client.post("/token", json=LIMITED_USER_DATA).json()["id"]
     assert client.post("/manage/update", headers={"Authorization": f"Bearer {limited_user_token}"}).status_code == 403
     assert client.post("/manage/update", headers={"Authorization": f"Bearer {token}"}).status_code == 200
+    assert client.post("/manage/cleanup/images", headers={"Authorization": f"Bearer {token}"}).status_code == 200
+    assert client.post("/manage/cleanup/logs", headers={"Authorization": f"Bearer {token}"}).status_code == 200
     assert client.post("/manage/cleanup", headers={"Authorization": f"Bearer {token}"}).status_code == 200
     assert client.get("/manage/daemons", headers={"Authorization": f"Bearer {token}"}).status_code == 200
+    settings.LOG_DIR = "tests/fixtures"
+    assert client.post("/manage/cleanup", headers={"Authorization": f"Bearer {token}"}).status_code == 200
+    assert not os.path.exists(log_file_deleting)
+    settings.LOG_DIR = None  # cleanup
 
 
 def test_policies(client: TestClient, token: str):
@@ -897,20 +904,39 @@ def test_logs_list(client: TestClient, token: str):
     resp = client.get("/manage/logs", headers={"Authorization": f"Bearer {token}"})
     assert resp.status_code == 200
     assert resp.json() == []
-    settings.LOG_FILE = "tests/fixtures/bitcart-log.log"
-    assert client.get("/manage/logs", headers={"Authorization": f"Bearer {token}"}).json() == ["bitcart-log.log"]
-    settings.LOG_FILE = None  # cleanup
+    settings.LOG_DIR = "tests/fixtures"
+    assert client.get("/manage/logs", headers={"Authorization": f"Bearer {token}"}).json() == [
+        "bitcart-log.log",
+        "bitcart-log.log.test",
+    ]
+    settings.LOG_DIR = None  # cleanup
 
 
 def test_logs_get(client: TestClient, token: str):
     assert client.get("/manage/logs/1").status_code == 401
     assert client.get("/manage/logs/1", headers={"Authorization": f"Bearer {token}"}).status_code == 400
-    settings.LOG_FILE = "tests/fixtures/bitcart-log.log"
+    settings.LOG_DIR = "tests/fixtures"
     assert client.get("/manage/logs/1", headers={"Authorization": f"Bearer {token}"}).status_code == 404
     resp = client.get("/manage/logs/bitcart-log.log", headers={"Authorization": f"Bearer {token}"})
     assert resp.status_code == 200
     assert resp.json() == "Test"
-    settings.LOG_FILE = None  # cleanup
+    settings.LOG_DIR = None  # cleanup
+
+
+def test_logs_delete(client: TestClient, log_file: str, token: str):
+    assert client.delete("/manage/logs/1").status_code == 401
+    assert client.delete("/manage/logs/1", headers={"Authorization": f"Bearer {token}"}).status_code == 400
+    # Tests that it is impossible to delete files outside logs directory:
+    assert client.delete("/manage/logs//root/path", headers={"Authorization": f"Bearer {token}"}).status_code == 404
+    assert client.delete("/manage/logs/..%2F.gitignore", headers={"Authorization": f"Bearer {token}"}).status_code == 404
+    settings.LOG_DIR = "tests/fixtures"
+    assert client.delete("/manage/logs/1", headers={"Authorization": f"Bearer {token}"}).status_code == 404
+    assert client.delete("/manage/logs/bitcart-log.log", headers={"Authorization": f"Bearer {token}"}).status_code == 403
+    resp = client.delete("/manage/logs/bitcart.log", headers={"Authorization": f"Bearer {token}"})
+    assert resp.status_code == 200
+    assert resp.json() is True
+    settings.LOG_DIR = None  # cleanup
+    assert not os.path.exists(log_file)
 
 
 def test_cryptos(client: TestClient):

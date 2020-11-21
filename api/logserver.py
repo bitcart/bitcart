@@ -6,6 +6,7 @@ from decimal import Decimal
 
 import msgpack
 
+from .logger import configure_file_logging
 from .logger import get_logger_server as get_logger
 
 
@@ -56,6 +57,7 @@ class LogRecordSocketReceiver(socketserver.ThreadingTCPServer):
 
 
 def main():
+    configure_file_logging()
     tcpserver = LogRecordSocketReceiver()
     tcpserver.serve_until_stopped()
 

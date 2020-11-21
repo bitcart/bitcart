@@ -7,6 +7,9 @@ from logging.handlers import TimedRotatingFileHandler
 
 import msgpack
 from pydantic import BaseModel
+from starlette.config import Config
+
+from api.constants import LOG_FILE_NAME
 
 
 def _shorten_name_of_logrecord(record: logging.LogRecord) -> logging.LogRecord:
@@ -17,11 +20,12 @@ def _shorten_name_of_logrecord(record: logging.LogRecord) -> logging.LogRecord:
     return record
 
 
-def configure_file_logging(logger, file):
-    file_handler = TimedRotatingFileHandler(file, when="midnight")
-    file_handler.setFormatter(formatter)
-    file_handler.setLevel(logging.DEBUG)
-    logger.addHandler(file_handler)
+def configure_file_logging():
+    if LOG_FILE:
+        file_handler = TimedRotatingFileHandler(LOG_FILE, when="midnight")
+        file_handler.setFormatter(formatter)
+        file_handler.setLevel(logging.DEBUG)
+        logger.addHandler(file_handler)
 
 
 class Formatter(logging.Formatter):
@@ -48,7 +52,9 @@ class MsgpackHandler(logging.handlers.SocketHandler):
 
 
 # Env
-LOG_FILE = os.environ.get("LOG_FILE")
+config = Config("conf/.env")
+LOG_DIR = config("LOG_DIR", default=None)
+LOG_FILE = os.path.join(LOG_DIR, LOG_FILE_NAME) if LOG_DIR else None
 
 formatter = Formatter(
     "%(asctime)s - [PID %(process)d] - %(name)s.%(funcName)s [line %(lineno)d] - %(levelname)s - %(message)s"
@@ -68,9 +74,6 @@ logger_client.setLevel(logging.DEBUG)
 socket_handler = MsgpackHandler("localhost", logging.handlers.DEFAULT_TCP_LOGGING_PORT)
 socket_handler.setLevel(logging.DEBUG)
 logger_client.addHandler(socket_handler)
-
-if LOG_FILE:
-    configure_file_logging(logger, LOG_FILE)
 
 
 def get_logger_server(name):

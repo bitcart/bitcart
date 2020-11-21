@@ -14,7 +14,7 @@ from starlette.endpoints import WebSocketEndpoint
 from starlette.requests import Request
 from starlette.status import WS_1008_POLICY_VIOLATION
 
-from . import crud, db, models, pagination, schemes, settings, tasks, templates, utils
+from . import constants, crud, db, models, pagination, schemes, settings, tasks, templates, utils
 from .ext import export as export_ext
 from .ext import tor as tor_ext
 from .ext import update as update_ext
@@ -564,12 +564,37 @@ async def update_server(user: models.User = Security(utils.AuthDependency(), sco
     return {"status": "error", "message": "Not running in docker"}
 
 
-@router.post("/manage/cleanup")
-async def cleanup_server(user: models.User = Security(utils.AuthDependency(), scopes=["server_management"])):
+@router.post("/manage/cleanup/images")
+async def cleanup_images(user: models.User = Security(utils.AuthDependency(), scopes=["server_management"])):
     if settings.DOCKER_ENV:  # pragma: no cover
         utils.run_host("./cleanup.sh")
         return {"status": "success", "message": "Successfully started cleanup process!"}
     return {"status": "error", "message": "Not running in docker"}
+
+
+@router.post("/manage/cleanup/logs")
+async def cleanup_logs(user: models.User = Security(utils.AuthDependency(), scopes=["server_management"])):
+    if not settings.LOG_DIR:
+        return {"status": "error", "message": "Log file unconfigured"}
+    for f in os.listdir(settings.LOG_DIR):
+        if f.startswith(f"{constants.LOG_FILE_NAME}."):
+            try:
+                os.remove(os.path.join(settings.LOG_DIR, f))
+            except OSError:  # pragma: no cover
+                pass
+    return {"status": "success", "message": "Successfully started cleanup process!"}
+
+
+@router.post("/manage/cleanup")
+async def cleanup_server(user: models.User = Security(utils.AuthDependency(), scopes=["server_management"])):
+    data = [await cleanup_images(), await cleanup_logs()]
+    message = ""
+    for result in data:
+        if result["status"] != "success":
+            message += f"{result['message']}\n"
+        else:
+            return {"status": "success", "message": "Successfully started cleanup process!"}
+    return {"status": "error", "message": message}
 
 
 @router.get("/manage/daemons")
@@ -696,22 +721,34 @@ async def check_updates():
 
 @router.get("/manage/logs")
 async def get_logs_list(user: models.User = Security(utils.AuthDependency(), scopes=["server_management"])):
-    if not settings.LOG_FILE:
+    if not settings.LOG_DIR:
         return []
-    dirname = os.path.dirname(settings.LOG_FILE)
-    data = sorted([f for f in os.listdir(dirname) if f.startswith("bitcart-log.log.")], reverse=True)
-    if os.path.exists(os.path.join(dirname, "bitcart-log.log")):
-        data = ["bitcart-log.log"] + data
+    data = sorted([f for f in os.listdir(settings.LOG_DIR) if f.startswith(f"{constants.LOG_FILE_NAME}.")], reverse=True)
+    if os.path.exists(os.path.join(settings.LOG_DIR, constants.LOG_FILE_NAME)):
+        data = [constants.LOG_FILE_NAME] + data
     return data
 
 
 @router.get("/manage/logs/{log}")
 async def get_log_contents(log: str, user: models.User = Security(utils.AuthDependency(), scopes=["server_management"])):
-    if not settings.LOG_FILE:
+    if not settings.LOG_DIR:
         raise HTTPException(400, "Log file unconfigured")
     try:
-        with open(os.path.join(os.path.dirname(settings.LOG_FILE), log)) as f:
+        with open(os.path.join(settings.LOG_DIR, log)) as f:
             contents = f.read()
         return contents
+    except OSError:
+        raise HTTPException(404, "This log doesn't exist")
+
+
+@router.delete("/manage/logs/{log}")
+async def delete_log(log: str, user: models.User = Security(utils.AuthDependency(), scopes=["server_management"])):
+    if not settings.LOG_DIR:
+        raise HTTPException(400, "Log file unconfigured")
+    if log == constants.LOG_FILE_NAME:
+        raise HTTPException(403, "Forbidden to delete current log file")
+    try:
+        os.remove(os.path.join(settings.LOG_DIR, log))
+        return True
     except OSError:
         raise HTTPException(404, "This log doesn't exist")

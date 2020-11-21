@@ -76,3 +76,23 @@ def image():
     with open("tests/fixtures/image.png", "rb") as f:
         data = f.read()
     return data
+
+
+def deleting_file_base(filename):
+    assert os.path.exists(filename)
+    with open(filename) as f:
+        contents = f.read()
+    yield filename
+    if not os.path.exists(filename):
+        with open(filename, "w") as f:
+            f.write(contents)
+
+
+@pytest.yield_fixture
+def log_file():
+    yield from deleting_file_base("tests/fixtures/bitcart.log")
+
+
+@pytest.yield_fixture
+def log_file_deleting():
+    yield from deleting_file_base("tests/fixtures/bitcart-log.log.test")
