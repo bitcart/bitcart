@@ -3,7 +3,7 @@ fastapi
 email-validator
 gino
 passlib[bcrypt]
-bitcart~=1.1
+bitcart~=1.2
 aioredis
 uvicorn[standard]
 alembic==1.4.3
