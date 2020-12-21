@@ -17,7 +17,8 @@
         "Wrong Lightning invoice HRP": -32009,
         "Too short to contain signature": -32009,
         "No path found": -32010,
-        "Lightning not supported in this wallet type": -32011
+        "Lightning not supported in this wallet type": -32011,
+        "Invoice not found": -32012
     },
     "exceptions": {
         "-32601": {
@@ -71,6 +72,10 @@
         "-32011": {
             "exc_name": "LightningUnsupportedError",
             "docstring": "Lightning not supported in this wallet type"
+        },
+        "-32012": {
+            "exc_name": "InvoiceNotFoundError",
+            "docstring": "Invoice not found"
         }
     }
 }

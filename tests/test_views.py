@@ -714,7 +714,7 @@ async def test_invoice_ws(async_client, token: str):
     async with async_client.websocket_connect(f"/ws/invoices/{invoice_id}") as websocket:
         await asyncio.sleep(1)
         await invoices.new_payment_handler(
-            DummyInstance(), None, data["payments"]["btc"]["payment_address"], "test", None, notify=False
+            DummyInstance(), None, data["payments"][0]["payment_address"], "test", None, notify=False
         )  # emulate paid invoice
         await check_ws_response(websocket)
         async with async_client.websocket_connect(
@@ -864,10 +864,10 @@ async def test_create_invoice_and_pay(async_client, token: str):
     # get payment
     payment_method = await models.PaymentMethod.query.where(models.PaymentMethod.invoice_id == invoice_id).gino.first()
     await invoices.new_payment_handler(
-        DummyInstance(), None, data["payments"]["btc"]["payment_address"], "complete", None, notify=False
+        DummyInstance(), None, data["payments"][0]["payment_address"], "complete", None, notify=False
     )  # pay the invoice
     # validate invoice paid_currency
-    assert (await models.Invoice.get(invoice_id)).paid_currency == payment_method.currency
+    assert (await models.Invoice.get(invoice_id)).paid_currency == payment_method.currency.upper()
     await async_client.delete(f"/invoices/{invoice_id}", headers={"Authorization": f"Bearer {token}"})
 
 

@@ -2,6 +2,7 @@ import copy
 import datetime
 import logging
 import os
+import traceback
 from decimal import Decimal
 from logging.handlers import TimedRotatingFileHandler
 
@@ -10,6 +11,10 @@ from pydantic import BaseModel
 from starlette.config import Config
 
 from api.constants import LOG_FILE_NAME
+
+
+def get_exception_message(exc: Exception):
+    return "\n" + "".join(traceback.format_exception(etype=type(exc), value=exc, tb=exc.__traceback__))
 
 
 def _shorten_name_of_logrecord(record: logging.LogRecord) -> logging.LogRecord:

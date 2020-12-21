@@ -251,7 +251,7 @@ class DisplayInvoice(Invoice):
     time_left: int
     expiration: int
     expiration_seconds: int
-    payments: dict = {}
+    payments: list = []
 
 
 class TxResponse(BaseModel):

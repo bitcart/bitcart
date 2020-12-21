@@ -5,11 +5,13 @@ from decimal import Decimal
 from operator import attrgetter
 from typing import Iterable
 
+from bitcart.errors import errors
 from fastapi import HTTPException
 from starlette.datastructures import CommaSeparatedStrings
 
 from . import invoices, models, pagination, schemes, settings, utils
 from .db import db
+from .ext.moneyformat import currency_table
 from .logger import get_logger
 
 logger = get_logger(__name__)
@@ -82,7 +84,7 @@ async def create_invoice(invoice: schemes.CreateInvoice, user: schemes.User):
     for key, value in products.items():  # type: ignore
         created.append((await models.ProductxInvoice.create(invoice_id=obj.id, product_id=key, count=value)).product_id)
     obj.products = created
-    obj.payments = {}
+    obj.payments = []
     current_date = utils.now()
     discounts = []
     if product:
@@ -92,52 +94,87 @@ async def create_invoice(invoice: schemes.CreateInvoice, user: schemes.User):
     return obj
 
 
+async def _create_payment_method(invoice, wallet, product, store, discounts, promocode, lightning=False):
+    # if wallet.currency not in invoice.payments:
+    coin = settings.get_coin(wallet.currency, wallet.xpub)
+    discount_id = None
+    rate = await coin.rate(invoice.currency)
+    if math.isnan(rate):
+        rate = await coin.rate(store.default_currency)
+    if math.isnan(rate):
+        rate = await coin.rate("USD")
+    if math.isnan(rate):
+        rate = Decimal(1)  # no rate available, no conversion
+    price = currency_table.normalize(wallet.currency, invoice.price / rate)
+    if discounts:
+        try:
+            discount = max(
+                filter(
+                    lambda x: (not x.currencies or wallet.currency in CommaSeparatedStrings(x.currencies))
+                    and (promocode == x.promocode or not x.promocode),
+                    discounts,
+                ),
+                key=attrgetter("percent"),
+            )
+            logger.info(f"Payment method {wallet.currency} of invoice {invoice.id}: matched discount {discount.id}")
+            discount_id = discount.id
+            price -= price * (Decimal(discount.percent) / Decimal(100))
+        except ValueError:  # no matched discounts
+            pass
+    method = coin.add_request
+    if lightning:  # pragma: no cover
+        try:
+            await coin.node_id  # check if works
+            method = coin.add_invoice
+        except errors.LightningUnsupportedError:
+            return
+    data_got = await method(price, description=product.name if product else "", expire=invoice.expiration)
+    address = data_got["address"] if not lightning else data_got["invoice"]
+    url = data_got["URI"] if not lightning else data_got["invoice"]
+    node_id = await coin.node_id if lightning else None
+    rhash = data_got["rhash"] if lightning else None
+    invoice.payments.append(
+        {
+            "payment_address": address,
+            "payment_url": url,
+            "rhash": rhash,
+            "amount": currency_table.format_currency(wallet.currency, price),
+            "rate": currency_table.format_currency(invoice.currency, rate, fancy=False),
+            "rate_str": currency_table.format_currency(invoice.currency, rate),
+            "discount": discount_id,
+            "currency": wallet.currency,
+            "lightning": lightning,
+            "node_id": node_id,
+        }
+    )
+    return await models.PaymentMethod.create(
+        invoice_id=invoice.id,
+        amount=price,
+        rate=rate,
+        discount=discount_id,
+        currency=wallet.currency,
+        payment_address=address,
+        payment_url=url,
+        rhash=rhash,
+        lightning=lightning,
+        node_id=node_id,
+    )
+
+
+async def create_payment_method(invoice, wallet, product, store, discounts, promocode):
+    method = await _create_payment_method(invoice, wallet, product, store, discounts, promocode)
+    coin_settings = settings.crypto_settings.get(wallet.currency.lower())
+    if coin_settings and coin_settings["lightning"]:
+        await _create_payment_method(invoice, wallet, product, store, discounts, promocode, lightning=True)
+    return method
+
+
 async def update_invoice_payments(invoice, wallets, discounts, store, product, promocode):
     logger.info(f"Started adding invoice payments for invoice {invoice.id}")
     method = None
     for wallet_id in wallets:
         wallet = await models.Wallet.get(wallet_id)
-        if wallet.currency not in invoice.payments:
-            coin = settings.get_coin(wallet.currency, wallet.xpub)
-            discount_id = None
-            price = invoice.price / await coin.rate(invoice.currency)
-            if math.isnan(price):
-                price = invoice.price / await coin.rate(store.default_currency)
-            if math.isnan(price):
-                price = invoice.price / await coin.rate("USD")
-            if math.isnan(price):
-                price = invoice.price
-            if discounts:
-                try:
-                    discount = max(
-                        filter(
-                            lambda x: (not x.currencies or wallet.currency in CommaSeparatedStrings(x.currencies))
-                            and (promocode == x.promocode or not x.promocode),
-                            discounts,
-                        ),
-                        key=attrgetter("percent"),
-                    )
-                    logger.info(f"Payment method {wallet.currency} of invoice {invoice.id}: matched discount {discount.id}")
-                    discount_id = discount.id
-                    price -= price * (Decimal(discount.percent) / Decimal(100))
-                except ValueError:  # no matched discounts
-                    pass
-            data_got = await coin.add_request(price, description=product.name if product else "", expire=invoice.expiration)
-            method = await models.PaymentMethod.create(
-                invoice_id=invoice.id,
-                amount=price,
-                discount=discount_id,
-                currency=wallet.currency,
-                payment_address=data_got["address"],
-                payment_url=data_got["URI"],
-            )
-            invoice.payments[wallet.currency] = {
-                "payment_address": data_got["address"],
-                "payment_url": data_got["URI"],
-                "amount": price,
-                "discount": discount_id,
-                "currency": wallet.currency,
-            }
+        method = await create_payment_method(invoice, wallet, product, store, discounts, promocode)
     logger.info(f"Successfully added {len(invoice.payments)} payment methods to invoice {invoice.id}")
     add_invoice_expiration(invoice)
     asyncio.ensure_future(invoices.make_expired_task(invoice, method))
@@ -155,17 +192,25 @@ async def invoice_add_related(item: models.Invoice):
         return
     result = await models.ProductxInvoice.select("product_id").where(models.ProductxInvoice.invoice_id == item.id).gino.all()
     item.products = [product_id for product_id, in result if product_id]
-    item.payments = {}
+    item.payments = []
     payment_methods = await models.PaymentMethod.query.where(models.PaymentMethod.invoice_id == item.id).gino.all()
     for method in payment_methods:
-        if method.currency not in item.payments:
-            item.payments[method.currency] = {
+        # TODO: multiple wallet same currency case
+        # TODO remove duplication
+        item.payments.append(
+            {
                 "payment_address": method.payment_address,
                 "payment_url": method.payment_url,
-                "amount": method.amount,
+                "rhash": method.rhash,
+                "amount": currency_table.format_currency(method.currency, method.amount),
+                "rate": currency_table.format_currency(item.currency, method.rate, fancy=False),
+                "rate_str": currency_table.format_currency(item.currency, method.rate),
                 "discount": method.discount,
                 "currency": method.currency,
+                "lightning": method.lightning,
+                "node_id": method.node_id,
             }
+        )
     add_invoice_expiration(item)
 
 

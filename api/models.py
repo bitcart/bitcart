@@ -238,10 +238,14 @@ class PaymentMethod(db.Model):
 
     invoice_id = Column(Integer, ForeignKey("invoices.id", ondelete="SET NULL"))
     amount = Column(Numeric(16, 8), nullable=False)
+    rate = Column(Numeric(16, 8))
     discount = Column(Integer)
     currency = Column(String(length=1000), index=True)
-    payment_address = Column(String(10000), nullable=False)
-    payment_url = Column(String(10000), nullable=False)
+    payment_address = Column(Text, nullable=False)
+    payment_url = Column(Text, nullable=False)
+    rhash = Column(Text)
+    lightning = Column(Boolean(), default=False)
+    node_id = Column(Text)
 
 
 class Invoice(db.Model):
