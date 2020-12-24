@@ -95,7 +95,6 @@ async def create_invoice(invoice: schemes.CreateInvoice, user: schemes.User):
 
 
 async def _create_payment_method(invoice, wallet, product, store, discounts, promocode, lightning=False):
-    # if wallet.currency not in invoice.payments:
     coin = settings.get_coin(wallet.currency, wallet.xpub)
     discount_id = None
     rate = await coin.rate(invoice.currency)
