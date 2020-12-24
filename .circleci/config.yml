@@ -46,7 +46,7 @@ jobs:
           name: prepare daemon
           command: |
             . ~/venv/bin/activate
-            BTC_DEBUG=true BTC_NETWORK=testnet python3 daemons/btc.py
+            BTC_DEBUG=true BTC_LIGHTNING=true BTC_NETWORK=testnet python3 daemons/btc.py
           background: true
 
       - run:
