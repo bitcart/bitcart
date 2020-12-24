@@ -52,6 +52,7 @@ class Wallet(db.Model):
     user_id = Column(Integer, ForeignKey(User.id, ondelete="SET NULL"))
     user = relationship(User, backref="wallets")
     created = Column(DateTime(True), nullable=False)
+    lightning_enabled = Column(Boolean(), default=False)
 
     @classmethod
     async def create(cls, **kwargs):

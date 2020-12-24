@@ -31,6 +31,8 @@ def upgrade():
     )
     op.add_column("paymentmethods", sa.Column("rate", sa.Numeric(precision=16, scale=8), nullable=True, server_default="1"))
     op.alter_column("paymentmethods", "rate", server_default=None)
+    op.add_column("wallets", sa.Column("lightning_enabled", sa.Boolean(), nullable=True, server_default=expression.false()))
+    op.alter_column("wallets", "lightning_enabled", server_default=None)
     op.execute("update invoices set paid_currency=upper(paid_currency)")
     # ### end Alembic commands ###
 
@@ -47,4 +49,5 @@ def downgrade():
     )
     op.drop_column("paymentmethods", "rhash")
     op.drop_column("paymentmethods", "rate")
+    op.drop_column("wallets", "lightning_enabled")
     # ### end Alembic commands ###

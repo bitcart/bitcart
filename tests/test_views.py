@@ -948,3 +948,37 @@ def test_cryptos(client: TestClient):
         "previous": None,
         "result": list(settings.cryptos.keys()),
     }
+
+
+def test_wallet_balance(client: TestClient, token: str):
+    assert client.get("/wallets/2/balance").status_code == 401
+    resp = client.get("/wallets/4/balance", headers={"Authorization": f"Bearer {token}"})
+    assert resp.status_code == 200
+    assert resp.json() == {"confirmed": 0.01, "lightning": 0.0, "unconfirmed": 0.0, "unmatured": 0.0}
+
+
+def test_lightning_endpoints(client: TestClient, token: str):
+    assert client.get("/wallets/2/checkln").status_code == 401
+    assert client.get("/wallets/555/checkln", headers={"Authorization": f"Bearer {token}"}).status_code == 404
+    resp = client.get("/wallets/2/checkln", headers={"Authorization": f"Bearer {token}"})
+    assert resp.status_code == 200
+    assert resp.json() is False
+    resp2 = client.get("/wallets/2/channels", headers={"Authorization": f"Bearer {token}"})
+    assert resp2.status_code == 200
+    assert resp2.json() == []
+    assert (
+        client.post(
+            "/wallets/2/channels/open", json={"node_id": "test", "amount": 0.1}, headers={"Authorization": f"Bearer {token}"}
+        ).status_code
+        == 400
+    )
+    assert (
+        client.post(
+            "/wallets/2/channels/close", json={"channel_point": "test"}, headers={"Authorization": f"Bearer {token}"}
+        ).status_code
+        == 400
+    )
+    assert (
+        client.post("/wallets/2/lnpay", json={"invoice": "test"}, headers={"Authorization": f"Bearer {token}"}).status_code
+        == 400
+    )

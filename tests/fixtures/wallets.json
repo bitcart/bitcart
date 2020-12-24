@@ -19,7 +19,8 @@
                 "user_id": 1,
                 "xpub": "tpubDC9zYPoSZUk5W8Rfaex3k324fi1hDLHapbSjPd4gbr7AE8MLSGEy76fNp5m6sVLBy9p2iTjRkiguVyb8iEHCdUBC7SXnhHdHMpXwFcrVMyA",
                 "currency": "btc",
-                "balance": 0
+                "balance": 0,
+                "lightning_enabled": false
             }
         },
         {
@@ -34,7 +35,8 @@
                 "user_id": 1,
                 "xpub": "tpubDD1g867nDN1JyfNAjHNWrL2XNg98y6gM1W82C4nxqxGq5QPEFCtxYLFGgi7GrBwu4TczHRnwXic81BZ2FKBwmKvQdRJpNdfXPtAmtzBkD1A",
                 "currency": "btc",
-                "balance": 0
+                "balance": 0,
+                "lightning_enabled": false
             }
         },
         {
@@ -49,7 +51,8 @@
                 "user_id": 1,
                 "xpub": "tpubDC9zYPoSZUk5W8Rfaex3k324fi1hDLHapbSjPd4gbr7AE8MLSGEy76fNp5m6sVLBy9p2iTjRkiguVyb8iEHCdUBC7SXnhHdHMpXwFcrVMyA",
                 "currency": "btc",
-                "balance": 0
+                "balance": 0,
+                "lightning_enabled": false
             }
         },
         {
@@ -85,7 +88,8 @@
                     "user_id": 1,
                     "xpub": "tpubDC9zYPoSZUk5W8Rfaex3k324fi1hDLHapbSjPd4gbr7AE8MLSGEy76fNp5m6sVLBy9p2iTjRkiguVyb8iEHCdUBC7SXnhHdHMpXwFcrVMyA",
                     "currency": "btc",
-                    "balance": 0
+                    "balance": 0,
+                    "lightning_enabled": false
                 },
                 {
                     "id": 2,
@@ -93,7 +97,8 @@
                     "user_id": 1,
                     "xpub": "tpubDD1g867nDN1JyfNAjHNWrL2XNg98y6gM1W82C4nxqxGq5QPEFCtxYLFGgi7GrBwu4TczHRnwXic81BZ2FKBwmKvQdRJpNdfXPtAmtzBkD1A",
                     "currency": "btc",
-                    "balance": 0
+                    "balance": 0,
+                    "lightning_enabled": false
                 },
                 {
                     "name": "test1",
@@ -101,6 +106,7 @@
                     "xpub": "tpubDC9zYPoSZUk5W8Rfaex3k324fi1hDLHapbSjPd4gbr7AE8MLSGEy76fNp5m6sVLBy9p2iTjRkiguVyb8iEHCdUBC7SXnhHdHMpXwFcrVMyA",
                     "currency": "btc",
                     "balance": 0.0,
+                    "lightning_enabled": false,
                     "id": 1
                 }
             ]
@@ -122,6 +128,7 @@
                 "xpub": "tpubDC9zYPoSZUk5W8Rfaex3k324fi1hDLHapbSjPd4gbr7AE8MLSGEy76fNp5m6sVLBy9p2iTjRkiguVyb8iEHCdUBC7SXnhHdHMpXwFcrVMyA",
                 "currency": "btc",
                 "balance": 0.0,
+                "lightning_enabled": false,
                 "id": 1
             }
         },
@@ -147,6 +154,7 @@
                 "xpub": "tpubDC9zYPoSZUk5W8Rfaex3k324fi1hDLHapbSjPd4gbr7AE8MLSGEy76fNp5m6sVLBy9p2iTjRkiguVyb8iEHCdUBC7SXnhHdHMpXwFcrVMyA",
                 "currency": "btc",
                 "balance": 0.0,
+                "lightning_enabled": false,
                 "id": 1
             }
         },
@@ -172,15 +180,7 @@
             "data": {
                 "name": "test"
             },
-            "status": "bad",
-            "return_data": {
-                "name": "test",
-                "user_id": 1,
-                "xpub": "",
-                "currency": "btc",
-                "balance": 0.0,
-                "id": 1
-            }
+            "status": "bad"
         },
         {
             "obj_id": 1,
@@ -195,15 +195,7 @@
                 "id": null,
                 "name": "test"
             },
-            "status": "bad",
-            "return_data": {
-                "name": "test",
-                "user_id": 1,
-                "xpub": "",
-                "currency": "btc",
-                "balance": 0.0,
-                "id": 1
-            }
+            "status": "bad"
         },
         {
             "obj_id": 1,
@@ -219,6 +211,7 @@
                 "xpub": "tpubDC9zYPoSZUk5W8Rfaex3k324fi1hDLHapbSjPd4gbr7AE8MLSGEy76fNp5m6sVLBy9p2iTjRkiguVyb8iEHCdUBC7SXnhHdHMpXwFcrVMyA",
                 "currency": "btc",
                 "balance": 0.0,
+                "lightning_enabled": false,
                 "id": 1
             }
         }
@@ -237,6 +230,7 @@
                 "xpub": "tpubDC9zYPoSZUk5W8Rfaex3k324fi1hDLHapbSjPd4gbr7AE8MLSGEy76fNp5m6sVLBy9p2iTjRkiguVyb8iEHCdUBC7SXnhHdHMpXwFcrVMyA",
                 "currency": "btc",
                 "balance": 0.0,
+                "lightning_enabled": false,
                 "id": 1
             }
         },

@@ -73,9 +73,14 @@ class CreateWallet(CreatedMixin):
     name: str
     xpub: str = ""
     currency: str = "btc"
+    lightning_enabled: bool = False
 
     class Config:
         orm_mode = True
+
+    @validator("lightning_enabled", pre=True, always=True)
+    def set_lightning_enabled(cls, v):
+        return v or False
 
 
 class Wallet(CreateWallet):
@@ -273,3 +278,17 @@ class GlobalStorePolicy(BaseModel):
 class BatchSettings(BaseModel):
     ids: List[int]
     command: str
+
+
+class OpenChannelScheme(BaseModel):
+    node_id: str
+    amount: Decimal
+
+
+class CloseChannelScheme(BaseModel):
+    channel_point: str
+    force: bool = False
+
+
+class LNPayScheme(BaseModel):
+    invoice: str

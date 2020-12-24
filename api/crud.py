@@ -164,7 +164,7 @@ async def _create_payment_method(invoice, wallet, product, store, discounts, pro
 async def create_payment_method(invoice, wallet, product, store, discounts, promocode):
     method = await _create_payment_method(invoice, wallet, product, store, discounts, promocode)
     coin_settings = settings.crypto_settings.get(wallet.currency.lower())
-    if coin_settings and coin_settings["lightning"]:  # pragma: no cover
+    if coin_settings and coin_settings["lightning"] and wallet.lightning_enabled:  # pragma: no cover
         await _create_payment_method(invoice, wallet, product, store, discounts, promocode, lightning=True)
     return method
 
@@ -349,3 +349,11 @@ async def get_wallet(model_id: int, user: schemes.User, item: models.Wallet, int
 
 async def get_wallets(pagination: pagination.Pagination, user: schemes.User):
     return await pagination.paginate(models.Wallet, user.id, postprocess=wallets_add_related)
+
+
+async def get_wallet_coin_by_id(model_id: int):
+    wallet = await models.Wallet.get(model_id)
+    if not wallet:
+        raise HTTPException(status_code=404, detail=f"Object with id {model_id} does not exist!")
+    await wallet_add_related(wallet)
+    return settings.get_coin(wallet.currency, wallet.xpub)
