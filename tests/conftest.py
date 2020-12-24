@@ -9,18 +9,18 @@ from api import settings
 from main import app
 
 
-@pytest.yield_fixture(scope="session", autouse=True)
+@pytest.fixture(scope="session", autouse=True)
 def event_loop():
     yield settings.loop
 
 
-@pytest.yield_fixture(scope="session", autouse=True)
+@pytest.fixture(scope="session", autouse=True)
 def client(event_loop):
     with TestClient(app) as client:
         yield client
 
 
-@pytest.yield_fixture(scope="session")
+@pytest.fixture(scope="session")
 async def async_client(event_loop):
     async with AsyncClient(app) as client:
         yield client
@@ -48,7 +48,7 @@ def token(client):
     ).json()["access_token"]
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def service_dir():
     directory = "test-1"
     os.mkdir(directory)
@@ -58,7 +58,7 @@ def service_dir():
     shutil.rmtree(directory)
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def torrc(service_dir):
     filename = "torrc"
     with open(filename, "w") as f:
@@ -88,11 +88,11 @@ def deleting_file_base(filename):
             f.write(contents)
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def log_file():
     yield from deleting_file_base("tests/fixtures/bitcart.log")
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def log_file_deleting():
     yield from deleting_file_base("tests/fixtures/bitcart-log.log.test")

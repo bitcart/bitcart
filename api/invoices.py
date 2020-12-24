@@ -1,10 +1,9 @@
 import asyncio
-import logging
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 
 from . import crud, db, models, settings, utils
-from .logger import get_logger
+from .logger import get_exception_message, get_logger
 
 logger = get_logger(__name__)
 
@@ -41,7 +40,7 @@ async def new_payment_handler(instance, event, address, status, status_str, noti
         await select([models.Invoice, models.PaymentMethod])
         .where(models.PaymentMethod.invoice_id == models.Invoice.id)
         .where(models.PaymentMethod.currency == instance.coin_name.lower())
-        .where(models.PaymentMethod.payment_address == address)
+        .where(or_(models.PaymentMethod.payment_address == address, models.PaymentMethod.rhash == address))
         .where(models.Invoice.status == "Pending")
         .gino.load((models.Invoice, models.PaymentMethod))
         .first()
@@ -106,10 +105,12 @@ def convert_status(status):  # pragma: no cover
 async def update_status(invoice, method, status, notify=True):
     status = convert_status(status)
     if status != "Pending" and invoice.status != "complete":
-        logger.info(f"Updating status of invoice {invoice.id} with payment method {method.currency} to {status}")
+        method_name = method.currency.upper()
+        full_method_name = f"{method_name} (⚡)" if method.lightning else method_name
+        logger.info(f"Updating status of invoice {invoice.id} with payment method {full_method_name} to {status}")
         await invoice.update(status=status, discount=method.discount).apply()
         if status == "complete":
-            await invoice.update(paid_currency=method.currency).apply()
+            await invoice.update(paid_currency=full_method_name).apply()
         await utils.publish_message(invoice.id, {"status": status})
         if notify:  # pragma: no cover
             await invoice_notification(invoice, status)
@@ -117,7 +118,7 @@ async def update_status(invoice, method, status, notify=True):
 
 
 async def check_pending(currency):  # pragma: no cover
-    try:
+    try:  # connection issues
         async with db.db.acquire() as conn:
             async with conn.transaction():
                 async for method, invoice, xpub in (
@@ -137,8 +138,15 @@ async def check_pending(currency):  # pragma: no cover
                     .gino.load((models.PaymentMethod, models.Invoice, models.Wallet.xpub))
                     .iterate()
                 ):
-                    invoice_data = await settings.get_coin(method.currency, xpub).get_request(method.payment_address)
-                    if not await update_status(invoice, method, invoice_data["status"]) and invoice.status != "expired":
-                        asyncio.ensure_future(make_expired_task(invoice, method))
+                    try:  # issues processing one invoice
+                        coin = settings.get_coin(method.currency, xpub)
+                        if method.lightning:
+                            invoice_data = await coin.server.get_invoice(method.rhash)  # TODO: add to SDK
+                        else:
+                            invoice_data = await coin.get_request(method.payment_address)
+                        if not await update_status(invoice, method, invoice_data["status"]) and invoice.status != "expired":
+                            asyncio.ensure_future(make_expired_task(invoice, method))
+                    except Exception as e:
+                        logger.error(get_exception_message(e))
     except Exception as e:
-        logging.error(e)
+        logger.error(get_exception_message(e))

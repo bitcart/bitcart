@@ -5,6 +5,8 @@ import secrets
 from decimal import Decimal
 from typing import List, Optional
 
+import bitcart
+from bitcart.errors import RequestError
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Response, Security, UploadFile
 from fastapi.responses import StreamingResponse
 from fastapi.security import SecurityScopes
@@ -752,3 +754,72 @@ async def delete_log(log: str, user: models.User = Security(utils.AuthDependency
         return True
     except OSError:
         raise HTTPException(404, "This log doesn't exist")
+
+
+@router.get("/wallets/{model_id}/balance")
+async def get_wallet_balance(
+    model_id: int, user: models.User = Security(utils.AuthDependency(), scopes=["wallet_management"])
+):
+    coin = await crud.get_wallet_coin_by_id(model_id)
+    return await coin.balance()
+
+
+@router.get("/wallets/{model_id}/checkln")
+async def check_wallet_lightning(
+    model_id: int, user: models.User = Security(utils.AuthDependency(), scopes=["wallet_management"])
+):
+    try:
+        coin = await crud.get_wallet_coin_by_id(model_id)
+        return await coin.node_id
+    except bitcart.errors.LightningUnsupportedError:
+        return False
+
+
+@router.get("/wallets/{model_id}/channels")
+async def get_wallet_channels(
+    model_id: int, user: models.User = Security(utils.AuthDependency(), scopes=["wallet_management"])
+):
+    try:
+        coin = await crud.get_wallet_coin_by_id(model_id)
+        return await coin.list_channels()
+    except RequestError:
+        return []
+
+
+@router.post("/wallets/{model_id}/channels/open")
+async def open_wallet_channel(
+    model_id: int,
+    params: schemes.OpenChannelScheme,
+    user: models.User = Security(utils.AuthDependency(), scopes=["wallet_management"]),
+):
+    try:
+        coin = await crud.get_wallet_coin_by_id(model_id)
+        return await coin.open_channel(params.node_id, params.amount)
+    except RequestError:
+        raise HTTPException(400, "Failed to open channel")
+
+
+@router.post("/wallets/{model_id}/channels/close")
+async def close_wallet_channel(
+    model_id: int,
+    params: schemes.CloseChannelScheme,
+    user: models.User = Security(utils.AuthDependency(), scopes=["wallet_management"]),
+):
+    try:
+        coin = await crud.get_wallet_coin_by_id(model_id)
+        return await coin.close_channel(params.channel_point, force=params.force)
+    except RequestError:
+        raise HTTPException(400, "Failed to close channel")
+
+
+@router.post("/wallets/{model_id}/lnpay")
+async def wallet_lnpay(
+    model_id: int,
+    params: schemes.LNPayScheme,
+    user: models.User = Security(utils.AuthDependency(), scopes=["wallet_management"]),
+):
+    try:
+        coin = await crud.get_wallet_coin_by_id(model_id)
+        return await coin.lnpay(params.invoice)
+    except RequestError:
+        raise HTTPException(400, "Failed to pay the invoice")

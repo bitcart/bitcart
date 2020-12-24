@@ -21,7 +21,7 @@ class LogRecordStreamHandler(socketserver.StreamRequestHandler):
         return obj
 
     def handle(self):
-        unpacker = msgpack.Unpacker(use_list=False, object_hook=self.decode_msgpack)
+        unpacker = msgpack.Unpacker(use_list=False, object_hook=self.decode_msgpack, strict_map_key=False)
 
         while True:
             data = self.connection.recv(1024)

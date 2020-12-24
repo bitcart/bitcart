@@ -15,7 +15,7 @@ from starlette.datastructures import CommaSeparatedStrings
 from api.constants import GIT_REPO_URL, LOG_FILE_NAME, VERSION, WEBSITE
 
 from .ext.notifiers import parse_notifier_schema
-from .logger import get_logger
+from .logger import get_exception_message, get_logger
 
 logger = get_logger(__name__)
 
@@ -148,8 +148,7 @@ def excepthook_handler(excepthook):
 
 def handle_exception(loop, context):
     if "exception" in context:
-        exc = context["exception"]
-        msg = "\n" + "".join(traceback.format_exception(etype=type(exc), value=exc, tb=exc.__traceback__))
+        msg = get_exception_message(context["exception"])
     else:
         msg = context["message"]
     logger.error(msg)
