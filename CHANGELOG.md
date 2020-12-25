@@ -6,6 +6,8 @@
 
 Small bugfixes
 
+Various visual, performance improvements and fixes in the admin panel (now using vuetify 2.3.x)
+
 ## 0.1.0.0
 
 ### Major update
