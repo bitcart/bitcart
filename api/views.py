@@ -5,8 +5,7 @@ import secrets
 from decimal import Decimal
 from typing import List, Optional
 
-import bitcart
-from bitcart.errors import RequestError
+from bitcart.errors import BaseError as BitcartBaseError
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Response, Security, UploadFile
 from fastapi.responses import StreamingResponse
 from fastapi.security import SecurityScopes
@@ -771,7 +770,7 @@ async def check_wallet_lightning(
     try:
         coin = await crud.get_wallet_coin_by_id(model_id)
         return await coin.node_id
-    except bitcart.errors.LightningUnsupportedError:
+    except BitcartBaseError:
         return False
 
 
@@ -782,7 +781,7 @@ async def get_wallet_channels(
     try:
         coin = await crud.get_wallet_coin_by_id(model_id)
         return await coin.list_channels()
-    except RequestError:
+    except BitcartBaseError:
         return []
 
 
@@ -795,7 +794,7 @@ async def open_wallet_channel(
     try:
         coin = await crud.get_wallet_coin_by_id(model_id)
         return await coin.open_channel(params.node_id, params.amount)
-    except RequestError:
+    except BitcartBaseError:
         raise HTTPException(400, "Failed to open channel")
 
 
@@ -808,7 +807,7 @@ async def close_wallet_channel(
     try:
         coin = await crud.get_wallet_coin_by_id(model_id)
         return await coin.close_channel(params.channel_point, force=params.force)
-    except RequestError:
+    except BitcartBaseError:
         raise HTTPException(400, "Failed to close channel")
 
 
@@ -821,5 +820,5 @@ async def wallet_lnpay(
     try:
         coin = await crud.get_wallet_coin_by_id(model_id)
         return await coin.lnpay(params.invoice)
-    except RequestError:
+    except BitcartBaseError:
         raise HTTPException(400, "Failed to pay the invoice")

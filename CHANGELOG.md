@@ -2,6 +2,10 @@
 
 ## Latest changes
 
+## 0.1.0.1
+
+Small bugfixes
+
 ## 0.1.0.0
 
 ### Major update
