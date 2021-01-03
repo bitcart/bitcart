@@ -2,6 +2,14 @@
 
 ## Latest changes
 
+## 0.1.0.2
+
+Fixed html template rendering and product price is now properly formatted when using it in templates
+Fixed UI issues with the new checkout in Firefox.
+Details are now displayed differently in admin panel:
+The name of the field is on one line, and the actual data on the next line.
+Template's text is now hidden into item details.
+
 ## 0.1.0.1
 
 Small bugfixes

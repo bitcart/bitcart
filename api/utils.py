@@ -8,6 +8,8 @@ from collections import defaultdict
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 from os.path import join as path_join
 from typing import Any, Callable, ClassVar, Dict, List, Optional, Type, Union
 
@@ -472,8 +474,13 @@ async def get_store_template(store, products):
     return template.render(store=store, products=products)
 
 
-def send_mail(store, where, message, subject="Thank you for your purchase"):  # pragma: no cover
-    message = f"Subject: {subject}\n\n{message}"
+def send_mail(store, where, text, subject="Thank you for your purchase"):  # pragma: no cover
+    message_obj = MIMEMultipart()
+    message_obj["Subject"] = subject
+    message_obj["From"] = store.email
+    message_obj["To"] = where
+    message_obj.attach(MIMEText(text, "html" if store.use_html_templates else "plain"))
+    message = message_obj.as_string()
     server = smtplib.SMTP(host=store.email_host, port=store.email_port, timeout=2)
     if store.email_use_ssl:
         server.starttls()

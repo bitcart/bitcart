@@ -20,6 +20,7 @@
                 "default_currency": "USD",
                 "user_id": 1,
                 "expiration": 15,
+                "use_html_templates": false,
                 "wallets": [
                     2
                 ],
@@ -51,6 +52,7 @@
                 "default_currency": "USD",
                 "user_id": 1,
                 "expiration": 15,
+                "use_html_templates": false,
                 "wallets": [
                     2
                 ],
@@ -78,6 +80,7 @@
                 "default_currency": "USD",
                 "user_id": 1,
                 "expiration": 15,
+                "use_html_templates": false,
                 "wallets": [],
                 "notifications": [],
                 "templates": {}
@@ -124,6 +127,7 @@
                     "default_currency": "USD",
                     "user_id": 1,
                     "expiration": 15,
+                    "use_html_templates": false,
                     "wallets": [],
                     "notifications": [],
                     "templates": {}
@@ -140,6 +144,7 @@
                     "default_currency": "USD",
                     "user_id": 1,
                     "expiration": 15,
+                    "use_html_templates": false,
                     "wallets": [
                         2
                     ],
@@ -160,6 +165,7 @@
                     "default_currency": "USD",
                     "user_id": 1,
                     "expiration": 15,
+                    "use_html_templates": false,
                     "wallets": [
                         2
                     ],
@@ -195,6 +201,7 @@
                 "default_currency": "USD",
                 "user_id": 1,
                 "expiration": 15,
+                "use_html_templates": false,
                 "wallets": [
                     2
                 ],
@@ -230,6 +237,7 @@
                 "default_currency": "USD",
                 "user_id": 1,
                 "expiration": 15,
+                "use_html_templates": false,
                 "wallets": [
                     2
                 ],
@@ -263,6 +271,7 @@
                 "default_currency": "USD",
                 "user_id": 1,
                 "expiration": 15,
+                "use_html_templates": false,
                 "wallets": [
                     2
                 ],
@@ -345,6 +354,7 @@
                 "default_currency": "USD",
                 "user_id": 1,
                 "expiration": 15,
+                "use_html_templates": false,
                 "wallets": [
                     2
                 ],
@@ -373,6 +383,7 @@
                 "default_currency": "USD",
                 "user_id": 1,
                 "expiration": 15,
+                "use_html_templates": false,
                 "wallets": [
                     2
                 ],

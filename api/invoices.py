@@ -3,6 +3,7 @@ import asyncio
 from sqlalchemy import or_, select
 
 from . import crud, db, models, settings, utils
+from .ext.moneyformat import currency_table
 from .logger import get_exception_message, get_logger
 
 logger = get_logger(__name__)
@@ -71,6 +72,9 @@ async def invoice_notification(invoice: models.Invoice, status: str):  # pragma:
                 messages = []
                 for product_id in invoice.products:
                     product = await models.Product.get(product_id)
+                    product.price = currency_table.normalize(
+                        invoice.currency, product.price
+                    )  # to be formatted correctly in emails
                     relation = (
                         await models.ProductxInvoice.query.where(models.ProductxInvoice.invoice_id == invoice.id)
                         .where(models.ProductxInvoice.product_id == product_id)

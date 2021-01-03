@@ -110,6 +110,7 @@ class CreateStore(BaseStore):
     email_user: str = ""
     email_password: str = ""
     email_use_ssl: bool = True
+    use_html_templates: bool = False
     wallets: List[int]
     expiration: int = 15
     notifications: Optional[List[int]] = []

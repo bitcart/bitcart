@@ -138,6 +138,7 @@ class Store(db.Model):
     email_use_ssl = Column(Boolean)
     email_user = Column(String(1000))
     expiration = Column(Integer)
+    use_html_templates = Column(Boolean(), default=False)
     templates = Column(JSON)
     wallets = relationship("Wallet", secondary=WalletxStore)
     notifications = relationship("Notification", secondary=NotificationxStore)
