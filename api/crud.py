@@ -1,5 +1,6 @@
 import asyncio
 import math
+from collections import defaultdict
 from datetime import timedelta
 from decimal import Decimal
 from operator import attrgetter
@@ -174,6 +175,9 @@ async def update_invoice_payments(invoice, wallets, discounts, store, product, p
     for wallet_id in wallets:
         wallet = await models.Wallet.get(wallet_id)
         method = await create_payment_method(invoice, wallet, product, store, discounts, promocode)
+        logger.debug(
+            f"Payment method(wallet_id={wallet_id}),store={store.id},currency={wallet.currency} is added to invoice {invoice.id}"
+        )
     logger.info(f"Successfully added {len(invoice.payments)} payment methods to invoice {invoice.id}")
     add_invoice_expiration(invoice)
     asyncio.ensure_future(invoices.make_expired_task(invoice, method))
@@ -193,23 +197,27 @@ async def invoice_add_related(item: models.Invoice):
     item.products = [product_id for product_id, in result if product_id]
     item.payments = []
     payment_methods = await models.PaymentMethod.query.where(models.PaymentMethod.invoice_id == item.id).gino.all()
+    currency_payment_methods = defaultdict(list)
     for method in payment_methods:
-        # TODO: multiple wallet same currency case
-        # TODO remove duplication
-        item.payments.append(
-            {
-                "payment_address": method.payment_address,
-                "payment_url": method.payment_url,
-                "rhash": method.rhash,
-                "amount": currency_table.format_currency(method.currency, method.amount),
-                "rate": currency_table.format_currency(item.currency, method.rate, fancy=False),
-                "rate_str": currency_table.format_currency(item.currency, method.rate),
-                "discount": method.discount,
-                "currency": method.currency,
-                "lightning": method.lightning,
-                "node_id": method.node_id,
-            }
-        )
+        currency_payment_methods[method.currency].append(method)
+    for currency, methods in currency_payment_methods.items():
+        for i, method in enumerate(methods, start=1):
+            name = method.currency if len(methods) == 1 else f"{currency} ({i})"
+            item.payments.append(
+                {
+                    "payment_address": method.payment_address,
+                    "payment_url": method.payment_url,
+                    "rhash": method.rhash,
+                    "amount": currency_table.format_currency(method.currency, method.amount),
+                    "rate": currency_table.format_currency(item.currency, method.rate, fancy=False),
+                    "rate_str": currency_table.format_currency(item.currency, method.rate),
+                    "discount": method.discount,
+                    "currency": method.currency,
+                    "lightning": method.lightning,
+                    "node_id": method.node_id,
+                    "name": name,
+                }
+            )
     add_invoice_expiration(item)
 
 
