@@ -7,6 +7,7 @@ from sqlalchemy.orm import relationship
 
 from . import settings
 from .db import db
+from .ext.moneyformat import currency_table
 
 # shortcuts
 Column = db.Column
@@ -247,6 +248,17 @@ class PaymentMethod(db.Model):
     rhash = Column(Text)
     lightning = Column(Boolean(), default=False)
     node_id = Column(Text)
+
+    async def to_enhanced_dict(self):
+        data = super().to_dict()
+        invoice_id = data.pop("invoice_id")
+        invoice = await Invoice.query.where(Invoice.id == invoice_id).gino.first()
+        if not invoice:
+            raise HTTPException(status_code=404, detail=f"Invoice with id {invoice_id} does not exist!")
+        data["amount"] = currency_table.format_currency(self.currency, self.amount)
+        data["rate"] = currency_table.format_currency(invoice.currency, self.rate, fancy=False)
+        data["rate_str"] = currency_table.format_currency(invoice.currency, self.rate)
+        return data
 
 
 class Invoice(db.Model):

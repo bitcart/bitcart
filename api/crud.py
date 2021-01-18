@@ -133,21 +133,7 @@ async def _create_payment_method(invoice, wallet, product, store, discounts, pro
     url = data_got["URI"] if not lightning else data_got["invoice"]
     node_id = await coin.node_id if lightning else None
     rhash = data_got["rhash"] if lightning else None
-    invoice.payments.append(
-        {
-            "payment_address": address,
-            "payment_url": url,
-            "rhash": rhash,
-            "amount": currency_table.format_currency(wallet.currency, price),
-            "rate": currency_table.format_currency(invoice.currency, rate, fancy=False),
-            "rate_str": currency_table.format_currency(invoice.currency, rate),
-            "discount": discount_id,
-            "currency": wallet.currency,
-            "lightning": lightning,
-            "node_id": node_id,
-        }
-    )
-    return await models.PaymentMethod.create(
+    method = await models.PaymentMethod.create(
         invoice_id=invoice.id,
         amount=price,
         rate=rate,
@@ -159,6 +145,8 @@ async def _create_payment_method(invoice, wallet, product, store, discounts, pro
         lightning=lightning,
         node_id=node_id,
     )
+    invoice.payments.append(await method.to_enhanced_dict())
+    return method
 
 
 async def create_payment_method(invoice, wallet, product, store, discounts, promocode):
@@ -176,7 +164,7 @@ async def update_invoice_payments(invoice, wallets, discounts, store, product, p
         wallet = await models.Wallet.get(wallet_id)
         method = await create_payment_method(invoice, wallet, product, store, discounts, promocode)
         logger.debug(
-            f"Payment method(wallet_id={wallet_id}),store={store.id},currency={wallet.currency} is added to invoice {invoice.id}"
+            f"Payment method(wallet={wallet_id}, store={store.id}, currency={wallet.currency}) is added to invoice {invoice.id}"
         )
     logger.info(f"Successfully added {len(invoice.payments)} payment methods to invoice {invoice.id}")
     add_invoice_expiration(invoice)
@@ -202,22 +190,10 @@ async def invoice_add_related(item: models.Invoice):
         currency_payment_methods[method.currency].append(method)
     for currency, methods in currency_payment_methods.items():
         for i, method in enumerate(methods, start=1):
-            name = method.currency if len(methods) == 1 else f"{currency} ({i})"
-            item.payments.append(
-                {
-                    "payment_address": method.payment_address,
-                    "payment_url": method.payment_url,
-                    "rhash": method.rhash,
-                    "amount": currency_table.format_currency(method.currency, method.amount),
-                    "rate": currency_table.format_currency(item.currency, method.rate, fancy=False),
-                    "rate_str": currency_table.format_currency(item.currency, method.rate),
-                    "discount": method.discount,
-                    "currency": method.currency,
-                    "lightning": method.lightning,
-                    "node_id": method.node_id,
-                    "name": name,
-                }
-            )
+            name = f"{method.currency} (⚡)" if method.lightning else method.currency
+            if len(methods) > 1:
+                name += f" ({i})"
+            item.payments.append({**await method.to_enhanced_dict(), "name": name})
     add_invoice_expiration(item)
 
 
