@@ -249,7 +249,7 @@ class PaymentMethod(db.Model):
     lightning = Column(Boolean(), default=False)
     node_id = Column(Text)
 
-    async def to_enhanced_dict(self):
+    async def to_dict(self):
         data = super().to_dict()
         invoice_id = data.pop("invoice_id")
         invoice = await Invoice.query.where(Invoice.id == invoice_id).gino.first()

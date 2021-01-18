@@ -145,7 +145,7 @@ async def _create_payment_method(invoice, wallet, product, store, discounts, pro
         lightning=lightning,
         node_id=node_id,
     )
-    invoice.payments.append(await method.to_enhanced_dict())
+    invoice.payments.append(await method.to_dict())
     return method
 
 
@@ -193,7 +193,7 @@ async def invoice_add_related(item: models.Invoice):
             name = f"{method.currency} (⚡)" if method.lightning else method.currency
             if len(methods) > 1:
                 name += f" ({i})"
-            item.payments.append({**await method.to_enhanced_dict(), "name": name})
+            item.payments.append({**await method.to_dict(), "name": name})
     add_invoice_expiration(item)
 
 
