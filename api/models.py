@@ -249,7 +249,7 @@ class PaymentMethod(db.Model):
     lightning = Column(Boolean(), default=False)
     node_id = Column(Text)
 
-    async def to_dict(self):
+    async def to_dict(self, name_index: int = None):
         data = super().to_dict()
         invoice_id = data.pop("invoice_id")
         invoice = await Invoice.query.where(Invoice.id == invoice_id).gino.first()
@@ -258,7 +258,14 @@ class PaymentMethod(db.Model):
         data["amount"] = currency_table.format_currency(self.currency, self.amount)
         data["rate"] = currency_table.format_currency(invoice.currency, self.rate, fancy=False)
         data["rate_str"] = currency_table.format_currency(invoice.currency, self.rate)
+        data["name"] = self.get_name(index=name_index)
         return data
+
+    def get_name(self, index: int = None):
+        name = f"{self.currency} (⚡)" if self.lightning else self.currency
+        if index:
+            name += f" ({index})"
+        return name
 
 
 class Invoice(db.Model):

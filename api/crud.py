@@ -95,7 +95,7 @@ async def create_invoice(invoice: schemes.CreateInvoice, user: schemes.User):
     return obj
 
 
-async def _create_payment_method(invoice, wallet, product, store, discounts, promocode, lightning=False):
+async def _create_payment_method(invoice, wallet, product, store, discounts, promocode, lightning=False, wallet_name_index=None):
     coin = settings.get_coin(wallet.currency, wallet.xpub)
     discount_id = None
     rate = await coin.rate(invoice.currency)
@@ -145,26 +145,26 @@ async def _create_payment_method(invoice, wallet, product, store, discounts, pro
         lightning=lightning,
         node_id=node_id,
     )
-    invoice.payments.append(await method.to_dict())
+    invoice.payments.append(await method.to_dict(name_index=wallet_name_index))
     return method
 
 
-async def create_payment_method(invoice, wallet, product, store, discounts, promocode):
-    method = await _create_payment_method(invoice, wallet, product, store, discounts, promocode)
+async def create_payment_method(invoice, wallet, product, store, discounts, promocode, wallet_name_index=None):
+    method = await _create_payment_method(invoice, wallet, product, store, discounts, promocode, wallet_name_index=wallet_name_index)
     coin_settings = settings.crypto_settings.get(wallet.currency.lower())
     if coin_settings and coin_settings["lightning"] and wallet.lightning_enabled:  # pragma: no cover
-        await _create_payment_method(invoice, wallet, product, store, discounts, promocode, lightning=True)
+        await _create_payment_method(invoice, wallet, product, store, discounts, promocode, lightning=True, wallet_name_index=wallet_name_index)
     return method
 
 
-async def update_invoice_payments(invoice, wallets, discounts, store, product, promocode):
+async def update_invoice_payments(invoice, wallet_ids, discounts, store, product, promocode):
     logger.info(f"Started adding invoice payments for invoice {invoice.id}")
     method = None
-    for wallet_id in wallets:
-        wallet = await models.Wallet.get(wallet_id)
-        method = await create_payment_method(invoice, wallet, product, store, discounts, promocode)
+    wallets = [await models.Wallet.get(wallet_id) for wallet_id in wallet_ids]
+    for index, wallet in get_wallet_or_method_with_index(wallets):
+        method = await create_payment_method(invoice, wallet, product, store, discounts, promocode, wallet_name_index=index)
         logger.debug(
-            f"Payment method(wallet={wallet_id}, store={store.id}, currency={wallet.currency}) is added to invoice {invoice.id}"
+            f"Payment method(wallet={wallet.id}, store={store.id}, currency={wallet.currency}) is added to invoice {invoice.id}"
         )
     logger.info(f"Successfully added {len(invoice.payments)} payment methods to invoice {invoice.id}")
     add_invoice_expiration(invoice)
@@ -185,15 +185,8 @@ async def invoice_add_related(item: models.Invoice):
     item.products = [product_id for product_id, in result if product_id]
     item.payments = []
     payment_methods = await models.PaymentMethod.query.where(models.PaymentMethod.invoice_id == item.id).gino.all()
-    currency_payment_methods = defaultdict(list)
-    for method in payment_methods:
-        currency_payment_methods[method.currency].append(method)
-    for currency, methods in currency_payment_methods.items():
-        for i, method in enumerate(methods, start=1):
-            name = f"{method.currency} (⚡)" if method.lightning else method.currency
-            if len(methods) > 1:
-                name += f" ({i})"
-            item.payments.append({**await method.to_dict(), "name": name})
+    for index, method in get_wallet_or_method_with_index(payment_methods):
+        item.payments.append(await method.to_dict(name_index=index))
     add_invoice_expiration(item)
 
 
@@ -340,3 +333,13 @@ async def get_wallet_coin_by_id(model_id: int):
         raise HTTPException(status_code=404, detail=f"Object with id {model_id} does not exist!")
     await wallet_add_related(wallet)
     return settings.get_coin(wallet.currency, wallet.xpub)
+
+
+def get_wallet_or_method_with_index(wallets_or_methods: list):
+    currency_to_wallets_or_methods_map = defaultdict(list)
+    for item in wallets_or_methods:
+        currency_to_wallets_or_methods_map[item.currency].append(item)
+    for currency, items in currency_to_wallets_or_methods_map.items():
+        for i, item in enumerate(items, start=1):
+            index = i if len(items) > 1 else None
+            yield index, item
