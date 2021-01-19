@@ -238,6 +238,7 @@ class MyUpdateRequest(UpdateRequest):
 class PaymentMethod(db.Model):
     __tablename__ = "paymentmethods"
 
+    id = Column(Integer, primary_key=True, index=True)
     invoice_id = Column(Integer, ForeignKey("invoices.id", ondelete="SET NULL"))
     amount = Column(Numeric(16, 8), nullable=False)
     rate = Column(Numeric(16, 8))
