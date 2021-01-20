@@ -249,23 +249,21 @@ class PaymentMethod(db.Model):
     lightning = Column(Boolean(), default=False)
     node_id = Column(Text)
 
-    async def to_dict(self, name_index: int = None):
+    async def to_dict(self, index: int = None):
         data = super().to_dict()
         invoice_id = data.pop("invoice_id")
         invoice = await Invoice.query.where(Invoice.id == invoice_id).gino.first()
-        if not invoice:
-            raise HTTPException(status_code=404, detail=f"Invoice with id {invoice_id} does not exist!")
         data["amount"] = currency_table.format_currency(self.currency, self.amount)
         data["rate"] = currency_table.format_currency(invoice.currency, self.rate, fancy=False)
         data["rate_str"] = currency_table.format_currency(invoice.currency, self.rate)
-        data["name"] = self.get_name(index=name_index)
+        data["name"] = self.get_name(index)
         return data
 
     def get_name(self, index: int = None):
         name = f"{self.currency} (⚡)" if self.lightning else self.currency
         if index:
             name += f" ({index})"
-        return name
+        return name.upper()
 
 
 class Invoice(db.Model):

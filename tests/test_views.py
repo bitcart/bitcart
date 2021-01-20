@@ -982,3 +982,21 @@ def test_lightning_endpoints(client: TestClient, token: str):
         client.post("/wallets/2/lnpay", json={"invoice": "test"}, headers={"Authorization": f"Bearer {token}"}).status_code
         == 400
     )
+
+
+def test_multiple_wallets_same_currency(client: TestClient, token: str):
+    resp = client.post(
+        "/stores", json={"name": "Multiple Currency", "wallets": [2, 3]}, headers={"Authorization": f"Bearer {token}"}
+    )
+    assert resp.status_code == 200
+    store_id = resp.json()["id"]
+    resp = client.post("/invoices", json={"price": 5, "store_id": store_id})
+    assert resp.status_code == 200
+    resp = resp.json()
+    invoice_id = resp["id"]
+    assert len(resp["payments"]) == 2
+    assert resp["payments"][0]["name"] == "BTC (1)"
+    assert resp["payments"][1]["name"] == "BTC (2)"
+    # cleanup
+    client.delete(f"/invoices/{invoice_id}", headers={"Authorization": f"Bearer {token}"})
+    client.delete(f"/stores/{store_id}", headers={"Authorization": f"Bearer {token}"})
