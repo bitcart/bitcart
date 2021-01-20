@@ -1,5 +1,6 @@
 import asyncio
 import math
+from collections import defaultdict
 from datetime import timedelta
 from decimal import Decimal
 from operator import attrgetter
@@ -91,6 +92,7 @@ async def create_invoice(invoice: schemes.CreateInvoice, user: schemes.User):
         discounts = [await models.Discount.get(discount_id) for discount_id in product.discounts]
     discounts = list(filter(lambda x: current_date <= x.end_date, discounts))
     await update_invoice_payments(obj, wallets, discounts, store, product, promocode)
+    add_invoice_expiration(obj)
     return obj
 
 
@@ -132,20 +134,6 @@ async def _create_payment_method(invoice, wallet, product, store, discounts, pro
     url = data_got["URI"] if not lightning else data_got["invoice"]
     node_id = await coin.node_id if lightning else None
     rhash = data_got["rhash"] if lightning else None
-    invoice.payments.append(
-        {
-            "payment_address": address,
-            "payment_url": url,
-            "rhash": rhash,
-            "amount": currency_table.format_currency(wallet.currency, price),
-            "rate": currency_table.format_currency(invoice.currency, rate, fancy=False),
-            "rate_str": currency_table.format_currency(invoice.currency, rate),
-            "discount": discount_id,
-            "currency": wallet.currency,
-            "lightning": lightning,
-            "node_id": node_id,
-        }
-    )
     return await models.PaymentMethod.create(
         invoice_id=invoice.id,
         amount=price,
@@ -173,9 +161,11 @@ async def update_invoice_payments(invoice, wallets, discounts, store, product, p
     method = None
     for wallet_id in wallets:
         wallet = await models.Wallet.get(wallet_id)
-        method = await create_payment_method(invoice, wallet, product, store, discounts, promocode)
+        method = await create_payment_method(
+            invoice, wallet, product, store, discounts, promocode
+        )  # save for later; to create expired task
+    await invoice_add_related(invoice)  # add payment methods with correct names and other related objects
     logger.info(f"Successfully added {len(invoice.payments)} payment methods to invoice {invoice.id}")
-    add_invoice_expiration(invoice)
     asyncio.ensure_future(invoices.make_expired_task(invoice, method))
 
 
@@ -193,23 +183,8 @@ async def invoice_add_related(item: models.Invoice):
     item.products = [product_id for product_id, in result if product_id]
     item.payments = []
     payment_methods = await models.PaymentMethod.query.where(models.PaymentMethod.invoice_id == item.id).gino.all()
-    for method in payment_methods:
-        # TODO: multiple wallet same currency case
-        # TODO remove duplication
-        item.payments.append(
-            {
-                "payment_address": method.payment_address,
-                "payment_url": method.payment_url,
-                "rhash": method.rhash,
-                "amount": currency_table.format_currency(method.currency, method.amount),
-                "rate": currency_table.format_currency(item.currency, method.rate, fancy=False),
-                "rate_str": currency_table.format_currency(item.currency, method.rate),
-                "discount": method.discount,
-                "currency": method.currency,
-                "lightning": method.lightning,
-                "node_id": method.node_id,
-            }
-        )
+    for index, method in get_methods_inds(payment_methods):
+        item.payments.append(await method.to_dict(index))
     add_invoice_expiration(item)
 
 
@@ -356,3 +331,16 @@ async def get_wallet_coin_by_id(model_id: int):
         raise HTTPException(status_code=404, detail=f"Object with id {model_id} does not exist!")
     await wallet_add_related(wallet)
     return settings.get_coin(wallet.currency, wallet.xpub)
+
+
+def get_methods_inds(methods: list):
+    currencies = defaultdict(int)
+    met = defaultdict(int)
+    for item in methods:
+        if not item.lightning:
+            currencies[item.currency] += 1
+    for item in methods:
+        if not item.lightning:
+            met[item.currency] += 1
+        index = met[item.currency] if currencies[item.currency] > 1 else None
+        yield index, item

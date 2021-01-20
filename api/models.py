@@ -7,6 +7,7 @@ from sqlalchemy.orm import relationship
 
 from . import settings
 from .db import db
+from .ext.moneyformat import currency_table
 
 # shortcuts
 Column = db.Column
@@ -249,6 +250,22 @@ class PaymentMethod(db.Model):
     rhash = Column(Text)
     lightning = Column(Boolean(), default=False)
     node_id = Column(Text)
+
+    async def to_dict(self, index: int = None):
+        data = super().to_dict()
+        invoice_id = data.pop("invoice_id")
+        invoice = await Invoice.query.where(Invoice.id == invoice_id).gino.first()
+        data["amount"] = currency_table.format_currency(self.currency, self.amount)
+        data["rate"] = currency_table.format_currency(invoice.currency, self.rate, fancy=False)
+        data["rate_str"] = currency_table.format_currency(invoice.currency, self.rate)
+        data["name"] = self.get_name(index)
+        return data
+
+    def get_name(self, index: int = None):
+        name = f"{self.currency} (⚡)" if self.lightning else self.currency
+        if index:
+            name += f" ({index})"
+        return name.upper()
 
 
 class Invoice(db.Model):
