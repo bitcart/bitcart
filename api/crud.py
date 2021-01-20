@@ -134,7 +134,7 @@ async def _create_payment_method(invoice, wallet, product, store, discounts, pro
     url = data_got["URI"] if not lightning else data_got["invoice"]
     node_id = await coin.node_id if lightning else None
     rhash = data_got["rhash"] if lightning else None
-    method = await models.PaymentMethod.create(
+    return await models.PaymentMethod.create(
         invoice_id=invoice.id,
         amount=price,
         rate=rate,
@@ -146,7 +146,6 @@ async def _create_payment_method(invoice, wallet, product, store, discounts, pro
         lightning=lightning,
         node_id=node_id,
     )
-    return method
 
 
 async def create_payment_method(invoice, wallet, product, store, discounts, promocode):
