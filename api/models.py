@@ -140,6 +140,7 @@ class Store(db.Model):
     email_user = Column(String(1000))
     expiration = Column(Integer)
     transaction_speed = Column(Integer)
+    underpaid_percentage = Column(Integer)
     use_html_templates = Column(Boolean(), default=False)
     templates = Column(JSON)
     wallets = relationship("Wallet", secondary=WalletxStore)

@@ -107,7 +107,8 @@ async def _create_payment_method(invoice, wallet, product, store, discounts, pro
         rate = await coin.rate("USD")
     if math.isnan(rate):
         rate = Decimal(1)  # no rate available, no conversion
-    price = currency_table.normalize(wallet.currency, invoice.price / rate)
+    price = invoice.price * ((1 - (Decimal(store.underpaid_percentage) / 100)))
+    price = currency_table.normalize(wallet.currency, price / rate)
     if discounts:
         try:
             discount = max(

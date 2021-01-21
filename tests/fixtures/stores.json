@@ -21,6 +21,7 @@
                 "user_id": 1,
                 "expiration": 15,
                 "transaction_speed": 0,
+                "underpaid_percentage": 0,
                 "use_html_templates": false,
                 "wallets": [
                     2
@@ -54,6 +55,7 @@
                 "user_id": 1,
                 "expiration": 15,
                 "transaction_speed": 0,
+                "underpaid_percentage": 0,
                 "use_html_templates": false,
                 "wallets": [
                     2
@@ -83,6 +85,7 @@
                 "user_id": 1,
                 "expiration": 15,
                 "transaction_speed": 0,
+                "underpaid_percentage": 0,
                 "use_html_templates": false,
                 "wallets": [],
                 "notifications": [],
@@ -131,6 +134,7 @@
                     "user_id": 1,
                     "expiration": 15,
                     "transaction_speed": 0,
+                    "underpaid_percentage": 0,
                     "use_html_templates": false,
                     "wallets": [],
                     "notifications": [],
@@ -149,6 +153,7 @@
                     "user_id": 1,
                     "expiration": 15,
                     "transaction_speed": 0,
+                    "underpaid_percentage": 0,
                     "use_html_templates": false,
                     "wallets": [
                         2
@@ -171,6 +176,7 @@
                     "user_id": 1,
                     "expiration": 15,
                     "transaction_speed": 0,
+                    "underpaid_percentage": 0,
                     "use_html_templates": false,
                     "wallets": [
                         2
@@ -208,6 +214,7 @@
                 "user_id": 1,
                 "expiration": 15,
                 "transaction_speed": 0,
+                "underpaid_percentage": 0,
                 "use_html_templates": false,
                 "wallets": [
                     2
@@ -245,6 +252,7 @@
                 "user_id": 1,
                 "expiration": 15,
                 "transaction_speed": 0,
+                "underpaid_percentage": 0,
                 "use_html_templates": false,
                 "wallets": [
                     2
@@ -280,6 +288,7 @@
                 "user_id": 1,
                 "expiration": 15,
                 "transaction_speed": 0,
+                "underpaid_percentage": 0,
                 "use_html_templates": false,
                 "wallets": [
                     2
@@ -339,6 +348,30 @@
                 "transaction_speed": -1
             },
             "status": "bad"
+        },
+        {
+            "obj_id": 1,
+            "data": {
+                "name": "test2",
+                "wallets": [
+                    2
+                ],
+                "user_id": 1,
+                "underpaid_percentage": -1
+            },
+            "status": "bad"
+        },
+        {
+            "obj_id": 1,
+            "data": {
+                "name": "test2",
+                "wallets": [
+                    2
+                ],
+                "user_id": 1,
+                "underpaid_percentage": 100
+            },
+            "status": "bad"
         }
     ],
     "full_update": [
@@ -388,6 +421,7 @@
                 "user_id": 1,
                 "expiration": 15,
                 "transaction_speed": 0,
+                "underpaid_percentage": 0,
                 "use_html_templates": false,
                 "wallets": [
                     2
@@ -418,6 +452,7 @@
                 "user_id": 1,
                 "expiration": 15,
                 "transaction_speed": 0,
+                "underpaid_percentage": 0,
                 "use_html_templates": false,
                 "wallets": [
                     2

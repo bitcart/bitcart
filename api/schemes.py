@@ -115,6 +115,7 @@ class CreateStore(BaseStore):
     use_html_templates: bool = False
     wallets: List[int]
     expiration: int = 15
+    underpaid_percentage: int = 0
     transaction_speed: int = 0
     notifications: Optional[List[int]] = []
     templates: Optional[Dict[str, int]] = {}
@@ -123,6 +124,12 @@ class CreateStore(BaseStore):
     def validate_transaction_speed(cls, v):
         if v < 0 or v > MAX_CONFIRMATION_WATCH:
             raise HTTPException(422, f"Confirmation policy must be in range from 0 to {MAX_CONFIRMATION_WATCH}")
+        return v
+
+    @validator("underpaid_percentage")
+    def validate_underpaid_percentage(cls, v):
+        if v < 0 or v > 99:
+            raise HTTPException(422, "Underpaid percentage must be in range from 0 to 99")
         return v
 
     @validator("notifications", pre=True, always=True)
