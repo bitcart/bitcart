@@ -8,6 +8,7 @@ from typing import Iterable
 
 from bitcart.errors import errors
 from fastapi import HTTPException
+from sqlalchemy import select
 from starlette.datastructures import CommaSeparatedStrings
 
 from . import invoices, models, pagination, schemes, settings, utils
@@ -145,6 +146,8 @@ async def _create_payment_method(invoice, wallet, product, store, discounts, pro
         rhash=rhash,
         lightning=lightning,
         node_id=node_id,
+        height=0,
+        confirmations=0,
     )
 
 
@@ -182,7 +185,11 @@ async def invoice_add_related(item: models.Invoice):
     result = await models.ProductxInvoice.select("product_id").where(models.ProductxInvoice.invoice_id == item.id).gino.all()
     item.products = [product_id for product_id, in result if product_id]
     item.payments = []
-    payment_methods = await models.PaymentMethod.query.where(models.PaymentMethod.invoice_id == item.id).gino.all()
+    payment_methods = (
+        await models.PaymentMethod.query.where(models.PaymentMethod.invoice_id == item.id)
+        .order_by(models.PaymentMethod.id)
+        .gino.all()
+    )
     for index, method in get_methods_inds(payment_methods):
         item.payments.append(await method.to_dict(index))
     add_invoice_expiration(item)
@@ -300,8 +307,32 @@ async def create_template(template: schemes.CreateTemplate, user: schemes.User):
     return await models.Template.create(**template.dict(), user_id=user.id)
 
 
+async def batch_invoice_action(query, settings: schemes.BatchSettings, user: schemes.User):
+    if settings.command == "mark_complete":
+        for invoice_id in settings.ids:
+            data = (
+                await select([models.Invoice, models.PaymentMethod])
+                .where(models.PaymentMethod.invoice_id == models.Invoice.id)
+                .where(models.Invoice.id == invoice_id)
+                .order_by(models.PaymentMethod.id)
+                .gino.load((models.Invoice, models.PaymentMethod))
+                .first()
+            )
+            if not data:
+                continue
+            invoice, method = data
+            await invoices.update_status(invoice, method, invoices.InvoiceStatus.COMPLETE)
+    else:
+        await query.gino.status()
+    return True
+
+
+def mark_invoice_complete(orm_model):
+    return orm_model.query
+
+
 def mark_invoice_invalid(orm_model):
-    return orm_model.update.values({"status": "invalid"})
+    return orm_model.update.values({"status": invoices.InvoiceStatus.INVALID})
 
 
 async def wallet_add_related(item: models.Wallet):

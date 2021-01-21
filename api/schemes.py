@@ -2,8 +2,10 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Dict, List, Optional, Union
 
+from fastapi.exceptions import HTTPException
 from pydantic import BaseModel, EmailStr, validator
 
+from .constants import MAX_CONFIRMATION_WATCH
 from .utils import now
 
 
@@ -113,8 +115,15 @@ class CreateStore(BaseStore):
     use_html_templates: bool = False
     wallets: List[int]
     expiration: int = 15
+    transaction_speed: int = 0
     notifications: Optional[List[int]] = []
     templates: Optional[Dict[str, int]] = {}
+
+    @validator("transaction_speed")
+    def validate_transaction_speed(cls, v):
+        if v < 0 or v > MAX_CONFIRMATION_WATCH:
+            raise HTTPException(422, f"Confirmation policy must be in range from 0 to {MAX_CONFIRMATION_WATCH}")
+        return v
 
     @validator("notifications", pre=True, always=True)
     def set_notifications(cls, v):
@@ -225,8 +234,14 @@ class CreateInvoice(CreatedMixin):
     buyer_email: Optional[EmailStr] = ""
     promocode: Optional[str] = ""
     discount: Optional[int]
-    status: str = "Pending"
+    status: str = None
     products: Optional[Union[List[int], Dict[int, int]]] = {}
+
+    @validator("status", pre=True, always=True)
+    def set_status(cls, v):
+        from .invoices import InvoiceStatus
+
+        return v or InvoiceStatus.PENDING
 
     @validator("buyer_email", pre=True, always=False)
     def validate_buyer_email(cls, val):

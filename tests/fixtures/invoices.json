@@ -11,7 +11,7 @@
             "status": "good",
             "return_data": {
                 "price": 0.5,
-                "status": "Pending",
+                "status": "pending",
                 "buyer_email": null,
                 "store_id": 2,
                 "products": [
@@ -77,7 +77,7 @@
             "return_data": [
                 {
                     "price": 0.5,
-                    "status": "Pending",
+                    "status": "pending",
                     "buyer_email": null,
                     "store_id": 2,
                     "products": [
@@ -114,7 +114,7 @@
             "status": "good",
             "return_data": {
                 "price": 0.5,
-                "status": "Pending",
+                "status": "pending",
                 "buyer_email": null,
                 "store_id": 2,
                 "products": [
@@ -152,7 +152,7 @@
             "status": "good",
             "return_data": {
                 "price": 0.2,
-                "status": "Pending",
+                "status": "pending",
                 "buyer_email": null,
                 "store_id": 2,
                 "products": [
@@ -223,7 +223,7 @@
             "status": "good",
             "return_data": {
                 "price": 0.5,
-                "status": "Pending",
+                "status": "pending",
                 "buyer_email": null,
                 "store_id": 2,
                 "products": [
@@ -253,7 +253,7 @@
             "status": "good",
             "return_data": {
                 "price": 0.5,
-                "status": "Pending",
+                "status": "pending",
                 "buyer_email": null,
                 "store_id": 2,
                 "products": [

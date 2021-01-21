@@ -101,7 +101,7 @@ def parse_torrc(torrc):
 async def refresh(log=True):  # pragma: no cover: used in production only
     async with utils.wait_for_redis():
         if log:
-            logger.info("Refreshing hidden services list...")
+            logger.debug("Refreshing hidden services list...")
         services = parse_torrc(settings.TORRC_FILE)
         services_dict = {service.name: dataclass_asdict(service) for service in services}
         anonymous_services_dict = {service.name: {"name": service.name, "hostname": service.hostname} for service in services}
@@ -117,7 +117,7 @@ async def refresh(log=True):  # pragma: no cover: used in production only
             },
         )
         if log:
-            logger.info(f"Parsed hidden services: {services}; onion_host={onion_host}")
+            logger.debug(f"Parsed hidden services: {services}; onion_host={onion_host}")
 
 
 async def get_data(key, default=None, json_decode=False):

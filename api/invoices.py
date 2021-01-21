@@ -2,9 +2,10 @@ import asyncio
 
 from sqlalchemy import or_, select
 
-from . import crud, db, models, settings, utils
+from . import constants, crud, db, models, settings, utils
 from .ext.moneyformat import currency_table
 from .logger import get_exception_message, get_logger
+from .utils import log_errors
 
 logger = get_logger(__name__)
 
@@ -16,10 +17,54 @@ STATUS_MAPPING = {
     4: "In progress",
     5: "Failed",
     "Paid": "complete",
-    "Pending": "Pending",
+    "Pending": "pending",
     "Unknown": "invalid",
     "Expired": "expired",
 }
+
+
+class InvoiceStatus:
+    PENDING = "pending"
+    PAID = "paid"
+    CONFIRMED = "confirmed"
+    EXPIRED = "expired"
+    INVALID = "invalid"
+    COMPLETE = "complete"
+
+
+def get_pending_invoices_query(currency):
+    return (
+        select(
+            [
+                models.PaymentMethod,
+                models.Invoice,
+                models.Wallet.xpub,
+            ]
+        )
+        .where(models.PaymentMethod.invoice_id == models.Invoice.id)
+        .where(
+            or_(
+                models.Invoice.status == InvoiceStatus.PENDING,
+                models.Invoice.status == InvoiceStatus.PAID,
+                models.Invoice.status == InvoiceStatus.CONFIRMED,
+            )
+        )
+        .where(models.PaymentMethod.currency == currency.lower())
+        .where(models.WalletxStore.wallet_id == models.Wallet.id)
+        .where(models.WalletxStore.store_id == models.Invoice.store_id)
+        .where(models.Wallet.currency == models.PaymentMethod.currency)
+        .order_by(models.PaymentMethod.id)
+    )
+
+
+async def iterate_pending_invoices(currency):
+    with log_errors():  # connection issues
+        async with db.db.acquire() as conn:
+            async with conn.transaction():
+                async for method, invoice, xpub in get_pending_invoices_query(currency).gino.load(
+                    (models.PaymentMethod, models.Invoice, models.Wallet.xpub)
+                ).iterate():
+                    yield method, invoice, xpub
 
 
 async def make_expired_task(invoice, method):  # pragma: no cover
@@ -32,30 +77,78 @@ async def make_expired_task(invoice, method):  # pragma: no cover
         await crud.invoice_add_related(invoice)
     except Exception:
         return  # invoice deleted meantime
-    if invoice.status == "Pending":  # to ensure there are no duplicate notifications
-        await update_status(invoice, method, "expired")
+    if invoice.status == InvoiceStatus.PENDING:  # to ensure there are no duplicate notifications
+        await update_status(invoice, method, InvoiceStatus.EXPIRED)
+
+
+async def mark_invoice_paid(invoice, method, electrum_status):
+    electrum_status = convert_status(electrum_status)
+    if invoice.status == InvoiceStatus.PENDING:
+        if electrum_status == InvoiceStatus.COMPLETE:
+            status = InvoiceStatus.COMPLETE if method.lightning else InvoiceStatus.PAID
+            await update_status(invoice, method, status)
+            coin = settings.get_coin(method.currency)
+            got_height = await coin.server.height()  # height at which we received the transaction
+            await method.update(height=got_height).apply()
+            await update_confirmations(invoice, method, 0)  # to trigger complete for stores accepting 0-conf
+        elif electrum_status == InvoiceStatus.EXPIRED:
+            await update_status(invoice, method, electrum_status)
+        else:
+            return False
+        return True
+
+
+async def new_transaction_handler(instance, event, tx):
+    print(instance, event, tx)
+    print(await instance.get_tx(tx))
 
 
 async def new_payment_handler(instance, event, address, status, status_str, notify=True):
-    data = (
-        await select([models.Invoice, models.PaymentMethod])
-        .where(models.PaymentMethod.invoice_id == models.Invoice.id)
-        .where(models.PaymentMethod.currency == instance.coin_name.lower())
-        .where(or_(models.PaymentMethod.payment_address == address, models.PaymentMethod.rhash == address))
-        .where(models.Invoice.status == "Pending")
-        .gino.load((models.Invoice, models.PaymentMethod))
-        .first()
-    )
-    if not data:  # received payment but no matching invoice # pragma: no cover
-        return
-    invoice, method = data
-    await update_status(invoice, method, status, notify=notify)
+    try:
+        data = (
+            await get_pending_invoices_query(instance.coin_name.lower())
+            .where(or_(models.PaymentMethod.payment_address == address, models.PaymentMethod.rhash == address))
+            .gino.load((models.PaymentMethod, models.Invoice, models.Wallet.xpub))
+            .first()
+        )
+        if not data:  # received payment but no matching invoice # pragma: no cover
+            return
+        method, invoice, _ = data
+        await mark_invoice_paid(invoice, method, status)
+    except Exception as e:
+        logger.error(get_exception_message(e))
+
+
+async def update_confirmations(invoice, method, confirmations):
+    await method.update(confirmations=confirmations).apply()
+    store = await models.Store.get(invoice.store_id)
+    status = invoice.status
+    if confirmations >= 1:
+        status = InvoiceStatus.CONFIRMED
+    if confirmations >= store.transaction_speed:
+        status = InvoiceStatus.COMPLETE
+    await update_status(invoice, method, status)
+
+
+async def new_block_handler(instance, event, height):
+    async for method, invoice, xpub in iterate_pending_invoices(instance.coin_name.lower()):
+        with log_errors():  # issues processing one item
+            if (
+                invoice.status not in [InvoiceStatus.PAID, InvoiceStatus.CONFIRMED]
+                or method.get_name() != invoice.paid_currency
+            ):
+                continue
+            confirmations = min(
+                constants.MAX_CONFIRMATION_WATCH, height - method.height
+            )  # don't store arbitrary number of confirmations
+            if confirmations != method.confirmations:
+                await update_confirmations(invoice, method, confirmations)
 
 
 async def invoice_notification(invoice: models.Invoice, status: str):  # pragma: no cover
     await crud.invoice_add_related(invoice)
     await utils.send_ipn(invoice, status)
-    if status == "complete":
+    if status == InvoiceStatus.COMPLETE:
         logger.info(f"Invoice {invoice.id} complete, sending notifications...")
         store = await models.Store.get(invoice.store_id)
         await crud.store_add_related(store)
@@ -102,19 +195,18 @@ def convert_status(status):  # pragma: no cover
     elif isinstance(status, str) and status in STATUS_MAPPING:
         status = STATUS_MAPPING[status]
     if not status:
-        status = "expired"
+        status = InvoiceStatus.EXPIRED
     return status
 
 
 async def update_status(invoice, method, status, notify=True):
     status = convert_status(status)
-    if status != "Pending" and invoice.status != "complete":
-        method_name = method.currency.upper()
-        full_method_name = f"{method_name} (⚡)" if method.lightning else method_name
+    if invoice.status != status and status != InvoiceStatus.PENDING and invoice.status != InvoiceStatus.COMPLETE:
+        full_method_name = method.get_name()
         logger.info(f"Updating status of invoice {invoice.id} with payment method {full_method_name} to {status}")
-        await invoice.update(status=status, discount=method.discount).apply()
-        if status == "complete":
-            await invoice.update(paid_currency=full_method_name).apply()
+        await invoice.update(status=status).apply()
+        if status == InvoiceStatus.PAID:
+            await invoice.update(paid_currency=full_method_name, discount=method.discount).apply()
         await utils.publish_message(invoice.id, {"status": status})
         if notify:  # pragma: no cover
             await invoice_notification(invoice, status)
@@ -122,35 +214,14 @@ async def update_status(invoice, method, status, notify=True):
 
 
 async def check_pending(currency):  # pragma: no cover
-    try:  # connection issues
-        async with db.db.acquire() as conn:
-            async with conn.transaction():
-                async for method, invoice, xpub in (
-                    select(
-                        [
-                            models.PaymentMethod,
-                            models.Invoice,
-                            models.Wallet.xpub,
-                        ]
-                    )
-                    .where(models.PaymentMethod.invoice_id == models.Invoice.id)
-                    .where(models.Invoice.status == "Pending")
-                    .where(models.PaymentMethod.currency == currency.lower())
-                    .where(models.WalletxStore.wallet_id == models.Wallet.id)
-                    .where(models.WalletxStore.store_id == models.Invoice.store_id)
-                    .where(models.Wallet.currency == models.PaymentMethod.currency)
-                    .gino.load((models.PaymentMethod, models.Invoice, models.Wallet.xpub))
-                    .iterate()
-                ):
-                    try:  # issues processing one invoice
-                        coin = settings.get_coin(method.currency, xpub)
-                        if method.lightning:
-                            invoice_data = await coin.server.get_invoice(method.rhash)  # TODO: add to SDK
-                        else:
-                            invoice_data = await coin.get_request(method.payment_address)
-                        if not await update_status(invoice, method, invoice_data["status"]) and invoice.status != "expired":
-                            asyncio.ensure_future(make_expired_task(invoice, method))
-                    except Exception as e:
-                        logger.error(get_exception_message(e))
-    except Exception as e:
-        logger.error(get_exception_message(e))
+    async for method, invoice, xpub in iterate_pending_invoices(currency):
+        with log_errors():  # issues processing one item
+            if invoice.status == InvoiceStatus.EXPIRED:
+                continue
+            coin = settings.get_coin(method.currency, xpub)
+            if method.lightning:
+                invoice_data = await coin.server.get_invoice(method.rhash)  # TODO: add to SDK
+            else:
+                invoice_data = await coin.get_request(method.payment_address)
+            if not await mark_invoice_paid(invoice, method, invoice_data["status"]):
+                asyncio.ensure_future(make_expired_task(invoice, method))

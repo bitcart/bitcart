@@ -310,7 +310,14 @@ def test_fiatlist_multi_coins(client: TestClient, mocker):
 
 async def check_ws_response(ws):
     data = await ws.receive_json()
-    assert data == {"status": "test"}
+    assert data == {"status": "paid"}
+    data = await ws.receive_json()
+    assert data == {"status": "complete"}
+
+
+async def check_ws_response_complete(ws):
+    data = await ws.receive_json()
+    assert data == {"status": "complete"}
 
 
 async def check_ws_response2(ws):
@@ -714,13 +721,13 @@ async def test_invoice_ws(async_client, token: str):
     async with async_client.websocket_connect(f"/ws/invoices/{invoice_id}") as websocket:
         await asyncio.sleep(1)
         await invoices.new_payment_handler(
-            DummyInstance(), None, data["payments"][0]["payment_address"], "test", None, notify=False
+            DummyInstance(), None, data["payments"][0]["payment_address"], "Paid", None, notify=False
         )  # emulate paid invoice
         await check_ws_response(websocket)
         async with async_client.websocket_connect(
             f"/ws/invoices/{invoice_id}"
         ) as websocket2:  # test if after invoice was completed websocket returns immediately
-            await check_ws_response(websocket2)
+            await check_ws_response_complete(websocket2)
     with pytest.raises(Exception):
         async with async_client.websocket_connect("/ws/invoices/555") as websocket:
             await check_ws_response(websocket)

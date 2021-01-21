@@ -139,6 +139,7 @@ class Store(db.Model):
     email_use_ssl = Column(Boolean)
     email_user = Column(String(1000))
     expiration = Column(Integer)
+    transaction_speed = Column(Integer)
     use_html_templates = Column(Boolean(), default=False)
     templates = Column(JSON)
     wallets = relationship("Wallet", secondary=WalletxStore)
@@ -244,6 +245,8 @@ class PaymentMethod(db.Model):
     amount = Column(Numeric(16, 8), nullable=False)
     rate = Column(Numeric(16, 8))
     discount = Column(Integer)
+    height = Column(Integer, nullable=False)
+    confirmations = Column(Integer, nullable=False)
     currency = Column(String(length=1000), index=True)
     payment_address = Column(Text, nullable=False)
     payment_url = Column(Text, nullable=False)
@@ -298,9 +301,10 @@ class Invoice(db.Model):
     @classmethod
     async def create(cls, **kwargs):
         from . import crud
+        from .invoices import InvoiceStatus
 
         store_id = kwargs["store_id"]
-        kwargs["status"] = "Pending"
+        kwargs["status"] = InvoiceStatus.PENDING
         store = await Store.get(store_id)
         await crud.get_store(None, None, store, True)
         if not store.wallets:

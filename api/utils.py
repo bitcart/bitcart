@@ -27,7 +27,7 @@ from starlette.requests import Request
 from starlette.status import HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN
 
 from . import db, exceptions, models, pagination, settings, templates
-from .logger import get_logger
+from .logger import get_exception_message, get_logger
 
 logger = get_logger(__name__)
 
@@ -397,7 +397,7 @@ class ModelView:
                 query = query.where(self.orm_model.user_id == user.id)
             query = query.where(self.orm_model.id.in_(settings.ids))
             if self.custom_methods.get("batch_action"):
-                await self.custom_methods["batch_action"](query, settings.ids, user)  # pragma: no cover
+                await self.custom_methods["batch_action"](query, settings, user)  # pragma: no cover
             else:
                 await query.gino.status()
             return True
@@ -611,3 +611,11 @@ class WaitForRedis:  # pragma: no cover
 
 
 wait_for_redis = WaitForRedis
+
+
+@contextmanager
+def log_errors():
+    try:
+        yield
+    except Exception as e:
+        logger.error(get_exception_message(e))
