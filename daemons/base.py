@@ -524,10 +524,6 @@ class BaseDaemon:
     def get_default_fee(self, tx: Union[dict, int], wallet=None) -> float:
         return self.electrum_config.estimate_fee(self.get_tx_size(tx) if isinstance(tx, dict) else tx)
 
-    @rpc
-    def height(self, wallet=None) -> int:
-        return self.network.get_local_height()
-
     @rpc(requires_wallet=True)
     def get_invoice(self, key, wallet):
         value = self.wallets[wallet]["wallet"].get_formatted_request(key)

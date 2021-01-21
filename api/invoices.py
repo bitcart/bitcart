@@ -67,7 +67,7 @@ async def iterate_pending_invoices(currency):
                     yield method, invoice, xpub
 
 
-async def make_expired_task(invoice, method):  # pragma: no cover
+async def make_expired_task(invoice, method):
     crud.add_invoice_expiration(invoice)  # to ensure it is the most recent one
     left = invoice.time_left + 1  # to ensure it's already expired at that moment
     if left > 0:
@@ -81,16 +81,15 @@ async def make_expired_task(invoice, method):  # pragma: no cover
         await update_status(invoice, method, InvoiceStatus.EXPIRED)
 
 
-async def mark_invoice_paid(invoice, method, electrum_status):
+async def mark_invoice_paid(invoice, method, xpub, electrum_status):
     electrum_status = convert_status(electrum_status)
     if invoice.status == InvoiceStatus.PENDING:
         if electrum_status == InvoiceStatus.COMPLETE:
             status = InvoiceStatus.COMPLETE if method.lightning else InvoiceStatus.PAID
             await update_status(invoice, method, status)
-            coin = settings.get_coin(method.currency)
-            got_height = await coin.server.height()  # height at which we received the transaction
-            await method.update(height=got_height).apply()
-            await update_confirmations(invoice, method, 0)  # to trigger complete for stores accepting 0-conf
+            await update_confirmations(
+                invoice, method, await get_confirmations(method, xpub)
+            )  # to trigger complete for stores accepting 0-conf
         elif electrum_status == InvoiceStatus.EXPIRED:
             await update_status(invoice, method, electrum_status)
         else:
@@ -98,12 +97,7 @@ async def mark_invoice_paid(invoice, method, electrum_status):
         return True
 
 
-async def new_transaction_handler(instance, event, tx):
-    print(instance, event, tx)
-    print(await instance.get_tx(tx))
-
-
-async def new_payment_handler(instance, event, address, status, status_str, notify=True):
+async def new_payment_handler(instance, event, address, status, status_str):
     try:
         data = (
             await get_pending_invoices_query(instance.coin_name.lower())
@@ -111,10 +105,10 @@ async def new_payment_handler(instance, event, address, status, status_str, noti
             .gino.load((models.PaymentMethod, models.Invoice, models.Wallet.xpub))
             .first()
         )
-        if not data:  # received payment but no matching invoice # pragma: no cover
+        if not data:  # received payment but no matching invoice
             return
-        method, invoice, _ = data
-        await mark_invoice_paid(invoice, method, status)
+        method, invoice, xpub = data
+        await mark_invoice_paid(invoice, method, xpub, status)
     except Exception as e:
         logger.error(get_exception_message(e))
 
@@ -130,22 +124,29 @@ async def update_confirmations(invoice, method, confirmations):
     await update_status(invoice, method, status)
 
 
+async def get_confirmations(method, xpub):
+    coin = settings.get_coin(method.currency, xpub)
+    invoice_data = await coin.get_request(method.payment_address)
+    return min(
+        constants.MAX_CONFIRMATION_WATCH, invoice_data.get("confirmations", 0)
+    )  # don't store arbitrary number of confirmations
+
+
 async def new_block_handler(instance, event, height):
     async for method, invoice, xpub in iterate_pending_invoices(instance.coin_name.lower()):
         with log_errors():  # issues processing one item
             if (
                 invoice.status not in [InvoiceStatus.PAID, InvoiceStatus.CONFIRMED]
                 or method.get_name() != invoice.paid_currency
+                or method.lightning
             ):
                 continue
-            confirmations = min(
-                constants.MAX_CONFIRMATION_WATCH, height - method.height
-            )  # don't store arbitrary number of confirmations
+            confirmations = await get_confirmations(method, xpub)
             if confirmations != method.confirmations:
                 await update_confirmations(invoice, method, confirmations)
 
 
-async def invoice_notification(invoice: models.Invoice, status: str):  # pragma: no cover
+async def invoice_notification(invoice: models.Invoice, status: str):
     await crud.invoice_add_related(invoice)
     await utils.send_ipn(invoice, status)
     if status == InvoiceStatus.COMPLETE:
@@ -189,7 +190,7 @@ async def invoice_notification(invoice: models.Invoice, status: str):  # pragma:
                 )
 
 
-def convert_status(status):  # pragma: no cover
+def convert_status(status):
     if isinstance(status, int):
         status = STATUS_MAPPING[status]
     elif isinstance(status, str) and status in STATUS_MAPPING:
@@ -199,7 +200,7 @@ def convert_status(status):  # pragma: no cover
     return status
 
 
-async def update_status(invoice, method, status, notify=True):
+async def update_status(invoice, method, status):
     status = convert_status(status)
     if invoice.status != status and status != InvoiceStatus.PENDING and invoice.status != InvoiceStatus.COMPLETE:
         full_method_name = method.get_name()
@@ -208,12 +209,12 @@ async def update_status(invoice, method, status, notify=True):
         if status == InvoiceStatus.PAID:
             await invoice.update(paid_currency=full_method_name, discount=method.discount).apply()
         await utils.publish_message(invoice.id, {"status": status})
-        if notify:  # pragma: no cover
+        if not settings.TEST:
             await invoice_notification(invoice, status)
         return True
 
 
-async def check_pending(currency):  # pragma: no cover
+async def check_pending(currency):
     async for method, invoice, xpub in iterate_pending_invoices(currency):
         with log_errors():  # issues processing one item
             if invoice.status == InvoiceStatus.EXPIRED:
@@ -223,5 +224,5 @@ async def check_pending(currency):  # pragma: no cover
                 invoice_data = await coin.server.get_invoice(method.rhash)  # TODO: add to SDK
             else:
                 invoice_data = await coin.get_request(method.payment_address)
-            if not await mark_invoice_paid(invoice, method, invoice_data["status"]):
+            if not await mark_invoice_paid(invoice, method, xpub, invoice_data["status"]):
                 asyncio.ensure_future(make_expired_task(invoice, method))

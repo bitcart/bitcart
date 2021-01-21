@@ -315,6 +315,30 @@
                 "user_id": 3
             },
             "status": "bad"
+        },
+        {
+            "obj_id": 1,
+            "data": {
+                "name": "test2",
+                "wallets": [
+                    2
+                ],
+                "user_id": 1,
+                "transaction_speed": 7
+            },
+            "status": "bad"
+        },
+        {
+            "obj_id": 1,
+            "data": {
+                "name": "test2",
+                "wallets": [
+                    2
+                ],
+                "user_id": 1,
+                "transaction_speed": -1
+            },
+            "status": "bad"
         }
     ],
     "full_update": [

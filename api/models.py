@@ -245,7 +245,6 @@ class PaymentMethod(db.Model):
     amount = Column(Numeric(16, 8), nullable=False)
     rate = Column(Numeric(16, 8))
     discount = Column(Integer)
-    height = Column(Integer, nullable=False)
     confirmations = Column(Integer, nullable=False)
     currency = Column(String(length=1000), index=True)
     payment_address = Column(Text, nullable=False)

@@ -398,7 +398,7 @@ class ModelView:
             query = query.where(self.orm_model.id.in_(settings.ids))
             if self.custom_methods.get("batch_action"):
                 await self.custom_methods["batch_action"](query, settings, user)  # pragma: no cover
-            else:
+            else:  # pragma: no cover
                 await query.gino.status()
             return True
 
@@ -614,7 +614,7 @@ wait_for_redis = WaitForRedis
 
 
 @contextmanager
-def log_errors():
+def log_errors():  # pragma: no cover
     try:
         yield
     except Exception as e:

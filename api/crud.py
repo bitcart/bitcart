@@ -146,7 +146,6 @@ async def _create_payment_method(invoice, wallet, product, store, discounts, pro
         rhash=rhash,
         lightning=lightning,
         node_id=node_id,
-        height=0,
         confirmations=0,
     )
 
@@ -318,7 +317,7 @@ async def batch_invoice_action(query, settings: schemes.BatchSettings, user: sch
                 .gino.load((models.Invoice, models.PaymentMethod))
                 .first()
             )
-            if not data:
+            if not data:  # pragma: no cover
                 continue
             invoice, method = data
             await invoices.update_status(invoice, method, invoices.InvoiceStatus.COMPLETE)

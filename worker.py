@@ -18,7 +18,6 @@ async def main():
     await update_ext.refresh()
     asyncio.ensure_future(run_repeated(tor_ext.refresh, 60 * 15, 10))
     asyncio.ensure_future(run_repeated(update_ext.refresh, 60 * 60 * 24))
-    settings.manager.add_event_handler("new_transaction", invoices.new_transaction_handler)
     settings.manager.add_event_handler("new_payment", invoices.new_payment_handler)
     settings.manager.add_event_handler("new_block", invoices.new_block_handler)
     await settings.manager.start_websocket(reconnect_callback=invoices.check_pending, force_connect=True)
