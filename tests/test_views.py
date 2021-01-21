@@ -310,7 +310,14 @@ def test_fiatlist_multi_coins(client: TestClient, mocker):
 
 async def check_ws_response(ws):
     data = await ws.receive_json()
-    assert data == {"status": "test"}
+    assert data == {"status": "paid"}
+    data = await ws.receive_json()
+    assert data == {"status": "complete"}
+
+
+async def check_ws_response_complete(ws):
+    data = await ws.receive_json()
+    assert data == {"status": "complete"}
 
 
 async def check_ws_response2(ws):
@@ -676,6 +683,15 @@ def test_batch_commands(client: TestClient, token: str):
         == 200
     )
     assert client.get(f"/invoices/{invoice_id_3}", headers={"Authorization": f"Bearer {token}"}).json()["status"] == "invalid"
+    assert (
+        client.post(
+            "/invoices/batch",
+            json={"ids": [invoice_id_3], "command": "mark_complete"},
+            headers={"Authorization": f"Bearer {token}"},
+        ).status_code
+        == 200
+    )
+    assert client.get(f"/invoices/{invoice_id_3}", headers={"Authorization": f"Bearer {token}"}).json()["status"] == "complete"
     client.delete(f"/invoices/{invoice_id_3}", headers={"Authorization": f"Bearer {token}"})  # cleanup
 
 
@@ -714,13 +730,13 @@ async def test_invoice_ws(async_client, token: str):
     async with async_client.websocket_connect(f"/ws/invoices/{invoice_id}") as websocket:
         await asyncio.sleep(1)
         await invoices.new_payment_handler(
-            DummyInstance(), None, data["payments"][0]["payment_address"], "test", None, notify=False
+            DummyInstance(), None, data["payments"][0]["payment_address"], "Paid", None
         )  # emulate paid invoice
         await check_ws_response(websocket)
         async with async_client.websocket_connect(
             f"/ws/invoices/{invoice_id}"
         ) as websocket2:  # test if after invoice was completed websocket returns immediately
-            await check_ws_response(websocket2)
+            await check_ws_response_complete(websocket2)
     with pytest.raises(Exception):
         async with async_client.websocket_connect("/ws/invoices/555") as websocket:
             await check_ws_response(websocket)
@@ -864,7 +880,7 @@ async def test_create_invoice_and_pay(async_client, token: str):
     # get payment
     payment_method = await models.PaymentMethod.query.where(models.PaymentMethod.invoice_id == invoice_id).gino.first()
     await invoices.new_payment_handler(
-        DummyInstance(), None, data["payments"][0]["payment_address"], "complete", None, notify=False
+        DummyInstance(), None, data["payments"][0]["payment_address"], "complete", None
     )  # pay the invoice
     # validate invoice paid_currency
     assert (await models.Invoice.get(invoice_id)).paid_currency == payment_method.currency.upper()

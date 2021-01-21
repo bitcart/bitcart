@@ -20,6 +20,7 @@
                 "default_currency": "USD",
                 "user_id": 1,
                 "expiration": 15,
+                "transaction_speed": 0,
                 "use_html_templates": false,
                 "wallets": [
                     2
@@ -52,6 +53,7 @@
                 "default_currency": "USD",
                 "user_id": 1,
                 "expiration": 15,
+                "transaction_speed": 0,
                 "use_html_templates": false,
                 "wallets": [
                     2
@@ -80,6 +82,7 @@
                 "default_currency": "USD",
                 "user_id": 1,
                 "expiration": 15,
+                "transaction_speed": 0,
                 "use_html_templates": false,
                 "wallets": [],
                 "notifications": [],
@@ -127,6 +130,7 @@
                     "default_currency": "USD",
                     "user_id": 1,
                     "expiration": 15,
+                    "transaction_speed": 0,
                     "use_html_templates": false,
                     "wallets": [],
                     "notifications": [],
@@ -144,6 +148,7 @@
                     "default_currency": "USD",
                     "user_id": 1,
                     "expiration": 15,
+                    "transaction_speed": 0,
                     "use_html_templates": false,
                     "wallets": [
                         2
@@ -165,6 +170,7 @@
                     "default_currency": "USD",
                     "user_id": 1,
                     "expiration": 15,
+                    "transaction_speed": 0,
                     "use_html_templates": false,
                     "wallets": [
                         2
@@ -201,6 +207,7 @@
                 "default_currency": "USD",
                 "user_id": 1,
                 "expiration": 15,
+                "transaction_speed": 0,
                 "use_html_templates": false,
                 "wallets": [
                     2
@@ -237,6 +244,7 @@
                 "default_currency": "USD",
                 "user_id": 1,
                 "expiration": 15,
+                "transaction_speed": 0,
                 "use_html_templates": false,
                 "wallets": [
                     2
@@ -271,6 +279,7 @@
                 "default_currency": "USD",
                 "user_id": 1,
                 "expiration": 15,
+                "transaction_speed": 0,
                 "use_html_templates": false,
                 "wallets": [
                     2
@@ -304,6 +313,30 @@
             "data": {
                 "name": "test2",
                 "user_id": 3
+            },
+            "status": "bad"
+        },
+        {
+            "obj_id": 1,
+            "data": {
+                "name": "test2",
+                "wallets": [
+                    2
+                ],
+                "user_id": 1,
+                "transaction_speed": 7
+            },
+            "status": "bad"
+        },
+        {
+            "obj_id": 1,
+            "data": {
+                "name": "test2",
+                "wallets": [
+                    2
+                ],
+                "user_id": 1,
+                "transaction_speed": -1
             },
             "status": "bad"
         }
@@ -354,6 +387,7 @@
                 "default_currency": "USD",
                 "user_id": 1,
                 "expiration": 15,
+                "transaction_speed": 0,
                 "use_html_templates": false,
                 "wallets": [
                     2
@@ -383,6 +417,7 @@
                 "default_currency": "USD",
                 "user_id": 1,
                 "expiration": 15,
+                "transaction_speed": 0,
                 "use_html_templates": false,
                 "wallets": [
                     2

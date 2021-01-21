@@ -18,5 +18,6 @@ omit =
     api/ext/update.py,
     api/logger.py,
     api/logserver.py,
+    api/invoices.py,
     *__init__.py
     

@@ -19,6 +19,7 @@ from . import constants, crud, db, models, pagination, schemes, settings, tasks,
 from .ext import export as export_ext
 from .ext import tor as tor_ext
 from .ext import update as update_ext
+from .invoices import InvoiceStatus
 
 router = APIRouter()
 
@@ -286,7 +287,11 @@ async def export_invoices(
     export_format: str = "json",
     user: models.User = Security(utils.AuthDependency(), scopes=["invoice_management"]),
 ):
-    data = await models.Invoice.query.where(models.User.id == user.id).where(models.Invoice.status == "complete").gino.all()
+    data = (
+        await models.Invoice.query.where(models.User.id == user.id)
+        .where(models.Invoice.status == InvoiceStatus.COMPLETE)
+        .gino.all()
+    )
     await crud.invoices_add_related(data)
     now = utils.now()
     filename = now.strftime(f"bitcartcc-export-%Y%m%d-%H%M%S.{export_format}")
@@ -404,11 +409,12 @@ utils.ModelView.register(
         "get_one": crud.get_invoice,
         "post": crud.create_invoice,
         "delete": crud.delete_invoice,
+        "batch_action": crud.batch_invoice_action,
     },
     request_handlers={"get_one": get_invoice_noauth},
     post_auth=False,
     scopes=["invoice_management"],
-    custom_commands={"mark_invalid": crud.mark_invoice_invalid},
+    custom_commands={"mark_complete": crud.mark_invoice_complete, "mark_invalid": crud.mark_invoice_invalid},
 )
 
 
@@ -695,7 +701,7 @@ class InvoiceNotify(WebSocketEndpoint):
         if not self.invoice:
             await websocket.close(code=WS_1008_POLICY_VIOLATION)
             return
-        if self.invoice.status != "Pending":
+        if self.invoice.status in [InvoiceStatus.EXPIRED, InvoiceStatus.COMPLETE]:
             await websocket.send_json({"status": self.invoice.status})
             await websocket.close()
             return
