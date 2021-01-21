@@ -4,7 +4,7 @@ from sqlalchemy import or_, select
 
 from . import constants, crud, db, models, settings, utils
 from .ext.moneyformat import currency_table
-from .logger import get_exception_message, get_logger
+from .logger import get_logger
 from .utils import log_errors
 
 logger = get_logger(__name__)
@@ -85,11 +85,13 @@ async def mark_invoice_paid(invoice, method, xpub, electrum_status):
     electrum_status = convert_status(electrum_status)
     if invoice.status == InvoiceStatus.PENDING:
         if electrum_status == InvoiceStatus.COMPLETE:
-            status = InvoiceStatus.COMPLETE if method.lightning else InvoiceStatus.PAID
-            await update_status(invoice, method, status)
-            await update_confirmations(
-                invoice, method, await get_confirmations(method, xpub)
-            )  # to trigger complete for stores accepting 0-conf
+            if method.lightning:
+                await update_status(invoice, method, InvoiceStatus.COMPLETE)
+            else:
+                await update_status(invoice, method, InvoiceStatus.PAID)
+                await update_confirmations(
+                    invoice, method, await get_confirmations(method, xpub)
+                )  # to trigger complete for stores accepting 0-conf
         elif electrum_status == InvoiceStatus.EXPIRED:
             await update_status(invoice, method, electrum_status)
         else:
@@ -98,7 +100,7 @@ async def mark_invoice_paid(invoice, method, xpub, electrum_status):
 
 
 async def new_payment_handler(instance, event, address, status, status_str):
-    try:
+    with log_errors():
         data = (
             await get_pending_invoices_query(instance.coin_name.lower())
             .where(or_(models.PaymentMethod.payment_address == address, models.PaymentMethod.rhash == address))
@@ -109,8 +111,6 @@ async def new_payment_handler(instance, event, address, status, status_str):
             return
         method, invoice, xpub = data
         await mark_invoice_paid(invoice, method, xpub, status)
-    except Exception as e:
-        logger.error(get_exception_message(e))
 
 
 async def update_confirmations(invoice, method, confirmations):
