@@ -894,11 +894,11 @@ def test_get_public_store(client: TestClient):
         json={"email": "test2auth@example.com", "password": "test12345", "permissions": ["full_control"]},
     ).json()["access_token"]
     store = client.get("/stores/2", headers={"Authorization": f"Bearer {new_token}"})
-    assert list(store.json().keys()) == ["created", "name", "default_currency", "email", "id", "user_id"]
+    assert set(store.json().keys()) == {"created", "name", "default_currency", "email", "id", "user_id", "checkout_settings"}
     client.delete(f"/users/{user_id}")
     # get store without user
     store = client.get("/stores/2")
-    assert list(store.json().keys()) == ["created", "name", "default_currency", "email", "id", "user_id"]
+    assert set(store.json().keys()) == {"created", "name", "default_currency", "email", "id", "user_id", "checkout_settings"}
 
 
 def test_product_count_params(client: TestClient, token: str):
