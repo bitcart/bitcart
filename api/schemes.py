@@ -125,6 +125,7 @@ class BaseStore(CreatedMixin):
     name: str
     default_currency: str = "USD"
     email: Optional[EmailStr] = ""
+    checkout_settings: Optional[StoreCheckoutSettings] = StoreCheckoutSettings()
 
     @validator("email", pre=True, always=False)
     def validate_email(cls, val):
@@ -142,7 +143,6 @@ class CreateStore(BaseStore):
     email_user: str = ""
     email_password: str = ""
     email_use_ssl: bool = True
-    checkout_settings: Optional[StoreCheckoutSettings] = StoreCheckoutSettings()
     wallets: List[int]
     notifications: Optional[List[int]] = []
     templates: Optional[Dict[str, int]] = {}
