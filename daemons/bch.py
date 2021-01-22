@@ -97,6 +97,10 @@ class BCHDaemon(BaseDaemon):
         result = self.wallets[wallet]["cmd"].broadcast(*args, **kwargs)
         return result[1]  # tx hash
 
+    @rpc
+    def recommended_fee(self, target, wallet=None) -> float:  # no fee estimation for BCH
+        return 0
+
 
 daemon = BCHDaemon()
 

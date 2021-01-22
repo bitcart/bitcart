@@ -2,6 +2,10 @@
 
 ## Latest changes
 
+## 0.2.0.1
+
+Bugfixes in recommended fee calculation
+
 ## 0.2.0.0
 
 ### Major update
