@@ -13,7 +13,7 @@ from starlette.datastructures import CommaSeparatedStrings
 
 from . import invoices, models, pagination, schemes, settings, utils
 from .db import db
-from .ext.moneyformat import currency_table
+from .ext.moneyformat import currency_table, round_up
 from .logger import get_logger
 
 logger = get_logger(__name__)
@@ -132,6 +132,10 @@ async def _create_payment_method(invoice, wallet, product, store, discounts, pro
             method = coin.add_invoice
         except errors.LightningUnsupportedError:
             return
+    recommended_fee = (
+        await coin.server.recommended_fee(store.checkout_settings.recommended_fee_target_blocks) if not lightning else 0
+    )
+    recommended_fee = round_up(Decimal(recommended_fee) / 1024, 2)  # convert to sat/byte, two decimal places
     data_got = await method(price, description=product.name if product else "", expire=invoice.expiration)
     address = data_got["address"] if not lightning else data_got["invoice"]
     url = data_got["URI"] if not lightning else data_got["invoice"]
@@ -148,6 +152,7 @@ async def _create_payment_method(invoice, wallet, product, store, discounts, pro
         rhash=rhash,
         lightning=lightning,
         node_id=node_id,
+        recommended_fee=recommended_fee,
         confirmations=0,
     )
 

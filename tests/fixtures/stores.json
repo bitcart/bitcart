@@ -22,6 +22,8 @@
                 "checkout_settings": {
                     "custom_logo_link": "",
                     "expiration": 15,
+                    "recommended_fee_target_blocks": 1,
+                    "show_recommended_fee": true,
                     "transaction_speed": 0,
                     "underpaid_percentage": 0,
                     "use_dark_mode": false,
@@ -60,6 +62,8 @@
                 "checkout_settings": {
                     "custom_logo_link": "",
                     "expiration": 15,
+                    "recommended_fee_target_blocks": 1,
+                    "show_recommended_fee": true,
                     "transaction_speed": 0,
                     "underpaid_percentage": 0,
                     "use_dark_mode": false,
@@ -94,6 +98,8 @@
                 "checkout_settings": {
                     "custom_logo_link": "",
                     "expiration": 15,
+                    "recommended_fee_target_blocks": 1,
+                    "show_recommended_fee": true,
                     "transaction_speed": 0,
                     "underpaid_percentage": 0,
                     "use_dark_mode": false,
@@ -147,6 +153,8 @@
                     "checkout_settings": {
                         "custom_logo_link": "",
                         "expiration": 15,
+                        "recommended_fee_target_blocks": 1,
+                        "show_recommended_fee": true,
                         "transaction_speed": 0,
                         "underpaid_percentage": 0,
                         "use_dark_mode": false,
@@ -170,6 +178,8 @@
                     "checkout_settings": {
                         "custom_logo_link": "",
                         "expiration": 15,
+                        "recommended_fee_target_blocks": 1,
+                        "show_recommended_fee": true,
                         "transaction_speed": 0,
                         "underpaid_percentage": 0,
                         "use_dark_mode": false,
@@ -197,6 +207,8 @@
                     "checkout_settings": {
                         "custom_logo_link": "",
                         "expiration": 15,
+                        "recommended_fee_target_blocks": 1,
+                        "show_recommended_fee": true,
                         "transaction_speed": 0,
                         "underpaid_percentage": 0,
                         "use_dark_mode": false,
@@ -239,6 +251,8 @@
                 "checkout_settings": {
                     "custom_logo_link": "",
                     "expiration": 15,
+                    "recommended_fee_target_blocks": 1,
+                    "show_recommended_fee": true,
                     "transaction_speed": 0,
                     "underpaid_percentage": 0,
                     "use_dark_mode": false,
@@ -281,6 +295,8 @@
                 "checkout_settings": {
                     "custom_logo_link": "",
                     "expiration": 15,
+                    "recommended_fee_target_blocks": 1,
+                    "show_recommended_fee": true,
                     "transaction_speed": 0,
                     "underpaid_percentage": 0,
                     "use_dark_mode": false,
@@ -321,6 +337,8 @@
                 "checkout_settings": {
                     "custom_logo_link": "",
                     "expiration": 15,
+                    "recommended_fee_target_blocks": 1,
+                    "show_recommended_fee": true,
                     "transaction_speed": 0,
                     "underpaid_percentage": 0,
                     "use_dark_mode": false,
@@ -416,6 +434,34 @@
                 }
             },
             "status": "bad"
+        },
+        {
+            "obj_id": 1,
+            "data": {
+                "name": "test2",
+                "wallets": [
+                    2
+                ],
+                "user_id": 1,
+                "checkout_settings": {
+                    "recommended_fee_target_blocks": 26
+                }
+            },
+            "status": "bad"
+        },
+        {
+            "obj_id": 1,
+            "data": {
+                "name": "test2",
+                "wallets": [
+                    2
+                ],
+                "user_id": 1,
+                "checkout_settings": {
+                    "recommended_fee_target_blocks": 0
+                }
+            },
+            "status": "bad"
         }
     ],
     "full_update": [
@@ -466,6 +512,8 @@
                 "checkout_settings": {
                     "custom_logo_link": "",
                     "expiration": 15,
+                    "recommended_fee_target_blocks": 1,
+                    "show_recommended_fee": true,
                     "transaction_speed": 0,
                     "underpaid_percentage": 0,
                     "use_dark_mode": false,
@@ -501,6 +549,8 @@
                 "checkout_settings": {
                     "custom_logo_link": "",
                     "expiration": 15,
+                    "recommended_fee_target_blocks": 1,
+                    "show_recommended_fee": true,
                     "transaction_speed": 0,
                     "underpaid_percentage": 0,
                     "use_dark_mode": false,

@@ -254,6 +254,7 @@ class PaymentMethod(db.Model):
     rate = Column(Numeric(16, 8))
     discount = Column(Integer)
     confirmations = Column(Integer, nullable=False)
+    recommended_fee = Column(Numeric(16, 8), nullable=False)
     currency = Column(String(length=1000), index=True)
     payment_address = Column(Text, nullable=False)
     payment_url = Column(Text, nullable=False)

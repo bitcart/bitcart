@@ -5,7 +5,7 @@ from typing import Dict, List, Optional, Union
 from fastapi.exceptions import HTTPException
 from pydantic import BaseModel, EmailStr, validator
 
-from .constants import MAX_CONFIRMATION_WATCH
+from .constants import FEE_ETA_TARGETS, MAX_CONFIRMATION_WATCH
 from .utils import now
 
 
@@ -96,13 +96,22 @@ class StoreCheckoutSettings(BaseModel):
     transaction_speed: int = 0
     underpaid_percentage: int = 0
     custom_logo_link: str = ""
+    recommended_fee_target_blocks: int = 1
+    show_recommended_fee: bool = True
     use_dark_mode: bool = False
     use_html_templates: bool = False
+
+    @validator("recommended_fee_target_blocks")
+    def validate_recommended_fee_target_blocks(cls, v):
+        if v not in FEE_ETA_TARGETS:
+            message = ", ".join(map(str, FEE_ETA_TARGETS))
+            raise HTTPException(422, f"Recommended fee confirmation target blocks must be either of: {message}")
+        return v
 
     @validator("transaction_speed")
     def validate_transaction_speed(cls, v):
         if v < 0 or v > MAX_CONFIRMATION_WATCH:
-            raise HTTPException(422, f"Confirmation policy must be in range from 0 to {MAX_CONFIRMATION_WATCH}")
+            raise HTTPException(422, f"Transaction speed must be in range from 0 to {MAX_CONFIRMATION_WATCH}")
         return v
 
     @validator("underpaid_percentage")
