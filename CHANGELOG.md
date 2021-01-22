@@ -2,9 +2,13 @@
 
 ## Latest changes
 
+## 0.2.0.2
+
+Bugfixes in recommended fee calculation (GZRO)
+
 ## 0.2.0.1
 
-Bugfixes in recommended fee calculation
+Bugfixes in recommended fee calculation (BCH)
 
 ## 0.2.0.0
 
