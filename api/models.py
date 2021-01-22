@@ -105,18 +105,22 @@ class NotificationxStore(db.Model):
 
 class StoreUpdateRequest(UpdateRequest):
     def update(self, **kwargs):
-        self.wallets = kwargs.pop("wallets", [])
-        self.notifications = kwargs.pop("notifications", [])
+        self.wallets = kwargs.pop("wallets", None)
+        self.notifications = kwargs.pop("notifications", None)
         return super().update(**kwargs)
 
     async def apply(self):
         if self.wallets is not None:
             await WalletxStore.delete.where(WalletxStore.store_id == self._instance.id).gino.status()
+        if self.wallets is None:
+            self.wallets = []
         for i in self.wallets:
             await WalletxStore.create(store_id=self._instance.id, wallet_id=i)
         self._instance.wallets = self.wallets
         if self.notifications is not None:
             await NotificationxStore.delete.where(NotificationxStore.store_id == self._instance.id).gino.status()
+        if self.notifications is None:
+            self.notifications = []
         for i in self.notifications:
             await NotificationxStore.create(store_id=self._instance.id, notification_id=i)
         self._instance.notifications = self.notifications
@@ -177,12 +181,14 @@ class DiscountxProduct(db.Model):
 
 class DiscountXProductUpdateRequest(UpdateRequest):
     def update(self, **kwargs):
-        self.discounts = kwargs.pop("discounts", [])
+        self.discounts = kwargs.pop("discounts", None)
         return super().update(**kwargs)
 
     async def apply(self):
         if self.discounts is not None:
             await DiscountxProduct.delete.where(DiscountxProduct.product_id == self._instance.id).gino.status()
+        if self.discounts is None:
+            self.discounts = []
         for i in self.discounts:
             await DiscountxProduct.create(product_id=self._instance.id, discount_id=i)
         self._instance.discounts = self.discounts
@@ -225,12 +231,14 @@ class ProductxInvoice(db.Model):
 
 class MyUpdateRequest(UpdateRequest):
     def update(self, **kwargs):
-        self.products = kwargs.pop("products", [])
+        self.products = kwargs.pop("products", None)
         return super().update(**kwargs)
 
     async def apply(self):
         if self.products is not None:
             await ProductxInvoice.delete.where(ProductxInvoice.invoice_id == self._instance.id).gino.status()
+        if self.products is None:
+            self.products = []
         for i in self.products:
             await ProductxInvoice.create(invoice_id=self._instance.id, product_id=i)
         self._instance.products = self.products

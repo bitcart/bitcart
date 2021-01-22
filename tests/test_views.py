@@ -1029,6 +1029,7 @@ def test_change_store_checkout_settings(client: TestClient, token: str):
     resp = client.patch("/stores/2/checkout_settings", json={"expiration": 60}, headers={"Authorization": f"Bearer {token}"})
     assert resp.status_code == 200
     assert resp.json()["checkout_settings"]["expiration"] == 60
+    assert len(resp.json()["wallets"]) > 0
     resp2 = client.get("/stores/2", headers={"Authorization": f"Bearer {token}"})
     assert resp2.status_code == 200
     assert resp2.json() == resp.json()

@@ -20,9 +20,11 @@
                 "default_currency": "USD",
                 "user_id": 1,
                 "checkout_settings": {
+                    "custom_logo_link": "",
                     "expiration": 15,
                     "transaction_speed": 0,
                     "underpaid_percentage": 0,
+                    "use_dark_mode": false,
                     "use_html_templates": false
                 },
                 "wallets": [
@@ -56,9 +58,11 @@
                 "default_currency": "USD",
                 "user_id": 1,
                 "checkout_settings": {
+                    "custom_logo_link": "",
                     "expiration": 15,
                     "transaction_speed": 0,
                     "underpaid_percentage": 0,
+                    "use_dark_mode": false,
                     "use_html_templates": false
                 },
                 "wallets": [
@@ -88,9 +92,11 @@
                 "default_currency": "USD",
                 "user_id": 1,
                 "checkout_settings": {
+                    "custom_logo_link": "",
                     "expiration": 15,
                     "transaction_speed": 0,
                     "underpaid_percentage": 0,
+                    "use_dark_mode": false,
                     "use_html_templates": false
                 },
                 "wallets": [],
@@ -139,9 +145,11 @@
                     "default_currency": "USD",
                     "user_id": 1,
                     "checkout_settings": {
+                        "custom_logo_link": "",
                         "expiration": 15,
                         "transaction_speed": 0,
                         "underpaid_percentage": 0,
+                        "use_dark_mode": false,
                         "use_html_templates": false
                     },
                     "wallets": [],
@@ -160,9 +168,11 @@
                     "default_currency": "USD",
                     "user_id": 1,
                     "checkout_settings": {
+                        "custom_logo_link": "",
                         "expiration": 15,
                         "transaction_speed": 0,
                         "underpaid_percentage": 0,
+                        "use_dark_mode": false,
                         "use_html_templates": false
                     },
                     "wallets": [
@@ -185,9 +195,11 @@
                     "default_currency": "USD",
                     "user_id": 1,
                     "checkout_settings": {
+                        "custom_logo_link": "",
                         "expiration": 15,
                         "transaction_speed": 0,
                         "underpaid_percentage": 0,
+                        "use_dark_mode": false,
                         "use_html_templates": false
                     },
                     "wallets": [
@@ -225,9 +237,11 @@
                 "default_currency": "USD",
                 "user_id": 1,
                 "checkout_settings": {
+                    "custom_logo_link": "",
                     "expiration": 15,
                     "transaction_speed": 0,
                     "underpaid_percentage": 0,
+                    "use_dark_mode": false,
                     "use_html_templates": false
                 },
                 "wallets": [
@@ -265,9 +279,11 @@
                 "default_currency": "USD",
                 "user_id": 1,
                 "checkout_settings": {
+                    "custom_logo_link": "",
                     "expiration": 15,
                     "transaction_speed": 0,
                     "underpaid_percentage": 0,
+                    "use_dark_mode": false,
                     "use_html_templates": false
                 },
                 "wallets": [
@@ -303,9 +319,11 @@
                 "default_currency": "USD",
                 "user_id": 1,
                 "checkout_settings": {
+                    "custom_logo_link": "",
                     "expiration": 15,
                     "transaction_speed": 0,
                     "underpaid_percentage": 0,
+                    "use_dark_mode": false,
                     "use_html_templates": false
                 },
                 "wallets": [
@@ -446,9 +464,11 @@
                 "default_currency": "USD",
                 "user_id": 1,
                 "checkout_settings": {
+                    "custom_logo_link": "",
                     "expiration": 15,
                     "transaction_speed": 0,
                     "underpaid_percentage": 0,
+                    "use_dark_mode": false,
                     "use_html_templates": false
                 },
                 "wallets": [
@@ -479,9 +499,11 @@
                 "default_currency": "USD",
                 "user_id": 1,
                 "checkout_settings": {
+                    "custom_logo_link": "",
                     "expiration": 15,
                     "transaction_speed": 0,
                     "underpaid_percentage": 0,
+                    "use_dark_mode": false,
                     "use_html_templates": false
                 },
                 "wallets": [

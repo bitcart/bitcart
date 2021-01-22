@@ -95,6 +95,8 @@ class StoreCheckoutSettings(BaseModel):
     expiration: int = 15
     transaction_speed: int = 0
     underpaid_percentage: int = 0
+    custom_logo_link: str = ""
+    use_dark_mode: bool = False
     use_html_templates: bool = False
 
     @validator("transaction_speed")
