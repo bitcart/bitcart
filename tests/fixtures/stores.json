@@ -19,10 +19,12 @@
                 "name": "test",
                 "default_currency": "USD",
                 "user_id": 1,
-                "expiration": 15,
-                "transaction_speed": 0,
-                "underpaid_percentage": 0,
-                "use_html_templates": false,
+                "checkout_settings": {
+                    "expiration": 15,
+                    "transaction_speed": 0,
+                    "underpaid_percentage": 0,
+                    "use_html_templates": false
+                },
                 "wallets": [
                     2
                 ],
@@ -53,10 +55,12 @@
                 "name": "test5",
                 "default_currency": "USD",
                 "user_id": 1,
-                "expiration": 15,
-                "transaction_speed": 0,
-                "underpaid_percentage": 0,
-                "use_html_templates": false,
+                "checkout_settings": {
+                    "expiration": 15,
+                    "transaction_speed": 0,
+                    "underpaid_percentage": 0,
+                    "use_html_templates": false
+                },
                 "wallets": [
                     2
                 ],
@@ -83,10 +87,12 @@
                 "name": "no_wallet",
                 "default_currency": "USD",
                 "user_id": 1,
-                "expiration": 15,
-                "transaction_speed": 0,
-                "underpaid_percentage": 0,
-                "use_html_templates": false,
+                "checkout_settings": {
+                    "expiration": 15,
+                    "transaction_speed": 0,
+                    "underpaid_percentage": 0,
+                    "use_html_templates": false
+                },
                 "wallets": [],
                 "notifications": [],
                 "templates": {}
@@ -132,10 +138,12 @@
                     "name": "no_wallet",
                     "default_currency": "USD",
                     "user_id": 1,
-                    "expiration": 15,
-                    "transaction_speed": 0,
-                    "underpaid_percentage": 0,
-                    "use_html_templates": false,
+                    "checkout_settings": {
+                        "expiration": 15,
+                        "transaction_speed": 0,
+                        "underpaid_percentage": 0,
+                        "use_html_templates": false
+                    },
                     "wallets": [],
                     "notifications": [],
                     "templates": {}
@@ -151,10 +159,12 @@
                     "name": "test5",
                     "default_currency": "USD",
                     "user_id": 1,
-                    "expiration": 15,
-                    "transaction_speed": 0,
-                    "underpaid_percentage": 0,
-                    "use_html_templates": false,
+                    "checkout_settings": {
+                        "expiration": 15,
+                        "transaction_speed": 0,
+                        "underpaid_percentage": 0,
+                        "use_html_templates": false
+                    },
                     "wallets": [
                         2
                     ],
@@ -174,10 +184,12 @@
                     "name": "test",
                     "default_currency": "USD",
                     "user_id": 1,
-                    "expiration": 15,
-                    "transaction_speed": 0,
-                    "underpaid_percentage": 0,
-                    "use_html_templates": false,
+                    "checkout_settings": {
+                        "expiration": 15,
+                        "transaction_speed": 0,
+                        "underpaid_percentage": 0,
+                        "use_html_templates": false
+                    },
                     "wallets": [
                         2
                     ],
@@ -212,10 +224,12 @@
                 "name": "test",
                 "default_currency": "USD",
                 "user_id": 1,
-                "expiration": 15,
-                "transaction_speed": 0,
-                "underpaid_percentage": 0,
-                "use_html_templates": false,
+                "checkout_settings": {
+                    "expiration": 15,
+                    "transaction_speed": 0,
+                    "underpaid_percentage": 0,
+                    "use_html_templates": false
+                },
                 "wallets": [
                     2
                 ],
@@ -250,10 +264,12 @@
                 "name": "test2",
                 "default_currency": "USD",
                 "user_id": 1,
-                "expiration": 15,
-                "transaction_speed": 0,
-                "underpaid_percentage": 0,
-                "use_html_templates": false,
+                "checkout_settings": {
+                    "expiration": 15,
+                    "transaction_speed": 0,
+                    "underpaid_percentage": 0,
+                    "use_html_templates": false
+                },
                 "wallets": [
                     2
                 ],
@@ -286,10 +302,12 @@
                 "name": "test2",
                 "default_currency": "USD",
                 "user_id": 1,
-                "expiration": 15,
-                "transaction_speed": 0,
-                "underpaid_percentage": 0,
-                "use_html_templates": false,
+                "checkout_settings": {
+                    "expiration": 15,
+                    "transaction_speed": 0,
+                    "underpaid_percentage": 0,
+                    "use_html_templates": false
+                },
                 "wallets": [
                     2
                 ],
@@ -333,7 +351,9 @@
                     2
                 ],
                 "user_id": 1,
-                "transaction_speed": 7
+                "checkout_settings": {
+                    "transaction_speed": 7
+                }
             },
             "status": "bad"
         },
@@ -345,7 +365,9 @@
                     2
                 ],
                 "user_id": 1,
-                "transaction_speed": -1
+                "checkout_settings": {
+                    "transaction_speed": -1
+                }
             },
             "status": "bad"
         },
@@ -357,7 +379,9 @@
                     2
                 ],
                 "user_id": 1,
-                "underpaid_percentage": -1
+                "checkout_settings": {
+                    "underpaid_percentage": -1
+                }
             },
             "status": "bad"
         },
@@ -369,7 +393,9 @@
                     2
                 ],
                 "user_id": 1,
-                "underpaid_percentage": 100
+                "checkout_settings": {
+                    "underpaid_percentage": 100
+                }
             },
             "status": "bad"
         }
@@ -419,10 +445,12 @@
                 "name": "test",
                 "default_currency": "USD",
                 "user_id": 1,
-                "expiration": 15,
-                "transaction_speed": 0,
-                "underpaid_percentage": 0,
-                "use_html_templates": false,
+                "checkout_settings": {
+                    "expiration": 15,
+                    "transaction_speed": 0,
+                    "underpaid_percentage": 0,
+                    "use_html_templates": false
+                },
                 "wallets": [
                     2
                 ],
@@ -450,16 +478,16 @@
                 "name": "test",
                 "default_currency": "USD",
                 "user_id": 1,
-                "expiration": 15,
-                "transaction_speed": 0,
-                "underpaid_percentage": 0,
-                "use_html_templates": false,
+                "checkout_settings": {
+                    "expiration": 15,
+                    "transaction_speed": 0,
+                    "underpaid_percentage": 0,
+                    "use_html_templates": false
+                },
                 "wallets": [
                     2
                 ],
-                "notifications": [
-                    2
-                ],
+                "notifications": [],
                 "templates": {}
             }
         },

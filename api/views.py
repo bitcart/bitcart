@@ -57,6 +57,20 @@ async def ping_email(
     )
 
 
+@router.patch("/stores/{model_id}/checkout_settings", response_model=schemes.Store)
+async def set_store_checkout_settings(
+    model_id: int,
+    settings: schemes.StoreCheckoutSettings,
+    user: models.User = Security(utils.AuthDependency(), scopes=["store_management"]),
+):
+    model = await models.Store.get(model_id)
+    if not model:
+        raise HTTPException(404, f"Store with id {model_id} does not exist!")
+    await model.set_setting(settings)
+    await crud.store_add_related(model)
+    return model
+
+
 # invoices and products should have unauthorized access
 async def get_product_noauth(model_id: int):
     item = await models.Product.get(model_id)

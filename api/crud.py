@@ -70,8 +70,9 @@ async def create_invoice(invoice: schemes.CreateInvoice, user: schemes.User):
     store = await models.Store.get(d["store_id"])
     if not store:
         raise HTTPException(422, f"Store {d['store_id']} doesn't exist!")
+    await store_add_related(store)
     d["currency"] = d["currency"] or store.default_currency or "USD"
-    d["expiration"] = store.expiration
+    d["expiration"] = store.checkout_settings.expiration
     products = d.get("products", {})
     if isinstance(products, list):
         products = {k: 1 for k in products}
@@ -107,7 +108,7 @@ async def _create_payment_method(invoice, wallet, product, store, discounts, pro
         rate = await coin.rate("USD")
     if math.isnan(rate):
         rate = Decimal(1)  # no rate available, no conversion
-    price = invoice.price * ((1 - (Decimal(store.underpaid_percentage) / 100)))
+    price = invoice.price * ((1 - (Decimal(store.checkout_settings.underpaid_percentage) / 100)))
     price = currency_table.normalize(wallet.currency, price / rate)
     if discounts:
         try:
@@ -231,6 +232,7 @@ async def get_stores(pagination: pagination.Pagination, user: schemes.User):
 
 async def delete_store(item: schemes.Store, user: schemes.User):
     await models.WalletxStore.delete.where(models.WalletxStore.store_id == item.id).gino.status()
+    await models.NotificationxStore.delete.where(models.NotificationxStore.store_id == item.id).gino.status()
     await item.delete()
     return item
 
@@ -250,6 +252,7 @@ async def create_store(store: schemes.CreateStore, user: schemes.User):
             (await models.NotificationxStore.create(store_id=obj.id, notification_id=i)).notification_id
         )
     obj.notifications = created_notifications
+    obj.checkout_settings = schemes.StoreCheckoutSettings()
     return obj
 
 
@@ -257,6 +260,7 @@ async def store_add_related(item: models.Store):
     # add related wallets
     if not item:
         return
+    item.checkout_settings = item.get_setting(schemes.StoreCheckoutSettings)
     result = await models.WalletxStore.select("wallet_id").where(models.WalletxStore.store_id == item.id).gino.all()
     result2 = (
         await models.NotificationxStore.select("notification_id")

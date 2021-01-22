@@ -479,7 +479,7 @@ def send_mail(store, where, text, subject="Thank you for your purchase"):  # pra
     message_obj["Subject"] = subject
     message_obj["From"] = store.email
     message_obj["To"] = where
-    message_obj.attach(MIMEText(text, "html" if store.use_html_templates else "plain"))
+    message_obj.attach(MIMEText(text, "html" if store.checkout_settings.use_html_templates else "plain"))
     message = message_obj.as_string()
     server = smtplib.SMTP(host=store.email_host, port=store.email_port, timeout=2)
     if store.email_use_ssl:

@@ -116,10 +116,11 @@ async def new_payment_handler(instance, event, address, status, status_str):
 async def update_confirmations(invoice, method, confirmations):
     await method.update(confirmations=confirmations).apply()
     store = await models.Store.get(invoice.store_id)
+    await crud.store_add_related(store)
     status = invoice.status
     if confirmations >= 1:
         status = InvoiceStatus.CONFIRMED
-    if confirmations >= store.transaction_speed:
+    if confirmations >= store.checkout_settings.transaction_speed:
         status = InvoiceStatus.COMPLETE
     await update_status(invoice, method, status)
 

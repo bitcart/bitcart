@@ -1016,3 +1016,26 @@ def test_multiple_wallets_same_currency(client: TestClient, token: str):
     # cleanup
     client.delete(f"/invoices/{invoice_id}", headers={"Authorization": f"Bearer {token}"})
     client.delete(f"/stores/{store_id}", headers={"Authorization": f"Bearer {token}"})
+
+
+def test_change_store_checkout_settings(client: TestClient, token: str):
+    assert client.patch("/stores/2/checkout_settings").status_code == 401
+    assert (
+        client.patch(
+            "/stores/555/checkout_settings", json={"expiration": 60}, headers={"Authorization": f"Bearer {token}"}
+        ).status_code
+        == 404
+    )
+    resp = client.patch("/stores/2/checkout_settings", json={"expiration": 60}, headers={"Authorization": f"Bearer {token}"})
+    assert resp.status_code == 200
+    assert resp.json()["checkout_settings"]["expiration"] == 60
+    resp2 = client.get("/stores/2", headers={"Authorization": f"Bearer {token}"})
+    assert resp2.status_code == 200
+    assert resp2.json() == resp.json()
+    # cleanup
+    assert (
+        client.patch(
+            "/stores/2/checkout_settings", json={"expiration": 15}, headers={"Authorization": f"Bearer {token}"}
+        ).status_code
+        == 200
+    )
