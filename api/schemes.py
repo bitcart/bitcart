@@ -118,7 +118,7 @@ class StoreCheckoutSettings(BaseModel):
     def validate_underpaid_percentage(cls, v):
         if v < 0 or v >= 100:
             raise HTTPException(422, "Underpaid percentage must be in range from 0 to 99.99")
-        return v
+        return float(v)
 
 
 class BaseStore(CreatedMixin):

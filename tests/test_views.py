@@ -901,6 +901,12 @@ def test_get_public_store(client: TestClient):
     assert set(store.json().keys()) == {"created", "name", "default_currency", "email", "id", "user_id", "checkout_settings"}
 
 
+def test_get_product_params(client: TestClient, token: str):
+    assert client.get("/products/2", headers={"Authorization": f"Bearer {token}"}).status_code == 200
+    assert client.get("/products/2?store=2", headers={"Authorization": f"Bearer {token}"}).status_code == 200
+    assert client.get("/products/2?store=555", headers={"Authorization": f"Bearer {token}"}).status_code == 404
+
+
 def test_product_count_params(client: TestClient, token: str):
     resp = client.get(
         "/products/count?sale=true&store=2&category=Test&min_price=0.0001&max_price=100.0",

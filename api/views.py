@@ -72,8 +72,11 @@ async def set_store_checkout_settings(
 
 
 # invoices and products should have unauthorized access
-async def get_product_noauth(model_id: int):
-    item = await models.Product.get(model_id)
+async def get_product_noauth(model_id: int, store: Optional[int] = None):
+    query = models.Product.query.where(models.Product.id == model_id)
+    if store:
+        query = query.where(models.Product.store_id == store)
+    item = await query.gino.first()
     if not item:
         raise HTTPException(status_code=404, detail=f"Object with id {model_id} does not exist!")
     await crud.product_add_related(item)

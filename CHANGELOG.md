@@ -2,6 +2,16 @@
 
 ## Latest changes
 
+## 0.2.1.0
+
+Fix image uploading
+
+Allow decimal values for `underpaid_percent`
+
+Multiple stores on one store POS instance - new `/store/{id}` URLs added to serve any store
+
+Default store served is still configured by server policies
+
 ## 0.2.0.2
 
 Bugfixes in recommended fee calculation (GZRO)
