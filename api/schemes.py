@@ -94,7 +94,7 @@ class Wallet(CreateWallet):
 class StoreCheckoutSettings(BaseModel):
     expiration: int = 15
     transaction_speed: int = 0
-    underpaid_percentage: int = 0
+    underpaid_percentage: Decimal = 0
     custom_logo_link: str = ""
     recommended_fee_target_blocks: int = 1
     show_recommended_fee: bool = True
@@ -116,8 +116,8 @@ class StoreCheckoutSettings(BaseModel):
 
     @validator("underpaid_percentage")
     def validate_underpaid_percentage(cls, v):
-        if v < 0 or v > 99:
-            raise HTTPException(422, "Underpaid percentage must be in range from 0 to 99")
+        if v < 0 or v >= 100:
+            raise HTTPException(422, "Underpaid percentage must be in range from 0 to 99.99")
         return v
 
 

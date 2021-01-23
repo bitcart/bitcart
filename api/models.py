@@ -1,6 +1,7 @@
 import secrets
 
 from fastapi import HTTPException
+from fastapi.encoders import jsonable_encoder
 from gino.crud import UpdateRequest
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import relationship
@@ -153,7 +154,7 @@ class Store(db.Model):
         return scheme(**data)
 
     async def set_setting(self, scheme):
-        json_data = scheme.dict(exclude_unset=True)
+        json_data = jsonable_encoder(scheme, exclude_unset=True)
         await self.update(checkout_settings=json_data).apply()
 
 
