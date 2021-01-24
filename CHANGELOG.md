@@ -2,6 +2,10 @@
 
 ## Latest changes
 
+## 0.2.1.1
+
+Fix multiple store support on POS
+
 ## 0.2.1.0
 
 Fix image uploading
