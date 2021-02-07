@@ -204,6 +204,9 @@ def test_rate(client: TestClient):
     assert resp.status_code == 200
     assert isinstance(data, float)
     assert data > 0
+    assert client.get("/rate?fiat_currency=eur").status_code == 200
+    assert client.get("/rate?fiat_currency=EUR").status_code == 200
+    assert client.get("/rate?fiat_currency=test").status_code == 422
 
 
 def test_wallet_history(client: TestClient, token: str):
@@ -707,7 +710,7 @@ async def test_wallet_ws(async_client, token: str):
     async with async_client.websocket_connect(f"/ws/wallets/{wallet_id}?token={token}") as websocket:
         await asyncio.sleep(1)
         await utils.publish_message(
-            wallet_id, {"status": "success", "balance": str((await BTC(xpub=TEST_XPUB).balance())["confirmed"])}
+            f"wallet:{wallet_id}", {"status": "success", "balance": str((await BTC(xpub=TEST_XPUB).balance())["confirmed"])}
         )
         await check_ws_response2(websocket)
     with pytest.raises(Exception):
@@ -1046,3 +1049,11 @@ def test_change_store_checkout_settings(client: TestClient, token: str):
         ).status_code
         == 200
     )
+
+
+def test_products_list(client: TestClient):
+    assert client.get("/products").status_code == 401
+    assert client.get("/products?store=1").status_code == 200
+    resp = client.get("/products?store=0")
+    assert resp.status_code == 200
+    assert resp.json()["result"] == []

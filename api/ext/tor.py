@@ -60,12 +60,14 @@ def parse_hidden_service_port(line):
         return  # all parsing exceptions are ValueError
 
 
-def get_hostname(service_dir):
+def get_hostname(service_dir, log=True):
     path = os.path.join(service_dir, "hostname")
     try:
         with open(path) as f:
             return f"http://{f.readline().strip()}"
     except OSError:
+        if log:
+            logger.warning(f"Hostname file missing for service {get_service_name(service_dir)}")
         return
 
 
@@ -73,13 +75,15 @@ def get_service_name(service_dir):
     return os.path.basename(service_dir).replace("-", " ")
 
 
-def parse_torrc(torrc):
+def parse_torrc(torrc, log=True):
     if not torrc:
         return []
     try:
         with open(torrc) as f:
             lines = f.readlines()
     except OSError:
+        if log:
+            logger.warning("Torrc file not found")
         return []
     services = []
     for line in lines:
@@ -90,7 +94,7 @@ def parse_torrc(torrc):
             hidden_service = HiddenService(
                 get_service_name(hidden_service),
                 hidden_service,
-                get_hostname(hidden_service),
+                get_hostname(hidden_service, log=log),
             )
             services.append(hidden_service)
         elif hidden_service_port and services:
@@ -100,9 +104,7 @@ def parse_torrc(torrc):
 
 async def refresh(log=True):  # pragma: no cover: used in production only
     async with utils.wait_for_redis():
-        if log:
-            logger.debug("Refreshing hidden services list...")
-        services = parse_torrc(settings.TORRC_FILE)
+        services = parse_torrc(settings.TORRC_FILE, log=log)
         services_dict = {service.name: dataclass_asdict(service) for service in services}
         anonymous_services_dict = {service.name: {"name": service.name, "hostname": service.hostname} for service in services}
         onion_host = services_dict.get("BitcartCC Merchants API", "")
@@ -116,8 +118,6 @@ async def refresh(log=True):  # pragma: no cover: used in production only
                 "anonymous_services_dict": json.dumps(anonymous_services_dict),
             },
         )
-        if log:
-            logger.debug(f"Parsed hidden services: {services}; onion_host={onion_host}")
 
 
 async def get_data(key, default=None, json_decode=False):

@@ -1,4 +1,5 @@
 import json
+import math
 import os
 import re
 import secrets
@@ -15,7 +16,7 @@ from starlette.endpoints import WebSocketEndpoint
 from starlette.requests import Request
 from starlette.status import WS_1008_POLICY_VIOLATION
 
-from . import constants, crud, db, models, pagination, schemes, settings, tasks, templates, utils
+from . import constants, crud, db, models, pagination, schemes, settings, templates, utils
 from .ext import export as export_ext
 from .ext import tor as tor_ext
 from .ext import update as update_ext
@@ -74,7 +75,7 @@ async def set_store_checkout_settings(
 # invoices and products should have unauthorized access
 async def get_product_noauth(model_id: int, store: Optional[int] = None):
     query = models.Product.query.where(models.Product.id == model_id)
-    if store:
+    if store is not None:
         query = query.where(models.Product.store_id == store)
     item = await query.gino.first()
     if not item:
@@ -350,7 +351,7 @@ utils.ModelView.register(
     schemes.CreateWallet,
     schemes.CreateWallet,
     schemes.Wallet,
-    background_tasks_mapping={"post": tasks.sync_wallet},
+    background_tasks_mapping={"post": "sync_wallet"},
     custom_methods={"get": crud.get_wallets, "get_one": crud.get_wallet, "post": crud.create_wallet},
     scopes=["wallet_management"],
 )
@@ -453,8 +454,11 @@ async def get_stats(user: models.User = Security(utils.AuthDependency(), scopes=
 
 
 @router.get("/rate")
-async def rate(currency: str = "btc"):
-    return await settings.get_coin(currency).rate()
+async def rate(currency: str = "btc", fiat_currency: str = "USD"):
+    rate = await settings.get_coin(currency).rate(fiat_currency.upper())
+    if math.isnan(rate):
+        raise HTTPException(422, "Unsupported fiat currency")
+    return rate
 
 
 @router.get("/categories")
@@ -689,7 +693,7 @@ class WalletNotify(WebSocketEndpoint):
         if not self.wallet:
             await websocket.close(code=WS_1008_POLICY_VIOLATION)
             return
-        self.subscriber, self.channel = await utils.make_subscriber(self.wallet_id)
+        self.subscriber, self.channel = await utils.make_subscriber(f"wallet:{self.wallet_id}")
         settings.loop.create_task(self.poll_subs(websocket))
 
     async def poll_subs(self, websocket):
@@ -699,7 +703,7 @@ class WalletNotify(WebSocketEndpoint):
 
     async def on_disconnect(self, websocket, close_code):
         if self.subscriber:
-            await self.subscriber.unsubscribe(f"channel:{self.wallet_id}")
+            await self.subscriber.unsubscribe(f"channel:wallet:{self.wallet_id}")
 
 
 @router.websocket_route("/ws/invoices/{model_id}")
@@ -723,7 +727,7 @@ class InvoiceNotify(WebSocketEndpoint):
             await websocket.close()
             return
         self.invoice = await crud.get_invoice(self.invoice_id, None, self.invoice)
-        self.subscriber, self.channel = await utils.make_subscriber(self.invoice_id)
+        self.subscriber, self.channel = await utils.make_subscriber(f"invoice:{self.invoice_id}")
         settings.loop.create_task(self.poll_subs(websocket))
 
     async def poll_subs(self, websocket):
@@ -733,7 +737,7 @@ class InvoiceNotify(WebSocketEndpoint):
 
     async def on_disconnect(self, websocket, close_code):
         if self.subscriber:
-            await self.subscriber.unsubscribe(f"channel:{self.invoice_id}")
+            await self.subscriber.unsubscribe(f"channel:invoice:{self.invoice_id}")
 
 
 @router.get("/updatecheck")

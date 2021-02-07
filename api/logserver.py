@@ -8,7 +8,8 @@ from decimal import Decimal
 
 import msgpack
 
-from .logger import configure_file_logging
+from .constants import LOGSERVER_PORT
+from .logger import DOCKER_ENV, configure_file_logging
 from .logger import get_logger_server as get_logger
 
 
@@ -41,7 +42,12 @@ class LogRecordStreamHandler(socketserver.StreamRequestHandler):
 class LogRecordSocketReceiver(socketserver.ThreadingTCPServer):
     allow_reuse_address = True
 
-    def __init__(self, host="localhost", port=logging.handlers.DEFAULT_TCP_LOGGING_PORT, handler=LogRecordStreamHandler):
+    def __init__(
+        self,
+        host="0.0.0.0" if DOCKER_ENV else "localhost",
+        port=LOGSERVER_PORT,
+        handler=LogRecordStreamHandler,
+    ):
         socketserver.ThreadingTCPServer.__init__(self, (host, port), handler)
         self.abort = 0
         self.timeout = 1
@@ -58,7 +64,7 @@ class LogRecordSocketReceiver(socketserver.ThreadingTCPServer):
             abort = self.abort
 
 
-def wait_for_port(host="localhost", port=logging.handlers.DEFAULT_TCP_LOGGING_PORT, timeout=5.0):
+def wait_for_port(host="localhost", port=LOGSERVER_PORT, timeout=5.0):
     start_time = time.perf_counter()
     while True:
         try:

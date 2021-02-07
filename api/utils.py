@@ -17,7 +17,7 @@ import aioredis
 import asyncpg
 import notifiers
 from aiohttp import ClientSession
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Security
+from fastapi import APIRouter, Depends, HTTPException, Security
 from fastapi.security import OAuth2PasswordBearer, SecurityScopes
 from passlib.context import CryptContext
 from pydantic import BaseModel
@@ -26,7 +26,7 @@ from sqlalchemy import distinct
 from starlette.requests import Request
 from starlette.status import HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN
 
-from . import db, exceptions, models, pagination, settings, templates
+from . import db, events, exceptions, models, pagination, settings, templates
 from .logger import get_exception_message, get_logger
 
 logger = get_logger(__name__)
@@ -315,7 +315,7 @@ class ModelView:
         return await self._get_one(model_id, user)
 
     def _post(self):
-        async def post(model: self.create_model, request: Request, background_tasks: BackgroundTasks):
+        async def post(model: self.create_model, request: Request):
             try:
                 user = await self.auth_dependency(request, SecurityScopes(self.scopes["post"]))
             except HTTPException:
@@ -328,7 +328,7 @@ class ModelView:
                 else:
                     obj = await self.orm_model.create(**model.dict())  # type: ignore # pragma: no cover
             if self.background_tasks_mapping.get("post"):
-                background_tasks.add_task(self.background_tasks_mapping["post"], obj.id)
+                await events.event_handler.publish(self.background_tasks_mapping["post"], {"id": obj.id})
             return obj
 
         return post

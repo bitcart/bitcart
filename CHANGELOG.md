@@ -2,6 +2,38 @@
 
 ## Latest changes
 
+## 0.2.2.0
+
+This release is mostly a bugfix release, but with a few new features too.
+
+### Full invoice tasks handling refactor
+
+Now there is only one expired task created for an invoice, instead of N (where N is the number of payment methods).
+
+It means that BitcartCC should use less RAM, and also there will be less edge cases and duplicate IPN sent.
+
+Also, to handle some rare cases if gunicorn workers are restarting, we have changed the way background tasks are handled.
+
+Technical details:
+The idea is to make every background task, and every asyncio task run in background worker, and not gunicorn ones.
+
+Background worker listens on a redis channel for events, and gunicorn workers publish messages to the channel. Worker parses messages and executes event handlers in separate asyncio tasks.
+
+### Fixed local deployment
+
+Now local deployment via .local domains works as before, and it now modifies /etc/hosts in a clever way, avoiding duplicate entries
+
+### Other changes
+
+- Admin panel now displays a helpful message when invoice has no payment methods connected
+- Fixed recommended fee in case it's unavailable.
+- Tor extension now doesn't log always, instead it logs only warnings if something was misconfigured.
+- Fixed IPN sending
+- Fixed logging in docker environment
+- Fixed pagination for id 0
+- Added ability to change fiat currency used in the /rate endpoint
+- Fixed websockets' internal channel ids clash sometimes
+
 ## 0.2.1.1
 
 Fix multiple store support on POS

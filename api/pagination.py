@@ -43,7 +43,6 @@ class Pagination:
 
     async def get_count(self, query) -> int:
         query = query.with_only_columns([db.func.count(distinct(self.model.id))]).order_by(None)  # type: ignore
-
         return await query.gino.scalar() or 0
 
     def get_next_url(self, count) -> Union[None, str]:
@@ -54,10 +53,8 @@ class Pagination:
     def get_previous_url(self) -> Union[None, str]:
         if self.offset <= 0:
             return None
-
         if self.offset - self.limit <= 0:
             return str(self.request.url.remove_query_params(keys=["offset"]))
-
         return str(self.request.url.include_query_params(limit=self.limit, offset=self.offset - self.limit))
 
     async def get_list(self, query) -> list:
@@ -131,7 +128,7 @@ class Pagination:
 
     def get_queryset(self, model, user_id, sale, store_id, category, min_price, max_price, app_id, redirect_url, permissions):
         query = self.get_base_query(model, sale)
-        if user_id and model != models.User:
+        if user_id is not None and model != models.User:
             query = query.where(model.user_id == user_id)
         if model == models.Product:
             query = self._filter_in_product(query, store_id, category, min_price, max_price)
@@ -141,13 +138,13 @@ class Pagination:
 
     @staticmethod
     def _filter_in_product(query, store_id, category, min_price, max_price):
-        if store_id:
+        if store_id is not None:
             query = query.where(models.Product.store_id == store_id)
         if category and category != "all":
             query = query.where(models.Product.category == category)
-        if min_price:
+        if min_price is not None:
             query = query.where(models.Product.price >= min_price)
-        if max_price:
+        if max_price is not None:
             query = query.where(models.Product.price <= max_price)
         return query
 
@@ -157,6 +154,6 @@ class Pagination:
             query = query.where(models.Token.app_id == app_id)
         if redirect_url is not None:
             query = query.where(models.Token.redirect_url == redirect_url)
-        if permissions:
+        if permissions is not None:
             query = query.where(models.Token.permissions.contains(permissions))
         return query
