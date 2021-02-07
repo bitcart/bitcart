@@ -32,6 +32,7 @@ Now local deployment via .local domains works as before, and it now modifies /et
 - Fixed logging in docker environment
 - Fixed pagination for id 0
 - Added ability to change fiat currency used in the /rate endpoint
+- Fixed websockets' internal channel ids clash sometimes
 
 ## 0.2.1.1
 
