@@ -10,7 +10,7 @@ import msgpack
 from pydantic import BaseModel
 from starlette.config import Config
 
-from api.constants import LOG_FILE_NAME
+from api.constants import LOG_FILE_NAME, LOGSERVER_PORT
 
 
 def get_exception_message(exc: Exception):
@@ -79,7 +79,7 @@ logger.addHandler(console)
 logger_client = logging.getLogger("bitcart.logclient")
 logger_client.setLevel(logging.DEBUG)
 
-socket_handler = MsgpackHandler(LOGSERVER_HOST, logging.handlers.DEFAULT_TCP_LOGGING_PORT)
+socket_handler = MsgpackHandler(LOGSERVER_HOST, LOGSERVER_PORT)
 socket_handler.setLevel(logging.DEBUG)
 logger_client.addHandler(socket_handler)
 
