@@ -1,4 +1,3 @@
-import asyncio
 import math
 from collections import defaultdict
 from datetime import timedelta
@@ -11,7 +10,7 @@ from fastapi import HTTPException
 from sqlalchemy import select
 from starlette.datastructures import CommaSeparatedStrings
 
-from . import invoices, models, pagination, schemes, settings, utils
+from . import events, invoices, models, pagination, schemes, settings, utils
 from .db import db
 from .ext.moneyformat import currency_table, round_up
 from .logger import get_logger
@@ -135,6 +134,7 @@ async def _create_payment_method(invoice, wallet, product, store, discounts, pro
     recommended_fee = (
         await coin.server.recommended_fee(store.checkout_settings.recommended_fee_target_blocks) if not lightning else 0
     )
+    recommended_fee = 0 if recommended_fee is None else recommended_fee  # if no rate available, disable it
     recommended_fee = round_up(Decimal(recommended_fee) / 1024, 2)  # convert to sat/byte, two decimal places
     data_got = await method(price, description=product.name if product else "", expire=invoice.expiration)
     address = data_got["address"] if not lightning else data_got["invoice"]
@@ -167,15 +167,12 @@ async def create_payment_method(invoice, wallet, product, store, discounts, prom
 
 async def update_invoice_payments(invoice, wallets, discounts, store, product, promocode):
     logger.info(f"Started adding invoice payments for invoice {invoice.id}")
-    method = None
     for wallet_id in wallets:
         wallet = await models.Wallet.get(wallet_id)
-        method = await create_payment_method(
-            invoice, wallet, product, store, discounts, promocode
-        )  # save for later; to create expired task
+        await create_payment_method(invoice, wallet, product, store, discounts, promocode)
     await invoice_add_related(invoice)  # add payment methods with correct names and other related objects
     logger.info(f"Successfully added {len(invoice.payments)} payment methods to invoice {invoice.id}")
-    asyncio.ensure_future(invoices.make_expired_task(invoice, method))
+    await events.event_handler.publish("expired_task", {"id": invoice.id})
 
 
 def add_invoice_expiration(obj):
@@ -330,7 +327,7 @@ async def batch_invoice_action(query, settings: schemes.BatchSettings, user: sch
             if not data:  # pragma: no cover
                 continue
             invoice, method = data
-            await invoices.update_status(invoice, method, invoices.InvoiceStatus.COMPLETE)
+            await invoices.update_status(invoice, invoices.InvoiceStatus.COMPLETE, method)
     else:
         await query.gino.status()
     return True

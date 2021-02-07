@@ -330,3 +330,8 @@ class CloseChannelScheme(BaseModel):
 
 class LNPayScheme(BaseModel):
     invoice: str
+
+
+class EventSystemMessage(BaseModel):
+    event: str
+    data: dict

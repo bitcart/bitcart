@@ -32,6 +32,14 @@ class InvoiceStatus:
     COMPLETE = "complete"
 
 
+def get_pending_invoice_statuses():
+    return or_(
+        models.Invoice.status == InvoiceStatus.PENDING,
+        models.Invoice.status == InvoiceStatus.PAID,
+        models.Invoice.status == InvoiceStatus.CONFIRMED,
+    )
+
+
 def get_pending_invoices_query(currency):
     return (
         select(
@@ -42,13 +50,7 @@ def get_pending_invoices_query(currency):
             ]
         )
         .where(models.PaymentMethod.invoice_id == models.Invoice.id)
-        .where(
-            or_(
-                models.Invoice.status == InvoiceStatus.PENDING,
-                models.Invoice.status == InvoiceStatus.PAID,
-                models.Invoice.status == InvoiceStatus.CONFIRMED,
-            )
-        )
+        .where(get_pending_invoice_statuses())
         .where(models.PaymentMethod.currency == currency.lower())
         .where(models.WalletxStore.wallet_id == models.Wallet.id)
         .where(models.WalletxStore.store_id == models.Invoice.store_id)
@@ -67,7 +69,7 @@ async def iterate_pending_invoices(currency):
                     yield method, invoice, xpub
 
 
-async def make_expired_task(invoice, method):
+async def make_expired_task(invoice):
     crud.add_invoice_expiration(invoice)  # to ensure it is the most recent one
     left = invoice.time_left + 1  # to ensure it's already expired at that moment
     if left > 0:
@@ -78,7 +80,7 @@ async def make_expired_task(invoice, method):
     except Exception:
         return  # invoice deleted meantime
     if invoice.status == InvoiceStatus.PENDING:  # to ensure there are no duplicate notifications
-        await update_status(invoice, method, InvoiceStatus.EXPIRED)
+        await update_status(invoice, InvoiceStatus.EXPIRED)
 
 
 async def mark_invoice_paid(invoice, method, xpub, electrum_status):
@@ -86,14 +88,14 @@ async def mark_invoice_paid(invoice, method, xpub, electrum_status):
     if invoice.status == InvoiceStatus.PENDING:
         if electrum_status == InvoiceStatus.COMPLETE:
             if method.lightning:
-                await update_status(invoice, method, InvoiceStatus.COMPLETE)
+                await update_status(invoice, InvoiceStatus.COMPLETE, method)
             else:
-                await update_status(invoice, method, InvoiceStatus.PAID)
+                await update_status(invoice, InvoiceStatus.PAID, method)
                 await update_confirmations(
                     invoice, method, await get_confirmations(method, xpub)
                 )  # to trigger complete for stores accepting 0-conf
         elif electrum_status == InvoiceStatus.EXPIRED:
-            await update_status(invoice, method, electrum_status)
+            await update_status(invoice, electrum_status, method)
         else:
             return False
         return True
@@ -122,7 +124,7 @@ async def update_confirmations(invoice, method, confirmations):
         status = InvoiceStatus.CONFIRMED
     if confirmations >= store.checkout_settings.transaction_speed:
         status = InvoiceStatus.COMPLETE
-    await update_status(invoice, method, status)
+    await update_status(invoice, status, method)
 
 
 async def get_confirmations(method, xpub):
@@ -134,6 +136,7 @@ async def get_confirmations(method, xpub):
 
 
 async def new_block_handler(instance, event, height):
+    await asyncio.sleep(3)  # wait for electrum to update invoices
     async for method, invoice, xpub in iterate_pending_invoices(instance.coin_name.lower()):
         with log_errors():  # issues processing one item
             if (
@@ -201,18 +204,30 @@ def convert_status(status):
     return status
 
 
-async def update_status(invoice, method, status):
+async def update_status(invoice, status, method=None):
     status = convert_status(status)
     if invoice.status != status and status != InvoiceStatus.PENDING and invoice.status != InvoiceStatus.COMPLETE:
-        full_method_name = method.get_name()
-        logger.info(f"Updating status of invoice {invoice.id} with payment method {full_method_name} to {status}")
+        log_text = f"Updating status of invoice {invoice.id}"
+        if method:
+            full_method_name = method.get_name()
+            if not invoice.paid_currency and status in [InvoiceStatus.PAID, InvoiceStatus.COMPLETE]:
+                await invoice.update(paid_currency=full_method_name, discount=method.discount).apply()
+            log_text += f" with payment method {full_method_name}"
+        logger.info(f"{log_text} to {status}")
         await invoice.update(status=status).apply()
-        if status == InvoiceStatus.PAID:
-            await invoice.update(paid_currency=full_method_name, discount=method.discount).apply()
-        await utils.publish_message(invoice.id, {"status": status})
+        await utils.publish_message(f"invoice:{invoice.id}", {"status": status})
         if not settings.TEST:
             await invoice_notification(invoice, status)
         return True
+
+
+async def create_expired_tasks():
+    with log_errors():
+        async with db.db.acquire() as conn:
+            async with conn.transaction():
+                async for invoice in models.Invoice.query.where(get_pending_invoice_statuses()).gino.iterate():
+                    with log_errors():
+                        asyncio.ensure_future(make_expired_task(invoice))
 
 
 async def check_pending(currency):
@@ -225,5 +240,4 @@ async def check_pending(currency):
                 invoice_data = await coin.server.get_invoice(method.rhash)  # TODO: add to SDK
             else:
                 invoice_data = await coin.get_request(method.payment_address)
-            if not await mark_invoice_paid(invoice, method, xpub, invoice_data["status"]):
-                asyncio.ensure_future(make_expired_task(invoice, method))
+            await mark_invoice_paid(invoice, method, xpub, invoice_data["status"])

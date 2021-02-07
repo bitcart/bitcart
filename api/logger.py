@@ -60,6 +60,8 @@ class MsgpackHandler(logging.handlers.SocketHandler):
 config = Config("conf/.env")
 LOG_DIR = config("LOG_DIR", default=None)
 LOG_FILE = os.path.join(LOG_DIR, LOG_FILE_NAME) if LOG_DIR else None
+DOCKER_ENV = config("IN_DOCKER", cast=bool, default=False)
+LOGSERVER_HOST = "worker" if DOCKER_ENV else "localhost"
 
 formatter = Formatter(
     "%(asctime)s - [PID %(process)d] - %(name)s.%(funcName)s [line %(lineno)d] - %(levelname)s - %(message)s"
@@ -76,7 +78,8 @@ logger.addHandler(console)
 
 logger_client = logging.getLogger("bitcart.logclient")
 logger_client.setLevel(logging.DEBUG)
-socket_handler = MsgpackHandler("localhost", logging.handlers.DEFAULT_TCP_LOGGING_PORT)
+
+socket_handler = MsgpackHandler(LOGSERVER_HOST, logging.handlers.DEFAULT_TCP_LOGGING_PORT)
 socket_handler.setLevel(logging.DEBUG)
 logger_client.addHandler(socket_handler)
 
