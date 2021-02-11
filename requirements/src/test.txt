@@ -1,0 +1,9 @@
+pytest
+pytest-asyncio
+pytest-cov
+pytest-mock
+flake8
+black
+isort>=5
+codecov
+async-asgi-testclient

@@ -514,7 +514,7 @@ class BaseDaemon:
 
     @rpc
     def list_currencies(self, wallet=None) -> list:
-        return self.fx.get_currencies(True)
+        return self.fx.get_currencies(False)
 
     @rpc
     def get_tx_size(self, raw_tx: dict, wallet=None) -> int:

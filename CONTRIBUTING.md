@@ -180,6 +180,17 @@ uvicorn --reload main:app
 python3 worker.py
 ```
 
+### Updating dependencies
+
+If you need to update some dependency, use `pip-compile` from `pip-tools` (included in dev requirements file).
+
+You can use `helpers/compile-requirements.sh` to re-compile requirements files from input files, and
+`helpers/sync-requirements.sh` to install every requirement file.
+
+If you need to add a new dependency or a version constraint, edit the files in `requirements/src` folder, and then re-compile the requirements files.
+
+Updating dependencies (changing locked versions) is done by automated bots like dependabot.
+
 ### Coding guidelines for python code
 
 Make sure to read our [coding guidelines for python code](CODING_STANDARDS.md#coding-guidelines-for-python-code) before contributing. By following these guidelines you will make reviewing process easier both for you and maintainers.

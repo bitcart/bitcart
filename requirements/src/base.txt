@@ -1,0 +1,2 @@
+# .env file reading
+python-decouple
