@@ -184,10 +184,12 @@ python3 worker.py
 
 If you need to update some dependency, use `pip-compile` from `pip-tools` (included in dev requirements file).
 
-You can use `helpers/compile-requirements.sh` to re-compile requirements files from input files, and
-`helpers/sync-requirements.sh` to install every requirement file.
+You can use `scripts/compile-requirements.sh` to re-compile requirements files from input files, and
+`scripts/sync-requirements.sh` to install every requirement file.
 
-If you need to add a new dependency or a version constraint, edit the files in `requirements/src` folder, and then re-compile the requirements files.
+If you need to add a new dependency or a version constraint, edit the files in `requirements` folder, and then re-compile the requirements files.
+
+Note that, the requirements in `requirements/deterministic` folder are used for docker images, and ideally you should reproduce the same environment locally
 
 Updating dependencies (changing locked versions) is done by automated bots like dependabot.
 
