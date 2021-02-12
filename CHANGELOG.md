@@ -2,6 +2,8 @@
 
 ## Latest changes
 
+## 0.2.3.1
+
 Fix invoice creation for fiat currencies without a symbol
 Don't create duplicate make expired tasks on startup
 

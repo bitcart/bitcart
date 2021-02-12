@@ -1,4 +1,4 @@
-VERSION = "0.2.3.0"  # Version, used for openapi schemas and update checks
+VERSION = "0.2.3.1"  # Version, used for openapi schemas and update checks
 WEBSITE = "https://bitcartcc.com"  # BitcartCC official site
 GIT_REPO_URL = "https://github.com/bitcartcc/bitcart"  # BitcartCC github repository
 LOG_FILE_NAME = "bitcart-log.log"  # base log file name
