@@ -85,20 +85,15 @@ async def make_expired_task(invoice):
 
 async def mark_invoice_paid(invoice, method, xpub, electrum_status):
     electrum_status = convert_status(electrum_status)
-    if invoice.status == InvoiceStatus.PENDING:
-        if electrum_status == InvoiceStatus.COMPLETE:
-            if method.lightning:
-                await update_status(invoice, InvoiceStatus.COMPLETE, method)
-            else:
-                await update_status(invoice, InvoiceStatus.PAID, method)
-                await update_confirmations(
-                    invoice, method, await get_confirmations(method, xpub)
-                )  # to trigger complete for stores accepting 0-conf
-        elif electrum_status == InvoiceStatus.EXPIRED:
-            await update_status(invoice, electrum_status, method)
+    if invoice.status == InvoiceStatus.PENDING and electrum_status == InvoiceStatus.COMPLETE:
+        if method.lightning:
+            await update_status(invoice, InvoiceStatus.COMPLETE, method)
         else:
-            return False
-        return True
+            await update_status(invoice, InvoiceStatus.PAID, method)
+            await update_confirmations(
+                invoice, method, await get_confirmations(method, xpub)
+            )  # to trigger complete for stores accepting 0-conf
+    return True
 
 
 async def new_payment_handler(instance, event, address, status, status_str):

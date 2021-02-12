@@ -2,6 +2,9 @@
 
 ## Latest changes
 
+Fix invoice creation for fiat currencies without a symbol
+Don't create duplicate make expired tasks on startup
+
 ## 0.2.3.0
 
 Maintenance release. Use deterministic requirements, decrease docker image sizes, fix some fiat currencies not being displayed

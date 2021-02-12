@@ -39,7 +39,8 @@ def moneyfmt(value, places=2, curr="", sep=",", dp="."):
         if i == 3 and digits:
             i = 0
             build(sep)
-    build(curr)
+    if curr:
+        build(curr)
     if sign:
         build("-")
     return "".join(reversed(result))
