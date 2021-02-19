@@ -335,3 +335,28 @@ class LNPayScheme(BaseModel):
 class EventSystemMessage(BaseModel):
     event: str
     data: dict
+
+
+class ConfiguratorDomainSettings(BaseModel):
+    domain: Optional[str]
+    https: bool
+
+
+class ConfiguratorCoinDescription(BaseModel):
+    enabled: bool
+    network: str
+    lightning: bool
+
+
+class ConfiguratorAdvancedSettings(BaseModel):
+    installation_pack: Optional[str]
+    bitcart_docker_repository: Optional[str]
+    additional_components: List[str]
+
+
+class ConfiguratorDeploySettings(BaseModel):
+    mode: str
+    domain_settings: ConfiguratorDomainSettings
+    coins: Dict[str, ConfiguratorCoinDescription]
+    additional_services: List[str]
+    advanced_settings: ConfiguratorAdvancedSettings
