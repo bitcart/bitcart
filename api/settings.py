@@ -32,6 +32,7 @@ TEST = config("TEST", cast=bool, default="pytest" in sys.modules)
 
 # environment
 DOCKER_ENV = config("IN_DOCKER", cast=bool, default=False)
+ROOT_PATH = config("BITCART_BACKEND_ROOTPATH", default="")
 
 # database
 DB_NAME = config("DB_DATABASE", default="bitcart")

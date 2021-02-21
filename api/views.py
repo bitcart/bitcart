@@ -17,6 +17,7 @@ from starlette.requests import Request
 from starlette.status import WS_1008_POLICY_VIOLATION
 
 from . import constants, crud, db, models, pagination, schemes, settings, templates, utils
+from .ext import configurator
 from .ext import export as export_ext
 from .ext import tor as tor_ext
 from .ext import update as update_ext
@@ -849,3 +850,14 @@ async def wallet_lnpay(
         return await coin.lnpay(params.invoice)
     except BitcartBaseError:
         raise HTTPException(400, "Failed to pay the invoice")
+
+
+@router.post("/configurator/deploy/bash")
+async def generate_deployment(settings: schemes.ConfiguratorDeploySettings, request: Request):
+    try:
+        await utils.AuthDependency()(request, SecurityScopes())
+    except HTTPException:
+        allow_anonymous_configurator = (await utils.get_setting(schemes.Policy)).allow_anonymous_configurator
+        if not allow_anonymous_configurator:
+            raise HTTPException(422, "Anonymous configurator access disallowed")
+    return configurator.create_bash_script(settings)

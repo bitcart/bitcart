@@ -307,6 +307,7 @@ class Policy(BaseModel):
     disable_registration: bool = False
     discourage_index: bool = False
     check_updates: bool = True
+    allow_anonymous_configurator: bool = True
 
 
 class GlobalStorePolicy(BaseModel):
@@ -335,3 +336,28 @@ class LNPayScheme(BaseModel):
 class EventSystemMessage(BaseModel):
     event: str
     data: dict
+
+
+class ConfiguratorDomainSettings(BaseModel):
+    domain: Optional[str]
+    https: Optional[bool] = True
+
+
+class ConfiguratorCoinDescription(BaseModel):
+    enabled: Optional[bool] = True
+    network: Optional[str] = "mainnet"
+    lightning: Optional[bool] = False
+
+
+class ConfiguratorAdvancedSettings(BaseModel):
+    installation_pack: Optional[str]
+    bitcart_docker_repository: Optional[str]
+    additional_components: Optional[List[str]]
+
+
+class ConfiguratorDeploySettings(BaseModel):
+    mode: str
+    domain_settings: ConfiguratorDomainSettings
+    coins: Dict[str, ConfiguratorCoinDescription]
+    additional_services: Optional[List[str]]
+    advanced_settings: ConfiguratorAdvancedSettings

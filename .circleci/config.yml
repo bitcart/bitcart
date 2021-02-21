@@ -23,9 +23,9 @@ jobs:
       # Download and cache dependencies
       - restore_cache:
           keys:
-            - v23-dependencies-{{ checksum "requirements/web.txt" }}-{{ checksum "requirements/test.txt" }}-{{ checksum "requirements/daemons/btc.txt" }}-<< parameters.v >>
+            - v24-dependencies-{{ checksum "requirements/web.txt" }}-{{ checksum "requirements/test.txt" }}-{{ checksum "requirements/daemons/btc.txt" }}-<< parameters.v >>
             # fallback to using the latest cache if no exact match is found
-            - v23-dependencies-
+            - v24-dependencies-
       - run:
           name: install dependencies
           command: |
@@ -40,7 +40,7 @@ jobs:
       - save_cache:
           paths:
             - ~/venv
-          key: v23-dependencies-{{ checksum "requirements/web.txt" }}-{{ checksum "requirements/test.txt" }}-{{ checksum "requirements/daemons/btc.txt" }}-<< parameters.v >>
+          key: v24-dependencies-{{ checksum "requirements/web.txt" }}-{{ checksum "requirements/test.txt" }}-{{ checksum "requirements/daemons/btc.txt" }}-<< parameters.v >>
 
       - run:
           name: prepare daemon
