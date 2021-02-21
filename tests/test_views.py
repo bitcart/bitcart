@@ -18,6 +18,13 @@ LIMITED_USER_DATA = {
     "email": "testauthlimited@example.com",
     "password": "test12345",
 }
+SCRIPT_SETTINGS = {
+    "mode": "manual",
+    "domain_settings": {"domain": "bitcartcc.com", "https": True},
+    "coins": {"btc": {"network": "testnet", "lightning": True}},
+    "additional_services": ["tor"],
+    "advanced_settings": {"additional_components": ["custom"]},
+}
 
 
 class DummyInstance:
@@ -491,7 +498,12 @@ def test_management_commands(client: TestClient, log_file_deleting: str, token: 
 def test_policies(client: TestClient, token: str):
     resp = client.get("/manage/policies")
     assert resp.status_code == 200
-    assert resp.json() == {"disable_registration": False, "discourage_index": False, "check_updates": True}
+    assert resp.json() == {
+        "allow_anonymous_configurator": True,
+        "disable_registration": False,
+        "discourage_index": False,
+        "check_updates": True,
+    }
     assert client.post("/manage/policies").status_code == 401
     resp = client.post(
         "/manage/policies",
@@ -499,10 +511,16 @@ def test_policies(client: TestClient, token: str):
         headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 200
-    assert resp.json() == {"disable_registration": True, "discourage_index": False, "check_updates": True}
+    assert resp.json() == {
+        "allow_anonymous_configurator": True,
+        "disable_registration": True,
+        "discourage_index": False,
+        "check_updates": True,
+    }
     assert client.post("/users", json={"email": "noauth@example.com", "password": "noauth"}).status_code == 422
     # Test for loading data from db instead of loading scheme's defaults
     assert client.get("/manage/policies").json() == {
+        "allow_anonymous_configurator": True,
         "disable_registration": True,
         "discourage_index": False,
         "check_updates": True,
@@ -514,6 +532,7 @@ def test_policies(client: TestClient, token: str):
     )
     assert resp.status_code == 200
     assert resp.json() == {
+        "allow_anonymous_configurator": True,
         "disable_registration": False,
         "discourage_index": False,
         "check_updates": True,
@@ -1060,18 +1079,27 @@ def test_products_list(client: TestClient):
     assert resp.json()["result"] == []
 
 
-def test_configurator(client: TestClient):
+def test_configurator(client: TestClient, token: str):
+    SCRIPT_SETTINGS
     assert client.post("/configurator/deploy/bash").status_code == 422
-    resp = client.post(
-        "/configurator/deploy/bash",
-        json={
-            "mode": "manual",
-            "domain_settings": {"domain": "bitcartcc.com", "https": True},
-            "coins": {"btc": {"network": "testnet", "lightning": True}},
-            "additional_services": ["tor"],
-            "advanced_settings": {"additional_components": ["custom"]},
-        },
+    assert (
+        client.post(
+            "/manage/policies",
+            json={"allow_anonymous_configurator": False},
+            headers={"Authorization": f"Bearer {token}"},
+        ).status_code
+        == 200
     )
+    assert client.post("/configurator/deploy/bash", json=SCRIPT_SETTINGS).status_code == 422
+    assert (
+        client.post(
+            "/manage/policies",
+            json={"allow_anonymous_configurator": True},
+            headers={"Authorization": f"Bearer {token}"},
+        ).status_code
+        == 200
+    )
+    resp = client.post("/configurator/deploy/bash", json=SCRIPT_SETTINGS)
     assert resp.status_code == 200
     script = resp.json()
     assert f"git clone {DOCKER_REPO_URL} bitcart-docker" in script

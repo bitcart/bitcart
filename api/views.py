@@ -853,5 +853,11 @@ async def wallet_lnpay(
 
 
 @router.post("/configurator/deploy/bash")
-async def generate_deployment(settings: schemes.ConfiguratorDeploySettings):
+async def generate_deployment(settings: schemes.ConfiguratorDeploySettings, request: Request):
+    try:
+        await utils.AuthDependency()(request, SecurityScopes())
+    except HTTPException:
+        allow_anonymous_configurator = (await utils.get_setting(schemes.Policy)).allow_anonymous_configurator
+        if not allow_anonymous_configurator:
+            raise HTTPException(422, "Anonymous configurator access disallowed")
     return configurator.create_bash_script(settings)

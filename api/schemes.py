@@ -307,6 +307,7 @@ class Policy(BaseModel):
     disable_registration: bool = False
     discourage_index: bool = False
     check_updates: bool = True
+    allow_anonymous_configurator: bool = True
 
 
 class GlobalStorePolicy(BaseModel):
