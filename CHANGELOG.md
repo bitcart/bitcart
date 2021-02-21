@@ -2,6 +2,94 @@
 
 ## Latest changes
 
+## 0.3.0.0
+
+### Major update
+
+This update contains backwards-incompatible changes
+
+### Completely improved docker deployment
+
+We now test if deployment works in our automated systems, so that it will always work
+
+Set up formatting and proper linting
+
+Major improvements to the setup scripts:
+
+New scripts:
+
+- `restart.sh`, to restart the server
+- `changedomain.sh`, to change domain (usage: `./changedomain.sh newdomain.tld`)
+
+Added more validation to `setup.sh` (i.e. it is not possible to enter an invalid host anymore)
+
+Added ability to change the root path where service is running by setting `BITCART_SERVICE_ROOTPATH` (i.e. `BITCART_STORE_ROOTPATH`)
+
+Added new settings to configure nginx reverse proxy:
+
+- `REVERSEPROXY_HTTP_PORT` - the http port nginx is running on (default 80)
+- `REVERSEPROXY_HTTPS_PORT` - the https port nginx is running on (443)
+- `REVERSEPROXY_DEFAULT_HOST` - the host to be served by default from server ip (default: none)
+
+Overall generator refactor
+
+#### One domain support
+
+Existing deployments will be unaffected.
+
+If reverse proxy is enabled and `BITCART_ADMIN_HOST` and `BITCART_STORE_HOST` and `BITCART_ADMIN_API_URL` and `BITCART_STORE_API_URL` are all unset, one domain mode is enabled.
+
+For one domain mode, only one setting is used: `BITCART_HOST`.
+
+It will determine the only domain bitcartcc will run on.
+
+The 3 main services will run under different routes.
+
+There is a root service, running at domain root. The root service is selected in the following order (if available): store, admin, api
+
+By default, assuming `BITCART_HOST` was `bitcart.local`:
+
+- the store will run on `bitcart.local`
+- admin on `bitcart.local/admin`
+- api on `bitcart.local/api`
+
+Everything will be configured to work on one domain.
+
+To enable one domain mode for existing deployments:
+
+```bash
+unset BITCART_ADMIN_HOST
+unset BITCART_STORE_HOST
+unset BITCART_ADMIN_URL
+unset BITCART_STORE_URL
+./setup.sh
+```
+
+#### Breaking change to improve readability
+
+The following environment variables were renamed to reduce confusion:
+
+- `BITCART_ADMIN_URL` -> `BITCART_ADMIN_API_URL`
+- `BITCART_STORE_URL` -> `BITCART_STORE_API_URL`
+- `BITCART_ADMIN_ONION_URL` -> `BITCART_ADMIN_API_ONION_URL`
+- `BITCART_STORE_ONION_URL` -> `BITCART_STORE_API_ONION_URL`
+
+Please set them in order for your deployment to work
+
+### BitcartCC Configurator
+
+This release included an alpha version of BitcartCC Configurator.
+
+For now only manual deployment is supported.
+
+BitcartCC Configurator is an application in your admin panel, allowing to install new BitcartCC instances (via ssh or manual generated script) and to re-configure them with ease.
+
+Just enter needed settings and you will get a copiable script.
+
+By default it can be accessed by anonymous users.
+
+Added a new server policy to make it available for authorized users only (default: False)
+
 ## 0.2.3.1
 
 Fix invoice creation for fiat currencies without a symbol
