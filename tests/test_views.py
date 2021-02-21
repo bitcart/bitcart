@@ -10,6 +10,7 @@ from bitcart import BTC
 from starlette.testclient import TestClient
 
 from api import invoices, models, settings, templates, utils
+from api.constants import DOCKER_REPO_URL
 from api.ext import tor as tor_ext
 
 TEST_XPUB = "tpubDD5MNJWw35y3eoJA7m3kFWsyX5SaUgx2Y3AaGwFk1pjYsHvpgDwRhrStRbCGad8dYzZCkLCvbGKfPuBiG7BabswmLofb7c2yfQFhjqSjaGi"
@@ -1057,3 +1058,25 @@ def test_products_list(client: TestClient):
     resp = client.get("/products?store=0")
     assert resp.status_code == 200
     assert resp.json()["result"] == []
+
+
+def test_configurator(client: TestClient):
+    assert client.post("/configurator/deploy/bash").status_code == 422
+    resp = client.post(
+        "/configurator/deploy/bash",
+        json={
+            "mode": "manual",
+            "domain_settings": {"domain": "bitcartcc.com", "https": True},
+            "coins": {"btc": {"network": "testnet", "lightning": True}},
+            "additional_services": ["tor"],
+            "advanced_settings": {"additional_components": ["custom"]},
+        },
+    )
+    assert resp.status_code == 200
+    script = resp.json()
+    assert f"git clone {DOCKER_REPO_URL} bitcart-docker" in script
+    assert "BITCART_CRYPTOS=btc" in script
+    assert "BITCART_HOST=bitcartcc.com" in script
+    assert "BTC_NETWORK=testnet" in script
+    assert "BTC_LIGHTNING=True" in script
+    assert "BITCART_ADDITIONAL_COMPONENTS=custom,tor" in script

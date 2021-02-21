@@ -339,24 +339,24 @@ class EventSystemMessage(BaseModel):
 
 class ConfiguratorDomainSettings(BaseModel):
     domain: Optional[str]
-    https: bool
+    https: Optional[bool] = True
 
 
 class ConfiguratorCoinDescription(BaseModel):
-    enabled: bool
-    network: str
-    lightning: bool
+    enabled: Optional[bool] = True
+    network: Optional[str] = "mainnet"
+    lightning: Optional[bool] = False
 
 
 class ConfiguratorAdvancedSettings(BaseModel):
     installation_pack: Optional[str]
     bitcart_docker_repository: Optional[str]
-    additional_components: List[str]
+    additional_components: Optional[List[str]]
 
 
 class ConfiguratorDeploySettings(BaseModel):
     mode: str
     domain_settings: ConfiguratorDomainSettings
     coins: Dict[str, ConfiguratorCoinDescription]
-    additional_services: List[str]
+    additional_services: Optional[List[str]]
     advanced_settings: ConfiguratorAdvancedSettings

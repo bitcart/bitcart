@@ -10,12 +10,16 @@ def create_bash_script(settings):
     reverseproxy = "nginx-https" if settings.domain_settings.https else "nginx"
     cryptos_str = ",".join(settings.coins.keys())
     installation_pack = settings.advanced_settings.installation_pack
-    additional_components = list(set(settings.additional_services + settings.advanced_settings.additional_components))
+    additional_components = sorted(set(settings.additional_services + settings.advanced_settings.additional_components))
     domain = settings.domain_settings.domain or "bitcart.local"
     script = ""
     script += "sudo su -\n"
     script += f"{install_package('git')}\n"
-    script += 'if [ -d "bitcart-docker" ]; then echo "existing bitcart-docker folder found, pulling instead of cloning."; git pull; fi\n'
+    script += (
+        'if [ -d "bitcart-docker" ]; then echo "existing bitcart-docker folder found, pulling instead of cloning.";'
+        " git pull; fi\n"
+    )
+    script += f'if [ ! -d "bitcart-docker" ]; then echo "cloning bitcart-docker"; git clone {git_repo} bitcart-docker; fi\n'
     if git_repo != DOCKER_REPO_URL:
         script += 'export BITCARTGEN_DOCKER_IMAGE="bitcartcc/docker-compose-generator:local"\n'
     script += f"export BITCART_HOST={domain}\n"
