@@ -107,8 +107,7 @@ async def _create_payment_method(invoice, wallet, product, store, discounts, pro
         rate = await coin.rate("USD")
     if math.isnan(rate):
         rate = Decimal(1)  # no rate available, no conversion
-    price = invoice.price * ((1 - (Decimal(store.checkout_settings.underpaid_percentage) / 100)))
-    price = currency_table.normalize(wallet.currency, price / rate)
+    price = invoice.price
     if discounts:
         try:
             discount = max(
@@ -124,6 +123,9 @@ async def _create_payment_method(invoice, wallet, product, store, discounts, pro
             price -= price * (Decimal(discount.percent) / Decimal(100))
         except ValueError:  # no matched discounts
             pass
+    request_price = price * ((1 - (Decimal(store.checkout_settings.underpaid_percentage) / 100)))
+    request_price = currency_table.normalize(wallet.currency, request_price / rate)
+    price = currency_table.normalize(wallet.currency, price / rate)
     method = coin.add_request
     if lightning:  # pragma: no cover
         try:
@@ -136,7 +138,7 @@ async def _create_payment_method(invoice, wallet, product, store, discounts, pro
     )
     recommended_fee = 0 if recommended_fee is None else recommended_fee  # if no rate available, disable it
     recommended_fee = round_up(Decimal(recommended_fee) / 1024, 2)  # convert to sat/byte, two decimal places
-    data_got = await method(price, description=product.name if product else "", expire=invoice.expiration)
+    data_got = await method(request_price, description=product.name if product else "", expire=invoice.expiration)
     address = data_got["address"] if not lightning else data_got["invoice"]
     url = data_got["URI"] if not lightning else data_got["invoice"]
     node_id = await coin.node_id if lightning else None
