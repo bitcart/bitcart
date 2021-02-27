@@ -2,6 +2,12 @@
 
 ## Latest changes
 
+## 0.3.0.1
+
+Fixed underpaid amounts calculation
+
+Fixed admin panel in one-domain mode
+
 ## 0.3.0.0
 
 ### Major update

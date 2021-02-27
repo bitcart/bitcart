@@ -1,4 +1,4 @@
-VERSION = "0.3.0.0"  # Version, used for openapi schemas and update checks
+VERSION = "0.3.0.1"  # Version, used for openapi schemas and update checks
 WEBSITE = "https://bitcartcc.com"  # BitcartCC official site
 GIT_REPO_URL = "https://github.com/bitcartcc/bitcart"  # BitcartCC github repository
 DOCKER_REPO_URL = "https://github.com/bitcartcc/bitcart-docker"  # BitcartCC Docker Packaging repository
