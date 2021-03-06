@@ -13,3 +13,4 @@ python-multipart
 aiofiles
 notifiers
 msgpack
+paramiko

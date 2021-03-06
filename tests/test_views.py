@@ -19,7 +19,7 @@ LIMITED_USER_DATA = {
     "password": "test12345",
 }
 SCRIPT_SETTINGS = {
-    "mode": "manual",
+    "mode": "Manual",
     "domain_settings": {"domain": "bitcartcc.com", "https": True},
     "coins": {"btc": {"network": "testnet", "lightning": True}},
     "additional_services": ["tor"],
@@ -1101,10 +1101,17 @@ def test_configurator(client: TestClient, token: str):
     )
     resp = client.post("/configurator/deploy/bash", json=SCRIPT_SETTINGS)
     assert resp.status_code == 200
-    script = resp.json()
+    assert resp.json()["success"]
+    script = resp.json()["output"]
+    assert "sudo su -" in script
     assert f"git clone {DOCKER_REPO_URL} bitcart-docker" in script
     assert "BITCART_CRYPTOS=btc" in script
     assert "BITCART_HOST=bitcartcc.com" in script
     assert "BTC_NETWORK=testnet" in script
     assert "BTC_LIGHTNING=True" in script
     assert "BITCART_ADDITIONAL_COMPONENTS=custom,tor" in script
+    deploy_settings = SCRIPT_SETTINGS.copy()
+    deploy_settings["mode"] = "Remote"
+    resp = client.post("/configurator/deploy/bash", json=deploy_settings)
+    assert resp.status_code == 200
+    assert not resp.json()["success"]

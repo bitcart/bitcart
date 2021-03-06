@@ -860,4 +860,8 @@ async def generate_deployment(settings: schemes.ConfiguratorDeploySettings, requ
         allow_anonymous_configurator = (await utils.get_setting(schemes.Policy)).allow_anonymous_configurator
         if not allow_anonymous_configurator:
             raise HTTPException(422, "Anonymous configurator access disallowed")
-    return configurator.create_bash_script(settings)
+    script = configurator.create_bash_script(settings)
+    if settings.mode == "Manual":
+        return {"success": True, "output": script}
+    success, output = configurator.execute_ssh_commands(script, settings.ssh_settings)
+    return {"success": success, "output": output}

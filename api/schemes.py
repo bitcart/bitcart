@@ -355,8 +355,17 @@ class ConfiguratorAdvancedSettings(BaseModel):
     additional_components: Optional[List[str]]
 
 
+class ConfiguratorSSHSettings(BaseModel):
+    host: Optional[str]
+    username: Optional[str]
+    password: Optional[str]
+    root_password: Optional[str]
+    load_settings: Optional[bool] = True
+
+
 class ConfiguratorDeploySettings(BaseModel):
     mode: str
+    ssh_settings: Optional[ConfiguratorSSHSettings] = ConfiguratorSSHSettings()
     domain_settings: ConfiguratorDomainSettings
     coins: Dict[str, ConfiguratorCoinDescription]
     additional_services: Optional[List[str]]
