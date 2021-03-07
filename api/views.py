@@ -12,6 +12,7 @@ from fastapi.responses import StreamingResponse
 from fastapi.security import SecurityScopes
 from pydantic.error_wrappers import ValidationError
 from sqlalchemy import distinct, func, select
+from starlette.concurrency import run_in_threadpool
 from starlette.endpoints import WebSocketEndpoint
 from starlette.requests import Request
 from starlette.status import WS_1008_POLICY_VIOLATION
@@ -863,5 +864,5 @@ async def generate_deployment(settings: schemes.ConfiguratorDeploySettings, requ
     script = configurator.create_bash_script(settings)
     if settings.mode == "Manual":
         return {"success": True, "output": script}
-    success, output = configurator.execute_ssh_commands(script, settings.ssh_settings)
+    success, output = await run_in_threadpool(configurator.execute_ssh_commands, script, settings.ssh_settings)
     return {"success": success, "output": output}

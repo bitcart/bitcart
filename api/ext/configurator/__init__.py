@@ -57,15 +57,6 @@ def create_bash_script(settings):
     return script
 
 
-def normalize_commands(commands):
-    # add exit command to finish session if needed
-    if not commands.endswith("\n"):
-        commands += "\n"
-    if not commands.endswith("exit\n"):
-        commands += "exit\n"
-    return commands
-
-
 def create_ssh_client(ssh_settings):
     client = paramiko.SSHClient()
     client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -75,7 +66,7 @@ def create_ssh_client(ssh_settings):
 
 def remove_intermediate_lines(output):
     newoutput = ""
-    for line in output.split("\n"):
+    for line in output.splitlines():
         if BASH_INTERMEDIATE_COMMAND in line or INTERMEDIATE_OUTPUT in line:
             continue
         newoutput += line + "\n"
@@ -108,14 +99,11 @@ def send_command(channel, command):
 
 def execute_ssh_commands(commands, ssh_settings):
     try:
-        commands = normalize_commands(commands)
         client = create_ssh_client(ssh_settings)
         channel = client.invoke_shell()
         output = ""
-        for command in commands.split("\n"):
-            if not command:
-                continue
-            output += send_command(command)
+        for command in commands.splitlines():
+            output += send_command(channel, command)
         output = remove_intermediate_lines(output)
         output = remove_colors(output)
         channel.close()
