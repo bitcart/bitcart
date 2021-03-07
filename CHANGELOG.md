@@ -2,6 +2,20 @@
 
 ## Latest changes
 
+## 0.3.1.0
+
+BitcartCC Configurator now supports installing to remote servers via ssh!
+
+Added restart server management command
+
+Added ability to make email optional on store POS
+
+Improved additional components handling in the docker deployment, and added ability to preview settings
+
+Fixed stats refresh in the admin panel
+
+Made the tor services page more clear
+
 ## 0.3.0.1
 
 Fixed underpaid amounts calculation
