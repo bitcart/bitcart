@@ -485,6 +485,7 @@ def test_management_commands(client: TestClient, log_file_deleting: str, token: 
     limited_user_token = client.post("/token", json=LIMITED_USER_DATA).json()["id"]
     assert client.post("/manage/update", headers={"Authorization": f"Bearer {limited_user_token}"}).status_code == 403
     assert client.post("/manage/update", headers={"Authorization": f"Bearer {token}"}).status_code == 200
+    assert client.post("/manage/restart", headers={"Authorization": f"Bearer {token}"}).status_code == 200
     assert client.post("/manage/cleanup/images", headers={"Authorization": f"Bearer {token}"}).status_code == 200
     assert client.post("/manage/cleanup/logs", headers={"Authorization": f"Bearer {token}"}).status_code == 200
     assert client.post("/manage/cleanup", headers={"Authorization": f"Bearer {token}"}).status_code == 200
@@ -539,7 +540,7 @@ def test_policies(client: TestClient, token: str):
     }
     resp = client.get("/manage/stores")
     assert resp.status_code == 200
-    assert resp.json() == {"pos_id": 1}
+    assert resp.json() == {"pos_id": 1, "email_required": True}
     assert client.post("/manage/stores").status_code == 401
     resp = client.post(
         "/manage/stores",
@@ -547,15 +548,15 @@ def test_policies(client: TestClient, token: str):
         headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 200
-    assert resp.json() == {"pos_id": 2}
-    assert client.get("/manage/stores").json() == {"pos_id": 2}
+    assert resp.json() == {"pos_id": 2, "email_required": True}
+    assert client.get("/manage/stores").json() == {"pos_id": 2, "email_required": True}
     resp = client.post(
         "/manage/stores",
         json={"pos_id": 1},
         headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 200
-    assert resp.json() == {"pos_id": 1}
+    assert resp.json() == {"pos_id": 1, "email_required": True}
 
 
 def test_no_token_management(client: TestClient, token: str):

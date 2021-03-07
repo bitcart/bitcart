@@ -627,6 +627,14 @@ async def cleanup_server(user: models.User = Security(utils.AuthDependency(), sc
     return {"status": "error", "message": message}
 
 
+@router.post("/manage/restart")
+async def restart_server(user: models.User = Security(utils.AuthDependency(), scopes=["server_management"])):
+    if settings.DOCKER_ENV:  # pragma: no cover
+        utils.run_host("./restart.sh")
+        return {"status": "success", "message": "Successfully started restart process!"}
+    return {"status": "error", "message": "Not running in docker"}
+
+
 @router.get("/manage/daemons")
 async def get_daemons(user: models.User = Security(utils.AuthDependency(), scopes=["server_management"])):
     return settings.crypto_settings

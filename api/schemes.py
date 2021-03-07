@@ -312,6 +312,7 @@ class Policy(BaseModel):
 
 class GlobalStorePolicy(BaseModel):
     pos_id: int = 1
+    email_required: bool = True
 
 
 class BatchSettings(BaseModel):
