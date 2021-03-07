@@ -19,6 +19,6 @@ ${SYSTEM_PYTHON} -m piptools -h > /dev/null 2>&1 || { ${SYSTEM_PYTHON} -m pip in
 
 for file in requirements/*.txt requirements/daemons/*.txt; do
     out_file=${file/requirements\//requirements/deterministic/}
-    $SYSTEM_PYTHON -m piptools compile --generate-hashes --allow-unsafe $file -o $out_file
+    $SYSTEM_PYTHON -m piptools compile --generate-hashes --allow-unsafe $file -o $out_file $@
     sed -i "1s/.*/# Python version: $($SYSTEM_PYTHON -V)/" $out_file
 done
