@@ -78,5 +78,9 @@ event_handler = EventHandler(
             "params": {"id"},
             "handlers": [],
         },
+        "deploy_task": {
+            "params": {"id"},
+            "handlers": [],
+        },
     }
 )

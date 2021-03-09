@@ -16,6 +16,7 @@ omit =
     venv/*,
     env/*,
     api/ext/update.py,
+    api/ext/configurator.py,
     api/logger.py,
     api/logserver.py,
     api/invoices.py,

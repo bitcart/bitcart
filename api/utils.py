@@ -2,6 +2,7 @@ import asyncio
 import inspect
 import json
 import os
+import secrets
 import smtplib
 import traceback
 from collections import defaultdict
@@ -27,6 +28,7 @@ from starlette.requests import Request
 from starlette.status import HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN
 
 from . import db, events, exceptions, models, pagination, settings, templates
+from .constants import ALPHABET
 from .logger import get_exception_message, get_logger
 
 logger = get_logger(__name__)
@@ -619,3 +621,7 @@ def log_errors():  # pragma: no cover
         yield
     except Exception as e:
         logger.error(get_exception_message(e))
+
+
+def unique_id(length=32):
+    return "".join(secrets.choice(ALPHABET) for i in range(length))

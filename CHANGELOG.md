@@ -2,6 +2,10 @@
 
 ## Latest changes
 
+## 0.3.1.1
+
+Fixed configurator long-running deployments
+
 ## 0.3.1.0
 
 BitcartCC Configurator now supports installing to remote servers via ssh!

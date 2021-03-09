@@ -1,5 +1,6 @@
 from . import invoices, models, settings, utils
 from .events import event_handler
+from .ext.configurator import deploy_task
 from .logger import get_logger
 
 logger = get_logger(__name__)
@@ -24,3 +25,6 @@ async def sync_wallet(event, event_data):
     await utils.publish_message(
         f"wallet:{model.id}", {"status": "success", "balance": str(balance["confirmed"])}
     )  # convert for json serialization
+
+
+event_handler.add_handler("deploy_task", deploy_task)

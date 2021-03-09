@@ -12,7 +12,6 @@ from fastapi.responses import StreamingResponse
 from fastapi.security import SecurityScopes
 from pydantic.error_wrappers import ValidationError
 from sqlalchemy import distinct, func, select
-from starlette.concurrency import run_in_threadpool
 from starlette.endpoints import WebSocketEndpoint
 from starlette.requests import Request
 from starlette.status import WS_1008_POLICY_VIOLATION
@@ -861,16 +860,17 @@ async def wallet_lnpay(
         raise HTTPException(400, "Failed to pay the invoice")
 
 
-@router.post("/configurator/deploy/bash")
+@router.post("/configurator/deploy")
 async def generate_deployment(settings: schemes.ConfiguratorDeploySettings, request: Request):
-    try:
-        await utils.AuthDependency()(request, SecurityScopes())
-    except HTTPException:
-        allow_anonymous_configurator = (await utils.get_setting(schemes.Policy)).allow_anonymous_configurator
-        if not allow_anonymous_configurator:
-            raise HTTPException(422, "Anonymous configurator access disallowed")
+    await configurator.authenticate_request(request)
     script = configurator.create_bash_script(settings)
-    if settings.mode == "Manual":
-        return {"success": True, "output": script}
-    success, output = await run_in_threadpool(configurator.execute_ssh_commands, script, settings.ssh_settings)
-    return {"success": success, "output": output}
+    return await configurator.create_new_task(script, settings.ssh_settings, settings.mode == "Manual")
+
+
+@router.get("/configurator/deploy-result/{deploy_id}")
+async def get_deploy_result(deploy_id: str, request: Request):
+    await configurator.authenticate_request(request)
+    data = await configurator.get_task(deploy_id)
+    if not data:
+        raise HTTPException(404, f"Deployment result {deploy_id} does not exist!")
+    return data

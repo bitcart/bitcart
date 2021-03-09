@@ -1081,8 +1081,7 @@ def test_products_list(client: TestClient):
 
 
 def test_configurator(client: TestClient, token: str):
-    SCRIPT_SETTINGS
-    assert client.post("/configurator/deploy/bash").status_code == 422
+    assert client.post("/configurator/deploy").status_code == 422
     assert (
         client.post(
             "/manage/policies",
@@ -1091,7 +1090,7 @@ def test_configurator(client: TestClient, token: str):
         ).status_code
         == 200
     )
-    assert client.post("/configurator/deploy/bash", json=SCRIPT_SETTINGS).status_code == 422
+    assert client.post("/configurator/deploy", json=SCRIPT_SETTINGS).status_code == 422
     assert (
         client.post(
             "/manage/policies",
@@ -1100,7 +1099,7 @@ def test_configurator(client: TestClient, token: str):
         ).status_code
         == 200
     )
-    resp = client.post("/configurator/deploy/bash", json=SCRIPT_SETTINGS)
+    resp = client.post("/configurator/deploy", json=SCRIPT_SETTINGS)
     assert resp.status_code == 200
     assert resp.json()["success"]
     script = resp.json()["output"]
@@ -1113,6 +1112,13 @@ def test_configurator(client: TestClient, token: str):
     assert "BITCART_ADDITIONAL_COMPONENTS=custom,tor" in script
     deploy_settings = SCRIPT_SETTINGS.copy()
     deploy_settings["mode"] = "Remote"
-    resp = client.post("/configurator/deploy/bash", json=deploy_settings)
+    resp = client.post("/configurator/deploy", json=deploy_settings)
+    assert client.get("/configurator/deploy-result/1").status_code == 404
     assert resp.status_code == 200
     assert not resp.json()["success"]
+    deploy_id = resp.json()["id"]
+    resp2 = client.get(f"/configurator/deploy-result/{deploy_id}")
+    assert resp2.status_code == 200
+    data = resp2.json()
+    assert not data["success"]
+    assert data["id"] == deploy_id

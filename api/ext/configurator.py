@@ -1,9 +1,16 @@
+import json
 import re
 import time
 
 import paramiko
+from fastapi import HTTPException
+from fastapi.security import SecurityScopes
+from starlette.concurrency import run_in_threadpool
 
+from api import events, schemes, settings, utils
 from api.constants import DOCKER_REPO_URL
+from api.logger import get_logger
+from api.schemes import ConfiguratorSSHSettings
 
 COLOR_PATTERN = re.compile(r"\x1b[^m]*m")
 BASH_INTERMEDIATE_COMMAND = 'echo "end-of-command $(expr 1 + 1)"'
@@ -11,6 +18,10 @@ INTERMEDIATE_OUTPUT = "end-of-command 2"
 MAX_OUTPUT_WAIT = 10
 OUTPUT_INTERVAL = 0.5
 BUFFER_SIZE = 17640
+
+REDIS_KEY = "bitcartcc_configurator_ext"
+
+logger = get_logger(__name__)
 
 
 def install_package(package):
@@ -116,3 +127,56 @@ def execute_ssh_commands(commands, ssh_settings):
         except Exception:
             pass
         return False, error_message
+
+
+async def set_task(task_id, data):
+    async with utils.wait_for_redis():
+        await settings.redis_pool.hmset_dict(REDIS_KEY, {task_id: json.dumps(data)})
+
+
+async def create_new_task(script, ssh_settings, is_manual):
+    async with utils.wait_for_redis():
+        deploy_id = utils.unique_id()
+        data = {
+            "id": deploy_id,
+            "script": script,
+            "ssh_settings": ssh_settings.dict(),
+            "success": is_manual,
+            "finished": is_manual,
+            "output": script if is_manual else "",
+        }
+        await set_task(deploy_id, data)
+        if not is_manual:
+            await events.event_handler.publish("deploy_task", {"id": deploy_id})
+        return data
+
+
+async def get_task(task_id):
+    async with utils.wait_for_redis():
+        data = await settings.redis_pool.hget(REDIS_KEY, task_id, encoding="utf-8")
+        return json.loads(data) if data else data
+
+
+async def deploy_task(event, event_data):
+    task_id = event_data["id"]
+    task = await get_task(task_id)
+    if not task:
+        return
+    logger.debug(f"Started deployment {task_id}")
+    success, output = await run_in_threadpool(
+        execute_ssh_commands, task["script"], ConfiguratorSSHSettings(**task["ssh_settings"])
+    )
+    logger.debug(f"Deployment {task_id} success: {success}")
+    task["finished"] = True
+    task["success"] = success
+    task["output"] = output
+    await set_task(task_id, task)
+
+
+async def authenticate_request(request):
+    try:
+        await utils.AuthDependency()(request, SecurityScopes())
+    except HTTPException:
+        allow_anonymous_configurator = (await utils.get_setting(schemes.Policy)).allow_anonymous_configurator
+        if not allow_anonymous_configurator:
+            raise HTTPException(422, "Anonymous configurator access disallowed")
