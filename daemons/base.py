@@ -257,6 +257,16 @@ class BaseDaemon:
                 2: 1000,
             }
 
+    # when daemon is syncing or is synced and wallet is not, prevent running commands to avoid unexpected results
+    def is_still_syncing(self, wallet):
+        server_height = self.network.get_server_height()
+        server_lag = self.network.get_local_height() - server_height
+        return (
+            self.network.is_connecting()
+            or self.network.is_connected()
+            and (not wallet.is_up_to_date() or server_height == 0 or server_lag > 1)
+        )
+
     async def load_wallet(self, xpub):
         if xpub in self.wallets:
             wallet_data = self.wallets[xpub]
@@ -275,9 +285,7 @@ class BaseDaemon:
         storage = self.electrum.storage.WalletStorage(wallet_path)
         wallet = self.create_wallet(storage, config)
         self.load_cmd_wallet(command_runner, wallet, wallet_path)
-        while (
-            self.network.is_connecting() or self.network.is_connected() and not wallet.is_up_to_date()
-        ):  # when daemon is syncing or is synced and wallet is not, prevent running commands to avoid unexpected results
+        while self.is_still_syncing(wallet):
             await asyncio.sleep(0.1)
         self.wallets[xpub] = {"wallet": wallet, "cmd": command_runner, "config": config}
         self.wallets_updates[xpub] = []
