@@ -270,6 +270,11 @@ async def get_cryptos():
     }
 
 
+@router.get("/cryptos/supported")
+async def get_supported_cryptos():
+    return constants.SUPPORTED_CRYPTOS
+
+
 @router.get("/notifications/list")
 async def get_notifications():
     return {

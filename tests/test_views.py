@@ -9,7 +9,7 @@ import pytest
 from bitcart import BTC
 from starlette.testclient import TestClient
 
-from api import invoices, models, settings, templates, utils
+from api import constants, invoices, models, settings, templates, utils
 from api.constants import DOCKER_REPO_URL
 from api.ext import tor as tor_ext
 
@@ -1122,3 +1122,9 @@ def test_configurator(client: TestClient, token: str):
     data = resp2.json()
     assert not data["success"]
     assert data["id"] == deploy_id
+
+
+def test_supported_cryptos(client: TestClient):
+    resp = client.get("/cryptos/supported")
+    assert resp.status_code == 200
+    assert resp.json() == constants.SUPPORTED_CRYPTOS
