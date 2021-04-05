@@ -2,11 +2,11 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Dict, List, Optional, Union
 
+import paramiko
 from fastapi.exceptions import HTTPException
 from pydantic import BaseModel, EmailStr, validator
 
 from .constants import FEE_ETA_TARGETS, MAX_CONFIRMATION_WATCH
-from .utils import now
 
 
 class CreatedMixin(BaseModel):
@@ -14,6 +14,8 @@ class CreatedMixin(BaseModel):
 
     @validator("created", pre=True, always=True)
     def set_created(cls, v):
+        from .utils import now
+
         return v or now()
 
 
@@ -340,7 +342,7 @@ class EventSystemMessage(BaseModel):
 
 
 class ConfiguratorDomainSettings(BaseModel):
-    domain: Optional[str]
+    domain: Optional[str] = ""
     https: Optional[bool] = True
 
 
@@ -351,9 +353,9 @@ class ConfiguratorCoinDescription(BaseModel):
 
 
 class ConfiguratorAdvancedSettings(BaseModel):
-    installation_pack: Optional[str]
-    bitcart_docker_repository: Optional[str]
-    additional_components: Optional[List[str]]
+    installation_pack: Optional[str] = "all"
+    bitcart_docker_repository: Optional[str] = ""
+    additional_components: Optional[List[str]] = []
 
 
 class ConfiguratorSSHSettings(BaseModel):
@@ -361,13 +363,39 @@ class ConfiguratorSSHSettings(BaseModel):
     username: Optional[str]
     password: Optional[str]
     root_password: Optional[str]
-    load_settings: Optional[bool] = True
 
 
-class ConfiguratorDeploySettings(BaseModel):
+class ConfiguratorServerSettings(BaseModel):
+    domain_settings: Optional[ConfiguratorDomainSettings] = ConfiguratorDomainSettings()
+    coins: Optional[Dict[str, ConfiguratorCoinDescription]] = {}
+    additional_services: Optional[List[str]] = []
+    advanced_settings: Optional[ConfiguratorAdvancedSettings] = ConfiguratorAdvancedSettings()
+
+
+class ConfiguratorDeploySettings(ConfiguratorServerSettings):
     mode: str
     ssh_settings: Optional[ConfiguratorSSHSettings] = ConfiguratorSSHSettings()
-    domain_settings: ConfiguratorDomainSettings
-    coins: Dict[str, ConfiguratorCoinDescription]
-    additional_services: Optional[List[str]]
-    advanced_settings: ConfiguratorAdvancedSettings
+
+
+# This is different from ConfiguratorSSHSettings - it is an internal object which is used for ssh connection management
+# throughout the app
+class SSHSettings(BaseModel):
+    host: Optional[str]
+    port: Optional[int] = 22
+    username: Optional[str]
+    password: Optional[str]
+    key_file: Optional[str]
+    key_file_password: Optional[str]
+    authorized_keys_file: Optional[str]
+    bash_profile_script: Optional[str]
+
+    def create_ssh_client(self):
+        client = paramiko.SSHClient()
+        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        kwargs = dict(hostname=self.host, port=self.port, username=self.username, allow_agent=False, look_for_keys=False)
+        if self.key_file:
+            kwargs.update(key_filename=self.key_file, passphrase=self.key_file_password)
+        else:
+            kwargs.update(password=self.password)
+        client.connect(**kwargs)
+        return client

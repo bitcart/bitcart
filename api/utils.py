@@ -29,6 +29,7 @@ from starlette.status import HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN
 
 from . import db, events, exceptions, models, pagination, settings, templates
 from .constants import ALPHABET
+from .ext.ssh import execute_ssh_command
 from .logger import get_exception_message, get_logger
 
 logger = get_logger(__name__)
@@ -521,11 +522,29 @@ async def send_ipn(obj, status):  # pragma: no cover
             pass
 
 
-def run_host(command, target_file="queue"):
-    if not os.path.exists(target_file):
-        raise HTTPException(422, "No pipe existing")
-    with open(target_file, "w") as f:
-        f.write(f"{command}\n")
+def run_host(command):
+    try:
+        client = settings.SSH_SETTINGS.create_ssh_client()
+    except Exception as e:
+        return False, f"Connection problem: {e}"
+    try:
+        execute_ssh_command(
+            client,
+            f'. {settings.SSH_SETTINGS.bash_profile_script}; cd "$BITCART_BASE_DIRECTORY"'
+            f"; nohup {command} > /dev/null 2>&1 & disown",
+        )
+    except Exception:  # pragma: no cover
+        pass
+    finally:
+        client.close()
+    return True, None
+
+
+def run_host_output(command, ok_output):
+    ok, error = run_host(command)
+    if ok:
+        return {"status": "success", "message": ok_output}
+    return {"status": "error", "message": error}
 
 
 async def get_setting(scheme):

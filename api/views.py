@@ -19,6 +19,7 @@ from starlette.status import WS_1008_POLICY_VIOLATION
 from . import constants, crud, db, models, pagination, schemes, settings, templates, utils
 from .ext import configurator
 from .ext import export as export_ext
+from .ext import ssh as ssh_ext
 from .ext import tor as tor_ext
 from .ext import update as update_ext
 from .invoices import InvoiceStatus
@@ -593,16 +594,14 @@ async def create_token(
 @router.post("/manage/update")
 async def update_server(user: models.User = Security(utils.AuthDependency(), scopes=["server_management"])):
     if settings.DOCKER_ENV:  # pragma: no cover
-        utils.run_host("./update.sh")
-        return {"status": "success", "message": "Successfully started update process!"}
+        return utils.run_host_output("./update.sh", "Successfully started update process!")
     return {"status": "error", "message": "Not running in docker"}
 
 
 @router.post("/manage/cleanup/images")
 async def cleanup_images(user: models.User = Security(utils.AuthDependency(), scopes=["server_management"])):
     if settings.DOCKER_ENV:  # pragma: no cover
-        utils.run_host("./cleanup.sh")
-        return {"status": "success", "message": "Successfully started cleanup process!"}
+        return utils.run_host_output("./cleanup.sh", "Successfully started cleanup process!")
     return {"status": "error", "message": "Not running in docker"}
 
 
@@ -634,8 +633,7 @@ async def cleanup_server(user: models.User = Security(utils.AuthDependency(), sc
 @router.post("/manage/restart")
 async def restart_server(user: models.User = Security(utils.AuthDependency(), scopes=["server_management"])):
     if settings.DOCKER_ENV:  # pragma: no cover
-        utils.run_host("./restart.sh")
-        return {"status": "success", "message": "Successfully started restart process!"}
+        return utils.run_host_output("./restart.sh", "Successfully started restart process!")
     return {"status": "error", "message": "Not running in docker"}
 
 
@@ -866,10 +864,15 @@ async def wallet_lnpay(
 
 
 @router.post("/configurator/deploy")
-async def generate_deployment(settings: schemes.ConfiguratorDeploySettings, request: Request):
-    await configurator.authenticate_request(request)
-    script = configurator.create_bash_script(settings)
-    return await configurator.create_new_task(script, settings.ssh_settings, settings.mode == "Manual")
+async def generate_deployment(deploy_settings: schemes.ConfiguratorDeploySettings, request: Request):
+    this_machine = deploy_settings.mode == "Current"
+    scopes = ["server_management"] if this_machine else []
+    await configurator.authenticate_request(request, scopes=scopes)
+    script = configurator.create_bash_script(deploy_settings)
+    ssh_settings = deploy_settings.ssh_settings
+    if this_machine:
+        ssh_settings = settings.SSH_SETTINGS
+    return await configurator.create_new_task(script, ssh_settings, deploy_settings.mode == "Manual")
 
 
 @router.get("/configurator/deploy-result/{deploy_id}")
@@ -879,3 +882,11 @@ async def get_deploy_result(deploy_id: str, request: Request):
     if not data:
         raise HTTPException(404, f"Deployment result {deploy_id} does not exist!")
     return data
+
+
+@router.post("/configurator/server-settings")
+async def get_server_settings(request: Request, ssh_settings: Optional[schemes.SSHSettings] = None):
+    if not ssh_settings:
+        await utils.AuthDependency()(request, SecurityScopes(["server_management"]))
+        ssh_settings = settings.SSH_SETTINGS
+    return ssh_ext.collect_server_settings(ssh_settings)

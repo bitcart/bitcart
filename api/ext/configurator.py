@@ -2,7 +2,6 @@ import json
 import re
 import time
 
-import paramiko
 from fastapi import HTTPException
 from fastapi.security import SecurityScopes
 from starlette.concurrency import run_in_threadpool
@@ -10,7 +9,7 @@ from starlette.concurrency import run_in_threadpool
 from api import events, schemes, settings, utils
 from api.constants import DOCKER_REPO_URL
 from api.logger import get_logger
-from api.schemes import ConfiguratorSSHSettings
+from api.schemes import ConfiguratorSSHSettings, SSHSettings
 
 COLOR_PATTERN = re.compile(r"\x1b[^m]*m")
 BASH_INTERMEDIATE_COMMAND = 'echo "end-of-command $(expr 1 + 1)"'
@@ -68,13 +67,6 @@ def create_bash_script(settings):
     return script
 
 
-def create_ssh_client(ssh_settings):
-    client = paramiko.SSHClient()
-    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    client.connect(hostname=ssh_settings.host, username=ssh_settings.username, password=ssh_settings.password)
-    return client
-
-
 def remove_intermediate_lines(output):
     newoutput = ""
     for line in output.splitlines():
@@ -110,7 +102,7 @@ def send_command(channel, command):
 
 def execute_ssh_commands(commands, ssh_settings):
     try:
-        client = create_ssh_client(ssh_settings)
+        client = SSHSettings(**ssh_settings.dict()).create_ssh_client()
         channel = client.invoke_shell()
         output = ""
         for command in commands.splitlines():
@@ -121,12 +113,7 @@ def execute_ssh_commands(commands, ssh_settings):
         client.close()
         return True, output
     except Exception as e:
-        error_message = ""
-        try:
-            error_message = e.strerror
-        except Exception:
-            pass
-        return False, error_message
+        return False, str(e)
 
 
 async def set_task(task_id, data):
@@ -173,10 +160,12 @@ async def deploy_task(event, event_data):
     await set_task(task_id, task)
 
 
-async def authenticate_request(request):
+async def authenticate_request(request, scopes=[]):
     try:
-        await utils.AuthDependency()(request, SecurityScopes())
+        await utils.AuthDependency()(request, SecurityScopes(scopes))
     except HTTPException:
+        if scopes:
+            raise
         allow_anonymous_configurator = (await utils.get_setting(schemes.Policy)).allow_anonymous_configurator
         if not allow_anonymous_configurator:
             raise HTTPException(422, "Anonymous configurator access disallowed")
