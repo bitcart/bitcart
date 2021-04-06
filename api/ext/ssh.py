@@ -53,12 +53,13 @@ class ServerEnv:  # pragma: no cover: no valid SSH configuration in CI environme
         self.env = {}
         self.preload_env()
 
-    def preload_env(self):
-        _, stdout, _ = execute_ssh_command(self.client, "cat /etc/profile.d/bitcartcc-env.sh")
+    def _read_remote_file(self, file, require_export=True):
+        _, stdout, _ = execute_ssh_command(self.client, f"cat {file}")
         output = stdout.read()
+        result = {}
         if stdout.channel.recv_exit_status() == 0:
             valid_lines = output.decode().split("\n")
-            valid_lines = filter(lambda s: "=" in s and "==" not in s and "export" in s, valid_lines)
+            valid_lines = filter(lambda s: "=" in s and "==" not in s and (not require_export or "export" in s), valid_lines)
             env = {}
             for line in valid_lines:
                 parts = line.split("=")
@@ -67,9 +68,14 @@ class ServerEnv:  # pragma: no cover: no valid SSH configuration in CI environme
                 if len(parts) > 1:
                     value = parts[1].strip('"')
                 env[key] = value
-            self.env = env
-        else:
-            self.env = {}
+            result = env
+        return result
+
+    def preload_env(self):
+        self.env = self._read_remote_file("/etc/profile.d/bitcartcc-env.sh")
+        env_file = self.get("BITCART_ENV_FILE", "")
+        if env_file:
+            self.env.update(self._read_remote_file(env_file, require_export=False))
 
     def get(self, key, default=None):
         value = self.env.get(key, default)
