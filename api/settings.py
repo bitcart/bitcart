@@ -15,6 +15,7 @@ from starlette.datastructures import CommaSeparatedStrings
 from api.constants import GIT_REPO_URL, LOG_FILE_NAME, VERSION, WEBSITE
 
 from .ext.notifiers import parse_notifier_schema
+from .ext.ssh import load_ssh_settings
 from .logger import get_exception_message, get_logger
 
 logger = get_logger(__name__)
@@ -47,6 +48,10 @@ if TEST:
 
 LOG_DIR = config("LOG_DIR", default=None)
 LOG_FILE = os.path.join(LOG_DIR, LOG_FILE_NAME) if LOG_DIR else None
+
+# SSH to host
+
+SSH_SETTINGS = load_ssh_settings(config)
 
 # Update check
 

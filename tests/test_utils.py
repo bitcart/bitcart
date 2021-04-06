@@ -1,8 +1,10 @@
-import tempfile
+import os
+import shlex
+import subprocess
+import time
 from dataclasses import dataclass
 
 import aioredis
-import fastapi
 import pytest
 
 from api import exceptions, settings, utils
@@ -145,14 +147,30 @@ async def test_notification_template(async_client, token):
     await async_client.delete(f"/templates/{resp.json()['id']}", headers={"Authorization": f"Bearer {token}"})  # cleanup
 
 
-@pytest.mark.parametrize("exist", [True, False])
-def test_run_host(exist):
-    content = "echo hello"
-    if exist:
-        with tempfile.NamedTemporaryFile() as temp:
-            utils.run_host(content, target_file=temp.name)
-            with open(temp.name, "r") as f:
-                assert f.read().strip() == content
-    else:
-        with pytest.raises(fastapi.HTTPException):
-            utils.run_host(content)
+def test_run_host(mocker):
+    TEST_FILE = os.path.expanduser("~/test-output")
+    content = f"touch {TEST_FILE}"
+    # No valid ssh connection
+    ok, error = utils.run_host(content)
+    assert ok is False
+    assert not os.path.exists(TEST_FILE)
+    assert "Connection problem" in error
+    assert "Name or service not known" in error
+    assert utils.run_host_output(content, "good")["status"] == "error"
+    # Same with key file
+    settings.SSH_SETTINGS.key_file = "something"
+    assert utils.run_host(content)[0] is False
+    assert not os.path.exists(TEST_FILE)
+    settings.SSH_SETTINGS.key_file = ""
+    mocker.patch("paramiko.SSHClient.connect", return_value=True)
+    mocker.patch(
+        "paramiko.SSHClient.exec_command",
+        side_effect=lambda command: subprocess.run(shlex.split(command), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL),
+    )
+    ok, error = utils.run_host(content)
+    assert ok is True
+    assert error is None
+    assert utils.run_host_output(content, "good") == {"status": "success", "message": "good"}
+    time.sleep(1)  # wait for command to execute (non-blocking)
+    assert os.path.exists(TEST_FILE)
+    os.remove(TEST_FILE)  # Cleanup

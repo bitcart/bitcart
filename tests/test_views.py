@@ -25,6 +25,16 @@ SCRIPT_SETTINGS = {
     "additional_services": ["tor"],
     "advanced_settings": {"additional_components": ["custom"]},
 }
+FALLBACK_SERVER_SETTINGS = {
+    "domain_settings": {"domain": "", "https": True},
+    "coins": {},
+    "additional_services": [],
+    "advanced_settings": {
+        "installation_pack": "all",
+        "bitcart_docker_repository": "",
+        "additional_components": [],
+    },
+}
 
 
 class DummyInstance:
@@ -1122,9 +1132,32 @@ def test_configurator(client: TestClient, token: str):
     data = resp2.json()
     assert not data["success"]
     assert data["id"] == deploy_id
+    deploy_settings = SCRIPT_SETTINGS.copy()
+    deploy_settings["mode"] = "Current"
+    assert client.post("/configurator/deploy", json=deploy_settings).status_code == 401
+    resp = client.post("/configurator/deploy", json=deploy_settings, headers={"Authorization": f"Bearer {token}"})
+    assert resp.status_code == 200
+    assert not resp.json()["success"]
+    deploy_id = resp.json()["id"]
+    resp2 = client.get(f"/configurator/deploy-result/{deploy_id}")
+    assert resp2.status_code == 200
+    data = resp2.json()
+    assert not data["success"]
+    assert data["id"] == deploy_id
 
 
 def test_supported_cryptos(client: TestClient):
     resp = client.get("/cryptos/supported")
     assert resp.status_code == 200
     assert resp.json() == constants.SUPPORTED_CRYPTOS
+
+
+def test_get_server_settings(client: TestClient, token: str):
+    assert client.get("/configurator/server-settings").status_code == 405
+    assert client.post("/configurator/server-settings").status_code == 401
+    resp = client.post("/configurator/server-settings", json={"host": ""})
+    assert resp.status_code == 200
+    assert resp.json() == FALLBACK_SERVER_SETTINGS
+    resp = client.post("/configurator/server-settings", headers={"Authorization": f"Bearer {token}"})
+    assert resp.status_code == 200
+    assert resp.json() == FALLBACK_SERVER_SETTINGS  # SSH unconfigured
