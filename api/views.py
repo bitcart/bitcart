@@ -869,9 +869,7 @@ async def generate_deployment(deploy_settings: schemes.ConfiguratorDeploySetting
     scopes = ["server_management"] if this_machine else []
     await configurator.authenticate_request(request, scopes=scopes)
     script = configurator.create_bash_script(deploy_settings)
-    ssh_settings = deploy_settings.ssh_settings
-    if this_machine:
-        ssh_settings = settings.SSH_SETTINGS
+    ssh_settings = settings.SSH_SETTINGS if this_machine else schemes.SSHSettings(**deploy_settings.ssh_settings.dict())
     return await configurator.create_new_task(script, ssh_settings, deploy_settings.mode == "Manual")
 
 

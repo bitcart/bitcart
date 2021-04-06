@@ -9,7 +9,7 @@ from starlette.concurrency import run_in_threadpool
 from api import events, schemes, settings, utils
 from api.constants import DOCKER_REPO_URL
 from api.logger import get_logger
-from api.schemes import ConfiguratorSSHSettings, SSHSettings
+from api.schemes import SSHSettings
 
 COLOR_PATTERN = re.compile(r"\x1b[^m]*m")
 BASH_INTERMEDIATE_COMMAND = 'echo "end-of-command $(expr 1 + 1)"'
@@ -102,7 +102,7 @@ def send_command(channel, command):
 
 def execute_ssh_commands(commands, ssh_settings):
     try:
-        client = SSHSettings(**ssh_settings.dict()).create_ssh_client()
+        client = ssh_settings.create_ssh_client()
         channel = client.invoke_shell()
         output = ""
         for command in commands.splitlines():
@@ -150,9 +150,7 @@ async def deploy_task(event, event_data):
     if not task:
         return
     logger.debug(f"Started deployment {task_id}")
-    success, output = await run_in_threadpool(
-        execute_ssh_commands, task["script"], ConfiguratorSSHSettings(**task["ssh_settings"])
-    )
+    success, output = await run_in_threadpool(execute_ssh_commands, task["script"], SSHSettings(**task["ssh_settings"]))
     logger.debug(f"Deployment {task_id} success: {success}")
     task["finished"] = True
     task["success"] = success
