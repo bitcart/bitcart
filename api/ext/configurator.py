@@ -183,7 +183,7 @@ async def refresh_pending_deployments():
                     key = key.decode("utf-8")
                     value = value.decode("utf-8")
                     value = json.loads(value) if value else value
-                    # Remote stale deployments
+                    # Remove stale deployments
                     if "created" not in value or now - value["created"] >= KEY_TTL:
                         to_delete.append(key)
                     try:
