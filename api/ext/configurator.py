@@ -4,12 +4,14 @@ import time
 
 from fastapi import HTTPException
 from fastapi.security import SecurityScopes
+from pydantic import ValidationError
 from starlette.concurrency import run_in_threadpool
 
 from api import events, schemes, settings, utils
 from api.constants import DOCKER_REPO_URL
 from api.logger import get_logger
 from api.schemes import SSHSettings
+from api.utils import log_errors
 
 COLOR_PATTERN = re.compile(r"\x1b[^m]*m")
 BASH_INTERMEDIATE_COMMAND = 'echo "end-of-command $(expr 1 + 1)"'
@@ -19,6 +21,7 @@ OUTPUT_INTERVAL = 0.5
 BUFFER_SIZE = 17640
 
 REDIS_KEY = "bitcartcc_configurator_ext"
+KEY_TTL = 60 * 60 * 24  # 1 day
 
 logger = get_logger(__name__)
 
@@ -130,6 +133,7 @@ async def create_new_task(script, ssh_settings, is_manual):
             "ssh_settings": ssh_settings.dict(),
             "success": is_manual,
             "finished": is_manual,
+            "created": utils.now().timestamp(),
             "output": script if is_manual else "",
         }
         await set_task(deploy_id, data)
@@ -167,3 +171,30 @@ async def authenticate_request(request, scopes=[]):
         allow_anonymous_configurator = (await utils.get_setting(schemes.Policy)).allow_anonymous_configurator
         if not allow_anonymous_configurator:
             raise HTTPException(422, "Anonymous configurator access disallowed")
+
+
+async def refresh_pending_deployments():
+    with log_errors():
+        now = utils.now().timestamp()
+        async with utils.wait_for_redis():
+            to_delete = []
+            async for key, value in settings.redis_pool.ihscan(REDIS_KEY):
+                with log_errors():
+                    key = key.decode("utf-8")
+                    value = value.decode("utf-8")
+                    value = json.loads(value) if value else value
+                    # Remote stale deployments
+                    if "created" not in value or now - value["created"] >= KEY_TTL:
+                        to_delete.append(key)
+                    try:
+                        ssh_settings = SSHSettings(**value["ssh_settings"])
+                    except ValidationError:
+                        continue
+                    # Mark all current instance deployments as complete as we can't do it from the worker task
+                    if ssh_settings == settings.SSH_SETTINGS:
+                        value["finished"] = True
+                        value["success"] = True
+                        value["output"] = "No output available. Current instance has been restarted"
+                        await set_task(key, value)
+            if to_delete:
+                await settings.redis_pool.hdel(REDIS_KEY, *to_delete)
