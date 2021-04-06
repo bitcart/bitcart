@@ -2,6 +2,67 @@
 
 ## Latest changes
 
+## 0.4.0.0
+
+### Major update
+
+This update contains backwards-incompatible changes
+
+### Changing current instance's settings via admin panel
+
+It is now possible to change current instance's settings via admin panel's configurator.
+
+Editing current instance settings (and pre-loading them via configurator) is only available to server admins.
+
+By clicking on current instance mode, if you are server admin, your current settings will be loaded and filled in the form fields.
+
+The app will automatically connect to your server via SSH and apply new settings.
+
+Note: it is not possible to view deployment log when updating your current instance, as the process performing the update gets restarted.
+
+Note: for that to work you should have working SSH support, see below.
+
+Note that even though configurator should fit most use cases, if you are not using one-domain mode, or if you
+have some completely custom and complex use-case, possibly involving multiple deployments on the same server, you should better
+use setup scripts from CLI.
+
+### Breaking: SSH support in setup scripts
+
+Old method of executing commands on the host (for maintenance purposes, like updating the server) is no longer used.
+
+It means that there will be no listener process started anymore.
+
+Instead, both maintenance commands and configurator's current instance mode use SSH support.
+
+When running `./setup.sh`, BitcartCC configures itself to use system host keys.
+
+On first startup, it generates an SSH key, and adds it to the list of trusted keys in the host (usually `~/.ssh/authorized_keys`)
+
+That way, it can connect to the host via ssh, which is a way better way of executing commands, which opens doors to new possibilities.
+
+Note: SSH support is only enabled when `BITCART_ENABLE_SSH` is set to `true`, by default it is so.
+
+Note: SSH support requires an ssh server (`openssh-server`/`sshd`) to be running on the host machine.
+
+**IMPORTANT**: For existing deployments, after updating, for future updates to work, you will need to re-run `./setup.sh`
+
+### Many improvements in the configurator
+
+In Remote deployment mode, there is now a button "Load settings", which will connect to the server via SSH and fill in it's settings
+in the form fields.
+
+Configurator should now be responsive and look better on mobile devices.
+
+Configurator now removes stale tasks data from redis (if it was created more than a day ago).
+
+### Other improvements
+
+- Fix cleanup command
+- Fix bugs in configurator
+- Improve wallet loading logic in BitcartCC Core daemons
+- Added support for build-time environment variables to docker-compose generator
+- Maintenance updates for dependencies
+
 ## 0.3.1.1
 
 Fixed configurator long-running deployments
