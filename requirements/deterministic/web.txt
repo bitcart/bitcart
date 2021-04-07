@@ -53,9 +53,9 @@ aioredis==1.3.1 \
     --hash=sha256:15f8af30b044c771aee6787e5ec24694c048184c7b9e54c3b60c750a4b93273a \
     --hash=sha256:b61808d7e97b7cd5a92ed574937a079c9387fdadd22bfbfa7ad2fd319ecc26e3
     # via -r requirements/web.txt
-alembic==1.5.1 \
-    --hash=sha256:52d1d48109f17959982779e3c4b5cdeca701e449897bacb75bab173bd6ba984e \
-    --hash=sha256:944f8d541d204f3ae22de17ebcfdd0da9539074f1d2fee4eb42735039b3072d8
+alembic==1.5.8 \
+    --hash=sha256:8a259f0a4c8b350b03579d77ce9e810b19c65bf0af05f84efb69af13ad50801e \
+    --hash=sha256:e27fd67732c97a1c370c33169ef4578cf96436fa0e7dcfaeeef4a917d0737d56
     # via -r requirements/web.txt
 apply-defaults==0.1.4 \
     --hash=sha256:1ce26326a61d8773d38a9726a345c6525a91a6120d7333af79ad792dacb6246c
