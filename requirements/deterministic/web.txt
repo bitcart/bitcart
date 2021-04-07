@@ -513,9 +513,9 @@ python-decouple==3.4 \
     --hash=sha256:2e5adb0263a4f963b58d7407c4760a2465d464ee212d733e2a2c179e54c08d8f \
     --hash=sha256:a8268466e6389a639a20deab9d880faee186eb1eb6a05e54375bdf158d691981
     # via -r requirements/base.txt
-python-dotenv==0.15.0 \
-    --hash=sha256:0c8d1b80d1a1e91717ea7d526178e3882732420b03f08afea0406db6402e220e \
-    --hash=sha256:587825ed60b1711daea4832cf37524dfd404325b7db5e25ebe88c495c9f807a0
+python-dotenv==0.17.0 \
+    --hash=sha256:49782a97c9d641e8a09ae1d9af0856cc587c8d2474919342d5104d85be9890b2 \
+    --hash=sha256:471b782da0af10da1a80341e8438fca5fadeba2881c54360d5fd8d03d03a4f4a
     # via uvicorn
 python-editor==1.0.4 \
     --hash=sha256:1bf6e860a8ad52a14c3ee1252d5dc25b2030618ed80c022598f00176adc8367d \
