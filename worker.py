@@ -9,7 +9,7 @@ from api.ext import tor as tor_ext
 from api.ext import update as update_ext
 from api.logserver import main as start_logserver
 from api.logserver import wait_for_port
-from api.utils import run_repeated
+from api.utils.common import run_repeated
 
 
 async def main():

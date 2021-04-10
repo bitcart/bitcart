@@ -1,7 +1,7 @@
 import csv
 import io
 
-from api.schemes import DisplayInvoice
+from ..schemes import DisplayInvoice
 
 
 def merge_keys(k1, k2):

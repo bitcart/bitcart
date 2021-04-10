@@ -230,7 +230,7 @@ class ProductxInvoice(db.Model):
     count = Column(Integer)
 
 
-class MyUpdateRequest(UpdateRequest):
+class InvoiceUpdateRequest(UpdateRequest):
     def update(self, **kwargs):
         self.products = kwargs.pop("products", None)
         return super().update(**kwargs)
@@ -282,7 +282,7 @@ class PaymentMethod(db.Model):
 
 class Invoice(db.Model):
     __tablename__ = "invoices"
-    _update_request_cls = MyUpdateRequest
+    _update_request_cls = InvoiceUpdateRequest
 
     id = Column(Integer, primary_key=True, index=True)
     price = Column(Numeric(16, 8), nullable=False)
@@ -315,7 +315,7 @@ class Invoice(db.Model):
         store_id = kwargs["store_id"]
         kwargs["status"] = InvoiceStatus.PENDING
         store = await Store.get(store_id)
-        await crud.get_store(None, None, store, True)
+        await crud.stores.get_store(None, None, store, True)
         if not store.wallets:
             raise HTTPException(422, "No wallet linked")
         if not kwargs.get("user_id"):

@@ -22,7 +22,7 @@ async def sync_wallet(event, event_data):
     coin = settings.get_coin(model.currency, model.xpub)
     balance = await coin.balance()
     logger.info(f"Wallet {model.id} synced, balance: {balance['confirmed']}")
-    await utils.publish_message(
+    await utils.redis.publish_message(
         f"wallet:{model.id}", {"status": "success", "balance": str(balance["confirmed"])}
     )  # convert for json serialization
 

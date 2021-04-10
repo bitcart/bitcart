@@ -117,7 +117,7 @@ class Pagination:
             (
                 model.query.select_from(model.join(models.DiscountxProduct).join(models.Discount))
                 .having(func.count(models.DiscountxProduct.product_id) > 0)
-                .where(models.Discount.end_date > utils.now())
+                .where(models.Discount.end_date > utils.time.now())
             )
             if model == models.Product and sale
             else model.query

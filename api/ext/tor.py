@@ -5,8 +5,8 @@ from dataclasses import asdict as dataclass_asdict
 from dataclasses import dataclass
 from typing import Optional
 
-from api import settings, utils
-from api.logger import get_logger
+from .. import settings, utils
+from ..logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -102,7 +102,7 @@ def parse_torrc(torrc, log=True):
 
 
 async def refresh(log=True):  # pragma: no cover: used in production only
-    async with utils.wait_for_redis():
+    async with utils.redis.wait_for_redis():
         services = parse_torrc(settings.TORRC_FILE, log=log)
         services_dict = {service.name: dataclass_asdict(service) for service in services}
         anonymous_services_dict = {service.name: {"name": service.name, "hostname": service.hostname} for service in services}

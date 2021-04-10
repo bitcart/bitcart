@@ -14,7 +14,7 @@ class CreatedMixin(BaseModel):
 
     @validator("created", pre=True, always=True)
     def set_created(cls, v):
-        from .utils import now
+        from .utils.time import now
 
         return v or now()
 

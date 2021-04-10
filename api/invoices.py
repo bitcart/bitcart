@@ -5,7 +5,7 @@ from sqlalchemy import or_, select
 from . import constants, crud, db, models, settings, utils
 from .ext.moneyformat import currency_table
 from .logger import get_logger
-from .utils import log_errors
+from .utils.logging import log_errors
 
 logger = get_logger(__name__)
 
@@ -70,13 +70,13 @@ async def iterate_pending_invoices(currency):
 
 
 async def make_expired_task(invoice):
-    crud.add_invoice_expiration(invoice)  # to ensure it is the most recent one
+    crud.invoices.add_invoice_expiration(invoice)  # to ensure it is the most recent one
     left = invoice.time_left + 1  # to ensure it's already expired at that moment
     if left > 0:
         await asyncio.sleep(left)
     try:
         invoice = await models.Invoice.get(invoice.id)  # refresh data to get new status
-        await crud.invoice_add_related(invoice)
+        await crud.invoices.invoice_add_related(invoice)
     except Exception:
         return  # invoice deleted meantime
     if invoice.status == InvoiceStatus.PENDING:  # to ensure there are no duplicate notifications
@@ -113,7 +113,7 @@ async def new_payment_handler(instance, event, address, status, status_str):
 async def update_confirmations(invoice, method, confirmations):
     await method.update(confirmations=confirmations).apply()
     store = await models.Store.get(invoice.store_id)
-    await crud.store_add_related(store)
+    await crud.stores.store_add_related(store)
     status = invoice.status
     if confirmations >= 1:
         status = InvoiceStatus.CONFIRMED
@@ -146,15 +146,15 @@ async def new_block_handler(instance, event, height):
 
 
 async def invoice_notification(invoice: models.Invoice, status: str):
-    await crud.invoice_add_related(invoice)
-    await utils.send_ipn(invoice, status)
+    await crud.invoices.invoice_add_related(invoice)
+    await utils.notifications.send_ipn(invoice, status)
     if status == InvoiceStatus.COMPLETE:
         logger.info(f"Invoice {invoice.id} complete, sending notifications...")
         store = await models.Store.get(invoice.store_id)
-        await crud.store_add_related(store)
-        await utils.notify(store, await utils.get_notify_template(store, invoice))
+        await crud.stores.store_add_related(store)
+        await utils.notifications.notify(store, await utils.templates.get_notify_template(store, invoice))
         if invoice.products:
-            if utils.check_ping(
+            if utils.email.check_ping(
                 store.email_host,
                 store.email_port,
                 store.email_user,
@@ -174,15 +174,15 @@ async def invoice_notification(invoice: models.Invoice, status: str):
                         .gino.first()
                     )
                     quantity = relation.count
-                    product_template = await utils.get_product_template(store, product, quantity)
+                    product_template = await utils.templates.get_product_template(store, product, quantity)
                     messages.append(product_template)
                     logger.debug(
                         f"Invoice {invoice.id} email notification: rendered product template for product {product_id}:\n"
                         f"{product_template}"
                     )
-                store_template = await utils.get_store_template(store, messages)
+                store_template = await utils.templates.get_store_template(store, messages)
                 logger.debug(f"Invoice {invoice.id} email notification: rendered final template:\n{store_template}")
-                utils.send_mail(
+                utils.mail.send_mail(
                     store,
                     invoice.buyer_email,
                     store_template,
@@ -210,7 +210,7 @@ async def update_status(invoice, status, method=None):
             log_text += f" with payment method {full_method_name}"
         logger.info(f"{log_text} to {status}")
         await invoice.update(status=status).apply()
-        await utils.publish_message(f"invoice:{invoice.id}", {"status": status})
+        await utils.redis.publish_message(f"invoice:{invoice.id}", {"status": status})
         if not settings.TEST:
             await invoice_notification(invoice, status)
         return True

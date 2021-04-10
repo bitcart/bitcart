@@ -15,7 +15,7 @@ def test_merge_keys():
 @pytest.mark.asyncio
 async def test_db_to_json():
     items = await models.Invoice.query.gino.all()
-    await crud.invoices_add_related(items)
+    await crud.invoices.invoices_add_related(items)
     json = list(db_to_json(items))
     assert len(json) == 1
     assert isinstance(json[0], dict)
