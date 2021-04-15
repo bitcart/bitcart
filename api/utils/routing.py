@@ -130,14 +130,7 @@ class ModelView:
 
     def get_response_models(self) -> Dict[str, Type]:
         display_model = self.pydantic_model if not self.display_model else self.display_model
-        pagination_response = create_pydantic_model(
-            f"PaginationResponse_{display_model.__name__}",
-            count=(int, ...),
-            next=(Optional[str], None),
-            previous=(Optional[str], None),
-            result=(List[display_model], ...),
-            __base__=BaseModel,
-        )
+        pagination_response = get_pagination_model(display_model)
         return {
             "get": pagination_response,
             "get_count": int,

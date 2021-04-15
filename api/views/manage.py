@@ -6,6 +6,15 @@ from api import constants, models, schemes, settings, utils
 
 router = APIRouter()
 
+# Docker deployment maintenance commands
+
+
+@router.post("/restart")
+async def restart_server(user: models.User = Security(utils.authorization.AuthDependency(), scopes=["server_management"])):
+    if settings.DOCKER_ENV:  # pragma: no cover
+        return utils.host.run_host_output("./restart.sh", "Successfully started restart process!")
+    return {"status": "error", "message": "Not running in docker"}
+
 
 @router.post("/update")
 async def update_server(user: models.User = Security(utils.authorization.AuthDependency(), scopes=["server_management"])):
@@ -44,13 +53,6 @@ async def cleanup_server(user: models.User = Security(utils.authorization.AuthDe
         else:
             return {"status": "success", "message": "Successfully started cleanup process!"}
     return {"status": "error", "message": message}
-
-
-@router.post("/restart")
-async def restart_server(user: models.User = Security(utils.authorization.AuthDependency(), scopes=["server_management"])):
-    if settings.DOCKER_ENV:  # pragma: no cover
-        return utils.host.run_host_output("./restart.sh", "Successfully started restart process!")
-    return {"status": "error", "message": "Not running in docker"}
 
 
 @router.get("/daemons")

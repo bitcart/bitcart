@@ -23,3 +23,12 @@ async def run_repeated(func, timeout, start_timeout=None):  # pragma: no cover
         if inspect.isawaitable(result):  # pragma: no cover
             await result
         first_iter = False
+
+
+def prepare_compliant_response(data):
+    return {
+        "count": len(data),
+        "next": None,
+        "previous": None,
+        "result": data,
+    }

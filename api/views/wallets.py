@@ -31,19 +31,6 @@ async def get_balances(user: models.User = Security(utils.authorization.AuthDepe
     return await utils.wallets.get_wallet_balances(user)
 
 
-utils.routing.ModelView.register(
-    router,
-    "/",
-    models.Wallet,
-    schemes.CreateWallet,
-    schemes.CreateWallet,
-    schemes.Wallet,
-    background_tasks_mapping={"post": "sync_wallet"},
-    custom_methods={"get": crud.wallets.get_wallets, "get_one": crud.wallets.get_wallet, "post": crud.wallets.create_wallet},
-    scopes=["wallet_management"],
-)
-
-
 @router.get("/{model_id}/balance")
 async def get_wallet_balance(
     model_id: int, user: models.User = Security(utils.authorization.AuthDependency(), scopes=["wallet_management"])
@@ -111,3 +98,16 @@ async def wallet_lnpay(
         return await coin.lnpay(params.invoice)
     except BitcartBaseError:
         raise HTTPException(400, "Failed to pay the invoice")
+
+
+utils.routing.ModelView.register(
+    router,
+    "/",
+    models.Wallet,
+    schemes.CreateWallet,
+    schemes.CreateWallet,
+    schemes.Wallet,
+    background_tasks_mapping={"post": "sync_wallet"},
+    custom_methods={"get": crud.wallets.get_wallets, "get_one": crud.wallets.get_wallet, "post": crud.wallets.create_wallet},
+    scopes=["wallet_management"],
+)

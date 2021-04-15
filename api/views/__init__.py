@@ -34,7 +34,6 @@ router.include_router(product_router, prefix="/products")
 router.include_router(invoice_router, prefix="/invoices")
 
 # Authorization
-
 router.include_router(token_router, prefix="/token")
 
 # Maintenance

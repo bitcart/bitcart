@@ -1,18 +1,14 @@
 from fastapi import APIRouter
 
 from api import crud, models, schemes, settings, utils
+from api.utils.common import prepare_compliant_response
 
 router = APIRouter()
 
 
 @router.get("/list")
 async def get_notifications():
-    return {
-        "count": len(settings.notifiers),
-        "next": None,
-        "previous": None,
-        "result": list(settings.notifiers.keys()),
-    }
+    return prepare_compliant_response(list(settings.notifiers.keys()))
 
 
 @router.get("/schema")

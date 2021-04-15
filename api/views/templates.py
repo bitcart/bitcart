@@ -3,6 +3,7 @@ from typing import Optional
 from fastapi import APIRouter
 
 from api import crud, models, schemes, templates, utils
+from api.utils.common import prepare_compliant_response
 
 router = APIRouter()
 
@@ -14,12 +15,7 @@ async def get_template_list(applicable_to: Optional[str] = None, show_all: bool 
         result_set = result_set.get(applicable_to, [])
     elif show_all:
         result_set = [v for template_set in result_set.values() for v in template_set]
-    return {
-        "count": len(result_set),
-        "next": None,
-        "previous": None,
-        "result": result_set,
-    }
+    return prepare_compliant_response(result_set)
 
 
 utils.routing.ModelView.register(
