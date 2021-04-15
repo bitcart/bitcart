@@ -217,31 +217,31 @@ def test_docs_root(client: TestClient):
 
 
 def test_rate(client: TestClient):
-    resp = client.get("/rate")
+    resp = client.get("/cryptos/rate")
     data = resp.json()
     assert resp.status_code == 200
     assert isinstance(data, float)
     assert data > 0
-    assert client.get("/rate?fiat_currency=eur").status_code == 200
-    assert client.get("/rate?fiat_currency=EUR").status_code == 200
-    assert client.get("/rate?fiat_currency=test").status_code == 422
+    assert client.get("/cryptos/rate?fiat_currency=eur").status_code == 200
+    assert client.get("/cryptos/rate?fiat_currency=EUR").status_code == 200
+    assert client.get("/cryptos/rate?fiat_currency=test").status_code == 422
 
 
 def test_wallet_history(client: TestClient, token: str):
     headers = {"Authorization": f"Bearer {token}"}
-    assert client.get("/wallet_history/1", headers=headers).status_code == 404
-    assert client.get("/wallet_history/4", headers=headers).status_code == 404
-    resp = client.get("/wallet_history/2", headers=headers)
+    assert client.get("/wallets/history/1", headers=headers).status_code == 404
+    assert client.get("/wallets/history/4", headers=headers).status_code == 404
+    resp = client.get("/wallets/history/2", headers=headers)
     client.post("/wallets", json={"name": "test7", "xpub": TEST_XPUB}, headers=headers).json()
     assert resp.status_code == 200
     assert resp.json() == []
-    resp1 = client.get("/wallet_history/4", headers=headers)
+    resp1 = client.get("/wallets/history/4", headers=headers)
     assert resp1.status_code == 200
     data2 = resp1.json()
     assert len(data2) == 1
     assert data2[0]["amount"] == "0.01"
     assert data2[0]["txid"] == "ee4f0c4405f9ba10443958f5c6f6d4552a69a80f3ec3bed1c3d4c98d65abe8f3"
-    resp2 = client.get("/wallet_history/0", headers=headers)
+    resp2 = client.get("/wallets/history/0", headers=headers)
     assert resp2.status_code == 200
     assert len(resp2.json()) == 1
 
@@ -296,18 +296,18 @@ def test_wallets_balance(client: TestClient, token: str):
 
 
 def test_fiatlist(client: TestClient):
-    resp = client.get("/fiatlist")
+    resp = client.get("/cryptos/fiatlist")
     assert resp.status_code == 200
     j1 = resp.json()
     assert isinstance(j1, list)
     assert "BTC" in j1
     assert "USD" in j1
-    resp2 = client.get("/fiatlist?query=b")
+    resp2 = client.get("/cryptos/fiatlist?query=b")
     assert resp2.status_code == 200
     j2 = resp2.json()
     assert isinstance(j2, list)
     assert "BTC" in j2
-    resp3 = client.get("/fiatlist?query=U")
+    resp3 = client.get("/cryptos/fiatlist?query=U")
     assert resp3.status_code == 200
     j3 = resp3.json()
     assert isinstance(j3, list)
@@ -324,7 +324,7 @@ def test_fiatlist_multi_coins(client: TestClient, mocker):
     settings.cryptos = {"BTC": btc, "LTC": ltc}
     mocker.patch.object(btc, "list_fiat", return_value=get_future_return_value(["USD", "RMB", "JPY"]))
     mocker.patch.object(ltc, "list_fiat", return_value=get_future_return_value(["USD", "RUA", "AUD"]))
-    resp = client.get("/fiatlist")
+    resp = client.get("/cryptos/fiatlist")
     assert resp.json() == ["USD"]
     settings.cryptos = orig_cryptos
 
@@ -356,8 +356,8 @@ def test_ping_email(client: TestClient, token: str):
     assert not resp1.json()
 
 
-def test_crud_count(client: TestClient, token: str):
-    resp = client.get("/crud/stats", headers={"Authorization": f"Bearer {token}"})
+def test_user_stats(client: TestClient, token: str):
+    resp = client.get("/users/stats", headers={"Authorization": f"Bearer {token}"})
     assert resp.status_code == 200
     assert resp.json() == {
         "wallets": 3,
@@ -372,9 +372,9 @@ def test_crud_count(client: TestClient, token: str):
 
 
 def test_categories(client: TestClient):
-    assert client.get("/categories").status_code == 422
-    resp = client.get("/categories?store=1")
-    resp2 = client.get("/categories?store=2")
+    assert client.get("/products/categories").status_code == 422
+    resp = client.get("/products/categories?store=1")
+    resp2 = client.get("/products/categories?store=2")
     assert resp.status_code == 200
     assert resp.json() == ["all"]
     assert resp2.status_code == 200
@@ -655,10 +655,10 @@ def test_template_list(client: TestClient):
 
 @pytest.mark.asyncio
 async def test_services(async_client: TestClient, token: str):
-    resp = await async_client.get("/services")
+    resp = await async_client.get("/tor/services")
     assert resp.status_code == 200
     assert resp.json() == await tor_ext.get_data("anonymous_services_dict", {}, json_decode=True)
-    resp2 = await async_client.get("/services", headers={"Authorization": f"Bearer {token}"})
+    resp2 = await async_client.get("/tor/services", headers={"Authorization": f"Bearer {token}"})
     assert resp2.status_code == 200
     assert resp2.json() == await tor_ext.get_data("services_dict", {}, json_decode=True)
 
@@ -740,7 +740,7 @@ async def test_wallet_ws(async_client, token: str):
     wallet_id = r.json()["id"]
     async with async_client.websocket_connect(f"/ws/wallets/{wallet_id}?token={token}") as websocket:
         await asyncio.sleep(1)
-        await utils.publish_message(
+        await utils.redis.publish_message(
             f"wallet:{wallet_id}", {"status": "success", "balance": str((await BTC(xpub=TEST_XPUB).balance())["confirmed"])}
         )
         await check_ws_response2(websocket)
@@ -950,7 +950,7 @@ def test_product_count_params(client: TestClient, token: str):
 
 
 def test_updatecheck(client: TestClient):
-    resp = client.get("/updatecheck")
+    resp = client.get("/update/check")
     assert resp.status_code == 200
     assert resp.json() == {"update_available": False, "tag": None}
 

@@ -27,8 +27,8 @@ async def get_update_data():
 async def refresh():
     from api import schemes, utils
 
-    async with utils.wait_for_redis():
-        if settings.UPDATE_URL and (await utils.get_setting(schemes.Policy)).check_updates:
+    async with utils.redis.wait_for_redis():
+        if settings.UPDATE_URL and (await utils.policies.get_setting(schemes.Policy)).check_updates:
             logger.info("Checking for updates...")
             latest_tag = await get_update_data()
             if latest_tag and VERSION != latest_tag:

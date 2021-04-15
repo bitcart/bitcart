@@ -30,7 +30,7 @@ app.add_middleware(
 @app.middleware("http")
 async def add_onion_host(request: Request, call_next):
     response = await call_next(request)
-    async with utils.wait_for_redis():
+    async with utils.redis.wait_for_redis():
         host = request.headers.get("host", "").split(":")[0]
         onion_host = await tor_ext.get_data("onion_host", "")
         if onion_host and not tor_ext.is_onion(host):

@@ -6,9 +6,9 @@ from gino.crud import UpdateRequest
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import relationship
 
-from . import settings
-from .db import db
-from .ext.moneyformat import currency_table
+from api import settings
+from api.db import db
+from api.ext.moneyformat import currency_table
 
 # shortcuts
 Column = db.Column
@@ -230,7 +230,7 @@ class ProductxInvoice(db.Model):
     count = Column(Integer)
 
 
-class MyUpdateRequest(UpdateRequest):
+class InvoiceUpdateRequest(UpdateRequest):
     def update(self, **kwargs):
         self.products = kwargs.pop("products", None)
         return super().update(**kwargs)
@@ -282,7 +282,7 @@ class PaymentMethod(db.Model):
 
 class Invoice(db.Model):
     __tablename__ = "invoices"
-    _update_request_cls = MyUpdateRequest
+    _update_request_cls = InvoiceUpdateRequest
 
     id = Column(Integer, primary_key=True, index=True)
     price = Column(Numeric(16, 8), nullable=False)
@@ -309,13 +309,13 @@ class Invoice(db.Model):
 
     @classmethod
     async def create(cls, **kwargs):
-        from . import crud
-        from .invoices import InvoiceStatus
+        from api import crud
+        from api.invoices import InvoiceStatus
 
         store_id = kwargs["store_id"]
         kwargs["status"] = InvoiceStatus.PENDING
         store = await Store.get(store_id)
-        await crud.get_store(None, None, store, True)
+        await crud.stores.get_store(None, None, store, True)
         if not store.wallets:
             raise HTTPException(422, "No wallet linked")
         if not kwargs.get("user_id"):

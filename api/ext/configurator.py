@@ -11,7 +11,7 @@ from api import events, schemes, settings, utils
 from api.constants import DOCKER_REPO_URL
 from api.logger import get_logger
 from api.schemes import SSHSettings
-from api.utils import log_errors
+from api.utils.logging import log_errors
 
 COLOR_PATTERN = re.compile(r"\x1b[^m]*m")
 BASH_INTERMEDIATE_COMMAND = 'echo "end-of-command $(expr 1 + 1)"'
@@ -120,20 +120,20 @@ def execute_ssh_commands(commands, ssh_settings):
 
 
 async def set_task(task_id, data):
-    async with utils.wait_for_redis():
+    async with utils.redis.wait_for_redis():
         await settings.redis_pool.hmset_dict(REDIS_KEY, {task_id: json.dumps(data)})
 
 
 async def create_new_task(script, ssh_settings, is_manual):
-    async with utils.wait_for_redis():
-        deploy_id = utils.unique_id()
+    async with utils.redis.wait_for_redis():
+        deploy_id = utils.common.unique_id()
         data = {
             "id": deploy_id,
             "script": script,
             "ssh_settings": ssh_settings.dict(),
             "success": is_manual,
             "finished": is_manual,
-            "created": utils.now().timestamp(),
+            "created": utils.time.now().timestamp(),
             "output": script if is_manual else "",
         }
         await set_task(deploy_id, data)
@@ -143,7 +143,7 @@ async def create_new_task(script, ssh_settings, is_manual):
 
 
 async def get_task(task_id):
-    async with utils.wait_for_redis():
+    async with utils.redis.wait_for_redis():
         data = await settings.redis_pool.hget(REDIS_KEY, task_id, encoding="utf-8")
         return json.loads(data) if data else data
 
@@ -164,19 +164,19 @@ async def deploy_task(event, event_data):
 
 async def authenticate_request(request, scopes=[]):
     try:
-        await utils.AuthDependency()(request, SecurityScopes(scopes))
+        await utils.authorization.AuthDependency()(request, SecurityScopes(scopes))
     except HTTPException:
         if scopes:
             raise
-        allow_anonymous_configurator = (await utils.get_setting(schemes.Policy)).allow_anonymous_configurator
+        allow_anonymous_configurator = (await utils.policies.get_setting(schemes.Policy)).allow_anonymous_configurator
         if not allow_anonymous_configurator:
             raise HTTPException(422, "Anonymous configurator access disallowed")
 
 
 async def refresh_pending_deployments():
     with log_errors():
-        now = utils.now().timestamp()
-        async with utils.wait_for_redis():
+        now = utils.time.now().timestamp()
+        async with utils.redis.wait_for_redis():
             to_delete = []
             async for key, value in settings.redis_pool.ihscan(REDIS_KEY):
                 with log_errors():

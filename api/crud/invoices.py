@@ -10,56 +10,13 @@ from fastapi import HTTPException
 from sqlalchemy import select
 from starlette.datastructures import CommaSeparatedStrings
 
-from . import events, invoices, models, pagination, schemes, settings, utils
-from .db import db
-from .ext.moneyformat import currency_table, round_up
-from .logger import get_logger
+from api import events, invoices, models, pagination, schemes, settings, utils
+from api.crud.products import product_add_related
+from api.crud.stores import store_add_related
+from api.ext.moneyformat import currency_table, round_up
+from api.logger import get_logger
 
 logger = get_logger(__name__)
-
-
-async def user_count():
-    return await db.func.count(models.User.id).gino.scalar()
-
-
-async def create_user(user: schemes.CreateUser, auth_user: schemes.User):
-    register_off = (await utils.get_setting(schemes.Policy)).disable_registration
-    if register_off and (not auth_user or not auth_user.is_superuser):
-        raise HTTPException(422, "Registration disabled")
-    is_superuser = False
-    if auth_user is None:
-        count = await user_count()
-        is_superuser = True if count == 0 else False
-    elif auth_user and auth_user.is_superuser:
-        is_superuser = user.is_superuser
-    d = user.dict()
-    d["hashed_password"] = utils.get_password_hash(d.pop("password", None))
-    d["is_superuser"] = is_superuser
-    return await models.User.create(**d)
-
-
-def hash_user(d: dict):
-    if "password" in d:
-        if d["password"] is not None:
-            d["hashed_password"] = utils.get_password_hash(d["password"])
-        del d["password"]
-    return d
-
-
-async def put_user(item: models.User, model: schemes.User, user: schemes.DisplayUser):
-    d = hash_user(model.dict())
-    await item.update(**d).apply()
-
-
-async def patch_user(item: models.User, model: schemes.User, user: schemes.DisplayUser):
-    d = hash_user(model.dict(exclude_unset=True))
-    await item.update(**d).apply()
-
-
-async def create_wallet(wallet: schemes.CreateWallet, user: schemes.User):
-    wallet = await models.Wallet.create(**wallet.dict(), user_id=user.id)
-    await wallet_add_related(wallet)
-    return wallet
 
 
 async def create_invoice(invoice: schemes.CreateInvoice, user: schemes.User):
@@ -87,7 +44,7 @@ async def create_invoice(invoice: schemes.CreateInvoice, user: schemes.User):
         created.append((await models.ProductxInvoice.create(invoice_id=obj.id, product_id=key, count=value)).product_id)
     obj.products = created
     obj.payments = []
-    current_date = utils.now()
+    current_date = utils.time.now()
     discounts = []
     if product:
         discounts = [await models.Discount.get(discount_id) for discount_id in product.discounts]
@@ -179,8 +136,8 @@ async def update_invoice_payments(invoice, wallets, discounts, store, product, p
 
 def add_invoice_expiration(obj):
     obj.expiration_seconds = obj.expiration * 60
-    date = obj.created + timedelta(seconds=obj.expiration_seconds) - utils.now()
-    obj.time_left = utils.time_diff(date)
+    date = obj.created + timedelta(seconds=obj.expiration_seconds) - utils.time.now()
+    obj.time_left = utils.time.time_diff(date)
 
 
 async def invoice_add_related(item: models.Invoice):
@@ -215,104 +172,10 @@ async def get_invoices(pagination: pagination.Pagination, user: schemes.User):
     return await pagination.paginate(models.Invoice, user.id, postprocess=invoices_add_related)
 
 
-async def get_store(model_id: int, user: schemes.User, item: models.Store, internal=False):
-    if item is None:
-        item = await models.Store.get(model_id)  # Extra query to fetch public data
-        if item is None:
-            return
-        user = None  # reset User to display only public data
-    await store_add_related(item)
-    if internal:
-        return item
-    elif user:
-        return schemes.Store.from_orm(item)
-    else:
-        return schemes.PublicStore.from_orm(item)
-
-
-async def get_stores(pagination: pagination.Pagination, user: schemes.User):
-    return await pagination.paginate(models.Store, user.id, postprocess=stores_add_related)
-
-
-async def delete_store(item: schemes.Store, user: schemes.User):
-    await models.WalletxStore.delete.where(models.WalletxStore.store_id == item.id).gino.status()
-    await models.NotificationxStore.delete.where(models.NotificationxStore.store_id == item.id).gino.status()
-    await item.delete()
-    return item
-
-
-async def create_store(store: schemes.CreateStore, user: schemes.User):
-    d = store.dict()
-    wallets = d.get("wallets", [])
-    notifications = d.get("notifications", [])
-    obj = await models.Store.create(**d, user_id=user.id)
-    created_wallets = []
-    for i in wallets:  # type: ignore
-        created_wallets.append((await models.WalletxStore.create(store_id=obj.id, wallet_id=i)).wallet_id)
-    obj.wallets = created_wallets
-    created_notifications = []
-    for i in notifications:  # type: ignore
-        created_notifications.append(
-            (await models.NotificationxStore.create(store_id=obj.id, notification_id=i)).notification_id
-        )
-    obj.notifications = created_notifications
-    obj.checkout_settings = schemes.StoreCheckoutSettings()
-    return obj
-
-
-async def store_add_related(item: models.Store):
-    # add related wallets
-    if not item:
-        return
-    item.checkout_settings = item.get_setting(schemes.StoreCheckoutSettings)
-    result = await models.WalletxStore.select("wallet_id").where(models.WalletxStore.store_id == item.id).gino.all()
-    result2 = (
-        await models.NotificationxStore.select("notification_id")
-        .where(models.NotificationxStore.store_id == item.id)
-        .gino.all()
-    )
-    item.wallets = [wallet_id for wallet_id, in result if wallet_id]
-    item.notifications = [notification_id for notification_id, in result2 if notification_id]
-
-
-async def stores_add_related(items: Iterable[models.Store]):
-    for item in items:
-        await store_add_related(item)
-    return items
-
-
 async def delete_invoice(item: schemes.Invoice, user: schemes.User):
     await models.ProductxInvoice.delete.where(models.ProductxInvoice.invoice_id == item.id).gino.status()
     await item.delete()
     return item
-
-
-async def product_add_related(item: models.Product):
-    # add related discounts
-    if not item:
-        return
-    result = (
-        await models.DiscountxProduct.select("discount_id").where(models.DiscountxProduct.product_id == item.id).gino.all()
-    )
-    item.discounts = [discount_id for discount_id, in result if discount_id]
-
-
-async def products_add_related(items: Iterable[models.Product]):
-    for item in items:
-        await product_add_related(item)
-    return items
-
-
-async def create_discount(discount: schemes.CreateDiscount, user: schemes.User):
-    return await models.Discount.create(**discount.dict(), user_id=user.id)
-
-
-async def create_notification(notification: schemes.CreateNotification, user: schemes.User):
-    return await models.Notification.create(**notification.dict(), user_id=user.id)
-
-
-async def create_template(template: schemes.CreateTemplate, user: schemes.User):
-    return await models.Template.create(**template.dict(), user_id=user.id)
 
 
 async def batch_invoice_action(query, settings: schemes.BatchSettings, user: schemes.User):
@@ -341,35 +204,6 @@ def mark_invoice_complete(orm_model):
 
 def mark_invoice_invalid(orm_model):
     return orm_model.update.values({"status": invoices.InvoiceStatus.INVALID})
-
-
-async def wallet_add_related(item: models.Wallet):
-    if not item:
-        return
-    item.balance = await utils.get_wallet_balance(settings.get_coin(item.currency, item.xpub))
-
-
-async def wallets_add_related(items: Iterable[models.Wallet]):
-    for item in items:
-        await wallet_add_related(item)
-    return items
-
-
-async def get_wallet(model_id: int, user: schemes.User, item: models.Wallet, internal: bool = False):
-    await wallet_add_related(item)
-    return item
-
-
-async def get_wallets(pagination: pagination.Pagination, user: schemes.User):
-    return await pagination.paginate(models.Wallet, user.id, postprocess=wallets_add_related)
-
-
-async def get_wallet_coin_by_id(model_id: int):
-    wallet = await models.Wallet.get(model_id)
-    if not wallet:
-        raise HTTPException(status_code=404, detail=f"Object with id {model_id} does not exist!")
-    await wallet_add_related(wallet)
-    return settings.get_coin(wallet.currency, wallet.xpub)
 
 
 def get_methods_inds(methods: list):

@@ -4,7 +4,7 @@ import asyncio
 
 from pydantic import ValidationError
 
-from . import constants, utils
+from api import constants, utils
 
 
 class EventHandler:
@@ -43,7 +43,7 @@ class EventHandler:
 
 
 async def process_message(message, custom_event_handler=None):
-    from . import schemes
+    from api import schemes
 
     try:
         message = schemes.EventSystemMessage(**message)
@@ -54,7 +54,7 @@ async def process_message(message, custom_event_handler=None):
 
 
 async def send_message(message):
-    await utils.publish_message(constants.EVENTS_CHANNEL, message)
+    await utils.redis.publish_message(constants.EVENTS_CHANNEL, message)
 
 
 async def listen(sub, channel, custom_event_handler=None):  # pragma: no cover
@@ -64,7 +64,7 @@ async def listen(sub, channel, custom_event_handler=None):  # pragma: no cover
 
 
 async def start_listening(custom_event_handler=None):  # pragma: no cover
-    subscriber, channel = await utils.make_subscriber(constants.EVENTS_CHANNEL)
+    subscriber, channel = await utils.redis.make_subscriber(constants.EVENTS_CHANNEL)
     await listen(subscriber, channel, custom_event_handler)
 
 

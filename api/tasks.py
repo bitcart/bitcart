@@ -1,7 +1,7 @@
-from . import invoices, models, settings, utils
-from .events import event_handler
-from .ext.configurator import deploy_task
-from .logger import get_logger
+from api import invoices, models, settings, utils
+from api.events import event_handler
+from api.ext.configurator import deploy_task
+from api.logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -22,7 +22,7 @@ async def sync_wallet(event, event_data):
     coin = settings.get_coin(model.currency, model.xpub)
     balance = await coin.balance()
     logger.info(f"Wallet {model.id} synced, balance: {balance['confirmed']}")
-    await utils.publish_message(
+    await utils.redis.publish_message(
         f"wallet:{model.id}", {"status": "success", "balance": str(balance["confirmed"])}
     )  # convert for json serialization
 

@@ -102,7 +102,7 @@ def parse_torrc(torrc, log=True):
 
 
 async def refresh(log=True):  # pragma: no cover: used in production only
-    async with utils.wait_for_redis():
+    async with utils.redis.wait_for_redis():
         services = parse_torrc(settings.TORRC_FILE, log=log)
         services_dict = {service.name: dataclass_asdict(service) for service in services}
         anonymous_services_dict = {service.name: {"name": service.name, "hostname": service.hostname} for service in services}
