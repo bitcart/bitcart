@@ -39,6 +39,18 @@ If it is too long to use full names, use `as` construct with appropriate naming:
 from sqlalchemy.sql import select as sql_select
 ```
 
+For imports (except for the base daemon) in the Merchants API code, we prefer using absolute over relative imports, so instead of:
+
+```python
+from .. import models
+```
+
+Use
+
+```python
+from api import models
+```
+
 Also we use `snake_case` style, which is following PEP8.
 
 # Coding guidelines for vue/javascript code
