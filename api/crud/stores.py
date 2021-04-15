@@ -1,6 +1,6 @@
 from typing import Iterable
 
-from .. import models, pagination, schemes
+from api import models, pagination, schemes
 
 
 async def get_store(model_id: int, user: schemes.User, item: models.Store, internal=False):

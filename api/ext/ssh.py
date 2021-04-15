@@ -1,10 +1,10 @@
 from starlette.datastructures import CommaSeparatedStrings
 
-from .. import constants
+from api import constants
 
 
 def load_ssh_settings(config):
-    from ..schemes import SSHSettings
+    from api.schemes import SSHSettings
 
     settings = SSHSettings()
     connection_string = config("SSH_CONNECTION", default="")
@@ -93,7 +93,7 @@ def str_to_bool(s):  # pragma: no cover
 
 
 def collect_server_settings(ssh_settings):  # pragma: no cover
-    from ..schemes import (
+    from api.schemes import (
         ConfiguratorAdvancedSettings,
         ConfiguratorCoinDescription,
         ConfiguratorDomainSettings,

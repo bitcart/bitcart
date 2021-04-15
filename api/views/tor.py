@@ -2,8 +2,8 @@ from fastapi import APIRouter, HTTPException
 from fastapi.security import SecurityScopes
 from starlette.requests import Request
 
-from .. import utils
-from ..ext import tor as tor_ext
+from api import utils
+from api.ext import tor as tor_ext
 
 router = APIRouter()
 

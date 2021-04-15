@@ -6,9 +6,9 @@ from gino.crud import UpdateRequest
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import relationship
 
-from . import settings
-from .db import db
-from .ext.moneyformat import currency_table
+from api import settings
+from api.db import db
+from api.ext.moneyformat import currency_table
 
 # shortcuts
 Column = db.Column
@@ -309,8 +309,8 @@ class Invoice(db.Model):
 
     @classmethod
     async def create(cls, **kwargs):
-        from . import crud
-        from .invoices import InvoiceStatus
+        from api import crud
+        from api.invoices import InvoiceStatus
 
         store_id = kwargs["store_id"]
         kwargs["status"] = InvoiceStatus.PENDING

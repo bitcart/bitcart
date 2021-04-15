@@ -1,4 +1,4 @@
-from .. import models, schemes
+from api import models, schemes
 
 
 async def create_template(template: schemes.CreateTemplate, user: schemes.User):

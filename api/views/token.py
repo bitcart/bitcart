@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Security
 from fastapi.security import SecurityScopes
 from starlette.requests import Request
 
-from .. import models, pagination, schemes, utils
+from api import models, pagination, schemes, utils
 
 router = APIRouter()
 

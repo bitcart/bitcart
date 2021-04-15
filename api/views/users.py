@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Security
 from sqlalchemy import distinct, func, select
 
-from .. import crud, db, models, schemes, utils
+from api import crud, db, models, schemes, utils
 
 router = APIRouter()
 

@@ -1,20 +1,20 @@
 from fastapi import APIRouter
 
-from .configurator import router as configurator_router
-from .cryptos import router as crypto_router
-from .discounts import router as discount_router
-from .invoices import router as invoice_router
-from .manage import router as manage_router
-from .notifications import router as notification_router
-from .products import router as product_router
-from .stores import router as store_router
-from .templates import router as template_router
-from .token import router as token_router
-from .tor import router as tor_router
-from .update import router as update_router
-from .users import router as user_router
-from .wallets import router as wallet_router
-from .websocket import router as websocket_router
+from api.views.configurator import router as configurator_router
+from api.views.cryptos import router as crypto_router
+from api.views.discounts import router as discount_router
+from api.views.invoices import router as invoice_router
+from api.views.manage import router as manage_router
+from api.views.notifications import router as notification_router
+from api.views.products import router as product_router
+from api.views.stores import router as store_router
+from api.views.templates import router as template_router
+from api.views.token import router as token_router
+from api.views.tor import router as tor_router
+from api.views.update import router as update_router
+from api.views.users import router as user_router
+from api.views.wallets import router as wallet_router
+from api.views.websocket import router as websocket_router
 
 router = APIRouter()
 

@@ -10,11 +10,11 @@ from fastapi import HTTPException
 from sqlalchemy import select
 from starlette.datastructures import CommaSeparatedStrings
 
-from .. import events, invoices, models, pagination, schemes, settings, utils
-from ..ext.moneyformat import currency_table, round_up
-from ..logger import get_logger
-from .products import product_add_related
-from .stores import store_add_related
+from api import events, invoices, models, pagination, schemes, settings, utils
+from api.crud.products import product_add_related
+from api.crud.stores import store_add_related
+from api.ext.moneyformat import currency_table, round_up
+from api.logger import get_logger
 
 logger = get_logger(__name__)
 

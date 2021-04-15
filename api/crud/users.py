@@ -1,7 +1,7 @@
 from fastapi import HTTPException
 
-from .. import models, schemes, utils
-from ..db import db
+from api import models, schemes, utils
+from api.db import db
 
 
 async def user_count():

@@ -5,8 +5,8 @@ from dataclasses import asdict as dataclass_asdict
 from dataclasses import dataclass
 from typing import Optional
 
-from .. import settings, utils
-from ..logger import get_logger
+from api import settings, utils
+from api.logger import get_logger
 
 logger = get_logger(__name__)
 

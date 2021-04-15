@@ -1,7 +1,7 @@
 import notifiers
 from aiohttp import ClientSession
 
-from .. import models
+from api import models
 
 
 async def send_ipn(obj, status):  # pragma: no cover

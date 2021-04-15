@@ -1,5 +1,5 @@
-from .. import settings
-from ..ext.ssh import execute_ssh_command
+from api import settings
+from api.ext.ssh import execute_ssh_command
 
 
 def run_host(command):

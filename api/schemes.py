@@ -6,7 +6,7 @@ import paramiko
 from fastapi.exceptions import HTTPException
 from pydantic import BaseModel, EmailStr, validator
 
-from .constants import FEE_ETA_TARGETS, MAX_CONFIRMATION_WATCH
+from api.constants import FEE_ETA_TARGETS, MAX_CONFIRMATION_WATCH
 
 
 class CreatedMixin(BaseModel):
@@ -14,7 +14,7 @@ class CreatedMixin(BaseModel):
 
     @validator("created", pre=True, always=True)
     def set_created(cls, v):
-        from .utils.time import now
+        from api.utils.time import now
 
         return v or now()
 
@@ -263,7 +263,7 @@ class CreateInvoice(CreatedMixin):
 
     @validator("status", pre=True, always=True)
     def set_status(cls, v):
-        from .invoices import InvoiceStatus
+        from api.invoices import InvoiceStatus
 
         return v or InvoiceStatus.PENDING
 

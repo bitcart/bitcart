@@ -3,7 +3,7 @@ from collections import defaultdict
 from jinja2 import Template as JinjaTemplate
 from jinja2 import TemplateError
 
-from .exceptions import TemplateLoadError
+from api.exceptions import TemplateLoadError
 
 
 class Template:

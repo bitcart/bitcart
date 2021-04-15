@@ -4,7 +4,7 @@ from typing import Optional
 
 from fastapi import APIRouter, HTTPException
 
-from .. import constants, settings
+from api import constants, settings
 
 router = APIRouter()
 

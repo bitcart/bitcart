@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 
-from .. import settings, utils
-from ..ext import update as update_ext
+from api import settings, utils
+from api.ext import update as update_ext
 
 router = APIRouter()
 

@@ -4,7 +4,7 @@ from typing import List
 from bitcart.errors import BaseError as BitcartBaseError
 from fastapi import APIRouter, HTTPException, Security
 
-from .. import crud, models, schemes, utils
+from api import crud, models, schemes, utils
 
 router = APIRouter()
 

@@ -3,7 +3,7 @@ import traceback
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
-from ..logger import get_logger
+from api.logger import get_logger
 
 logger = get_logger(__name__)
 

@@ -1,6 +1,6 @@
 from contextlib import contextmanager
 
-from ..logger import get_exception_message, get_logger
+from api.logger import get_exception_message, get_logger
 
 logger = get_logger(__name__)
 

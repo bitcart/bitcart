@@ -6,8 +6,8 @@ from fastapi import Query
 from sqlalchemy import Text, distinct, func, or_, text
 from starlette.requests import Request
 
-from . import models, utils
-from .db import db
+from api import models, utils
+from api.db import db
 
 if TYPE_CHECKING:
     from gino.declarative import ModelType  # pragma: no cover

@@ -1,7 +1,7 @@
 import json
 
-from .. import models
-from .time import now
+from api import models
+from api.utils.time import now
 
 
 async def get_setting(scheme):

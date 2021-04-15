@@ -8,7 +8,7 @@ from pydantic import ValidationError
 from sqlalchemy import distinct, func
 from starlette.requests import Request
 
-from .. import crud, db, models, pagination, schemes, utils
+from api import crud, db, models, pagination, schemes, utils
 
 router = APIRouter()
 

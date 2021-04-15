@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from .. import crud, models, schemes, settings, utils
+from api import crud, models, schemes, settings, utils
 
 router = APIRouter()
 

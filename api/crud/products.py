@@ -1,6 +1,6 @@
 from typing import Iterable
 
-from .. import models
+from api import models
 
 
 async def product_add_related(item: models.Product):

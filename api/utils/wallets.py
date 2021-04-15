@@ -1,6 +1,6 @@
 from decimal import Decimal
 
-from .. import db, models, settings
+from api import db, models, settings
 
 
 async def get_wallet_history(model, response):

@@ -6,7 +6,7 @@ from passlib.context import CryptContext
 from starlette.requests import Request
 from starlette.status import HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN
 
-from .. import models
+from api import models
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 

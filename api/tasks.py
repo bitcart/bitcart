@@ -1,7 +1,7 @@
-from . import invoices, models, settings, utils
-from .events import event_handler
-from .ext.configurator import deploy_task
-from .logger import get_logger
+from api import invoices, models, settings, utils
+from api.events import event_handler
+from api.ext.configurator import deploy_task
+from api.logger import get_logger
 
 logger = get_logger(__name__)
 

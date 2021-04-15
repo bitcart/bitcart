@@ -10,7 +10,7 @@ import msgpack
 from pydantic import BaseModel
 from starlette.config import Config
 
-from .constants import LOG_FILE_NAME, LOGSERVER_PORT
+from api.constants import LOG_FILE_NAME, LOGSERVER_PORT
 
 
 def get_exception_message(exc: Exception):

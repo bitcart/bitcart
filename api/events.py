@@ -4,7 +4,7 @@ import asyncio
 
 from pydantic import ValidationError
 
-from . import constants, utils
+from api import constants, utils
 
 
 class EventHandler:
@@ -43,7 +43,7 @@ class EventHandler:
 
 
 async def process_message(message, custom_event_handler=None):
-    from . import schemes
+    from api import schemes
 
     try:
         message = schemes.EventSystemMessage(**message)

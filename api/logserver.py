@@ -8,9 +8,9 @@ from decimal import Decimal
 
 import msgpack
 
-from .constants import LOGSERVER_PORT
-from .logger import DOCKER_ENV, configure_file_logging
-from .logger import get_logger_server as get_logger
+from api.constants import LOGSERVER_PORT
+from api.logger import DOCKER_ENV, configure_file_logging
+from api.logger import get_logger_server as get_logger
 
 
 class LogRecordStreamHandler(socketserver.StreamRequestHandler):

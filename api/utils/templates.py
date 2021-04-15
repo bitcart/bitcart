@@ -1,6 +1,6 @@
-from .. import exceptions, models, templates
-from ..logger import get_logger
-from .common import get_object_name
+from api import exceptions, models, templates
+from api.logger import get_logger
+from api.utils.common import get_object_name
 
 logger = get_logger(__name__)
 

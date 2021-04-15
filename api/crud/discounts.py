@@ -1,4 +1,4 @@
-from .. import models, schemes
+from api import models, schemes
 
 
 async def create_discount(discount: schemes.CreateDiscount, user: schemes.User):

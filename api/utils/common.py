@@ -2,7 +2,7 @@ import asyncio
 import inspect
 import secrets
 
-from ..constants import ALPHABET
+from api.constants import ALPHABET
 
 
 def get_object_name(obj):

@@ -2,7 +2,7 @@ from typing import Iterable
 
 from fastapi import HTTPException
 
-from .. import models, pagination, schemes, settings, utils
+from api import models, pagination, schemes, settings, utils
 
 
 async def create_wallet(wallet: schemes.CreateWallet, user: schemes.User):

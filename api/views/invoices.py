@@ -3,9 +3,9 @@ from typing import List
 from fastapi import APIRouter, HTTPException, Response, Security
 from fastapi.responses import StreamingResponse
 
-from .. import crud, models, schemes, utils
-from ..ext import export as export_ext
-from ..invoices import InvoiceStatus
+from api import crud, models, schemes, utils
+from api.ext import export as export_ext
+from api.invoices import InvoiceStatus
 
 router = APIRouter()
 

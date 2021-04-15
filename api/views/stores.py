@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Security
 
-from .. import crud, models, schemes, utils
+from api import crud, models, schemes, utils
 
 router = APIRouter()
 

@@ -7,11 +7,11 @@ from fastapi.security import SecurityScopes
 from pydantic import ValidationError
 from starlette.concurrency import run_in_threadpool
 
-from .. import events, schemes, settings, utils
-from ..constants import DOCKER_REPO_URL
-from ..logger import get_logger
-from ..schemes import SSHSettings
-from ..utils.logging import log_errors
+from api import events, schemes, settings, utils
+from api.constants import DOCKER_REPO_URL
+from api.logger import get_logger
+from api.schemes import SSHSettings
+from api.utils.logging import log_errors
 
 COLOR_PATTERN = re.compile(r"\x1b[^m]*m")
 BASH_INTERMEDIATE_COMMAND = 'echo "end-of-command $(expr 1 + 1)"'

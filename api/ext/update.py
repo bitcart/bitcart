@@ -2,9 +2,9 @@ import re
 
 from aiohttp import ClientSession
 
-from .. import settings
-from ..constants import VERSION
-from ..logger import get_logger
+from api import settings
+from api.constants import VERSION
+from api.logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -25,7 +25,7 @@ async def get_update_data():
 
 
 async def refresh():
-    from .. import schemes, utils
+    from api import schemes, utils
 
     async with utils.redis.wait_for_redis():
         if settings.UPDATE_URL and (await utils.policies.get_setting(schemes.Policy)).check_updates:

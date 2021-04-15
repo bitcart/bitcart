@@ -2,7 +2,7 @@ import os
 
 from fastapi import APIRouter, HTTPException, Security
 
-from .. import constants, models, schemes, settings, utils
+from api import constants, models, schemes, settings, utils
 
 router = APIRouter()
 

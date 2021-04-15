@@ -5,8 +5,8 @@ from fastapi.security import SecurityScopes
 from starlette.endpoints import WebSocketEndpoint
 from starlette.status import WS_1008_POLICY_VIOLATION
 
-from .. import crud, models, settings, utils
-from ..invoices import InvoiceStatus
+from api import crud, models, settings, utils
+from api.invoices import InvoiceStatus
 
 router = APIRouter()
 

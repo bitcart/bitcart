@@ -12,10 +12,10 @@ from notifiers import all_providers, get_notifier
 from starlette.config import Config
 from starlette.datastructures import CommaSeparatedStrings
 
-from .constants import GIT_REPO_URL, LOG_FILE_NAME, VERSION, WEBSITE
-from .ext.notifiers import parse_notifier_schema
-from .ext.ssh import load_ssh_settings
-from .logger import get_exception_message, get_logger
+from api.constants import GIT_REPO_URL, LOG_FILE_NAME, VERSION, WEBSITE
+from api.ext.notifiers import parse_notifier_schema
+from api.ext.ssh import load_ssh_settings
+from api.logger import get_exception_message, get_logger
 
 logger = get_logger(__name__)
 
@@ -137,7 +137,7 @@ loop.create_task(init_redis())
 
 
 async def init_db():
-    from . import db
+    from api import db
 
     await db.db.set_bind(db.CONNECTION_STR, min_size=1, loop=asyncio.get_event_loop())
 

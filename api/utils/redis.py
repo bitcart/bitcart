@@ -2,7 +2,7 @@ import asyncio
 
 import aioredis
 
-from .. import settings
+from api import settings
 
 
 class WaitForRedis:  # pragma: no cover

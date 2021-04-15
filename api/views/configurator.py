@@ -4,9 +4,9 @@ from fastapi import APIRouter, HTTPException
 from fastapi.security import SecurityScopes
 from starlette.requests import Request
 
-from .. import schemes, settings, utils
-from ..ext import configurator
-from ..ext import ssh as ssh_ext
+from api import schemes, settings, utils
+from api.ext import configurator
+from api.ext import ssh as ssh_ext
 
 router = APIRouter()
 

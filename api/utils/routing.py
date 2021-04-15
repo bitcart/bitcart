@@ -10,9 +10,9 @@ from pydantic import create_model as create_pydantic_model
 from sqlalchemy import distinct
 from starlette.requests import Request
 
-from .. import db, events, models, pagination
-from .authorization import AuthDependency
-from .database import safe_db_write
+from api import db, events, models, pagination
+from api.utils.authorization import AuthDependency
+from api.utils.database import safe_db_write
 
 HTTP_METHODS: List[str] = ["GET", "POST", "PUT", "PATCH", "DELETE"]
 ENDPOINTS: List[str] = ["get_all", "get_one", "get_count", "post", "put", "patch", "delete", "batch_action"]
@@ -21,7 +21,7 @@ CUSTOM_HTTP_METHODS: dict = {"batch_action": "post"}
 
 @dataclass
 class ModelView:
-    from .. import schemes
+    from api import schemes
 
     crud_models: ClassVar[list] = []
 

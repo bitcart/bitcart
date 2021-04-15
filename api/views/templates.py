@@ -2,7 +2,7 @@ from typing import Optional
 
 from fastapi import APIRouter
 
-from .. import crud, models, schemes, templates, utils
+from api import crud, models, schemes, templates, utils
 
 router = APIRouter()
 
