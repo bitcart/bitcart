@@ -232,7 +232,7 @@ async def check_pending(currency):
                 continue
             coin = settings.get_coin(method.currency, xpub)
             if method.lightning:
-                invoice_data = await coin.server.get_invoice(method.rhash)  # TODO: add to SDK
+                invoice_data = await coin.get_invoice(method.rhash)
             else:
                 invoice_data = await coin.get_request(method.payment_address)
             await mark_invoice_paid(invoice, method, xpub, invoice_data["status"])
