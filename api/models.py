@@ -23,6 +23,33 @@ ForeignKey = db.ForeignKey
 JSON = db.JSON
 UniqueConstraint = db.UniqueConstraint
 
+# Abstract class to easily implement many-to-many update behaviour
+
+
+class ManyToManyUpdateRequest(UpdateRequest):
+    KEYS: dict
+
+    def update(self, **kwargs):
+        for key in self.KEYS:
+            setattr(self, key, kwargs.pop(key, None))
+        return super().update(**kwargs)
+
+    async def apply(self):
+        for key in self.KEYS:
+            key_info = self.KEYS[key]
+            data = getattr(self, key)
+            if data is None:
+                data = []
+            else:
+                await key_info["table"].delete.where(
+                    getattr(key_info["table"], key_info["current_id"]) == self._instance.id
+                ).gino.status()
+            for i in data:
+                kwargs = {key_info["current_id"]: self._instance.id, key_info["related_id"]: i}
+                await key_info["table"].create(**kwargs)
+            setattr(self._instance, key, data)
+        return await super().apply()
+
 
 class User(db.Model):
     __tablename__ = "users"
@@ -104,28 +131,19 @@ class NotificationxStore(db.Model):
     store_id = Column(Integer, ForeignKey("stores.id", ondelete="SET NULL"))
 
 
-class StoreUpdateRequest(UpdateRequest):
-    def update(self, **kwargs):
-        self.wallets = kwargs.pop("wallets", None)
-        self.notifications = kwargs.pop("notifications", None)
-        return super().update(**kwargs)
-
-    async def apply(self):
-        if self.wallets is not None:
-            await WalletxStore.delete.where(WalletxStore.store_id == self._instance.id).gino.status()
-        if self.wallets is None:
-            self.wallets = []
-        for i in self.wallets:
-            await WalletxStore.create(store_id=self._instance.id, wallet_id=i)
-        self._instance.wallets = self.wallets
-        if self.notifications is not None:
-            await NotificationxStore.delete.where(NotificationxStore.store_id == self._instance.id).gino.status()
-        if self.notifications is None:
-            self.notifications = []
-        for i in self.notifications:
-            await NotificationxStore.create(store_id=self._instance.id, notification_id=i)
-        self._instance.notifications = self.notifications
-        return await super().apply()
+class StoreUpdateRequest(ManyToManyUpdateRequest):
+    KEYS = {
+        "wallets": {
+            "table": WalletxStore,
+            "current_id": "store_id",
+            "related_id": "wallet_id",
+        },
+        "notifications": {
+            "table": NotificationxStore,
+            "current_id": "store_id",
+            "related_id": "notification_id",
+        },
+    }
 
 
 class Store(db.Model):
@@ -180,25 +198,19 @@ class DiscountxProduct(db.Model):
     product_id = Column(Integer, ForeignKey("products.id", ondelete="SET NULL"))
 
 
-class DiscountXProductUpdateRequest(UpdateRequest):
-    def update(self, **kwargs):
-        self.discounts = kwargs.pop("discounts", None)
-        return super().update(**kwargs)
-
-    async def apply(self):
-        if self.discounts is not None:
-            await DiscountxProduct.delete.where(DiscountxProduct.product_id == self._instance.id).gino.status()
-        if self.discounts is None:
-            self.discounts = []
-        for i in self.discounts:
-            await DiscountxProduct.create(product_id=self._instance.id, discount_id=i)
-        self._instance.discounts = self.discounts
-        return await super().apply()
+class ProductUpdateRequest(ManyToManyUpdateRequest):
+    KEYS = {
+        "discounts": {
+            "table": DiscountxProduct,
+            "current_id": "product_id",
+            "related_id": "discount_id",
+        },
+    }
 
 
 class Product(db.Model):
     __tablename__ = "products"
-    _update_request_cls = DiscountXProductUpdateRequest
+    _update_request_cls = ProductUpdateRequest
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(length=1000), index=True)
@@ -230,20 +242,14 @@ class ProductxInvoice(db.Model):
     count = Column(Integer)
 
 
-class InvoiceUpdateRequest(UpdateRequest):
-    def update(self, **kwargs):
-        self.products = kwargs.pop("products", None)
-        return super().update(**kwargs)
-
-    async def apply(self):
-        if self.products is not None:
-            await ProductxInvoice.delete.where(ProductxInvoice.invoice_id == self._instance.id).gino.status()
-        if self.products is None:
-            self.products = []
-        for i in self.products:
-            await ProductxInvoice.create(invoice_id=self._instance.id, product_id=i)
-        self._instance.products = self.products
-        return await super().apply()
+class InvoiceUpdateRequest(ManyToManyUpdateRequest):
+    KEYS = {
+        "products": {
+            "table": ProductxInvoice,
+            "current_id": "invoice_id",
+            "related_id": "product_id",
+        },
+    }
 
 
 class PaymentMethod(db.Model):
