@@ -5,7 +5,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Security, UploadFile
 from fastapi.security import SecurityScopes
 from pydantic import ValidationError
-from sqlalchemy import distinct, func
+from sqlalchemy import distinct
 from starlette.requests import Request
 
 from api import crud, db, models, pagination, schemes, utils
@@ -140,31 +140,19 @@ async def get_max_product_price(store: int):
 
 async def products_count(
     request: Request,
+    pagination: pagination.Pagination = Depends(),
     store: Optional[int] = None,
     category: Optional[str] = "",
     min_price: Optional[Decimal] = None,
     max_price: Optional[Decimal] = None,
     sale: Optional[bool] = False,
 ):
-    query = models.Product.query
-    if sale:
-        query = (
-            query.select_from(models.Product.join(models.DiscountxProduct).join(models.Discount))
-            .having(func.count(models.DiscountxProduct.product_id) > 0)
-            .where(models.Discount.end_date > utils.time.now())
-        )
+    user = None
     if store is None:
         user = await utils.authorization.AuthDependency()(request, SecurityScopes(["product_management"]))
-        query = query.where(models.Product.user_id == user.id)
-    else:
-        query = query.where(models.Product.store_id == store)
-    if category and category != "all":
-        query = query.where(models.Product.category == category)
-    if min_price is not None:
-        query = query.where(models.Product.price >= min_price)
-    if max_price is not None:
-        query = query.where(models.Product.price <= max_price)
-    return await (query.with_only_columns([db.db.func.count(distinct(models.Product.id))]).order_by(None).gino.scalar()) or 0
+    return await pagination.paginate(
+        models.Product, user.id if user else None, store, category, min_price, max_price, sale, count_only=True
+    )
 
 
 @router.get("/categories")
