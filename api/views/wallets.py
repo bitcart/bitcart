@@ -9,7 +9,7 @@ from api import crud, models, schemes, utils
 router = APIRouter()
 
 
-@router.get("/history/{model_id}", response_model=List[schemes.TxResponse])
+@router.get("/history/{model_id}", response_model=List[schemes.TxResponse])  # TODO: check user
 async def wallet_history(
     model_id: int,
     user: models.User = Security(utils.authorization.AuthDependency(), scopes=["wallet_management"]),
@@ -31,7 +31,7 @@ async def get_balances(user: models.User = Security(utils.authorization.AuthDepe
     return await utils.wallets.get_wallet_balances(user)
 
 
-@router.get("/{model_id}/balance")
+@router.get("/{model_id}/balance")  # TODO: check user
 async def get_wallet_balance(
     model_id: int, user: models.User = Security(utils.authorization.AuthDependency(), scopes=["wallet_management"])
 ):
@@ -41,7 +41,8 @@ async def get_wallet_balance(
 
 @router.get("/{model_id}/checkln")
 async def check_wallet_lightning(
-    model_id: int, user: models.User = Security(utils.authorization.AuthDependency(), scopes=["wallet_management"])
+    model_id: int,
+    user: models.User = Security(utils.authorization.AuthDependency(), scopes=["wallet_management"]),  # TODO: check user
 ):
     try:
         coin = await crud.wallets.get_wallet_coin_by_id(model_id)
@@ -52,7 +53,8 @@ async def check_wallet_lightning(
 
 @router.get("/{model_id}/channels")
 async def get_wallet_channels(
-    model_id: int, user: models.User = Security(utils.authorization.AuthDependency(), scopes=["wallet_management"])
+    model_id: int,
+    user: models.User = Security(utils.authorization.AuthDependency(), scopes=["wallet_management"]),  # TODO: check user
 ):
     try:
         coin = await crud.wallets.get_wallet_coin_by_id(model_id)
@@ -65,7 +67,7 @@ async def get_wallet_channels(
 async def open_wallet_channel(
     model_id: int,
     params: schemes.OpenChannelScheme,
-    user: models.User = Security(utils.authorization.AuthDependency(), scopes=["wallet_management"]),
+    user: models.User = Security(utils.authorization.AuthDependency(), scopes=["wallet_management"]),  # TODO: check user
 ):
     try:
         coin = await crud.wallets.get_wallet_coin_by_id(model_id)
@@ -78,7 +80,7 @@ async def open_wallet_channel(
 async def close_wallet_channel(
     model_id: int,
     params: schemes.CloseChannelScheme,
-    user: models.User = Security(utils.authorization.AuthDependency(), scopes=["wallet_management"]),
+    user: models.User = Security(utils.authorization.AuthDependency(), scopes=["wallet_management"]),  # TODO: check user
 ):
     try:
         coin = await crud.wallets.get_wallet_coin_by_id(model_id)
@@ -91,7 +93,7 @@ async def close_wallet_channel(
 async def wallet_lnpay(
     model_id: int,
     params: schemes.LNPayScheme,
-    user: models.User = Security(utils.authorization.AuthDependency(), scopes=["wallet_management"]),
+    user: models.User = Security(utils.authorization.AuthDependency(), scopes=["wallet_management"]),  # TODO: check user
 ):
     try:
         coin = await crud.wallets.get_wallet_coin_by_id(model_id)

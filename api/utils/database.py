@@ -9,4 +9,4 @@ def safe_db_write():
     try:
         yield
     except asyncpg.exceptions.IntegrityConstraintViolationError as e:
-        raise HTTPException(422, e.message)
+        raise HTTPException(422, str(e))

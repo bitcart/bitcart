@@ -51,7 +51,7 @@ async def get_product_noauth(model_id: int, store: Optional[int] = None):
     return item
 
 
-async def process_edit_product(model_id, data, image, user, patch=True):
+async def process_edit_product(model_id, data, image, user, patch=True):  # TODO: check user
     data = json.loads(data)
     try:
         model = schemes.Product(**data)

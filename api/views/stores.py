@@ -5,7 +5,7 @@ from api import crud, models, schemes, utils
 router = APIRouter()
 
 
-@router.get("/{model_id}/ping")
+@router.get("/{model_id}/ping")  # TODO: check user (by utility)
 async def ping_email(
     model_id: int,
     user: models.User = Security(utils.authorization.AuthDependency(), scopes=["store_management"]),
@@ -23,7 +23,7 @@ async def ping_email(
     )
 
 
-@router.patch("/{model_id}/checkout_settings", response_model=schemes.Store)
+@router.patch("/{model_id}/checkout_settings", response_model=schemes.Store)  # TODO: check user
 async def set_store_checkout_settings(
     model_id: int,
     settings: schemes.StoreCheckoutSettings,
