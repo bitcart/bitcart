@@ -51,13 +51,13 @@ async def get_product_noauth(model_id: int, store: Optional[int] = None):
     return item
 
 
-async def process_edit_product(model_id, data, image, user, patch=True):  # TODO: check user
+async def process_edit_product(model_id, data, image, user, patch=True):
     data = json.loads(data)
     try:
         model = schemes.Product(**data)
     except ValidationError as e:
         raise HTTPException(422, e.errors())
-    item = await get_product_noauth(model_id)
+    item = await utils.database.get_object(models.Product, model_id, user)
     if image:
         filename = utils.files.get_image_filename(image, False, item)
         model.image = filename

@@ -1,7 +1,5 @@
 from typing import Iterable
 
-from fastapi import HTTPException
-
 from api import models, pagination, schemes, settings, utils
 
 
@@ -32,9 +30,7 @@ async def get_wallets(pagination: pagination.Pagination, user: schemes.User):
     return await pagination.paginate(models.Wallet, user.id, postprocess=wallets_add_related)
 
 
-async def get_wallet_coin_by_id(model_id: int):
-    wallet = await models.Wallet.get(model_id)
-    if not wallet:
-        raise HTTPException(status_code=404, detail=f"Object with id {model_id} does not exist!")
+async def get_wallet_coin_by_id(model_id: int, user):
+    wallet = await utils.database.get_object(models.Wallet, model_id, user)
     await wallet_add_related(wallet)
     return settings.get_coin(wallet.currency, wallet.xpub)
