@@ -5,7 +5,7 @@ from fastapi.security import SecurityScopes
 from starlette.endpoints import WebSocketEndpoint
 from starlette.status import WS_1008_POLICY_VIOLATION
 
-from api import crud, models, settings, utils
+from api import models, settings, utils
 from api.invoices import InvoiceStatus
 
 router = APIRouter()
@@ -38,16 +38,12 @@ class GenericWebsocketEndpoint(WebSocketEndpoint):
             except HTTPException:
                 await websocket.close(code=WS_1008_POLICY_VIOLATION)
                 return
-        self.object = self.MODEL.query.where(self.MODEL.id == self.object_id)
-        if self.REQUIRE_AUTH:
-            self.object = self.object.where(self.MODEL.user_id == self.user.id)
-        self.object = await self.object.gino.first()
+        self.object = await utils.database.get_object(self.MODEL, self.object_id, self.user, raise_exception=False)
         if not self.object:
             await websocket.close(code=WS_1008_POLICY_VIOLATION)
             return
         if await self.maybe_exit_early(websocket):
             return
-        self.object = await self.load_object()
         self.subscriber, self.channel = await utils.redis.make_subscriber(f"{self.NAME}:{self.object_id}")
         settings.loop.create_task(self.poll_subs(websocket))
 
@@ -62,9 +58,6 @@ class GenericWebsocketEndpoint(WebSocketEndpoint):
 
     async def maybe_exit_early(self, websocket):
         return False
-
-    async def load_object(self):
-        return self.object
 
 
 @router.websocket_route("/wallets/{model_id}")
@@ -85,6 +78,3 @@ class InvoiceNotify(GenericWebsocketEndpoint):
             await websocket.close()
             return True
         return False
-
-    async def load_object(self):
-        return await crud.invoices.get_invoice(self.object_id, None, self.object)

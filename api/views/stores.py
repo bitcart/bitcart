@@ -29,7 +29,6 @@ async def set_store_checkout_settings(
 ):
     model = await utils.database.get_object(models.Store, model_id, user)
     await model.set_setting(settings)
-    await crud.stores.store_add_related(model)
     return model
 
 
@@ -40,10 +39,7 @@ utils.routing.ModelView.register(
     schemes.Store,
     schemes.CreateStore,
     custom_methods={
-        "get": crud.stores.get_stores,
         "get_one": crud.stores.get_store,
-        "post": crud.stores.create_store,
-        "delete": crud.stores.delete_store,
     },
     get_one_model=None,
     get_one_auth=False,

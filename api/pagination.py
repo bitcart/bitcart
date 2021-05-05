@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING, Callable, Optional, Union
 
 import asyncpg
 from fastapi import Query
-from sqlalchemy import Text, distinct, func, or_, text
+from sqlalchemy import Text, func, or_, text
 from starlette.requests import Request
 
 from api import models, utils
@@ -54,8 +54,7 @@ class Pagination:
         return str(self.request.url.include_query_params(limit=self.limit, offset=self.offset + self.limit))
 
     async def get_count(self, query) -> int:
-        query = query.with_only_columns([db.func.count(distinct(self.model.id))]).order_by(None)  # type: ignore
-        return await query.gino.scalar() or 0
+        return await utils.database.get_scalar(query, db.func.count, self.model.id)
 
     async def get_list(self, query) -> list:
         if not self.sort:

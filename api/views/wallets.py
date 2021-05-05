@@ -108,6 +108,5 @@ utils.routing.ModelView.register(
     schemes.CreateWallet,
     schemes.Wallet,
     background_tasks_mapping={"post": "sync_wallet"},
-    custom_methods={"get": crud.wallets.get_wallets, "get_one": crud.wallets.get_wallet, "post": crud.wallets.create_wallet},
     scopes=["wallet_management"],
 )

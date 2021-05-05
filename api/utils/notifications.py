@@ -15,6 +15,7 @@ async def send_ipn(obj, status):  # pragma: no cover
 
 
 async def notify(store, text):  # pragma: no cover
+    # TODO: N queries
     notification_providers = [await models.Notification.get(notification_id) for notification_id in store.notifications]
     for provider in notification_providers:
         notifiers.notify(provider.provider, message=text, **provider.data)
