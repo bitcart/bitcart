@@ -41,8 +41,8 @@ async def create_invoice(invoice: schemes.CreateInvoice, user: schemes.User):
     obj.payments = []
     current_date = utils.time.now()
     discounts = []
-    if product:  # TODO: N queries
-        discounts = [await models.Discount.get(discount_id) for discount_id in product.discounts]
+    if product:
+        discounts = await utils.database.get_objects(models.Discount, product.discounts)
     discounts = list(filter(lambda x: current_date <= x.end_date, discounts))
     with safe_db_write():
         await update_invoice_payments(obj, store.wallets, discounts, store, product, promocode)

@@ -23,10 +23,14 @@ ForeignKey = db.ForeignKey
 JSON = db.JSON
 UniqueConstraint = db.UniqueConstraint
 
+# TODO: use bulk insert when asyncpg fix is landed
+# See https://github.com/MagicStack/asyncpg/issues/700
 
-async def create_relations(model_id, related_id, key_info):
-    kwargs = {key_info["current_id"]: model_id, key_info["related_id"]: related_id}
-    await key_info["table"].create(**kwargs)
+
+async def create_relations(model_id, related_ids, key_info):
+    for related_id in related_ids:
+        kwargs = {key_info["current_id"]: model_id, key_info["related_id"]: related_id}
+        await key_info["table"].create(**kwargs)
 
 
 async def delete_relations(model_id, key_info):
@@ -42,9 +46,8 @@ class BaseModel(db.Model):
 
     async def create_related(self):
         for key in self.M2M_KEYS:
-            key_info = self.M2M_KEYS[key]
-            for related_id in getattr(self, key, []):
-                await create_relations(self.id, related_id, key_info)
+            related_ids = getattr(self, key, [])
+            await create_relations(self.id, related_ids, self.M2M_KEYS[key])
 
     async def add_related(self):
         for key in self.M2M_KEYS:
@@ -117,8 +120,7 @@ class ManyToManyUpdateRequest(UpdateRequest):
                 data = []
             else:
                 await delete_relations(self._instance.id, key_info)
-            for related_id in data:
-                await create_relations(self._instance.id, related_id, key_info)  # TODO: N queries
+            await create_relations(self._instance.id, data, key_info)
             setattr(self._instance, key, data)
         return await super().apply()
 

@@ -161,21 +161,21 @@ async def invoice_notification(invoice: models.Invoice, status: str):
                 store.email_use_ssl,
             ):
                 messages = []
-                for product_id in invoice.products:  # TODO: N queries
-                    product = await utils.database.get_object(models.Product, product_id)
+                products = await utils.database.get_objects(models.Product, invoice.products)
+                for product in products:
                     product.price = currency_table.normalize(
                         invoice.currency, product.price
                     )  # to be formatted correctly in emails
                     relation = (
                         await models.ProductxInvoice.query.where(models.ProductxInvoice.invoice_id == invoice.id)
-                        .where(models.ProductxInvoice.product_id == product_id)
+                        .where(models.ProductxInvoice.product_id == product.id)
                         .gino.first()
                     )
                     quantity = relation.count
                     product_template = await utils.templates.get_product_template(store, product, quantity)
                     messages.append(product_template)
                     logger.debug(
-                        f"Invoice {invoice.id} email notification: rendered product template for product {product_id}:\n"
+                        f"Invoice {invoice.id} email notification: rendered product template for product {product.id}:\n"
                         f"{product_template}"
                     )
                 store_template = await utils.templates.get_store_template(store, messages)

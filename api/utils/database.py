@@ -76,3 +76,9 @@ async def iterate_helper():
     async with db.db.acquire() as conn:
         async with conn.transaction():
             yield
+
+
+async def get_objects(model, ids):  # TODO: maybe use iterate instead?
+    data = await model.query.where(model.id.in_(ids)).gino.all()
+    await postprocess_func(data)
+    return data
