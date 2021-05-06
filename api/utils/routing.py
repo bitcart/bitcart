@@ -100,7 +100,7 @@ class ModelView:
         for method in self.allowed_methods:
             method_name = method.lower()
             self.router.add_api_route(
-                paths.get(method_name),  # type: ignore
+                paths.get(method_name),
                 self.request_handlers.get(method_name)
                 or getattr(self, method_name, None)
                 or getattr(self, f"_{method_name}")(),
@@ -205,7 +205,7 @@ class ModelView:
             model_id: int,
             model: self.pydantic_model,
             user: Union[None, ModelView.schemes.User] = Security(self.auth_dependency, scopes=self.scopes["put"]),
-        ):  # type: ignore
+        ):
             item = await self._get_one(model_id, user, True)
             if self.custom_methods.get("put"):
                 await self.custom_methods["put"](item, model, user)  # pragma: no cover
@@ -220,7 +220,7 @@ class ModelView:
             model_id: int,
             model: self.pydantic_model,
             user: Union[None, ModelView.schemes.User] = Security(self.auth_dependency, scopes=self.scopes["patch"]),
-        ):  # type: ignore
+        ):
             item = await self._get_one(model_id, user, True)
             if self.custom_methods.get("patch"):
                 await self.custom_methods["patch"](item, model, user)  # pragma: no cover

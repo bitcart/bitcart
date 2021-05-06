@@ -35,7 +35,7 @@ async def create_invoice(invoice: schemes.CreateInvoice, user: schemes.User):
         product = await utils.database.get_object(models.Product, list(products.keys())[0])
     created = []
     with safe_db_write():
-        for key, value in products.items():  # type: ignore
+        for key, value in products.items():
             created.append((await models.ProductxInvoice.create(invoice_id=obj.id, product_id=key, count=value)).product_id)
     obj.products = created
     obj.payments = []

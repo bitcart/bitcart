@@ -1,5 +1,5 @@
 import asyncio
-from typing import TYPE_CHECKING, Callable, Optional, Union
+from typing import Callable, Optional, Union
 
 import asyncpg
 from fastapi import Query
@@ -8,9 +8,6 @@ from starlette.requests import Request
 
 from api import models, utils
 from api.db import db
-
-if TYPE_CHECKING:
-    from gino.declarative import ModelType  # pragma: no cover
 
 
 class Pagination:
@@ -39,7 +36,7 @@ class Pagination:
         self.sort = sort
         self.desc = desc
         self.desc_s = "desc" if desc else ""
-        self.model: Optional["ModelType"] = None
+        self.model = None
 
     def get_previous_url(self) -> Union[None, str]:
         if self.offset <= 0:
