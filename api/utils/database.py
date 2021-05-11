@@ -26,6 +26,7 @@ def get_kwargs(model, data, additional_kwargs, user=None):
 async def create_object(model, data, user=None, **additional_kwargs):
     kwargs = get_kwargs(model, data, additional_kwargs, user)
     kwargs = model.prepare_create(kwargs)
+    model = model(**kwargs)  # Create object instance to allow calling instance methods
     await model.validate(**kwargs)
     with safe_db_write():
         result = await model.create(**kwargs)

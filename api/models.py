@@ -82,9 +82,22 @@ class BaseModel(db.Model):
         await model.load_data()
         return model
 
-    @classmethod
-    async def validate(cls, **kwargs):
-        pass
+    async def validate(self, **kwargs):
+        from api import utils
+
+        for key in self.M2M_KEYS:
+            if key in kwargs:
+                key_info = self.M2M_KEYS[key]
+                related_ids = kwargs[key]
+                count = await utils.database.get_scalar(
+                    key_info["related_table"]
+                    .query.where(key_info["related_table"].user_id == self.user_id)
+                    .where(key_info["related_table"].id.in_(related_ids)),
+                    db.func.count,
+                    key_info["related_table"].id,
+                )
+                if count != len(related_ids):
+                    raise HTTPException(403, "Access denied: attempt to use objects not owned by current user")
 
     @classmethod
     def process_kwargs(cls, kwargs):
@@ -162,8 +175,8 @@ class Wallet(BaseModel):
 
         self.balance = await utils.wallets.get_wallet_balance(settings.get_coin(self.currency, self.xpub))
 
-    @classmethod
-    async def validate(cls, **kwargs):
+    async def validate(self, **kwargs):
+        await super().validate(**kwargs)
         if "currency" in kwargs:
             coin = settings.get_coin(kwargs["currency"])
             if not await coin.validate_key(kwargs.get("xpub")):
@@ -212,11 +225,13 @@ class StoreUpdateRequest(ManyToManyUpdateRequest):
             "table": WalletxStore,
             "current_id": "store_id",
             "related_id": "wallet_id",
+            "related_table": Wallet,
         },
         "notifications": {
             "table": NotificationxStore,
             "current_id": "store_id",
             "related_id": "notification_id",
+            "related_table": Notification,
         },
     }
 
@@ -278,6 +293,7 @@ class ProductUpdateRequest(ManyToManyUpdateRequest):
             "table": DiscountxProduct,
             "current_id": "product_id",
             "related_id": "discount_id",
+            "related_table": Discount,
         },
     }
 
@@ -357,6 +373,7 @@ class Invoice(BaseModel):
             "table": ProductxInvoice,
             "current_id": "invoice_id",
             "related_id": "product_id",
+            "related_table": Product,
         },
     }
 
