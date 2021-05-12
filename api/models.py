@@ -129,7 +129,7 @@ class ManyToManyUpdateRequest(UpdateRequest):
         for key in self.KEYS:
             key_info = self.KEYS[key]
             data = getattr(self._instance, key, None)
-            if data is None:  # pragma: no cover # TODO: maybe simplify
+            if data is None:  # pragma: no cover
                 data = []
             else:
                 await delete_relations(self._instance.id, key_info)
