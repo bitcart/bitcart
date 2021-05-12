@@ -18,6 +18,10 @@ LIMITED_USER_DATA = {
     "email": "testauthlimited@example.com",
     "password": "test12345",
 }
+POLICY_USER = {
+    "email": "test@test.com",
+    "password": "test",
+}
 SCRIPT_SETTINGS = {
     "mode": "Manual",
     "domain_settings": {"domain": "bitcartcc.com", "https": True},
@@ -269,12 +273,12 @@ def test_noauth(client: TestClient):
         == 401
     )
     assert client.get("/products?&store=2").status_code == 200
-    assert client.post("/users", json={"email": "noauth@example.com", "password": "noauth"}).status_code == 200
-    assert client.post("/token", json={"email": "noauth@example.com", "password": "noauth"}).status_code == 200
+    assert client.post("/users", json=LIMITED_USER_DATA).status_code == 200
+    assert client.post("/token", json=LIMITED_USER_DATA).status_code == 200
 
 
 def test_superuseronly(client: TestClient, token: str):
-    token_usual = client.post("/token", json={"email": "noauth@example.com", "password": "noauth"}).json()["access_token"]
+    token_usual = client.post("/token", json=LIMITED_USER_DATA).json()["access_token"]
     assert client.get("/users", headers={"Authorization": f"Bearer {token_usual}"}).status_code == 403
     assert client.get("/users", headers={"Authorization": f"Bearer {token}"}).status_code == 200
 
@@ -378,7 +382,7 @@ def test_categories(client: TestClient):
     assert resp.status_code == 200
     assert resp.json() == ["all"]
     assert resp2.status_code == 200
-    assert set(resp2.json()) == set(["all", "Test"])  # TODO: make endpoint output order consistent
+    assert resp2.json() == ["all", "Test"]
 
 
 def check_token(result):
@@ -465,7 +469,7 @@ def test_create_tokens(client: TestClient, token: str):
         == 403
     )
 
-    assert client.post("/users", json=LIMITED_USER_DATA).status_code == 200
+    assert client.post("/users", json=LIMITED_USER_DATA).status_code == 422  # Already created
     # Strict mode: non-superuser user can't create superuser token
     assert client.post("/token", json={**LIMITED_USER_DATA, "permissions": ["server_management"]}).status_code == 422
     # Non-strict mode: silently removes server_management permission
@@ -528,7 +532,7 @@ def test_policies(client: TestClient, token: str):
         "discourage_index": False,
         "check_updates": True,
     }
-    assert client.post("/users", json={"email": "noauth@example.com", "password": "noauth"}).status_code == 422
+    assert client.post("/users", json=POLICY_USER).status_code == 422  # registration is off
     # Test for loading data from db instead of loading scheme's defaults
     assert client.get("/manage/policies").json() == {
         "allow_anonymous_configurator": True,
@@ -548,6 +552,7 @@ def test_policies(client: TestClient, token: str):
         "discourage_index": False,
         "check_updates": True,
     }
+    assert client.post("/users", json=POLICY_USER).status_code == 200  # registration is on again
     resp = client.get("/manage/stores")
     assert resp.status_code == 200
     assert resp.json() == {"pos_id": 1, "email_required": True}
@@ -688,7 +693,7 @@ def test_batch_commands(client: TestClient, token: str):
     )
     assert (
         client.post("/invoices", json={"store_id": -1, "price": 0.5}, headers={"Authorization": f"Bearer {token}"}).status_code
-        == 422
+        == 404
     )
     resp1 = client.post("/invoices", json={"store_id": 2, "price": 0.5}, headers={"Authorization": f"Bearer {token}"})
     assert resp1.status_code == 200
@@ -912,12 +917,16 @@ async def test_create_invoice_and_pay(async_client, token: str):
     data = r.json()
     invoice_id = data["id"]
     # get payment
-    payment_method = await models.PaymentMethod.query.where(models.PaymentMethod.invoice_id == invoice_id).gino.first()
+    payment_method = await utils.database.get_object(
+        models.PaymentMethod,
+        invoice_id,
+        custom_query=models.PaymentMethod.query.where(models.PaymentMethod.invoice_id == invoice_id),
+    )
     await invoices.new_payment_handler(
         DummyInstance(), None, data["payments"][0]["payment_address"], "complete", None
     )  # pay the invoice
     # validate invoice paid_currency
-    assert (await models.Invoice.get(invoice_id)).paid_currency == payment_method.currency.upper()
+    assert (await utils.database.get_object(models.Invoice, invoice_id)).paid_currency == payment_method.currency.upper()
     await async_client.delete(f"/invoices/{invoice_id}", headers={"Authorization": f"Bearer {token}"})
 
 
@@ -927,8 +936,8 @@ def test_get_public_store(client: TestClient):
         "/token",
         json={"email": "test2auth@example.com", "password": "test12345", "permissions": ["full_control"]},
     ).json()["access_token"]
-    store = client.get("/stores/2", headers={"Authorization": f"Bearer {new_token}"})
-    assert set(store.json().keys()) == {"created", "name", "default_currency", "email", "id", "user_id", "checkout_settings"}
+    # When logged in, prohibit any access to non-own objects, even if public access is available
+    assert client.get("/stores/2", headers={"Authorization": f"Bearer {new_token}"}).status_code == 404
     client.delete(f"/users/{user_id}")
     # get store without user
     store = client.get("/stores/2")
@@ -1161,3 +1170,20 @@ def test_get_server_settings(client: TestClient, token: str):
     resp = client.post("/configurator/server-settings", headers={"Authorization": f"Bearer {token}"})
     assert resp.status_code == 200
     assert resp.json() == FALLBACK_SERVER_SETTINGS  # SSH unconfigured
+
+
+def test_unauthorized_m2m_access(client: TestClient, token: str):
+    # No unauthorized anonymous access
+    assert client.post("/stores", json={"name": "new store", "wallets": [2]}).status_code == 401
+    # The actual owner can operate related objects
+    resp = client.post("/stores", json={"name": "new store", "wallets": [2]}, headers={"Authorization": f"Bearer {token}"})
+    assert resp.status_code == 200
+    store_id = resp.json()["id"]
+    client.delete(f"/stores/{store_id}", headers={"Authorization": f"Bearer {token}"})
+    token_usual = client.post("/token", json={**LIMITED_USER_DATA, "permissions": ["full_control"]}).json()["access_token"]
+    assert (
+        client.post(
+            "/stores", json={"name": "new store", "wallets": [2]}, headers={"Authorization": f"Bearer {token_usual}"}
+        ).status_code
+        == 403
+    )  # Can't access other users' related objects
