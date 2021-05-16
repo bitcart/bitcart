@@ -1,7 +1,7 @@
 from api import models, schemes
 
 
-async def get_store(model_id: int, user: schemes.User, item: models.Store, internal: bool = False):
+async def get_store(model_id: str, user: schemes.User, item: models.Store, internal: bool = False):
     if internal:
         return item
     elif user:

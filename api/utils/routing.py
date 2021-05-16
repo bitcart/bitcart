@@ -139,7 +139,7 @@ class ModelView:
             "delete": display_model,
         }
 
-    async def _get_one(self, model_id: int, user: schemes.User, internal: bool = False):
+    async def _get_one(self, model_id: str, user: schemes.User, internal: bool = False):
         item = await utils.database.get_object(self.orm_model, model_id, user)
         if self.custom_methods.get("get_one"):
             item = await self.custom_methods["get_one"](model_id, user, item, internal)
@@ -173,7 +173,7 @@ class ModelView:
 
         return get_count
 
-    async def get_one(self, model_id: int, request: Request):
+    async def get_one(self, model_id: str, request: Request):
         try:
             user = await self.auth_dependency(request, SecurityScopes(self.scopes["get_one"]))
         except HTTPException:
@@ -202,7 +202,7 @@ class ModelView:
 
     def _put(self):
         async def put(
-            model_id: int,
+            model_id: str,
             model: self.pydantic_model,
             user: Union[None, ModelView.schemes.User] = Security(self.auth_dependency, scopes=self.scopes["put"]),
         ):
@@ -217,7 +217,7 @@ class ModelView:
 
     def _patch(self):
         async def patch(
-            model_id: int,
+            model_id: str,
             model: self.pydantic_model,
             user: Union[None, ModelView.schemes.User] = Security(self.auth_dependency, scopes=self.scopes["patch"]),
         ):
@@ -232,7 +232,7 @@ class ModelView:
 
     def _delete(self):
         async def delete(
-            model_id: int,
+            model_id: str,
             user: Union[None, ModelView.schemes.User] = Security(self.auth_dependency, scopes=self.scopes["delete"]),
         ):
             item = await self._get_one(model_id, user, True)

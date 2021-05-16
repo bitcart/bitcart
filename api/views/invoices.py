@@ -10,7 +10,7 @@ from api.invoices import InvoiceStatus
 router = APIRouter()
 
 
-async def get_invoice_noauth(model_id: int):
+async def get_invoice_noauth(model_id: str):
     item = await utils.database.get_object(models.Invoice, model_id)
     return item
 

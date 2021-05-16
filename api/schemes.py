@@ -32,12 +32,12 @@ class CreateUser(BaseUser):
 
 
 class User(BaseUser):
-    id: Optional[int]
+    id: Optional[str]
     password: Optional[str]
 
 
 class DisplayUser(BaseUser):
-    id: Optional[int]
+    id: Optional[str]
 
 
 class HTTPCreateToken(CreatedMixin):
@@ -66,7 +66,7 @@ class EditToken(BaseModel):
 
 
 class CreateDBToken(HTTPCreateToken):
-    user_id: int
+    user_id: str
 
 
 class Token(CreateDBToken):
@@ -88,8 +88,8 @@ class CreateWallet(CreatedMixin):
 
 
 class Wallet(CreateWallet):
-    id: Optional[int]
-    user_id: int
+    id: Optional[str]
+    user_id: str
     balance: Decimal = Decimal(0)
 
 
@@ -145,9 +145,9 @@ class CreateStore(BaseStore):
     email_user: str = ""
     email_password: str = ""
     email_use_ssl: bool = True
-    wallets: List[int]
-    notifications: Optional[List[int]] = []
-    templates: Optional[Dict[str, int]] = {}
+    wallets: List[str]
+    notifications: Optional[List[str]] = []
+    templates: Optional[Dict[str, str]] = {}
 
     @validator("notifications", pre=True, always=True)
     def set_notifications(cls, v):
@@ -159,13 +159,13 @@ class CreateStore(BaseStore):
 
 
 class PublicStore(BaseStore):
-    id: Optional[int]
-    user_id: int
+    id: Optional[str]
+    user_id: str
 
 
 class Store(CreateStore):
-    id: Optional[int]
-    user_id: int
+    id: Optional[str]
+    user_id: str
 
 
 class CreateDiscount(CreatedMixin):
@@ -181,8 +181,8 @@ class CreateDiscount(CreatedMixin):
 
 
 class Discount(CreateDiscount):
-    id: Optional[int]
-    user_id: int
+    id: Optional[str]
+    user_id: str
 
 
 class CreateNotification(CreatedMixin):
@@ -195,8 +195,8 @@ class CreateNotification(CreatedMixin):
 
 
 class Notification(CreateNotification):
-    id: Optional[int]
-    user_id: int
+    id: Optional[str]
+    user_id: str
 
 
 class CreateTemplate(CreatedMixin):
@@ -208,8 +208,8 @@ class CreateTemplate(CreatedMixin):
 
 
 class Template(CreateTemplate):
-    id: Optional[int]
-    user_id: int
+    id: Optional[str]
+    user_id: str
 
 
 class CreateProduct(CreatedMixin):
@@ -221,9 +221,9 @@ class CreateProduct(CreatedMixin):
     description: str = ""
     category: str = ""
     image: Optional[str] = ""
-    store_id: int
-    discounts: Optional[List[int]] = []
-    templates: Optional[Dict[str, int]] = {}
+    store_id: str
+    discounts: Optional[List[str]] = []
+    templates: Optional[Dict[str, str]] = {}
 
     @validator("status", pre=True, always=True)
     def set_status(cls, v):
@@ -242,14 +242,14 @@ class CreateProduct(CreatedMixin):
 
 
 class Product(CreateProduct):
-    id: Optional[int]
-    store_id: Optional[int]
-    user_id: int
+    id: Optional[str]
+    store_id: Optional[str]
+    user_id: str
 
 
 class CreateInvoice(CreatedMixin):
     price: Decimal
-    store_id: int
+    store_id: str
     currency: str = ""
     paid_currency: Optional[str] = ""
     order_id: Optional[str] = ""
@@ -257,9 +257,9 @@ class CreateInvoice(CreatedMixin):
     redirect_url: Optional[str] = ""
     buyer_email: Optional[EmailStr] = ""
     promocode: Optional[str] = ""
-    discount: Optional[int]
+    discount: Optional[str]
     status: str = None
-    products: Optional[Union[List[int], Dict[int, int]]] = {}
+    products: Optional[Union[List[str], Dict[str, int]]] = {}
 
     @validator("status", pre=True, always=True)
     def set_status(cls, v):
@@ -286,9 +286,9 @@ class CreateInvoice(CreatedMixin):
 
 
 class Invoice(CreateInvoice):
-    id: Optional[int]
-    store_id: Optional[int]
-    user_id: int
+    id: Optional[str]
+    store_id: Optional[str]
+    user_id: str
     currency: str = "USD"
 
 
@@ -318,7 +318,7 @@ class GlobalStorePolicy(BaseModel):
 
 
 class BatchSettings(BaseModel):
-    ids: List[int]
+    ids: List[str]
     command: str
 
 

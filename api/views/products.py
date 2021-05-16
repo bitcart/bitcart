@@ -37,7 +37,7 @@ async def create_product(
     return obj
 
 
-async def get_product_noauth(model_id: int, store: Optional[int] = None):
+async def get_product_noauth(model_id: str, store: Optional[str] = None):
     query = models.Product.query.where(models.Product.id == model_id)
     if store is not None:
         query = query.where(models.Product.store_id == store)
@@ -61,7 +61,7 @@ async def process_edit_product(model_id, data, image, user, patch=True):
 
 
 async def patch_product(
-    model_id: int,
+    model_id: str,
     data: str = Form(...),
     image: UploadFile = File(None),
     user: models.User = Security(utils.authorization.AuthDependency(), scopes=["product_management"]),
@@ -70,7 +70,7 @@ async def patch_product(
 
 
 async def put_product(
-    model_id: int,
+    model_id: str,
     data: str = Form(...),
     image: UploadFile = File(None),
     user: models.User = Security(utils.authorization.AuthDependency(), scopes=["product_management"]),
@@ -87,7 +87,7 @@ async def delete_product(item: schemes.Product, user: schemes.User) -> schemes.P
 async def get_products(
     request: Request,
     pagination: pagination.Pagination = Depends(),
-    store: Optional[int] = None,
+    store: Optional[str] = None,
     category: Optional[str] = "",
     min_price: Optional[Decimal] = None,
     max_price: Optional[Decimal] = None,
@@ -103,7 +103,7 @@ async def get_products(
 
 
 @router.get("/maxprice")
-async def get_max_product_price(store: int):
+async def get_max_product_price(store: str):
     return await utils.database.get_scalar(
         models.Product.query.where(models.Product.store_id == store), db.db.func.max, models.Product.price
     )
@@ -112,7 +112,7 @@ async def get_max_product_price(store: int):
 async def products_count(
     request: Request,
     pagination: pagination.Pagination = Depends(),
-    store: Optional[int] = None,
+    store: Optional[str] = None,
     category: Optional[str] = "",
     min_price: Optional[Decimal] = None,
     max_price: Optional[Decimal] = None,
@@ -127,7 +127,7 @@ async def products_count(
 
 
 @router.get("/categories")
-async def categories(store: int):
+async def categories(store: str):
     dataset = {
         category
         for category, in await models.Product.select("category").where(models.Product.store_id == store).gino.all()
