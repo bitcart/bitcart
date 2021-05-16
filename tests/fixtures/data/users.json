@@ -54,11 +54,6 @@
                     "email": "test@example.com",
                     "is_superuser": false,
                     "id": 2
-                },
-                {
-                    "email": "testauth@example.com",
-                    "is_superuser": true,
-                    "id": 1
                 }
             ]
         }
@@ -84,7 +79,7 @@
             "status": "bad"
         },
         {
-            "obj_id": 4,
+            "obj_id": 99,
             "status": "not found"
         }
     ],
@@ -164,7 +159,7 @@
     ],
     "delete": [
         {
-            "obj_id": 4,
+            "obj_id": 99,
             "status": "not found"
         },
         {

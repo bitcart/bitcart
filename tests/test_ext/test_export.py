@@ -4,6 +4,7 @@ import pytest
 
 from api import models, utils
 from api.ext.export import db_to_json, json_to_csv, merge_keys
+from tests.helper import create_invoice
 
 
 def test_merge_keys():
@@ -13,11 +14,12 @@ def test_merge_keys():
 
 
 @pytest.mark.asyncio
-async def test_db_to_json():
+async def test_invoice_db_to_json(user: dict):
+    await create_invoice(user_id=user["id"])
     items = await models.Invoice.query.gino.all()
     await utils.database.postprocess_func(items)
     json = list(db_to_json(items))
-    assert len(json) == 1
+    assert len(json) > 0
     assert isinstance(json[0], dict)
 
 

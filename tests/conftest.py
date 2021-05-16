@@ -6,7 +6,17 @@ from async_asgi_testclient import TestClient as AsyncClient
 from starlette.testclient import TestClient
 
 from api import settings
+from api.db import db
 from main import app
+
+pytest_plugins = ["tests.fixtures.pytest.data"]
+
+
+@pytest.fixture(scope="class", autouse=True)
+async def setup_db():
+    await db.gino.create_all()
+    yield
+    await db.gino.drop_all()
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -24,28 +34,6 @@ def client(event_loop):
 async def async_client(event_loop):
     async with AsyncClient(app) as client:
         yield client
-
-
-@pytest.fixture(scope="session", autouse=True)
-def notification_template():
-    with open("api/templates/notification.j2") as f:
-        text = f.read()
-    return text
-
-
-@pytest.fixture(scope="session", autouse=True)
-def token(client):
-    client.post("/users", json={"email": "testauth@example.com", "password": "test12345"})
-    return client.post(
-        "/token",
-        json={
-            "email": "testauth@example.com",
-            "password": "test12345",
-            "app_id": "1",
-            "redirect_url": "test.com",
-            "permissions": ["full_control"],
-        },
-    ).json()["access_token"]
 
 
 @pytest.fixture
@@ -71,13 +59,6 @@ HiddenServicePort 80 127.0.0.1:80"""
     os.remove(filename)
 
 
-@pytest.fixture
-def image():
-    with open("tests/fixtures/image.png", "rb") as f:
-        data = f.read()
-    return data
-
-
 def deleting_file_base(filename):
     assert os.path.exists(filename)
     with open(filename) as f:
@@ -90,9 +71,9 @@ def deleting_file_base(filename):
 
 @pytest.fixture
 def log_file():
-    yield from deleting_file_base("tests/fixtures/bitcart.log")
+    yield from deleting_file_base("tests/fixtures/log/bitcart.log")
 
 
 @pytest.fixture
 def log_file_deleting():
-    yield from deleting_file_base("tests/fixtures/bitcart-log.log.test")
+    yield from deleting_file_base("tests/fixtures/log/bitcart-log.log.test")

@@ -7,7 +7,6 @@ from starlette.staticfiles import StaticFiles
 
 from api import settings, utils
 from api.constants import VERSION
-from api.db import db
 from api.ext import tor as tor_ext
 from api.logger import get_logger
 from api.views import router
@@ -41,14 +40,6 @@ async def add_onion_host(request: Request, call_next):
 @app.on_event("startup")
 async def startup():
     await settings.init_db()
-    if settings.TEST:
-        await db.gino.create_all()
-
-
-@app.on_event("shutdown")
-async def shutdown():
-    if settings.TEST:
-        await db.gino.drop_all()
 
 
 @app.exception_handler(500)
