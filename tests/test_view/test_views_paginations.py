@@ -38,8 +38,8 @@ def test_undefined_sort(client: TestClient, token: str):
 
 
 @pytest.mark.asyncio
-async def test_products_pagination(async_client, user: dict, token: str):
-    product_obj = await create_product(user["id"])
+async def test_products_pagination(async_client, user, token: str):
+    product_obj = await create_product(user.id)
     resp = await async_client.get(
         f"/products?store={product_obj.store_id}&category={product_obj.category}&\
             min_price=0.001&max_price={product_obj.price}",
@@ -49,8 +49,8 @@ async def test_products_pagination(async_client, user: dict, token: str):
 
 
 @pytest.mark.asyncio
-async def test_token_pagination(async_client, user: dict):
-    token_obj = await create_token(user["id"], app_id="998")
+async def test_token_pagination(async_client, user):
+    token_obj = await create_token(user.id, app_id="998")
     permissions = ",".join(token_obj.permissions)
     resp = await async_client.get(
         f"/token?app_id={token_obj.app_id}&redirect_url={token_obj.redirect_url}&permissions={permissions}",

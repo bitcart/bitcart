@@ -1,7 +1,8 @@
 TEST_XPUB = "tpubDD5MNJWw35y3eoJA7m3kFWsyX5SaUgx2Y3AaGwFk1pjYsHvpgDwRhrStRbCGad8dYzZCkLCvbGKfPuBiG7BabswmLofb7c2yfQFhjqSjaGi"
+USER_PWD = "test12345"
 LIMITED_USER_DATA = {
     "email": "testauthlimited@example.com",
-    "password": "test12345",
+    "password": USER_PWD,
     "is_superuser": False,
 }
 POLICY_USER = {

@@ -8,7 +8,7 @@ from tests.fixtures import static_data
 async def create_user(**custom_attrs) -> models.User:
     default_attrs = {
         "email": f"user_{utils.common.unique_id()}@gmail.com",
-        "password": "test12345",
+        "password": static_data.USER_PWD,
         "is_superuser": True,
         "created": utils.time.now(),
     }
@@ -78,7 +78,7 @@ async def create_store(user_id: int, **custom_attrs) -> models.Store:
         "default_currency": "USD",
         "email": f"{name}@gmail.com",
         "email_host": "google.com",
-        "email_password": "test12345",
+        "email_password": static_data.USER_PWD,
         "email_port": 433,
         "email_user": name,
         "email_use_ssl": False,

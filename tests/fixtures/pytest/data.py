@@ -1,7 +1,6 @@
-from uuid import uuid4
-
 import pytest
 
+from api import utils
 from tests.helper import (
     create_discount,
     create_notification,
@@ -24,17 +23,15 @@ def notification_template():
 @pytest.fixture(scope="class")
 async def user():
     data = {
-        "email": f"superuser-{uuid4().hex[:8]}@example.com",
-        "password": "test12345",
+        "email": f"superuser-{utils.common.unique_id()}@example.com",
         "is_superuser": True,
     }
-    user_obj = await create_user(**data)
-    return {**user_obj.to_dict(), **data}
+    return await create_user(**data)
 
 
 @pytest.fixture(scope="class")
 async def token_obj(user):
-    return await create_token(user["id"])
+    return await create_token(user.id)
 
 
 @pytest.fixture(scope="class")
@@ -44,48 +41,46 @@ async def token(token_obj):
 
 @pytest.fixture(scope="class")
 async def wallet(user):
-    return await create_wallet(user["id"])
+    return await create_wallet(user.id)
 
 
 @pytest.fixture(scope="class")
 async def limited_user():
     data = {
-        "email": f"nonsuperuser-{uuid4().hex[:8]}@example.com",
-        "password": "test12345",
+        "email": f"nonsuperuser-{utils.common.unique_id()}@example.com",
         "is_superuser": False,
     }
-    user_obj = await create_user(**data)
-    return {**user_obj.to_dict(), **data}
+    return await create_user(**data)
 
 
 @pytest.fixture(scope="class")
 async def limited_token(limited_user):
-    return (await create_token(limited_user["id"], permissions=[])).id
+    return (await create_token(limited_user.id, permissions=[])).id
 
 
 @pytest.fixture(scope="class")
 async def store(user):
-    return await create_store(user["id"])
+    return await create_store(user.id)
 
 
 @pytest.fixture(scope="class")
 async def store_wallet(user):
-    return await create_store_wallet(user["id"])
+    return await create_store_wallet(user.id)
 
 
 @pytest.fixture(scope="class")
 async def discount(user):
-    return await create_discount(user["id"])
+    return await create_discount(user.id)
 
 
 @pytest.fixture(scope="class")
 async def product(user):
-    return await create_product(user["id"])
+    return await create_product(user.id)
 
 
 @pytest.fixture(scope="class")
 async def notification(user):
-    return await create_notification(user["id"])
+    return await create_notification(user.id)
 
 
 @pytest.fixture
