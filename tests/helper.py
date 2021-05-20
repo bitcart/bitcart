@@ -1,6 +1,5 @@
 import random
 from datetime import datetime
-from uuid import uuid4
 
 from api import models, utils
 from tests.fixtures import static_data
@@ -8,7 +7,7 @@ from tests.fixtures import static_data
 
 async def create_user(**custom_attrs) -> models.User:
     default_attrs = {
-        "email": f"user_{uuid4().hex[:8]}@gmail.com",
+        "email": f"user_{utils.common.unique_id()}@gmail.com",
         "password": "test12345",
         "is_superuser": True,
         "created": utils.time.now(),
@@ -19,7 +18,7 @@ async def create_user(**custom_attrs) -> models.User:
 
 
 async def create_token(user_id: int, **custom_attrs) -> models.Token:
-    token_id = uuid4().hex
+    token_id = utils.common.unique_id()
     default_attrs = {
         "id": token_id,
         "user_id": user_id,
@@ -51,7 +50,7 @@ async def create_invoice(user_id: int, **custom_attrs) -> models.Invoice:
 
 
 async def create_product(user_id: int, **custom_attrs) -> models.Product:
-    name = f"dummy_{uuid4()}"
+    name = f"dummy_{utils.common.unique_id()}"
     if "store_id" in custom_attrs:
         store_id = custom_attrs.pop("store_id")
     else:
@@ -73,7 +72,7 @@ async def create_product(user_id: int, **custom_attrs) -> models.Product:
 
 
 async def create_store(user_id: int, **custom_attrs) -> models.Store:
-    name = f"dummy_store_{uuid4()}"
+    name = f"dummy_store_{utils.common.unique_id()}"
     default_attrs = {
         "name": name,
         "default_currency": "USD",
@@ -90,7 +89,7 @@ async def create_store(user_id: int, **custom_attrs) -> models.Store:
 
 
 async def create_wallet(user_id: int, **custom_attrs) -> models.Wallet:
-    name = f"dummy_wallet_{uuid4()}"
+    name = f"dummy_wallet_{utils.common.unique_id()}"
     default_attrs = {
         "name": name,
         "xpub": static_data.TEST_XPUB,
@@ -109,7 +108,7 @@ async def create_store_wallet(user_id: int, custom_store_attrs: dict = {}, custo
 
 
 async def create_discount(user_id: int, **custom_attrs) -> models.Discount:
-    name = f"dummy_discount_{uuid4().hex}"
+    name = f"dummy_discount_{utils.common.unique_id()}"
     default_attrs = {
         "user_id": user_id,
         "name": name,
@@ -124,7 +123,7 @@ async def create_discount(user_id: int, **custom_attrs) -> models.Discount:
 
 
 async def create_notification(user_id: int, **custom_attrs) -> models.Notification:
-    name = f"dummy_notf_{uuid4().hex}"
+    name = f"dummy_notf_{utils.common.unique_id()}"
     default_attrs = {
         "user_id": user_id,
         "name": name,
