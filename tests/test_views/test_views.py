@@ -261,16 +261,11 @@ def test_token_current(client: TestClient, token: str, user):
     assert j["id"] == token
 
 
-@Parametrization.autodetect_parameters()
-@Parametrization.case(name="unauthorized", authorized=False)
-@Parametrization.case(name="authorized", authorized=True)
-def test_token_count(client: TestClient, token: str, authorized):
-    resp = client.get("/token/count", headers={"Authorization": f"Bearer {token}"} if authorized else {})
-    if authorized:
-        assert resp.status_code == 200
-        assert resp.json() == 1
-    else:
-        assert resp.status_code == 401
+def test_token_count(client: TestClient, token: str):
+    assert client.get("/token/count").status_code == 401
+    resp = client.get("/token/count", headers={"Authorization": f"Bearer {token}"})
+    assert resp.status_code == 200
+    assert resp.json() == 1
 
 
 @Parametrization.autodetect_parameters()
