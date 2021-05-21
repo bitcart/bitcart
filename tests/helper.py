@@ -20,8 +20,6 @@ def create_token(client, user: dict, **custom_attrs) -> dict:
     default_attrs = {
         "email": user["email"],
         "password": static_data.USER_PWD,
-        "app_id": "1",
-        "redirect_url": "test.com",
         "permissions": ["full_control"],
     }
     return create_model_obj(client, "token", default_attrs, custom_attrs)
@@ -34,11 +32,6 @@ def create_invoice(client, user_id: int, token: str, **custom_attrs) -> dict:
         store_id = create_store(client, user_id, token)["id"]
     default_attrs = {
         "price": random.randint(1, 10),
-        "currency": "USD",
-        "paid_currency": "BTC",
-        "status": "complete",
-        "expiration": 15,
-        "buyer_email": "dummy_invoice@example.com",
         "store_id": store_id,
         "user_id": user_id,
     }
@@ -55,12 +48,7 @@ def create_product(client, user_id: int, token: str, **custom_attrs) -> dict:
         "name": name,
         "price": random.randint(1, 10),
         "quantity": random.randint(100, 200),
-        "download_url": f"{name}.com",
-        "category": "general",
-        "description": "description",
-        "image": "",
         "store_id": store_id,
-        "status": "active",
         "user_id": user_id,
     }
     return create_model_obj(client, "products", default_attrs, custom_attrs, token=token)
@@ -71,7 +59,6 @@ def create_wallet(client, user_id: int, token: str, **custom_attrs) -> dict:
     default_attrs = {
         "name": name,
         "xpub": static_data.TEST_XPUB,
-        "currency": "btc",
         "user_id": user_id,
     }
     return create_model_obj(client, "wallets", default_attrs, custom_attrs, token=token)
@@ -82,13 +69,6 @@ def create_store(client, user_id: int, token: str, custom_store_attrs: dict = {}
     name = f"dummy_store_{utils.common.unique_id()}"
     default_attrs = {
         "name": name,
-        "default_currency": "USD",
-        "email": f"{name}@gmail.com",
-        "email_host": "google.com",
-        "email_password": static_data.USER_PWD,
-        "email_port": 433,
-        "email_user": name,
-        "email_use_ssl": False,
         "wallets": [wallet["id"]],
         "user_id": user_id,
     }
@@ -101,9 +81,7 @@ def create_discount(client, user_id: int, token: str, **custom_attrs) -> dict:
         "user_id": user_id,
         "name": name,
         "percent": 5,
-        "description": "",
         "promocode": "TEST",
-        "currencies": "",
         "end_date": "2999-12-31T00:00:00",
     }
     return create_model_obj(client, "discounts", default_attrs, custom_attrs, token=token)

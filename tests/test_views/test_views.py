@@ -253,8 +253,8 @@ def test_token_current(client: TestClient, token: str, user):
     j = resp.json()
     assert isinstance(j, dict)
     assert j["user_id"] == user["id"]
-    assert j["app_id"] == "1"
-    assert j["redirect_url"] == "test.com"
+    assert j["app_id"] == ""
+    assert j["redirect_url"] == ""
     assert j["permissions"] == ["full_control"]
     assert j["id"] == token
 
