@@ -4,10 +4,10 @@ from starlette.testclient import TestClient
 from api import utils
 from tests.helper import (
     create_discount,
+    create_invoice,
     create_notification,
     create_product,
     create_store,
-    create_store_wallet,
     create_token,
     create_user,
     create_wallet,
@@ -55,33 +55,33 @@ def limited_token(client: TestClient, limited_user):
 
 
 @pytest.fixture(scope="class")
-async def wallet(user):
-    return await create_wallet(user["id"])
+def wallet(client: TestClient, user, token):
+    return create_wallet(client, user["id"], token)
 
 
 @pytest.fixture(scope="class")
-async def store(user):
-    return await create_store(user["id"])
+def store(client: TestClient, user, token):
+    return create_store(client, user["id"], token)
 
 
 @pytest.fixture(scope="class")
-async def store_wallet(user):
-    return await create_store_wallet(user["id"])
+def discount(client: TestClient, user, token):
+    return create_discount(client, user["id"], token)
 
 
 @pytest.fixture(scope="class")
-async def discount(user):
-    return await create_discount(user["id"])
+def product(client: TestClient, user, token):
+    return create_product(client, user["id"], token)
 
 
 @pytest.fixture(scope="class")
-async def product(user):
-    return await create_product(user["id"])
+def invoice(client: TestClient, user, token):
+    return create_invoice(client, user["id"], token)
 
 
 @pytest.fixture(scope="class")
-async def notification(user):
-    return await create_notification(user["id"])
+def notification(client: TestClient, user, token):
+    return create_notification(client, user["id"], token)
 
 
 @pytest.fixture

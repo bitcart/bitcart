@@ -45,7 +45,7 @@ def test_rate(client: TestClient):
 
 def test_wallet_history(client: TestClient, token: str, wallet):
     headers = {"Authorization": f"Bearer {token}"}
-    resp1 = client.get(f"/wallets/history/{wallet.id}", headers=headers)
+    resp1 = client.get(f"/wallets/history/{wallet['id']}", headers=headers)
     assert resp1.status_code == 200
     data1 = resp1.json()
     assert len(data1) == 1
@@ -169,7 +169,7 @@ async def check_ws_response2(ws):
 @Parametrization.case(name="store-unauthorized", store_exists=True, authorized=False)
 @Parametrization.case(name="store-authorized", store_exists=True, authorized=True)
 def test_ping_email(client: TestClient, token: str, store, store_exists, authorized):
-    store_id = store.id if store_exists else 999
+    store_id = store["id"] if store_exists else 999
     resp = client.get(f"/stores/{store_id}/ping", headers={"Authorization": f"Bearer {token}"} if authorized else {})
     if authorized:
         if store_exists:
@@ -181,13 +181,12 @@ def test_ping_email(client: TestClient, token: str, store, store_exists, authori
         assert resp.status_code == 401
 
 
-@pytest.mark.asyncio
-async def test_user_stats(async_client, user, token, store_wallet: dict):
-    store_id = store_wallet["store"].id
-    await create_product(user["id"], store_id=store_id)
-    await create_invoice(user["id"], store_id=store_id)
-    await create_invoice(user["id"], store_id=store_id)
-    resp = await async_client.get("/users/stats", headers={"Authorization": f"Bearer {token}"})
+def test_user_stats(client, user, token, store):
+    store_id = store["id"]
+    create_product(client, user["id"], token, store_id=store_id)
+    create_invoice(client, user["id"], token, store_id=store_id)
+    create_invoice(client, user["id"], token, store_id=store_id)
+    resp = client.get("/users/stats", headers={"Authorization": f"Bearer {token}"})
     assert resp.status_code == 200
     assert resp.json() == {
         "discounts": 0,
@@ -201,16 +200,15 @@ async def test_user_stats(async_client, user, token, store_wallet: dict):
     }
 
 
-@pytest.mark.asyncio
 @Parametrization.autodetect_parameters()
 @Parametrization.case(name="single", categories=["all"])
 @Parametrization.case(name="multiple", categories=["all", "test"])
-async def test_categories(async_client, user, categories: list, store):
-    assert (await async_client.get("/products/categories")).status_code == 422
-    store_id = store.id
+def test_categories(client: TestClient, user, token, categories: list, store):
+    assert client.get("/products/categories").status_code == 422
+    store_id = store["id"]
     for category in categories:
-        await create_product(user["id"], store_id=store_id, category=category)
-    resp = await async_client.get(f"/products/categories?store={store_id}")
+        create_product(client, user["id"], token, store_id=store_id, category=category)
+    resp = client.get(f"/products/categories?store={store_id}")
     assert resp.status_code == 200
     assert resp.json() == categories
 
@@ -556,8 +554,8 @@ def test_export_invoices(client: TestClient, token: str):
     assert csv_resp.text.endswith("\r\n")
 
 
-def test_batch_commands(client: TestClient, token: str, store_wallet: dict):
-    store_id = store_wallet["store"].id
+def test_batch_commands(client: TestClient, token: str, store):
+    store_id = store["id"]
     assert client.post("/invoices/batch").status_code == 401
     assert client.post("/invoices/batch", headers={"Authorization": f"Bearer {token}"}).status_code == 422
     assert (
@@ -637,8 +635,8 @@ async def test_wallet_ws(async_client, token: str):
 
 
 @pytest.mark.asyncio
-async def test_invoice_ws(async_client, token: str, store_wallet: dict):
-    store_id = store_wallet["store"].id
+async def test_invoice_ws(async_client, token: str, store):
+    store_id = store["id"]
     r = await async_client.post(
         "/invoices", json={"store_id": store_id, "price": 5}, headers={"Authorization": f"Bearer {token}"}
     )
@@ -664,8 +662,8 @@ async def test_invoice_ws(async_client, token: str, store_wallet: dict):
 
 
 @pytest.mark.parametrize("currencies", ["", "DUMMY", "btc"])
-def test_create_invoice_discount(client: TestClient, token: str, currencies: str, store_wallet: dict):
-    store_id = store_wallet["store"].id
+def test_create_invoice_discount(client: TestClient, token: str, store, currencies: str):
+    store_id = store["id"]
     # create discount
     new_discount = {"name": "apple", "percent": 50, "currencies": currencies, "end_date": "2099-12-31 00:00:00.000000"}
     create_discount_resp = client.post("/discounts", json=new_discount, headers={"Authorization": f"Bearer {token}"})
@@ -697,8 +695,8 @@ def test_create_invoice_discount(client: TestClient, token: str, currencies: str
 
 
 @pytest.mark.parametrize("order_id,expect_status_code", [(-1, 404), (10, 200)])
-def test_get_invoice_by_order_id(client: TestClient, token: str, order_id: int, store_wallet: dict, expect_status_code):
-    store_id = store_wallet["store"].id
+def test_get_invoice_by_order_id(client: TestClient, token: str, order_id: int, store, expect_status_code):
+    store_id = store["id"]
     resp = None
     if expect_status_code == 200:
         resp = client.post(
@@ -715,10 +713,10 @@ def test_get_invoice_by_order_id(client: TestClient, token: str, order_id: int, 
         assert client.delete(f"/invoices/{resp.json()['id']}", headers={"Authorization": f"Bearer {token}"}).status_code == 200
 
 
-def test_get_max_product_price(client: TestClient, token: str, store_wallet: dict):
+def test_get_max_product_price(client: TestClient, token: str, store):
     # create product
     price = 999999.0
-    new_product = {"name": "apple", "price": price, "quantity": 1.0, "store_id": store_wallet["store"].id}
+    new_product = {"name": "apple", "price": price, "quantity": 1.0, "store_id": store["id"]}
     create_product_resp = client.post(
         "/products", data={"data": json_module.dumps(new_product)}, headers={"Authorization": f"Bearer {token}"}
     )
@@ -730,8 +728,8 @@ def test_get_max_product_price(client: TestClient, token: str, store_wallet: dic
     assert maxprice_resp.json() == price
 
 
-def test_create_product_with_image(client: TestClient, token: str, image: bytes, store_wallet: dict):
-    store_id = store_wallet["store"].id
+def test_create_product_with_image(client: TestClient, token: str, image: bytes, store):
+    store_id = store["id"]
     new_product = {"name": "sunflower", "price": 0.1, "quantity": 1.0, "store_id": store_id}
     # post
     create_product_resp = client.post(
@@ -776,8 +774,8 @@ def test_create_product_with_image(client: TestClient, token: str, image: bytes,
 
 
 @pytest.mark.asyncio
-async def test_create_invoice_without_coin_rate(async_client, token: str, mocker, store_wallet: dict):
-    store_id = store_wallet["store"].id
+async def test_create_invoice_without_coin_rate(async_client, token: str, mocker, store):
+    store_id = store["id"]
     price = 9.9
     # mock coin rate missing
     mocker.patch("bitcart.BTC.rate", return_value=get_future_return_value(Decimal("nan")))
@@ -795,8 +793,8 @@ async def test_create_invoice_without_coin_rate(async_client, token: str, mocker
 
 
 @pytest.mark.asyncio
-async def test_create_invoice_and_pay(async_client, token: str, store_wallet: dict):
-    store_id = store_wallet["store"].id
+async def test_create_invoice_and_pay(async_client, token: str, store):
+    store_id = store["id"]
     # create invoice
     r = await async_client.post(
         "/invoices", json={"store_id": store_id, "price": 9.9}, headers={"Authorization": f"Bearer {token}"}
@@ -818,8 +816,8 @@ async def test_create_invoice_and_pay(async_client, token: str, store_wallet: di
     await async_client.delete(f"/invoices/{invoice_id}", headers={"Authorization": f"Bearer {token}"})
 
 
-def test_get_public_store(client: TestClient, store_wallet: dict):
-    store_id = store_wallet["store"].id
+def test_get_public_store(client: TestClient, store):
+    store_id = store["id"]
     user_id = client.post("/users", json={"email": "test2auth@example.com", "password": "test12345"}).json()["id"]
     new_token = client.post(
         "/token",
@@ -834,8 +832,8 @@ def test_get_public_store(client: TestClient, store_wallet: dict):
 
 
 def test_get_product_params(client: TestClient, token: str, product):
-    product_id = product.id
-    store_id = product.store_id
+    product_id = product["id"]
+    store_id = product["store_id"]
     assert client.get(f"/products/{product_id}", headers={"Authorization": f"Bearer {token}"}).status_code == 200
     assert (
         client.get(f"/products/{product_id}?store={store_id}", headers={"Authorization": f"Bearer {token}"})
@@ -909,14 +907,14 @@ def test_cryptos(client: TestClient):
 
 
 def test_wallet_balance(client: TestClient, token: str, wallet: dict):
-    assert client.get(f"/wallets/{wallet.id}/balance").status_code == 401
-    resp = client.get(f"/wallets/{wallet.id}/balance", headers={"Authorization": f"Bearer {token}"})
+    assert client.get(f"/wallets/{wallet['id']}/balance").status_code == 401
+    resp = client.get(f"/wallets/{wallet['id']}/balance", headers={"Authorization": f"Bearer {token}"})
     assert resp.status_code == 200
     assert resp.json() == {"confirmed": 0.01, "lightning": 0.0, "unconfirmed": 0.0, "unmatured": 0.0}
 
 
 def test_lightning_endpoints(client: TestClient, token: str, wallet):
-    wallet_id = wallet.id
+    wallet_id = wallet["id"]
     assert client.get(f"/wallets/{wallet_id}/checkln").status_code == 401
     assert client.get("/wallets/555/checkln", headers={"Authorization": f"Bearer {token}"}).status_code == 404
     resp = client.get(f"/wallets/{wallet_id}/checkln", headers={"Authorization": f"Bearer {token}"})
@@ -944,18 +942,17 @@ def test_lightning_endpoints(client: TestClient, token: str, wallet):
     ).status_code == 400
 
 
-@pytest.mark.asyncio
-async def test_multiple_wallets_same_currency(async_client, token: str, user):
-    wallet1_id = (await create_wallet(user["id"])).id
-    wallet2_id = (await create_wallet(user["id"])).id
-    resp = await async_client.post(
+def test_multiple_wallets_same_currency(client, token: str, user):
+    wallet1_id = create_wallet(client, user["id"], token)["id"]
+    wallet2_id = create_wallet(client, user["id"], token)["id"]
+    resp = client.post(
         "/stores",
         json={"name": "Multiple Currency", "wallets": [wallet1_id, wallet2_id]},
         headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 200
     store_id = resp.json()["id"]
-    resp = await async_client.post("/invoices", json={"price": 5, "store_id": store_id})
+    resp = client.post("/invoices", json={"price": 5, "store_id": store_id})
     assert resp.status_code == 200
     resp = resp.json()
     invoice_id = resp["id"]
@@ -963,12 +960,12 @@ async def test_multiple_wallets_same_currency(async_client, token: str, user):
     assert resp["payments"][0]["name"] == "BTC (1)"
     assert resp["payments"][1]["name"] == "BTC (2)"
     # cleanup
-    await async_client.delete(f"/invoices/{invoice_id}", headers={"Authorization": f"Bearer {token}"})
-    await async_client.delete(f"/stores/{store_id}", headers={"Authorization": f"Bearer {token}"})
+    client.delete(f"/invoices/{invoice_id}", headers={"Authorization": f"Bearer {token}"})
+    client.delete(f"/stores/{store_id}", headers={"Authorization": f"Bearer {token}"})
 
 
-def test_change_store_checkout_settings(client: TestClient, token: str, store_wallet: dict):
-    store_id = store_wallet["store"].id
+def test_change_store_checkout_settings(client: TestClient, token: str, store):
+    store_id = store["id"]
     assert client.patch(f"/stores/{store_id}/checkout_settings").status_code == 401
     assert (
         client.patch(
@@ -1076,7 +1073,7 @@ def test_get_server_settings(client: TestClient, token: str):
 
 
 def test_unauthorized_m2m_access(client: TestClient, token: str, limited_user, wallet):
-    wallet_id = wallet.id
+    wallet_id = wallet["id"]
     # No unauthorized anonymous access
     assert client.post("/stores", json={"name": "new store", "wallets": [wallet_id]}).status_code == 401
     # The actual owner can operate related objects

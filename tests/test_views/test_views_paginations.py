@@ -1,4 +1,3 @@
-import pytest
 from starlette.testclient import TestClient
 
 from tests.helper import create_product, create_token, create_user
@@ -35,12 +34,11 @@ def test_undefined_sort(client: TestClient, token: str):
     assert resp.json()["result"] == []
 
 
-@pytest.mark.asyncio
-async def test_products_pagination(async_client, user, token: str):
-    product_obj = await create_product(user["id"])
-    resp = await async_client.get(
-        f"/products?store={product_obj.store_id}&category={product_obj.category}&\
-            min_price=0.001&max_price={product_obj.price}",
+def test_products_pagination(client: TestClient, user, token: str):
+    product = create_product(client, user["id"], token)
+    resp = client.get(
+        f"/products?store={product['store_id']}&category={product['category']}&\
+            min_price=0.001&max_price={product['price']}",
         headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.json()["count"] > 0

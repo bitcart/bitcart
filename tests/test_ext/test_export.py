@@ -4,7 +4,6 @@ import pytest
 
 from api import models, utils
 from api.ext.export import db_to_json, json_to_csv, merge_keys
-from tests.helper import create_invoice
 
 
 def test_merge_keys():
@@ -14,8 +13,7 @@ def test_merge_keys():
 
 
 @pytest.mark.asyncio
-async def test_invoice_db_to_json(user):
-    await create_invoice(user_id=user["id"])
+async def test_invoice_db_to_json(invoice):
     items = await models.Invoice.query.gino.all()
     await utils.database.postprocess_func(items)
     json = list(db_to_json(items))

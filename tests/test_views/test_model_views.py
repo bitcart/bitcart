@@ -4,6 +4,8 @@ from typing import Dict, List, Union
 import pytest
 from starlette.testclient import TestClient
 
+from tests.helper import create_store
+
 
 class ViewTestMixin:
     """Base class for all modelview tests, as they mostly don't differ
@@ -192,7 +194,7 @@ class TestProducts(ViewTestMixin):
     tests = json_module.loads(open("tests/fixtures/data/products.json").read())
 
     @pytest.fixture(scope="class", autouse=True)
-    def setup(self, store_wallet: dict, discount):
+    def setup(self, store, discount):
         pass
 
 
@@ -203,5 +205,5 @@ class TestInvoices(ViewTestMixin):
     tests = json_module.loads(open("tests/fixtures/data/invoices.json").read())
 
     @pytest.fixture(scope="class", autouse=True)
-    def setup(self, store_wallet: dict, store, product):
-        pass
+    def setup(self, client, user, token, product):
+        create_store(client, user, token, custom_store_attrs={"wallets": []})
