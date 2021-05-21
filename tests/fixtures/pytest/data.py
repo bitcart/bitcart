@@ -2,6 +2,7 @@ import pytest
 from starlette.testclient import TestClient
 
 from api import utils
+from tests.fixtures import static_data
 from tests.helper import (
     create_discount,
     create_invoice,
@@ -23,11 +24,7 @@ def notification_template():
 
 @pytest.fixture(scope="class")
 def user(client: TestClient):
-    data = {
-        "email": f"superuser-{utils.common.unique_id()}@example.com",
-        "is_superuser": True,
-    }
-    return create_user(client, **data)
+    return create_user(client, **static_data.SUPER_USER_DATA)
 
 
 @pytest.fixture(scope="class")

@@ -34,11 +34,7 @@ class ViewTestMixin:
         pass
 
     def handle_get_all(self, data, test):
-        if self.name == "users":
-            # special handle for users due to user fixtures
-            assert data["count"] >= len(test["return_data"])
-        else:
-            assert data["count"] == len(test["return_data"])
+        assert data["count"] == len(test["return_data"])
         assert not data["previous"]
         assert not data["next"]
         assert isinstance(data["result"], list)
@@ -73,13 +69,7 @@ class ViewTestMixin:
             if get_all:
                 data = self.handle_get_all(data, test)
             self.process_data(data)
-            if self.name == "users":
-                if isinstance(data, int):
-                    assert data >= test["return_data"]
-                else:
-                    assert all([item in data for item in test["return_data"]])
-            else:
-                assert data == test["return_data"]
+            assert data == test["return_data"]
 
     def send_request(self, url, client, json={}, method="get", token=""):
         headers = {}

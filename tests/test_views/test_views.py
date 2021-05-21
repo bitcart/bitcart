@@ -45,6 +45,7 @@ def test_rate(client: TestClient):
 
 def test_wallet_history(client: TestClient, token: str, wallet):
     headers = {"Authorization": f"Bearer {token}"}
+    assert client.get("/wallets/history/999", headers=headers).status_code == 404
     resp1 = client.get(f"/wallets/history/{wallet['id']}", headers=headers)
     assert resp1.status_code == 200
     data1 = resp1.json()

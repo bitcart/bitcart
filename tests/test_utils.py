@@ -108,8 +108,6 @@ async def test_product_template(async_client, token):
         headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 200
-    store.user_id = resp.json()["user_id"]
-    product_template.create_id = resp.json()["id"]
     template = await utils.templates.get_product_template(store, product_template, qty)
     assert template == f"store={store}|product={product_template}|quantity={qty}"
     await async_client.delete(f"/templates/{resp.json()['id']}", headers={"Authorization": f"Bearer {token}"})  # cleanup
@@ -129,8 +127,6 @@ async def test_store_template(async_client, token):
         headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 200
-    shop.user_id = resp.json()["user_id"]
-    shop.create_id = resp.json()["id"]
     template = await utils.templates.get_store_template(shop, product)
     assert template == f"store={shop}|products={product}"
     await async_client.delete(f"/templates/{resp.json()['id']}", headers={"Authorization": f"Bearer {token}"})  # cleanup
@@ -150,8 +146,6 @@ async def test_notification_template(async_client, token):
         headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 200
-    notification.user_id = resp.json()["user_id"]
-    notification.create_id = resp.json()["id"]
     template = await utils.templates.get_notify_template(notification, invoice)
     assert template == f"store={notification}|invoice={invoice}"
     await async_client.delete(f"/templates/{resp.json()['id']}", headers={"Authorization": f"Bearer {token}"})  # cleanup

@@ -17,7 +17,7 @@ async def test_invoice_db_to_json(invoice):
     items = await models.Invoice.query.gino.all()
     await utils.database.postprocess_func(items)
     json = list(db_to_json(items))
-    assert len(json) > 0
+    assert len(json) == 1
     assert isinstance(json[0], dict)
 
 
