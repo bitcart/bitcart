@@ -61,7 +61,7 @@ def test_wallet_history(client: TestClient, token: str, wallet):
 @Parametrization.case(name="exist-user-wrong-pwd", user_exists=True, correct_pwd=False)
 @Parametrization.case(name="non-exist-user", user_exists=False, correct_pwd=False)
 def test_create_token(client: TestClient, user, user_exists: bool, correct_pwd: bool):
-    email = user.email if user_exists else "non-exist@example.com"
+    email = user["email"] if user_exists else "non-exist@example.com"
     password = static_data.USER_PWD if (user_exists and correct_pwd) else "wrong-password"
     resp = client.post("/token", json={"email": email, "password": password})
     if user_exists and correct_pwd:
@@ -101,7 +101,7 @@ def test_users_me(client: TestClient, user, token: str):
     resp = client.get("/users/me", headers={"Authorization": f"Bearer {token}"})
     assert resp.status_code == 200
     j = resp.json()
-    assert j.items() > {"is_superuser": True, "email": user.email}.items()
+    assert j.items() > {"is_superuser": True, "email": user["email"]}.items()
     assert "created" in j
 
 
@@ -184,9 +184,9 @@ def test_ping_email(client: TestClient, token: str, store, store_exists, authori
 @pytest.mark.asyncio
 async def test_user_stats(async_client, user, token, store_wallet: dict):
     store_id = store_wallet["store"].id
-    await create_product(user.id, store_id=store_id)
-    await create_invoice(user.id, store_id=store_id)
-    await create_invoice(user.id, store_id=store_id)
+    await create_product(user["id"], store_id=store_id)
+    await create_invoice(user["id"], store_id=store_id)
+    await create_invoice(user["id"], store_id=store_id)
     resp = await async_client.get("/users/stats", headers={"Authorization": f"Bearer {token}"})
     assert resp.status_code == 200
     assert resp.json() == {
@@ -209,7 +209,7 @@ async def test_categories(async_client, user, categories: list, store):
     assert (await async_client.get("/products/categories")).status_code == 422
     store_id = store.id
     for category in categories:
-        await create_product(user.id, store_id=store_id, category=category)
+        await create_product(user["id"], store_id=store_id, category=category)
     resp = await async_client.get(f"/products/categories?store={store_id}")
     assert resp.status_code == 200
     assert resp.json() == categories
@@ -226,8 +226,8 @@ def check_token(result):
 @Parametrization.autodetect_parameters()
 @Parametrization.case(name="unauthorized", authorized=False)
 @Parametrization.case(name="authorized", authorized=True)
-def test_token(client: TestClient, token_obj, authorized: bool):
-    resp = client.get("/token", headers={"Authorization": f"Bearer {token_obj.id}"} if authorized else {})
+def test_token(client: TestClient, token_data, authorized: bool):
+    resp = client.get("/token", headers={"Authorization": f"Bearer {token_data['id']}"} if authorized else {})
     if authorized:
         assert resp.status_code == 200
         j = resp.json()
@@ -239,10 +239,10 @@ def test_token(client: TestClient, token_obj, authorized: bool):
         assert len(result) == 1
         result = result[0]
         assert {
-            "app_id": token_obj.app_id,
-            "permissions": token_obj.permissions,
-            "user_id": token_obj.user_id,
-            "redirect_url": token_obj.redirect_url,
+            "app_id": token_data["app_id"],
+            "permissions": token_data["permissions"],
+            "user_id": token_data["user_id"],
+            "redirect_url": token_data["redirect_url"],
         }.items() <= result.items()
     else:
         assert resp.status_code == 401
@@ -254,7 +254,7 @@ def test_token_current(client: TestClient, token: str, user):
     assert resp.status_code == 200
     j = resp.json()
     assert isinstance(j, dict)
-    assert j["user_id"] == user.id
+    assert j["user_id"] == user["id"]
     assert j["app_id"] == "1"
     assert j["redirect_url"] == "test.com"
     assert j["permissions"] == ["full_control"]
@@ -293,7 +293,7 @@ def test_patch_token(client: TestClient, token, authorized):
 @Parametrization.case(name="user-authorized", user_exists=True, authorized=True)
 def test_create_tokens(client: TestClient, user, token: str, user_exists: bool, authorized: bool):
     password = static_data.USER_PWD
-    email = user.email if user_exists else f"{user.email}_NULL"
+    email = user["email"] if user_exists else f"{user['email']}_NULL"
     resp = client.post(
         "/token",
         json={"email": email, "password": password},
@@ -328,14 +328,14 @@ def test_token_permissions_control(client: TestClient, token: str, limited_user,
     # Strict mode: non-superuser user can't create superuser token
     resp = client.post(
         "/token",
-        json={"email": limited_user.email, "password": static_data.USER_PWD, "permissions": ["server_management"]},
+        json={"email": limited_user["email"], "password": static_data.USER_PWD, "permissions": ["server_management"]},
     )
     assert resp.status_code == 422
     # Non-strict mode: silently removes server_management permission
     resp = client.post(
         "/token",
         json={
-            "email": limited_user.email,
+            "email": limited_user["email"],
             "password": static_data.USER_PWD,
             "permissions": ["server_management"],
             "strict": False,
@@ -468,7 +468,7 @@ def test_non_superuser_permissions(client: TestClient, user, limited_user):
     resp = client.post(
         "/token",
         json={
-            "email": limited_user.email,
+            "email": limited_user["email"],
             "password": static_data.USER_PWD,
             "permissions": ["full_control"],
             "strict": False,
@@ -476,7 +476,7 @@ def test_non_superuser_permissions(client: TestClient, user, limited_user):
     )
     token = resp.json()["access_token"]
     assert client.get("/token", headers={"Authorization": f"Bearer {token}"}).status_code == 200
-    assert client.get(f"/users/{user.id}", headers={"Authorization": f"Bearer {token}"}).status_code == 403
+    assert client.get(f"/users/{user['id']}", headers={"Authorization": f"Bearer {token}"}).status_code == 403
 
 
 def test_notification_list(client: TestClient):
@@ -946,8 +946,8 @@ def test_lightning_endpoints(client: TestClient, token: str, wallet):
 
 @pytest.mark.asyncio
 async def test_multiple_wallets_same_currency(async_client, token: str, user):
-    wallet1_id = (await create_wallet(user.id)).id
-    wallet2_id = (await create_wallet(user.id)).id
+    wallet1_id = (await create_wallet(user["id"])).id
+    wallet2_id = (await create_wallet(user["id"])).id
     resp = await async_client.post(
         "/stores",
         json={"name": "Multiple Currency", "wallets": [wallet1_id, wallet2_id]},
@@ -1089,7 +1089,7 @@ def test_unauthorized_m2m_access(client: TestClient, token: str, limited_user, w
     token_usual = (
         client.post(
             "/token",
-            json={"email": limited_user.email, "password": static_data.USER_PWD, "permissions": ["full_control"]},
+            json={"email": limited_user["email"], "password": static_data.USER_PWD, "permissions": ["full_control"]},
         )
     ).json()["access_token"]
     assert (

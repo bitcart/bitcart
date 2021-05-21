@@ -1,33 +1,32 @@
 import random
 from datetime import datetime
 
+from starlette.testclient import TestClient
+
 from api import models, utils
 from tests.fixtures import static_data
 
 
-async def create_user(**custom_attrs) -> models.User:
+def create_user(client: TestClient, **custom_attrs) -> dict:
     default_attrs = {
         "email": f"user_{utils.common.unique_id()}@gmail.com",
         "password": static_data.USER_PWD,
         "is_superuser": True,
-        "created": utils.time.now(),
     }
     attrs = {**default_attrs, **custom_attrs}
-    attrs["hashed_password"] = utils.authorization.get_password_hash(attrs.pop("password"))
-    return await create_model_obj(models.User, attrs)
+    return client.post("/users", json=attrs).json()
 
 
-async def create_token(user_id: int, **custom_attrs) -> models.Token:
-    token_id = utils.common.unique_id()
+def create_token(client, user: dict, **custom_attrs) -> dict:
     default_attrs = {
-        "id": token_id,
-        "user_id": user_id,
+        "email": user["email"],
+        "password": static_data.USER_PWD,
         "app_id": "1",
         "redirect_url": "test.com",
         "permissions": ["full_control"],
-        "created": utils.time.now(),
     }
-    return await create_model_obj(models.Token, default_attrs, custom_attrs)
+    attrs = {**default_attrs, **custom_attrs}
+    return client.post("/token", json=attrs).json()
 
 
 async def create_invoice(user_id: int, **custom_attrs) -> models.Invoice:
