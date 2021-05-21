@@ -56,7 +56,7 @@
                     "id": 2
                 },
                 {
-                    "email": "testauth@example.com",
+                    "email": "testsuperuser@example.com",
                     "is_superuser": true,
                     "id": 1
                 }
@@ -74,7 +74,7 @@
             "obj_id": 1,
             "status": "good",
             "return_data": {
-                "email": "testauth@example.com",
+                "email": "testsuperuser@example.com",
                 "is_superuser": true,
                 "id": 1
             }
@@ -84,7 +84,7 @@
             "status": "bad"
         },
         {
-            "obj_id": 4,
+            "obj_id": 99,
             "status": "not found"
         }
     ],
@@ -164,7 +164,7 @@
     ],
     "delete": [
         {
-            "obj_id": 4,
+            "obj_id": 99,
             "status": "not found"
         },
         {

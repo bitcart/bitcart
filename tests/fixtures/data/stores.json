@@ -4,7 +4,7 @@
             "data": {
                 "name": "test",
                 "wallets": [
-                    2
+                    1
                 ]
             },
             "status": "good",
@@ -30,7 +30,7 @@
                     "use_html_templates": false
                 },
                 "wallets": [
-                    2
+                    1
                 ],
                 "notifications": [],
                 "templates": {}
@@ -40,10 +40,10 @@
             "data": {
                 "name": "test5",
                 "wallets": [
-                    2
+                    1
                 ],
                 "notifications": [
-                    2
+                    1
                 ],
                 "email": "test@example.com"
             },
@@ -70,10 +70,10 @@
                     "use_html_templates": false
                 },
                 "wallets": [
-                    2
+                    1
                 ],
                 "notifications": [
-                    2
+                    1
                 ],
                 "templates": {}
             }
@@ -186,10 +186,10 @@
                         "use_html_templates": false
                     },
                     "wallets": [
-                        2
+                        1
                     ],
                     "notifications": [
-                        2
+                        1
                     ],
                     "templates": {}
                 },
@@ -215,7 +215,7 @@
                         "use_html_templates": false
                     },
                     "wallets": [
-                        2
+                        1
                     ],
                     "notifications": [],
                     "templates": {}
@@ -259,7 +259,7 @@
                     "use_html_templates": false
                 },
                 "wallets": [
-                    2
+                    1
                 ],
                 "notifications": [],
                 "templates": {}
@@ -276,7 +276,7 @@
             "data": {
                 "name": "test2",
                 "wallets": [
-                    2
+                    1
                 ],
                 "user_id": 1
             },
@@ -303,7 +303,7 @@
                     "use_html_templates": false
                 },
                 "wallets": [
-                    2
+                    1
                 ],
                 "notifications": [],
                 "templates": {}
@@ -314,10 +314,10 @@
             "data": {
                 "name": "test2",
                 "wallets": [
-                    2
+                    1
                 ],
                 "notifications": [
-                    2
+                    1
                 ],
                 "email": "test1@example.com",
                 "user_id": 1
@@ -345,10 +345,10 @@
                     "use_html_templates": false
                 },
                 "wallets": [
-                    2
+                    1
                 ],
                 "notifications": [
-                    2
+                    1
                 ],
                 "templates": {}
             }
@@ -358,7 +358,7 @@
             "data": {
                 "name": "test2",
                 "wallets": [
-                    2
+                    1
                 ],
                 "email": "test"
             },
@@ -384,7 +384,7 @@
             "data": {
                 "name": "test2",
                 "wallets": [
-                    2
+                    1
                 ],
                 "user_id": 1,
                 "checkout_settings": {
@@ -398,7 +398,7 @@
             "data": {
                 "name": "test2",
                 "wallets": [
-                    2
+                    1
                 ],
                 "user_id": 1,
                 "checkout_settings": {
@@ -412,7 +412,7 @@
             "data": {
                 "name": "test2",
                 "wallets": [
-                    2
+                    1
                 ],
                 "user_id": 1,
                 "checkout_settings": {
@@ -426,7 +426,7 @@
             "data": {
                 "name": "test2",
                 "wallets": [
-                    2
+                    1
                 ],
                 "user_id": 1,
                 "checkout_settings": {
@@ -440,7 +440,7 @@
             "data": {
                 "name": "test2",
                 "wallets": [
-                    2
+                    1
                 ],
                 "user_id": 1,
                 "checkout_settings": {
@@ -454,7 +454,7 @@
             "data": {
                 "name": "test2",
                 "wallets": [
-                    2
+                    1
                 ],
                 "user_id": 1,
                 "checkout_settings": {
@@ -493,7 +493,7 @@
                 "id": 1,
                 "name": "test",
                 "wallets": [
-                    2
+                    1
                 ],
                 "user_id": 1
             },
@@ -520,7 +520,7 @@
                     "use_html_templates": false
                 },
                 "wallets": [
-                    2
+                    1
                 ],
                 "notifications": [],
                 "templates": {}
@@ -557,7 +557,7 @@
                     "use_html_templates": false
                 },
                 "wallets": [
-                    2
+                    1
                 ],
                 "notifications": [],
                 "templates": {}

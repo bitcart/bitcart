@@ -3,9 +3,9 @@
         {
             "data": {
                 "price": 0.5,
-                "store_id": 2,
+                "store_id": 1,
                 "products": [
-                    2
+                    1
                 ]
             },
             "status": "good",
@@ -13,9 +13,9 @@
                 "price": 0.5,
                 "status": "pending",
                 "buyer_email": null,
-                "store_id": 2,
+                "store_id": 1,
                 "products": [
-                    2
+                    1
                 ],
                 "discount": null,
                 "promocode": "",
@@ -35,7 +35,7 @@
                 "price": 0.5,
                 "store_id": null,
                 "products": [
-                    2
+                    1
                 ]
             },
             "status": "bad"
@@ -45,7 +45,7 @@
                 "price": 0.5,
                 "store_id": 999,
                 "products": [
-                    2
+                    1
                 ]
             },
             "status": "not found"
@@ -53,9 +53,9 @@
         {
             "data": {
                 "price": 0.5,
-                "store_id": 3,
+                "store_id": 2,
                 "products": [
-                    2
+                    1
                 ]
             },
             "status": "bad"
@@ -79,9 +79,9 @@
                     "price": 0.5,
                     "status": "pending",
                     "buyer_email": null,
-                    "store_id": 2,
+                    "store_id": 1,
                     "products": [
-                        2
+                        1
                     ],
                     "discount": null,
                     "promocode": "",
@@ -116,9 +116,9 @@
                 "price": 0.5,
                 "status": "pending",
                 "buyer_email": null,
-                "store_id": 2,
+                "store_id": 1,
                 "products": [
-                    2
+                    1
                 ],
                 "discount": null,
                 "promocode": "",
@@ -144,9 +144,9 @@
             "data": {
                 "price": 0.2,
                 "products": [
-                    2
+                    1
                 ],
-                "store_id": 2,
+                "store_id": 1,
                 "user_id": 1
             },
             "status": "good",
@@ -154,9 +154,9 @@
                 "price": 0.2,
                 "status": "pending",
                 "buyer_email": null,
-                "store_id": 2,
+                "store_id": 1,
                 "products": [
-                    2
+                    1
                 ],
                 "discount": null,
                 "promocode": "",
@@ -214,9 +214,9 @@
             "data": {
                 "id": 1,
                 "price": 0.5,
-                "store_id": 2,
+                "store_id": 1,
                 "products": [
-                    2
+                    1
                 ],
                 "user_id": 1
             },
@@ -225,9 +225,9 @@
                 "price": 0.5,
                 "status": "pending",
                 "buyer_email": null,
-                "store_id": 2,
+                "store_id": 1,
                 "products": [
-                    2
+                    1
                 ],
                 "discount": null,
                 "promocode": "",
@@ -255,9 +255,9 @@
                 "price": 0.5,
                 "status": "pending",
                 "buyer_email": null,
-                "store_id": 2,
+                "store_id": 1,
                 "products": [
-                    2
+                    1
                 ],
                 "order_id": "",
                 "discount": null,
