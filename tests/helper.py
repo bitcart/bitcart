@@ -1,5 +1,6 @@
 import json as json_module
 import random
+from datetime import timedelta
 
 from starlette.testclient import TestClient
 
@@ -77,12 +78,13 @@ def create_store(client, user_id: int, token: str, custom_store_attrs: dict = {}
 
 def create_discount(client, user_id: int, token: str, **custom_attrs) -> dict:
     name = f"dummy_discount_{utils.common.unique_id()}"
+    end_date = utils.time.now() + timedelta(days=1)
     default_attrs = {
         "user_id": user_id,
         "name": name,
         "percent": 5,
         "promocode": "TEST",
-        "end_date": "2999-12-31T00:00:00",
+        "end_date": end_date.isoformat(),
     }
     return create_model_obj(client, "discounts", default_attrs, custom_attrs, token=token)
 
@@ -92,7 +94,7 @@ def create_notification(client, user_id: int, token: str, **custom_attrs) -> dic
     default_attrs = {
         "user_id": user_id,
         "name": name,
-        "provider": "NA",
+        "provider": "NA",  # TODO: disallow
         "data": {},
     }
     return create_model_obj(client, "notifications", default_attrs, custom_attrs, token=token)
@@ -101,7 +103,7 @@ def create_notification(client, user_id: int, token: str, **custom_attrs) -> dic
 def create_model_obj(client, endpoint, default_attrs, custom_attrs={}, token: str = None):
     attrs = {**default_attrs, **custom_attrs}
     headers = {"Authorization": f"Bearer {token}"} if token else {}
-    if endpoint in ["products"]:
+    if endpoint in static_data.FILE_UPLOAD_ENDPOINTS:
         resp = client.post(endpoint, data={"data": json_module.dumps(attrs)}, headers=headers)
     else:
         resp = client.post(endpoint, json=attrs, headers=headers)

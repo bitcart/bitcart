@@ -31,3 +31,4 @@ FALLBACK_SERVER_SETTINGS = {
         "additional_components": [],
     },
 }
+FILE_UPLOAD_ENDPOINTS = ["products"]

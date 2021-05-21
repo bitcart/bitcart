@@ -89,12 +89,9 @@ def test_noauth(client: TestClient):
     assert client.get("/products?&store=2").status_code == 200
 
 
-@Parametrization.autodetect_parameters()
-@Parametrization.case(name="super", super_user=True, status_code=200)
-@Parametrization.case(name="non-super", super_user=False, status_code=403)
-def test_superuseronly(client: TestClient, token: str, limited_token: str, super_user: bool, status_code: int):
-    token = token if super_user else limited_token
-    assert client.get("/users", headers={"Authorization": f"Bearer {token}"}).status_code == status_code
+def test_superuseronly(client: TestClient, token: str, limited_token: str):
+    assert client.get("/users", headers={"Authorization": f"Bearer {limited_token}"}).status_code == 403
+    assert client.get("/users", headers={"Authorization": f"Bearer {token}"}).status_code == 200
 
 
 def test_users_me(client: TestClient, user, token: str):
@@ -207,6 +204,8 @@ def test_user_stats(client, user, token, store):
 def test_categories(client: TestClient, user, token, categories: list, store):
     assert client.get("/products/categories").status_code == 422
     store_id = store["id"]
+    # all category is there always
+    assert client.get(f"/products/categories?store={store_id}").json() == ["all"]
     for category in categories:
         create_product(client, user["id"], token, store_id=store_id, category=category)
     resp = client.get(f"/products/categories?store={store_id}")
@@ -214,37 +213,24 @@ def test_categories(client: TestClient, user, token, categories: list, store):
     assert resp.json() == categories
 
 
-def check_token(result):
-    assert isinstance(result, dict)
-    assert result["user_id"] == 1
-    assert result["app_id"] == "1"
-    assert result["redirect_url"] == "test.com"
-    assert result["permissions"] == ["full_control"]
-
-
-@Parametrization.autodetect_parameters()
-@Parametrization.case(name="unauthorized", authorized=False)
-@Parametrization.case(name="authorized", authorized=True)
-def test_token(client: TestClient, token_data, authorized: bool):
-    resp = client.get("/token", headers={"Authorization": f"Bearer {token_data['id']}"} if authorized else {})
-    if authorized:
-        assert resp.status_code == 200
-        j = resp.json()
-        assert j["count"] == 1
-        assert not j["previous"]
-        assert not j["next"]
-        result = j["result"]
-        assert isinstance(result, list)
-        assert len(result) == 1
-        result = result[0]
-        assert {
-            "app_id": token_data["app_id"],
-            "permissions": token_data["permissions"],
-            "user_id": token_data["user_id"],
-            "redirect_url": token_data["redirect_url"],
-        }.items() <= result.items()
-    else:
-        assert resp.status_code == 401
+def test_token(client: TestClient, token_data):
+    assert client.get("/token").status_code == 401
+    resp = client.get("/token", headers={"Authorization": f"Bearer {token_data['id']}"})
+    assert resp.status_code == 200
+    j = resp.json()
+    assert j["count"] == 1
+    assert not j["previous"]
+    assert not j["next"]
+    result = j["result"]
+    assert isinstance(result, list)
+    assert len(result) == 1
+    result = result[0]
+    assert {
+        "app_id": token_data["app_id"],
+        "permissions": token_data["permissions"],
+        "user_id": token_data["user_id"],
+        "redirect_url": token_data["redirect_url"],
+    }.items() <= result.items()
 
 
 def test_token_current(client: TestClient, token: str, user):
@@ -267,22 +253,17 @@ def test_token_count(client: TestClient, token: str):
     assert resp.json() == 1
 
 
-@Parametrization.autodetect_parameters()
-@Parametrization.case(name="unauthorized", authorized=False)
-@Parametrization.case(name="authorized", authorized=True)
-def test_patch_token(client: TestClient, token, authorized):
+def test_patch_token(client: TestClient, token):
+    assert client.patch(f"/token/{token}", json={"redirect_url": "google.com:443"}).status_code == 401
     resp = client.patch(
         f"/token/{token}",
         json={"redirect_url": "google.com:443"},
-        headers={"Authorization": f"Bearer {token}"} if authorized else {},
+        headers={"Authorization": f"Bearer {token}"},
     )
-    if authorized:
-        resp.status_code == 200
-        j = resp.json()
-        assert j["redirect_url"] == "google.com:443"
-        assert j["id"] == token
-    else:
-        resp.status_code == 401
+    resp.status_code == 200
+    j = resp.json()
+    assert j["redirect_url"] == "google.com:443"
+    assert j["id"] == token
 
 
 @Parametrization.autodetect_parameters()
@@ -605,7 +586,6 @@ def test_batch_commands(client: TestClient, token: str, store):
         == 200
     )
     assert client.get(f"/invoices/{invoice_id_3}", headers={"Authorization": f"Bearer {token}"}).json()["status"] == "complete"
-    client.delete(f"/invoices/{invoice_id_3}", headers={"Authorization": f"Bearer {token}"})  # cleanup
 
 
 @pytest.mark.asyncio
@@ -956,13 +936,9 @@ def test_multiple_wallets_same_currency(client, token: str, user):
     resp = client.post("/invoices", json={"price": 5, "store_id": store_id})
     assert resp.status_code == 200
     resp = resp.json()
-    invoice_id = resp["id"]
     assert len(resp["payments"]) == 2
     assert resp["payments"][0]["name"] == "BTC (1)"
     assert resp["payments"][1]["name"] == "BTC (2)"
-    # cleanup
-    client.delete(f"/invoices/{invoice_id}", headers={"Authorization": f"Bearer {token}"})
-    client.delete(f"/stores/{store_id}", headers={"Authorization": f"Bearer {token}"})
 
 
 def test_change_store_checkout_settings(client: TestClient, token: str, store):
@@ -983,13 +959,6 @@ def test_change_store_checkout_settings(client: TestClient, token: str, store):
     resp2 = client.get(f"/stores/{store_id}", headers={"Authorization": f"Bearer {token}"})
     assert resp2.status_code == 200
     assert resp2.json() == resp.json()
-    # cleanup
-    assert (
-        client.patch(
-            f"/stores/{store_id}/checkout_settings", json={"expiration": 15}, headers={"Authorization": f"Bearer {token}"}
-        ).status_code
-        == 200
-    )
 
 
 def test_products_list(client: TestClient):

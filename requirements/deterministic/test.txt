@@ -200,6 +200,9 @@ pytest-mock==3.5.1 \
     --hash=sha256:379b391cfad22422ea2e252bdfc008edd08509029bcde3c25b2c0bd741e0424e \
     --hash=sha256:a1e2aba6af9560d313c642dae7e00a2a12b022b80301d9d7fc8ec6858e1dd9fc
     # via -r requirements/test.txt
+pytest-parametrization==2019.1.4 \
+    --hash=sha256:640c3662f278e1830c0f7fb48b106aa9dbf6a545a0e6568346b577dee18dd81a
+    # via -r requirements/test.txt
 pytest==6.2.3 \
     --hash=sha256:671238a46e4df0f3498d1c3270e5deb9b32d25134c99b7d75370a68cfbe9b634 \
     --hash=sha256:6ad9c7bdf517a808242b998ac20063c41532a570d088d77eec1ee12b0b5574bc
@@ -208,6 +211,7 @@ pytest==6.2.3 \
     #   pytest-asyncio
     #   pytest-cov
     #   pytest-mock
+    #   pytest-parametrization
 regex==2021.4.4 \
     --hash=sha256:01afaf2ec48e196ba91b37451aa353cb7eda77efe518e481707e0515025f0cd5 \
     --hash=sha256:11d773d75fa650cd36f68d7ca936e3c7afaae41b863b8c387a22aaa78d3c5c79 \
@@ -257,6 +261,10 @@ requests==2.25.1 \
     # via
     #   async-asgi-testclient
     #   codecov
+six==1.16.0 \
+    --hash=sha256:1e61c37477a1626458e36f7b1d82aa5c9b094fa4802892072e49de9c60c4c926 \
+    --hash=sha256:8abb2f1d86890a2dfb989f9a77cfcfd3e47c2a354b01111771326f8aa26e0254
+    # via pytest-parametrization
 toml==0.10.2 \
     --hash=sha256:806143ae5bfb6a3c6e736a764057db0e6a0e05e338b5630894a5f779cabb4f9b \
     --hash=sha256:b3bda1d108d5dd99f4a20d24d9c348e91c4db7ab1b749200bded2f839ccbe68f

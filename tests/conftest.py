@@ -9,9 +9,11 @@ from api import settings
 from api.db import db
 from main import app
 
+# To separate setup fixtures from code testing helper fixtures
 pytest_plugins = ["tests.fixtures.pytest.data"]
 
 
+# We re-create database per each test series to make tests independent of each others' state
 @pytest.fixture(scope="class", autouse=True)
 async def setup_db():
     await db.gino.create_all()

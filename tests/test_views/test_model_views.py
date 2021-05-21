@@ -172,6 +172,7 @@ class TestStores(ViewTestMixin):
     auth = True
     tests = json_module.loads(open("tests/fixtures/data/stores.json").read())
 
+    # Setup fixtures create necessary objects for the test to function (loaded and created automatically)
     @pytest.fixture(scope="class", autouse=True)
     def setup(self, wallet, notification):
         pass

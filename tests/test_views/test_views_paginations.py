@@ -13,7 +13,7 @@ def test_multiple_query(client: TestClient, token: str):
 
 
 def test_next_prev_url(client: TestClient, token: str):
-    # creat multiple users
+    # create multiple users
     create_user(client)
     create_user(client)
     resp = client.get("/users?limit=1", headers={"Authorization": f"Bearer {token}"})
