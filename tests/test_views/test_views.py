@@ -260,7 +260,7 @@ def test_patch_token(client: TestClient, token):
         json={"redirect_url": "google.com:443"},
         headers={"Authorization": f"Bearer {token}"},
     )
-    resp.status_code == 200
+    assert resp.status_code == 200
     j = resp.json()
     assert j["redirect_url"] == "google.com:443"
     assert j["id"] == token
