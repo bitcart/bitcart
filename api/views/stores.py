@@ -21,6 +21,7 @@ async def ping_email(
     )
 
 
+# NOTE: to_optional not required here because settings have default values set everywhere
 @router.patch("/{model_id}/checkout_settings", response_model=schemes.Store)
 async def set_store_checkout_settings(
     model_id: str,

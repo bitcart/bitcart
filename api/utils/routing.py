@@ -12,8 +12,8 @@ from starlette.requests import Request
 from api import db, events, models, pagination, utils
 from api.utils.authorization import AuthDependency
 
-HTTP_METHODS: List[str] = ["GET", "POST", "PUT", "PATCH", "DELETE"]
-ENDPOINTS: List[str] = ["get_all", "get_one", "get_count", "post", "put", "patch", "delete", "batch_action"]
+HTTP_METHODS: List[str] = ["GET", "POST", "PATCH", "DELETE"]
+ENDPOINTS: List[str] = ["get_all", "get_one", "get_count", "post", "patch", "delete", "batch_action"]
 CUSTOM_HTTP_METHODS: dict = {"batch_action": "post"}
 
 
@@ -120,7 +120,6 @@ class ModelView:
             "get_count": count_path,
             "get_one": item_path,
             "post": base_path,
-            "put": item_path,
             "patch": item_path,
             "delete": item_path,
             "batch_action": batch_path,
@@ -134,7 +133,6 @@ class ModelView:
             "get_count": int,
             "get_one": display_model if self.get_one_model else None,
             "post": display_model,
-            "put": display_model,
             "patch": display_model,
             "delete": display_model,
         }
@@ -200,25 +198,10 @@ class ModelView:
 
         return post
 
-    def _put(self):
-        async def put(
-            model_id: str,
-            model: self.pydantic_model,
-            user: Union[None, ModelView.schemes.User] = Security(self.auth_dependency, scopes=self.scopes["put"]),
-        ):
-            item = await self._get_one(model_id, user, True)
-            if self.custom_methods.get("put"):
-                await self.custom_methods["put"](item, model, user)  # pragma: no cover
-            else:
-                await utils.database.modify_object(item, model.dict())
-            return item
-
-        return put
-
     def _patch(self):
         async def patch(
             model_id: str,
-            model: self.pydantic_model,
+            model: utils.schemes.to_optional(self.pydantic_model),
             user: Union[None, ModelView.schemes.User] = Security(self.auth_dependency, scopes=self.scopes["patch"]),
         ):
             item = await self._get_one(model_id, user, True)

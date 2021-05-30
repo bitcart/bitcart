@@ -5,7 +5,7 @@ import pytest
 from async_asgi_testclient import TestClient as AsyncClient
 from starlette.testclient import TestClient
 
-from api import settings
+from api import models, settings
 from api.db import db
 from main import app
 
@@ -13,12 +13,20 @@ from main import app
 pytest_plugins = ["tests.fixtures.pytest.data"]
 
 
-# We re-create database per each test series to make tests independent of each others' state
-@pytest.fixture(scope="class", autouse=True)
-async def setup_db():
+@pytest.fixture(scope="session", autouse=True)
+async def init_db():
     await db.gino.create_all()
     yield
     await db.gino.drop_all()
+
+
+# We re-create database per each test to make tests independent of each others' state
+@pytest.fixture(autouse=True)
+async def cleanup_db():
+    async with db.acquire() as conn:
+        async with conn.transaction():
+            for table in reversed(models.db.sorted_tables):
+                await conn.status(table.delete())
 
 
 @pytest.fixture(scope="session", autouse=True)

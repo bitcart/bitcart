@@ -1,10 +1,10 @@
 import json as json_module
-from typing import Dict, List, Union
+from datetime import datetime
 
 import pytest
 from starlette.testclient import TestClient
 
-from tests.helper import create_store
+from api.constants import ID_LENGTH, INVOICE_ID_LENGTH
 
 
 class ViewTestMixin:
@@ -13,188 +13,318 @@ class ViewTestMixin:
     You must set some parameters unset in this class for it to work in your subclass
     """
 
-    status_mapping: Dict[Union[str, bool], int] = {
-        "good": 200,
-        "bad": 422,
-        "not found": 404,
-        True: 200,
-        False: 422,
-    }
-    invoice: bool = False
-    json_encoding: bool = True
-    auth: bool = False
     name: str  # name used in endpoints
-    tests: Dict[str, List[dict]]
-    """dict with keys corresponding to testing function, each key is a list of
-    dicts, where each dict must have status key, return_data key if status
-    is good, obj_id if function requires it, and data if function sends it
-    """
+    create_auth: bool = True
+    get_one_auth: bool = True
+    id_length: int = ID_LENGTH
+    json_encoding: bool = True
 
-    def data_update(self, data):
-        pass
+    @property
+    def create_data(self):
+        return self.tests["create"]
 
-    def handle_get_all(self, data, test):
-        assert data["count"] == len(test["return_data"])
+    @property
+    def patch_data(self):
+        return self.tests["patch"]
+
+    @property
+    def expected_resp(self):
+        return self.tests["response"]
+
+    @property
+    def expected_count(self):
+        return self.tests["count"]
+
+    def create_object(self, client, token):
+        # Create initial object for other tests
+        if self.create_auth:
+            assert client.post(f"/{self.name}", **self.prepare_data(self.create_data)).status_code == 401
+        resp = client.post(
+            f"/{self.name}", **self.prepare_data(self.create_data), headers={"Authorization": f"Bearer {token}"}
+        )
+        assert resp.status_code == 200
+        self.data = resp.json()
+
+    @pytest.fixture(autouse=True)
+    def setup(self, client: TestClient, token: str):
+        self.create_object(client, token)
+
+    def check_pagination_response(self, data):
+        assert data["count"] == self.expected_count
         assert not data["previous"]
         assert not data["next"]
         assert isinstance(data["result"], list)
-        data = data["result"]
-        return data
+        return data["result"]
 
-    def process_data(self, data):
-        if isinstance(data, list):
-            for d in data:
-                if isinstance(d, dict):
-                    if self.invoice:
-                        assert d.get("payments")
-                    assert "created" in d
-                    d.pop("created", None)
-                    d.pop("end_date", None)
-                    d.pop("payments", None)
-                    d.pop("time_left", None)
-        elif isinstance(data, dict):
-            if self.invoice:
-                assert data.get("payments")
-            assert "created" in data
-            data.pop("created", None)
-            data.pop("end_date", None)
-            data.pop("payments", None)
-            data.pop("time_left", None)
+    def _check_key(self, data, key, key_type):
+        assert key in data
+        assert isinstance(data[key], key_type)
 
-    def process_resp(self, resp, test, get_all=False):
-        to_check = self.status_mapping[test["status"]]
-        assert resp.status_code == to_check
-        if to_check == 200:
-            data = resp.json()
-            if get_all:
-                data = self.handle_get_all(data, test)
-            self.process_data(data)
-            assert data == test["return_data"]
+    def check_id(self, data, id_length):
+        self._check_key(data, "id", str)
+        assert len(data["id"]) == id_length
 
-    def send_request(self, url, client, json={}, method="get", token=""):
-        headers = {}
-        if self.auth:
-            headers["Authorization"] = f"Bearer {token}"
-        kwargs = {"headers": headers}
+    def check_created(self, data):
+        self._check_key(data, "created", str)
+        try:
+            datetime.fromisoformat(data["created"])
+        except ValueError:
+            pytest.fail(f"Invalid created field: {data['created']}")
+
+    @property
+    def object_id(self):
+        return self.data["id"]
+
+    def check_data(self):
+        self.check_id(self.data, id_length=self.id_length)
+        self.check_created(self.data)
+
+    # The actual create is done by data fixture once
+    def test_create(self):
+        assert self.data.items() > self.expected_resp.items()
+        self.check_data()
+
+    def prepare_data(self, data):
         if self.json_encoding:
-            kwargs["json"] = json
+            return {"json": data}
         else:
-            kwargs["data"] = {"data": json_module.dumps(json)}
-        return client.request(method, url, **kwargs)
+            return {"data": {"data": json_module.dumps(data)}}
 
-    def test_create(self, client: TestClient, token: str):
-        for test in self.tests["create"]:
-            self.data_update(test)
-            resp = self.send_request(f"/{self.name}", client, json=test["data"], method="post", token=token)
-            self.process_resp(resp, test)
-
-    def test_get_all(self, client: TestClient, token: str):  # all responses are sorted in creation order
-        for test in self.tests["get_all"]:
-            self.data_update(test)
-            resp = self.send_request(f"/{self.name}", client, token=token)
-            self.process_resp(resp, test, True)
+    def test_get_all(self, client: TestClient, token: str):
+        assert client.get(f"/{self.name}").status_code == 401
+        resp = client.get(f"/{self.name}", headers={"Authorization": f"Bearer {token}"})
+        assert resp.status_code == 200
+        objects = self.check_pagination_response(resp.json())
+        # The objects list is ordered by created date; first object is the last object created
+        assert objects[0] == self.data
 
     def test_get_count(self, client: TestClient, token: str):
-        for test in self.tests["get_count"]:
-            self.data_update(test)
-            resp = self.send_request(f"/{self.name}/count", client, token=token)
-            self.process_resp(resp, test)
+        assert client.get(f"/{self.name}/count").status_code == 401
+        resp = client.get(f"/{self.name}/count", headers={"Authorization": f"Bearer {token}"})
+        assert resp.status_code == 200
+        assert resp.json() == self.expected_count
 
     def test_get_one(self, client: TestClient, token: str):
-        for test in self.tests["get_one"]:
-            self.data_update(test)
-            resp = self.send_request(f"/{self.name}/{test['obj_id']}", client, token=token)
-            self.process_resp(resp, test)
+        if self.get_one_auth:
+            assert client.get(f"/{self.name}/{self.object_id}").status_code == 401
+        resp = client.get(f"/{self.name}/{self.object_id}", headers={"Authorization": f"Bearer {token}"})
+        assert resp.status_code == 200
+        assert resp.json() == self.data
 
-    def test_partial_update(self, client: TestClient, token: str):
-        for test in self.tests["partial_update"]:
-            self.data_update(test)
-            resp = self.send_request(
-                f"/{self.name}/{test['obj_id']}",
-                client,
-                json=test["data"],
-                method="patch",
-                token=token,
-            )
-            self.process_resp(resp, test)
-
-    def test_full_update(self, client: TestClient, token: str):
-        for test in self.tests["full_update"]:
-            self.data_update(test)
-            resp = self.send_request(
-                f"/{self.name}/{test['obj_id']}",
-                client,
-                json=test["data"],
-                method="put",
-                token=token,
-            )
-            self.process_resp(resp, test)
+    def test_update(self, client: TestClient, token: str):
+        assert client.patch(f"/{self.name}/{self.object_id}", **self.prepare_data(self.patch_data)).status_code == 401
+        resp = client.patch(
+            f"/{self.name}/{self.object_id}",
+            **self.prepare_data(self.patch_data),
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert resp.status_code == 200
+        # Create patched response based on expected one and modified values only
+        patch_resp = self.data.copy()
+        for key, value in self.patch_data.items():
+            if key in patch_resp:
+                if isinstance(patch_resp[key], dict):
+                    patch_resp[key].update(value)
+                else:
+                    patch_resp[key] = value
+        assert resp.json() == patch_resp
+        assert (
+            client.patch(
+                f"/{self.name}/{self.object_id}",
+                **self.prepare_data(self.create_data),
+                headers={"Authorization": f"Bearer {token}"},
+            ).status_code
+            == 200
+        )
 
     def test_delete(self, client: TestClient, token: str):
-        for test in self.tests["delete"]:
-            self.data_update(test)
-            resp = self.send_request(f"/{self.name}/{test['obj_id']}", client, method="delete", token=token)
-            self.process_resp(resp, test)
+        assert client.delete(f"/{self.name}/{self.object_id}").status_code == 401
+        resp = client.delete(f"/{self.name}/{self.object_id}", headers={"Authorization": f"Bearer {token}"})
+        assert resp.status_code == 200
+        assert resp.json() == self.data
+        assert client.get(f"/{self.name}/{self.object_id}", headers={"Authorization": f"Bearer {token}"}).status_code == 404
 
 
 class TestUsers(ViewTestMixin):
     name = "users"
-    auth = True
+    create_auth = False
     tests = json_module.loads(open("tests/fixtures/data/users.json").read())
 
 
 class TestDiscounts(ViewTestMixin):
     name = "discounts"
-    auth = True
     tests = json_module.loads(open("tests/fixtures/data/discounts.json").read())
+
+    @pytest.fixture(autouse=True)
+    def setup(self, user, client, token):
+        self.user = user
+        self.create_object(client, token)
+
+    @property
+    def expected_resp(self):
+        data = super().expected_resp
+        data["user_id"] = self.user["id"]
+        return data
 
 
 class TestNotifications(ViewTestMixin):
     name = "notifications"
-    auth = True
     tests = json_module.loads(open("tests/fixtures/data/notifications.json").read())
+
+    @pytest.fixture(autouse=True)
+    def setup(self, user, client, token):
+        self.user = user
+        self.create_object(client, token)
+
+    @property
+    def expected_resp(self):
+        data = super().expected_resp
+        data["user_id"] = self.user["id"]
+        return data
 
 
 class TestTemplates(ViewTestMixin):
     name = "templates"
-    auth = True
     tests = json_module.loads(open("tests/fixtures/data/templates.json").read())
+
+    @pytest.fixture(autouse=True)
+    def setup(self, user, client, token):
+        self.user = user
+        self.create_object(client, token)
+
+    @property
+    def expected_resp(self):
+        data = super().expected_resp
+        data["user_id"] = self.user["id"]
+        return data
 
 
 class TestWallets(ViewTestMixin):
     name = "wallets"
-    auth = True
     tests = json_module.loads(open("tests/fixtures/data/wallets.json").read())
 
 
 class TestStores(ViewTestMixin):
     name = "stores"
-    auth = True
     tests = json_module.loads(open("tests/fixtures/data/stores.json").read())
+    get_one_auth = False
 
-    # Setup fixtures create necessary objects for the test to function (loaded and created automatically)
-    @pytest.fixture(scope="class", autouse=True)
-    def setup(self, wallet, notification):
-        pass
+    @pytest.fixture(autouse=True)
+    def setup(self, user, wallet, notification, client, token):
+        self.user = user
+        self.wallet = wallet
+        self.notification = notification
+        self.create_object(client, token)
+
+    def _add_related(self, data):
+        data["wallets"] = [self.wallet["id"]]
+        data["notifications"] = [self.notification["id"]]
+
+    @property
+    def create_data(self):
+        data = super().create_data
+        self._add_related(data)
+        return data
+
+    @property
+    def expected_resp(self):
+        data = super().expected_resp
+        self._add_related(data)
+        data["user_id"] = self.user["id"]
+        return data
 
 
 class TestProducts(ViewTestMixin):
     name = "products"
-    json_encoding = False
-    auth = True
     tests = json_module.loads(open("tests/fixtures/data/products.json").read())
+    get_one_auth = False
+    json_encoding = False
 
-    @pytest.fixture(scope="class", autouse=True)
-    def setup(self, store, discount):
-        pass
+    @pytest.fixture(autouse=True)
+    def setup(self, user, store, discount, client, token):
+        self.user = user
+        self.store = store
+        self.discount = discount
+        self.create_object(client, token)
+
+    def _add_related(self, data):
+        data["discounts"] = [self.discount["id"]]
+        data["store_id"] = self.store["id"]
+
+    @property
+    def create_data(self):
+        data = super().create_data
+        self._add_related(data)
+        return data
+
+    @property
+    def expected_resp(self):
+        data = super().expected_resp
+        self._add_related(data)
+        data["user_id"] = self.user["id"]
+        return data
 
 
 class TestInvoices(ViewTestMixin):
     name = "invoices"
-    auth = True
-    invoice = True
     tests = json_module.loads(open("tests/fixtures/data/invoices.json").read())
+    id_length = INVOICE_ID_LENGTH
+    create_auth = False
+    get_one_auth = False
 
-    @pytest.fixture(scope="class", autouse=True)
-    def setup(self, client, user, token, product):
-        create_store(client, user, token, custom_store_attrs={"wallets": []})
+    @pytest.fixture(autouse=True)
+    def setup(self, user, store, product, client, token):
+        self.user = user
+        self.store = store
+        self.product = product
+        self.create_object(client, token)
+
+    def _add_related(self, data):
+        data["products"] = [self.product["id"]]
+        data["store_id"] = self.store["id"]
+
+    @property
+    def create_data(self):
+        data = super().create_data
+        self._add_related(data)
+        return data
+
+    @property
+    def expected_resp(self):
+        data = super().expected_resp
+        self._add_related(data)
+        data["user_id"] = self.user["id"]
+        return data
+
+    def check_data(self):
+        super().check_data()
+        self.check_payments()
+
+    def check_payments(self):
+        self._check_key(self.data, "payments", list)
+        payments = self.data["payments"]
+        assert len(payments) == 1
+        method = payments[0]
+        assert (
+            method.items()
+            > {
+                "rhash": None,
+                "lightning": False,
+                "discount": None,
+                "currency": "btc",
+                "node_id": None,
+                "confirmations": 0,
+                "name": "BTC",
+            }.items()
+        )
+        self.check_id(method, id_length=ID_LENGTH)
+        self.check_created(method)
+        for key, check_type in (
+            ("payment_url", str),
+            ("recommended_fee", float),
+            ("amount", str),
+            ("rate", str),
+            ("payment_address", str),
+            ("rate_str", str),
+        ):
+            self._check_key(method, key, check_type)

@@ -193,6 +193,14 @@ class CreateNotification(CreatedMixin):
     class Config:
         orm_mode = True
 
+    @validator("provider")
+    def validate_provider(cls, v):
+        from api import settings
+
+        if v not in settings.notifiers:
+            raise HTTPException(422, "Unsupported notificaton provider")
+        return v
+
 
 class Notification(CreateNotification):
     id: Optional[str]

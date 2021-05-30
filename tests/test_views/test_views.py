@@ -44,6 +44,8 @@ def test_rate(client: TestClient):
 
 
 def test_wallet_history(client: TestClient, token: str, wallet):
+    assert client.get("/wallets/history/999").status_code == 401
+    assert client.get("/wallets/history/all").status_code == 401
     headers = {"Authorization": f"Bearer {token}"}
     assert client.get("/wallets/history/999", headers=headers).status_code == 404
     resp1 = client.get(f"/wallets/history/{wallet['id']}", headers=headers)
@@ -52,9 +54,10 @@ def test_wallet_history(client: TestClient, token: str, wallet):
     assert len(data1) == 1
     assert data1[0]["amount"] == "0.01"
     assert data1[0]["txid"] == "ee4f0c4405f9ba10443958f5c6f6d4552a69a80f3ec3bed1c3d4c98d65abe8f3"
-    resp2 = client.get("/wallets/history/0", headers=headers)
+    resp2 = client.get("/wallets/history/all", headers=headers)
     assert resp2.status_code == 200
-    assert len(resp2.json()) == 1
+    data2 = resp2.json()
+    assert data1 == data2
 
 
 @Parametrization.autodetect_parameters()
@@ -731,27 +734,10 @@ def test_create_product_with_image(client: TestClient, token: str, image: bytes,
                 {"price": 0.15, "quantity": 2.0, "user_id": product_dict["user_id"], "name": "sunflower"}
             )
         },
-        headers={"Authorization": f"Bearer {token}"},
-    )
-    assert patch_product_resp.status_code == 200
-    # put
-    put_product_data = {
-        "id": product_dict["id"],
-        "name": "banana",
-        "price": 0.01,
-        "quantity": 1.0,
-        "store_id": store_id,
-        "discounts": [],
-        "templates": {},
-        "user_id": product_dict["user_id"],
-    }
-    put_product_resp = client.put(
-        f"/products/{product_dict['id']}",
-        data={"data": json_module.dumps(put_product_data)},
         files={"image": image},
         headers={"Authorization": f"Bearer {token}"},
     )
-    assert put_product_resp.status_code == 200
+    assert patch_product_resp.status_code == 200
 
 
 @pytest.mark.asyncio

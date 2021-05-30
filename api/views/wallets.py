@@ -9,18 +9,24 @@ from api import crud, models, schemes, utils
 router = APIRouter()
 
 
+@router.get("/history/all", response_model=List[schemes.TxResponse])
+async def all_wallet_history(
+    user: models.User = Security(utils.authorization.AuthDependency(), scopes=["wallet_management"]),
+):
+    response: List[schemes.TxResponse] = []
+    for model in await models.Wallet.query.where(models.Wallet.user_id == user.id).gino.all():
+        await utils.wallets.get_wallet_history(model, response)
+    return response
+
+
 @router.get("/history/{model_id}", response_model=List[schemes.TxResponse])
 async def wallet_history(
     model_id: str,
     user: models.User = Security(utils.authorization.AuthDependency(), scopes=["wallet_management"]),
 ):
     response: List[schemes.TxResponse] = []
-    if model_id == 0:
-        for model in await models.Wallet.query.where(models.Wallet.user_id == user.id).gino.all():
-            await utils.wallets.get_wallet_history(model, response)
-    else:
-        model = await utils.database.get_object(models.Wallet, model_id, user)
-        await utils.wallets.get_wallet_history(model, response)
+    model = await utils.database.get_object(models.Wallet, model_id, user)
+    await utils.wallets.get_wallet_history(model, response)
     return response
 
 

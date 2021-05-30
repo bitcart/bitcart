@@ -11,6 +11,8 @@ from api import db, models, pagination, schemes, utils
 
 router = APIRouter()
 
+OptionalProductScheme = utils.schemes.to_optional(schemes.Product)
+
 
 def parse_data(data, scheme):
     data = json.loads(data)
@@ -45,8 +47,13 @@ async def get_product_noauth(model_id: str, store: Optional[str] = None):
     return item
 
 
-async def process_edit_product(model_id, data, image, user, patch=True):
-    data = parse_data(data, schemes.Product)
+async def patch_product(
+    model_id: str,
+    data: str = Form(...),
+    image: UploadFile = File(None),
+    user: models.User = Security(utils.authorization.AuthDependency(), scopes=["product_management"]),
+):
+    data = parse_data(data, OptionalProductScheme)
     item = await utils.database.get_object(models.Product, model_id, user)
     if image:
         filename = utils.files.get_image_filename(image, False, item)
@@ -55,27 +62,9 @@ async def process_edit_product(model_id, data, image, user, patch=True):
     else:
         utils.files.safe_remove(item.image)
         data.image = None
-    data = data.dict(exclude_unset=True) if patch else data.dict()
+    data = data.dict(exclude_unset=True)
     await utils.database.modify_object(item, data)
     return item
-
-
-async def patch_product(
-    model_id: str,
-    data: str = Form(...),
-    image: UploadFile = File(None),
-    user: models.User = Security(utils.authorization.AuthDependency(), scopes=["product_management"]),
-):
-    return await process_edit_product(model_id, data, image, user)
-
-
-async def put_product(
-    model_id: str,
-    data: str = Form(...),
-    image: UploadFile = File(None),
-    user: models.User = Security(utils.authorization.AuthDependency(), scopes=["product_management"]),
-):
-    return await process_edit_product(model_id, data, image, user, patch=False)
 
 
 async def delete_product(item: schemes.Product, user: schemes.User) -> schemes.Product:
@@ -149,7 +138,6 @@ utils.routing.ModelView.register(
         "get_one": get_product_noauth,
         "post": create_product,
         "patch": patch_product,
-        "put": put_product,
         "get_count": products_count,
     },
     scopes=["product_management"],

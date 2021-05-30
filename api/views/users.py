@@ -44,7 +44,6 @@ utils.routing.ModelView.register(
         "get_one": ["server_management"],
         "post": [],
         "patch": ["server_management"],
-        "put": ["server_management"],
         "delete": ["server_management"],
     },
 )

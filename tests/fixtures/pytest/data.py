@@ -22,22 +22,22 @@ def notification_template():
     return text
 
 
-@pytest.fixture(scope="class")
+@pytest.fixture
 def user(client: TestClient):
     return create_user(client, **static_data.SUPER_USER_DATA)
 
 
-@pytest.fixture(scope="class")
+@pytest.fixture
 def token_data(client: TestClient, user):
     return create_token(client, user)
 
 
-@pytest.fixture(scope="class")
+@pytest.fixture
 def token(token_data):
     return token_data["access_token"]
 
 
-@pytest.fixture(scope="class")
+@pytest.fixture
 def limited_user(client: TestClient, user):
     data = {
         "email": f"nonsuperuser-{utils.common.unique_id()}@example.com",
@@ -46,37 +46,37 @@ def limited_user(client: TestClient, user):
     return create_user(client, **data)
 
 
-@pytest.fixture(scope="class")
+@pytest.fixture
 def limited_token(client: TestClient, limited_user):
     return create_token(client, limited_user, permissions=[])["access_token"]
 
 
-@pytest.fixture(scope="class")
+@pytest.fixture
 def wallet(client: TestClient, user, token):
     return create_wallet(client, user["id"], token)
 
 
-@pytest.fixture(scope="class")
+@pytest.fixture
 def store(client: TestClient, user, token):
     return create_store(client, user["id"], token)
 
 
-@pytest.fixture(scope="class")
+@pytest.fixture
 def discount(client: TestClient, user, token):
     return create_discount(client, user["id"], token)
 
 
-@pytest.fixture(scope="class")
+@pytest.fixture
 def product(client: TestClient, user, token):
     return create_product(client, user["id"], token)
 
 
-@pytest.fixture(scope="class")
+@pytest.fixture
 def invoice(client: TestClient, user, token):
     return create_invoice(client, user["id"], token)
 
 
-@pytest.fixture(scope="class")
+@pytest.fixture
 def notification(client: TestClient, user, token):
     return create_notification(client, user["id"], token)
 

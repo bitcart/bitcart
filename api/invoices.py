@@ -55,7 +55,7 @@ def get_pending_invoices_query(currency):
         .where(models.WalletxStore.wallet_id == models.Wallet.id)
         .where(models.WalletxStore.store_id == models.Invoice.store_id)
         .where(models.Wallet.currency == models.PaymentMethod.currency)
-        .order_by(models.PaymentMethod.id)
+        .order_by(models.PaymentMethod.created)
     )
 
 

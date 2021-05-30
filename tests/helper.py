@@ -94,7 +94,7 @@ def create_notification(client, user_id: int, token: str, **custom_attrs) -> dic
     default_attrs = {
         "user_id": user_id,
         "name": name,
-        "provider": "NA",  # TODO: disallow
+        "provider": "telegram",
         "data": {},
     }
     return create_model_obj(client, "notifications", default_attrs, custom_attrs, token=token)
