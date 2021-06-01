@@ -96,6 +96,7 @@ async def _create_payment_method(invoice, wallet, product, store, discounts, pro
     node_id = await coin.node_id if lightning else None
     rhash = data_got["rhash"] if lightning else None
     return await models.PaymentMethod.create(
+        id=utils.common.unique_id(),
         invoice_id=invoice.id,
         amount=price,
         rate=rate,
@@ -108,6 +109,7 @@ async def _create_payment_method(invoice, wallet, product, store, discounts, pro
         node_id=node_id,
         recommended_fee=recommended_fee,
         confirmations=0,
+        created=utils.time.now(),
     )
 
 
@@ -136,7 +138,7 @@ async def batch_invoice_action(query, settings: schemes.BatchSettings, user: sch
                 await select([models.Invoice, models.PaymentMethod])
                 .where(models.PaymentMethod.invoice_id == models.Invoice.id)
                 .where(models.Invoice.id == invoice_id)
-                .order_by(models.PaymentMethod.id)
+                .order_by(models.PaymentMethod.created)
                 .gino.load((models.Invoice, models.PaymentMethod))
                 .first()
             )

@@ -7,7 +7,7 @@ router = APIRouter()
 
 @router.get("/{model_id}/ping")
 async def ping_email(
-    model_id: int,
+    model_id: str,
     user: models.User = Security(utils.authorization.AuthDependency(), scopes=["store_management"]),
 ):
     model = await utils.database.get_object(models.Store, model_id, user)
@@ -21,9 +21,10 @@ async def ping_email(
     )
 
 
+# NOTE: to_optional not required here because settings have default values set everywhere
 @router.patch("/{model_id}/checkout_settings", response_model=schemes.Store)
 async def set_store_checkout_settings(
-    model_id: int,
+    model_id: str,
     settings: schemes.StoreCheckoutSettings,
     user: models.User = Security(utils.authorization.AuthDependency(), scopes=["store_management"]),
 ):
@@ -39,6 +40,7 @@ utils.routing.ModelView.register(
     schemes.Store,
     schemes.CreateStore,
     custom_methods={
+        "post": crud.stores.create_store,
         "get_one": crud.stores.get_store,
     },
     get_one_model=None,

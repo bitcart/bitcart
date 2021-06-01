@@ -24,10 +24,10 @@ class GenericWebsocketEndpoint(WebSocketEndpoint):
         self.access_token = None
         self.user = None
         try:
-            self.object_id = int(websocket.path_params["model_id"])
+            self.object_id = websocket.path_params["model_id"]
             if self.REQUIRE_AUTH:
                 self.access_token = websocket.query_params["token"]
-        except (ValueError, KeyError):
+        except KeyError:
             await websocket.close(code=WS_1008_POLICY_VIOLATION)
             return
         if self.REQUIRE_AUTH:

@@ -44,10 +44,10 @@ async def test_make_subscriber():
 @dataclass
 class MockTemplateObj:
     template_name: str
-    create_id: int = 1
+    create_id: str = "1"
     mock_name: str = "MockTemplateObj"
-    user_id: int = 1
-    id: int = 1
+    user_id: str = "1"
+    id: str = "1"
 
     @property
     def templates(self):
@@ -57,15 +57,16 @@ class MockTemplateObj:
         return self.mock_name
 
 
+@dataclass
 class MockStore:
-    user_id = 1
+    user_id: str = "1"
 
     def __str__(self):
         return "MockStore"
 
 
 @pytest.mark.asyncio
-async def test_get_template(notification_template, async_client, token):
+async def test_get_template(notification_template, async_client, token, user):
     template = await utils.templates.get_template("notification")
     assert template.name == "notification"
     assert template.template_text == notification_template
@@ -78,21 +79,24 @@ async def test_get_template(notification_template, async_client, token):
         headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 200
-    template2 = await utils.templates.get_template("templ", user_id=1)
+    template_id = resp.json()["id"]
+    template2 = await utils.templates.get_template("templ", user_id=user["id"])
     assert template2.name == "templ"
     assert template2.template_text == "Hello {{var1}}!"
     assert template2.render() == "Hello !"
     assert template2.render(var1="world") == "Hello world!"
-    template3 = await utils.templates.get_template("notification", obj=MockTemplateObj(template_name="notification"))
+    template3 = await utils.templates.get_template(
+        "notification", obj=MockTemplateObj(template_name="notification", create_id=template_id)
+    )
     assert template3.name == "notification"
     assert template3.template_text == template2.template_text
 
 
 @pytest.mark.asyncio
-async def test_product_template(async_client, token):
+async def test_product_template(async_client, token, user):
     qty = 10
     product_template = MockTemplateObj(template_name="product", mock_name="MockProduct")
-    store = MockStore()
+    store = MockStore(user_id=user["id"])
     # default product template
     template = await utils.templates.get_product_template(store, product_template, qty)
     assert template == f"Thanks for buying  x {qty}!\nIt'll ship shortly!\n"
@@ -103,13 +107,16 @@ async def test_product_template(async_client, token):
         headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 200
+    template_id = resp.json()["id"]
+    # Required for unique id
+    product_template.create_id = template_id
     template = await utils.templates.get_product_template(store, product_template, qty)
     assert template == f"store={store}|product={product_template}|quantity={qty}"
 
 
 @pytest.mark.asyncio
-async def test_store_template(async_client, token):
-    shop = MockTemplateObj(template_name="shop", mock_name="MockShop")
+async def test_store_template(async_client, token, user):
+    shop = MockTemplateObj(template_name="shop", mock_name="MockShop", user_id=user["id"])
     product = "my product"
     # default store template
     template = await utils.templates.get_store_template(shop, [product])
@@ -121,14 +128,16 @@ async def test_store_template(async_client, token):
         headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 200
+    template_id = resp.json()["id"]
+    shop.create_id = template_id
     template = await utils.templates.get_store_template(shop, product)
     assert template == f"store={shop}|products={product}"
 
 
 @pytest.mark.asyncio
-async def test_notification_template(async_client, token):
+async def test_notification_template(async_client, token, user):
     invoice = "my invoice"
-    notification = MockTemplateObj(template_name="notification", mock_name="MockNotification")
+    notification = MockTemplateObj(template_name="notification", mock_name="MockNotification", user_id=user["id"])
     # default notification template
     template = await utils.templates.get_notify_template(notification, invoice)
     assert template.strip() == "New order from"
@@ -139,6 +148,8 @@ async def test_notification_template(async_client, token):
         headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 200
+    template_id = resp.json()["id"]
+    notification.create_id = template_id
     template = await utils.templates.get_notify_template(notification, invoice)
     assert template == f"store={notification}|invoice={invoice}"
 

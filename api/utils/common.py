@@ -2,14 +2,14 @@ import asyncio
 import inspect
 import secrets
 
-from api.constants import ALPHABET
+from api.constants import ALPHABET, ID_LENGTH
 
 
 def get_object_name(obj):
     return obj.__class__.__name__.lower()
 
 
-def unique_id(length=32):
+def unique_id(length=ID_LENGTH):
     return "".join(secrets.choice(ALPHABET) for i in range(length))
 
 

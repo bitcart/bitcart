@@ -29,4 +29,4 @@ async def set_setting(scheme):
     else:
         data["value"] = json.dumps(json_data)
         await utils.database.create_object(models.Setting, data)
-    return scheme
+    return scheme.__class__(**json.loads(data["value"]))

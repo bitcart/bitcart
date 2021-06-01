@@ -9,7 +9,7 @@ from bitcart import BTC
 from parametrization import Parametrization
 from starlette.testclient import TestClient
 
-from api import invoices, models, settings, templates, utils
+from api import invoices, models, schemes, settings, templates, utils
 from api.constants import DOCKER_REPO_URL, SUPPORTED_CRYPTOS
 from api.ext import tor as tor_ext
 from tests.fixtures import static_data
@@ -44,6 +44,8 @@ def test_rate(client: TestClient):
 
 
 def test_wallet_history(client: TestClient, token: str, wallet):
+    assert client.get("/wallets/history/999").status_code == 401
+    assert client.get("/wallets/history/all").status_code == 401
     headers = {"Authorization": f"Bearer {token}"}
     assert client.get("/wallets/history/999", headers=headers).status_code == 404
     resp1 = client.get(f"/wallets/history/{wallet['id']}", headers=headers)
@@ -52,9 +54,10 @@ def test_wallet_history(client: TestClient, token: str, wallet):
     assert len(data1) == 1
     assert data1[0]["amount"] == "0.01"
     assert data1[0]["txid"] == "ee4f0c4405f9ba10443958f5c6f6d4552a69a80f3ec3bed1c3d4c98d65abe8f3"
-    resp2 = client.get("/wallets/history/0", headers=headers)
+    resp2 = client.get("/wallets/history/all", headers=headers)
     assert resp2.status_code == 200
-    assert len(resp2.json()) == 1
+    data2 = resp2.json()
+    assert data1 == data2
 
 
 @Parametrization.autodetect_parameters()
@@ -405,23 +408,29 @@ def test_policies(client: TestClient, token: str):
     assert client.post("/users", json=static_data.POLICY_USER).status_code == 200  # registration is on again
     resp = client.get("/manage/stores")
     assert resp.status_code == 200
-    assert resp.json() == {"pos_id": 1, "email_required": True}
+    assert resp.json() == {"pos_id": "", "email_required": True}
     assert client.post("/manage/stores").status_code == 401
     resp = client.post(
         "/manage/stores",
-        json={"pos_id": 2},
+        json={"pos_id": "2"},
         headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 200
-    assert resp.json() == {"pos_id": 2, "email_required": True}
-    assert client.get("/manage/stores").json() == {"pos_id": 2, "email_required": True}
+    assert resp.json() == {"pos_id": "2", "email_required": True}
+    assert client.get("/manage/stores").json() == {"pos_id": "2", "email_required": True}
     resp = client.post(
         "/manage/stores",
-        json={"pos_id": 1},
+        json={"pos_id": "1"},
         headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 200
-    assert resp.json() == {"pos_id": 1, "email_required": True}
+    assert resp.json() == {"pos_id": "1", "email_required": True}
+
+
+def test_policies_store_created(client: TestClient, store):
+    resp = client.get("/manage/stores")
+    assert resp.status_code == 200
+    assert resp.json()["pos_id"] == store["id"]
 
 
 def test_no_token_management(client: TestClient, limited_token: str):
@@ -731,27 +740,10 @@ def test_create_product_with_image(client: TestClient, token: str, image: bytes,
                 {"price": 0.15, "quantity": 2.0, "user_id": product_dict["user_id"], "name": "sunflower"}
             )
         },
-        headers={"Authorization": f"Bearer {token}"},
-    )
-    assert patch_product_resp.status_code == 200
-    # put
-    put_product_data = {
-        "id": product_dict["id"],
-        "name": "banana",
-        "price": 0.01,
-        "quantity": 1.0,
-        "store_id": store_id,
-        "discounts": [],
-        "templates": {},
-        "user_id": product_dict["user_id"],
-    }
-    put_product_resp = client.put(
-        f"/products/{product_dict['id']}",
-        data={"data": json_module.dumps(put_product_data)},
         files={"image": image},
         headers={"Authorization": f"Bearer {token}"},
     )
-    assert put_product_resp.status_code == 200
+    assert patch_product_resp.status_code == 200
 
 
 @pytest.mark.asyncio
@@ -954,11 +946,20 @@ def test_change_store_checkout_settings(client: TestClient, token: str, store):
         f"/stores/{store_id}/checkout_settings", json={"expiration": 60}, headers={"Authorization": f"Bearer {token}"}
     )
     assert resp.status_code == 200
-    assert resp.json()["checkout_settings"]["expiration"] == 60
+    # Changes only the settings provided
+    default_values = schemes.StoreCheckoutSettings().dict()
+    assert resp.json()["checkout_settings"] == {**default_values, "expiration": 60}
     assert len(resp.json()["wallets"]) > 0
     resp2 = client.get(f"/stores/{store_id}", headers={"Authorization": f"Bearer {token}"})
     assert resp2.status_code == 200
     assert resp2.json() == resp.json()
+    resp = client.patch(
+        f"/stores/{store_id}/checkout_settings",
+        json={"use_html_templates": True},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["checkout_settings"] == {**default_values, "expiration": 60, "use_html_templates": True}
 
 
 def test_products_list(client: TestClient):

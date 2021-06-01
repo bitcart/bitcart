@@ -26,7 +26,7 @@ def create_token(client, user: dict, **custom_attrs) -> dict:
     return create_model_obj(client, "token", default_attrs, custom_attrs)
 
 
-def create_invoice(client, user_id: int, token: str, **custom_attrs) -> dict:
+def create_invoice(client, user_id: str, token: str, **custom_attrs) -> dict:
     if "store_id" in custom_attrs:
         store_id = custom_attrs.pop("store_id")
     else:
@@ -39,7 +39,7 @@ def create_invoice(client, user_id: int, token: str, **custom_attrs) -> dict:
     return create_model_obj(client, "invoices", default_attrs, custom_attrs, token=token)
 
 
-def create_product(client, user_id: int, token: str, **custom_attrs) -> dict:
+def create_product(client, user_id: str, token: str, **custom_attrs) -> dict:
     name = f"dummy_{utils.common.unique_id()}"
     if "store_id" in custom_attrs:
         store_id = custom_attrs.pop("store_id")
@@ -55,7 +55,7 @@ def create_product(client, user_id: int, token: str, **custom_attrs) -> dict:
     return create_model_obj(client, "products", default_attrs, custom_attrs, token=token)
 
 
-def create_wallet(client, user_id: int, token: str, **custom_attrs) -> dict:
+def create_wallet(client, user_id: str, token: str, **custom_attrs) -> dict:
     name = f"dummy_wallet_{utils.common.unique_id()}"
     default_attrs = {
         "name": name,
@@ -65,7 +65,7 @@ def create_wallet(client, user_id: int, token: str, **custom_attrs) -> dict:
     return create_model_obj(client, "wallets", default_attrs, custom_attrs, token=token)
 
 
-def create_store(client, user_id: int, token: str, custom_store_attrs: dict = {}, custom_wallet_attrs: dict = {}) -> dict:
+def create_store(client, user_id: str, token: str, custom_store_attrs: dict = {}, custom_wallet_attrs: dict = {}) -> dict:
     wallet = create_wallet(client, user_id, token, **custom_wallet_attrs)
     name = f"dummy_store_{utils.common.unique_id()}"
     default_attrs = {
@@ -76,7 +76,7 @@ def create_store(client, user_id: int, token: str, custom_store_attrs: dict = {}
     return create_model_obj(client, "stores", default_attrs, custom_store_attrs, token=token)
 
 
-def create_discount(client, user_id: int, token: str, **custom_attrs) -> dict:
+def create_discount(client, user_id: str, token: str, **custom_attrs) -> dict:
     name = f"dummy_discount_{utils.common.unique_id()}"
     end_date = utils.time.now() + timedelta(days=1)
     default_attrs = {
@@ -89,12 +89,12 @@ def create_discount(client, user_id: int, token: str, **custom_attrs) -> dict:
     return create_model_obj(client, "discounts", default_attrs, custom_attrs, token=token)
 
 
-def create_notification(client, user_id: int, token: str, **custom_attrs) -> dict:
+def create_notification(client, user_id: str, token: str, **custom_attrs) -> dict:
     name = f"dummy_notf_{utils.common.unique_id()}"
     default_attrs = {
         "user_id": user_id,
         "name": name,
-        "provider": "NA",  # TODO: disallow
+        "provider": "telegram",
         "data": {},
     }
     return create_model_obj(client, "notifications", default_attrs, custom_attrs, token=token)
