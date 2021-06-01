@@ -40,6 +40,7 @@ utils.routing.ModelView.register(
     schemes.Store,
     schemes.CreateStore,
     custom_methods={
+        "post": crud.stores.create_store,
         "get_one": crud.stores.get_store,
     },
     get_one_model=None,

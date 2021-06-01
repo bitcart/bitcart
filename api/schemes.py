@@ -321,7 +321,7 @@ class Policy(BaseModel):
 
 
 class GlobalStorePolicy(BaseModel):
-    pos_id: int = 1
+    pos_id: str = ""
     email_required: bool = True
 
 

@@ -263,7 +263,8 @@ class Store(BaseModel):
         return scheme(**data)
 
     async def set_setting(self, scheme):
-        json_data = jsonable_encoder(scheme, exclude_unset=True)
+        # Update only passed values, don't modify existing ones
+        json_data = jsonable_encoder(self.checkout_settings.copy(update=scheme.dict(exclude_unset=True)))
         await self.update(checkout_settings=json_data).apply()
 
     async def add_fields(self):
