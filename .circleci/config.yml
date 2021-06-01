@@ -24,9 +24,7 @@ commands:
     steps:
       - restore_cache:
           keys:
-            - v31-dependencies-{{ checksum "requirements/web.txt" }}-{{ checksum "requirements/test.txt" }}-{{ checksum "requirements/daemons/btc.txt" }}-{{ .Branch }}-<< parameters.v >>
-            # fallback to using the latest cache if no exact match is found
-            - v31-dependencies-
+            - v32-dependencies-{{ checksum "requirements/web.txt" }}-{{ checksum "requirements/test.txt" }}-{{ checksum "requirements/daemons/btc.txt" }}-{{ .Branch }}-<< parameters.v >>
 
       - run:
           name: install dependencies
@@ -42,7 +40,7 @@ commands:
       - save_cache:
           paths:
             - ~/venv
-          key: v31-dependencies-{{ checksum "requirements/web.txt" }}-{{ checksum "requirements/test.txt" }}-{{ checksum "requirements/daemons/btc.txt" }}-{{ .Branch }}-<< parameters.v >>
+          key: v32-dependencies-{{ checksum "requirements/web.txt" }}-{{ checksum "requirements/test.txt" }}-{{ checksum "requirements/daemons/btc.txt" }}-{{ .Branch }}-<< parameters.v >>
 
 jobs:
   test:
