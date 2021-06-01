@@ -7,7 +7,7 @@ from gino.crud import UpdateRequest
 from sqlalchemy.dialects.postgresql import ARRAY
 
 from api import schemes, settings
-from api.constants import INVOICE_ID_LENGTH
+from api.constants import PUBLIC_ID_LENGTH
 from api.db import db
 from api.ext.moneyformat import currency_table
 
@@ -326,6 +326,14 @@ class Product(BaseModel):
     user_id = Column(Text, ForeignKey(User.id, ondelete="SET NULL"))
     created = Column(DateTime(True), nullable=False)
 
+    @classmethod
+    def prepare_create(cls, kwargs):
+        from api import utils
+
+        kwargs = super().prepare_create(kwargs)
+        kwargs["id"] = utils.common.unique_id(PUBLIC_ID_LENGTH)
+        return kwargs
+
 
 class ProductxInvoice(BaseModel):
     __tablename__ = "productsxinvoices"
@@ -424,7 +432,7 @@ class Invoice(BaseModel):
         from api import utils
 
         kwargs = super().prepare_create(kwargs)
-        kwargs["id"] = utils.common.unique_id(INVOICE_ID_LENGTH)
+        kwargs["id"] = utils.common.unique_id(PUBLIC_ID_LENGTH)
         return kwargs
 
     @classmethod

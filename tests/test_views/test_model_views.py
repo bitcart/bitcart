@@ -4,7 +4,7 @@ from datetime import datetime
 import pytest
 from starlette.testclient import TestClient
 
-from api.constants import ID_LENGTH, INVOICE_ID_LENGTH
+from api.constants import ID_LENGTH, PUBLIC_ID_LENGTH
 
 
 class ViewTestMixin:
@@ -237,6 +237,7 @@ class TestStores(ViewTestMixin):
 class TestProducts(ViewTestMixin):
     name = "products"
     tests = json_module.loads(open("tests/fixtures/data/products.json").read())
+    id_length = PUBLIC_ID_LENGTH
     get_one_auth = False
     json_encoding = False
 
@@ -268,7 +269,7 @@ class TestProducts(ViewTestMixin):
 class TestInvoices(ViewTestMixin):
     name = "invoices"
     tests = json_module.loads(open("tests/fixtures/data/invoices.json").read())
-    id_length = INVOICE_ID_LENGTH
+    id_length = PUBLIC_ID_LENGTH
     create_auth = False
     get_one_auth = False
 

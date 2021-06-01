@@ -17,4 +17,4 @@ HTTPS_REVERSE_PROXIES = [
     "nginx-https"
 ]  # reverse proxies supporting https; NOTE: maybe this could be used by accessing generator package?
 ID_LENGTH = 32  # default length of IDs of all objects except for invoice
-INVOICE_ID_LENGTH = 22  # The length of invoice ids; should be shorter than usual for better UX
+PUBLIC_ID_LENGTH = 22  # The length of invoice and products ids; should be shorter than usual for better UX
