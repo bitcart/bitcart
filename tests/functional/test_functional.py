@@ -21,7 +21,7 @@ def test_pay_flow(client: TestClient, invoice, worker):
     amount = pay_details["amount"]
     utils.run_shell(["sendtoaddress", address, amount])
     utils.run_shell(["newblocks", "3"])
-    time.sleep(5)
+    time.sleep(7)  # TODO: find a better way
     invoice_id = invoice["id"]
     resp = client.get(f"/invoices/{invoice_id}")
     assert resp.status_code == 200
