@@ -24,12 +24,12 @@ commands:
     steps:
       - restore_cache:
           keys:
-            - v32-dependencies-{{ checksum "requirements/web.txt" }}-{{ checksum "requirements/test.txt" }}-{{ checksum "requirements/daemons/btc.txt" }}-{{ .Branch }}-<< parameters.v >>
+            - v33-dependencies-{{ checksum "requirements/web.txt" }}-{{ checksum "requirements/test.txt" }}-{{ checksum "requirements/daemons/btc.txt" }}-{{ .Branch }}-<< parameters.v >>
 
       - run:
           name: install dependencies
           command: |
-            python3 -m venv ~/venv
+            virtualenv ~/venv
             . ~/venv/bin/activate
             sudo apt update
             sudo apt install libsecp256k1-dev
@@ -40,7 +40,7 @@ commands:
       - save_cache:
           paths:
             - ~/venv
-          key: v32-dependencies-{{ checksum "requirements/web.txt" }}-{{ checksum "requirements/test.txt" }}-{{ checksum "requirements/daemons/btc.txt" }}-{{ .Branch }}-<< parameters.v >>
+          key: v33-dependencies-{{ checksum "requirements/web.txt" }}-{{ checksum "requirements/test.txt" }}-{{ checksum "requirements/daemons/btc.txt" }}-{{ .Branch }}-<< parameters.v >>
 
 jobs:
   test:
