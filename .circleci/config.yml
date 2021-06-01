@@ -1,11 +1,10 @@
 version: 2.1
 
-jobs:
-  test:
+executors:
+  main-executor:
     parameters:
       v:
         type: string
-        default: "3.7"
     docker:
       - image: cimg/python:<< parameters.v >>
       - image: circleci/redis:latest
@@ -15,17 +14,20 @@ jobs:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: 123@
 
-    working_directory: ~/repo
+commands:
+  install_dependencies:
+    parameters:
+      v:
+        type: string
+        default: "3.7"
 
     steps:
-      - checkout
-
-      # Download and cache dependencies
       - restore_cache:
           keys:
             - v31-dependencies-{{ checksum "requirements/web.txt" }}-{{ checksum "requirements/test.txt" }}-{{ checksum "requirements/daemons/btc.txt" }}-{{ .Branch }}-<< parameters.v >>
             # fallback to using the latest cache if no exact match is found
             - v31-dependencies-
+
       - run:
           name: install dependencies
           command: |
@@ -42,11 +44,32 @@ jobs:
             - ~/venv
           key: v31-dependencies-{{ checksum "requirements/web.txt" }}-{{ checksum "requirements/test.txt" }}-{{ checksum "requirements/daemons/btc.txt" }}-{{ .Branch }}-<< parameters.v >>
 
+jobs:
+  test:
+    parameters:
+      v:
+        type: string
+        default: "3.7"
+
+    executor:
+      name: main-executor
+      v: << parameters.v >>
+
+    environment:
+      PYTHON: << parameters.v >>
+
+    working_directory: ~/repo
+
+    steps:
+      - checkout
+
+      - install_dependencies
+
       - run:
           name: prepare daemon
           command: |
             . ~/venv/bin/activate
-            BTC_DEBUG=true BTC_LIGHTNING=true BTC_NETWORK=testnet python3 daemons/btc.py
+            make testnet
           background: true
 
       - run:
@@ -54,11 +77,72 @@ jobs:
           command: |
             . ~/venv/bin/activate
             make ci
-            codecov
+            codecov -F tests -e PYTHON
 
-      - store_artifacts:
-          path: test-reports
-          destination: test-reports
+  functional-tests:
+    executor:
+      name: main-executor
+      v: "3.7"
+
+    working_directory: ~/repo
+
+    environment:
+      BITCOIND_VERSION: 0.21.0
+
+    steps:
+      - checkout
+
+      - run: echo $BITCOIND_VERSION > /tmp/bitcoind-version
+
+      - restore_cache:
+          keys:
+            - v1-bitcoind-{{ checksum "/tmp/bitcoind-version" }}
+
+      - install_dependencies
+
+      - run:
+          name: install regtest utils
+          command: |
+            . ~/venv/bin/activate
+            mkdir -p ~/bitcoind && cd ~/bitcoind
+            wget -N https://bitcoin.org/bin/bitcoin-core-$BITCOIND_VERSION/bitcoin-$BITCOIND_VERSION-x86_64-linux-gnu.tar.gz
+            tar xzf bitcoin-$BITCOIND_VERSION-x86_64-linux-gnu.tar.gz
+            sudo install -m 0755 -o root -g root -t /usr/local/bin bitcoin-$BITCOIND_VERSION/bin/*
+            sudo apt install screen
+            pip install electrumx
+
+      - save_cache:
+          paths:
+            - ~/bitcoind
+          key: v1-bitcoind-{{ checksum "/tmp/bitcoind-version" }}
+
+      - run:
+          name: prepare bitcoind
+          command: |
+            . ~/venv/bin/activate
+            make bitcoind
+          background: true
+
+      - run:
+          name: prepare electrumx
+          command: |
+            . ~/venv/bin/activate
+            make electrumx
+          background: true
+
+      - run:
+          name: prepare regtest daemon
+          command: |
+            . ~/venv/bin/activate
+            make regtest
+          background: true
+
+      - run:
+          name: run tests
+          command: |
+            . ~/venv/bin/activate
+            make functional
+            codecov -F functional-tests
 
   deploy:
     docker:
@@ -92,8 +176,14 @@ workflows:
                 - "3.7"
                 - "3.8"
                 - "3.9"
+      - functional-tests:
+          requires:
+            - test
       - deploy:
           context: global
+          requires:
+            - test
+            - functional-tests
           filters:
             branches:
               ignore: /.*/

@@ -36,4 +36,13 @@ testnet:
 mainnet:
 	BTC_DEBUG=true BTC_LIGHTNING=true BTC_NETWORK=mainnet python3 daemons/btc.py
 
+bitcoind:
+	tests/functional/bootstrap/start_bitcoind.sh
+
+electrumx:
+	tests/functional/bootstrap/start_electrumx.sh
+
+functional:
+	pytest tests/functional/ --cov-append
+
 ci: checkformat lint test
