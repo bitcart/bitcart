@@ -139,6 +139,7 @@ jobs:
           name: run tests
           command: |
             . ~/venv/bin/activate
+            sleep 10s
             make functional
             codecov -F functional-tests
 
