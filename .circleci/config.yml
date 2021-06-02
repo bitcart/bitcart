@@ -24,13 +24,14 @@ commands:
     steps:
       - restore_cache:
           keys:
-            - v34-dependencies-{{ checksum "requirements/web.txt" }}-{{ checksum "requirements/test.txt" }}-{{ checksum "requirements/daemons/btc.txt" }}-{{ .Branch }}-<< parameters.v >>
+            - v35-dependencies-{{ .Branch }}-<< parameters.v >>-{{ checksum "requirements/web.txt" }}-{{ checksum "requirements/test.txt" }}-{{ checksum "requirements/daemons/btc.txt" }}
 
       - run:
           name: install dependencies
           command: |
-            [[ ! -d ~/venv ]] && virtualenv ~/venv
-            . ~/venv/bin/activate
+            python3 -m venv ~/venv
+            echo ". ~/venv/bin/activate" >> $BASH_ENV
+            source $BASH_ENV
             sudo apt update
             sudo apt install libsecp256k1-dev
             pip install -U -r requirements.txt
@@ -40,7 +41,7 @@ commands:
       - save_cache:
           paths:
             - ~/venv
-          key: v34-dependencies-{{ checksum "requirements/web.txt" }}-{{ checksum "requirements/test.txt" }}-{{ checksum "requirements/daemons/btc.txt" }}-{{ .Branch }}-<< parameters.v >>
+          key: v35-dependencies-{{ .Branch }}-<< parameters.v >>-{{ checksum "requirements/web.txt" }}-{{ checksum "requirements/test.txt" }}-{{ checksum "requirements/daemons/btc.txt" }}
 
 jobs:
   test:
@@ -66,14 +67,12 @@ jobs:
       - run:
           name: prepare daemon
           command: |
-            . ~/venv/bin/activate
             make testnet
           background: true
 
       - run:
           name: run tests
           command: |
-            . ~/venv/bin/activate
             make ci
             codecov -F tests -e PYTHON
 
@@ -101,7 +100,6 @@ jobs:
       - run:
           name: install regtest utils
           command: |
-            . ~/venv/bin/activate
             mkdir -p ~/bitcoind && cd ~/bitcoind
             wget -N https://bitcoin.org/bin/bitcoin-core-$BITCOIND_VERSION/bitcoin-$BITCOIND_VERSION-x86_64-linux-gnu.tar.gz
             tar xzf bitcoin-$BITCOIND_VERSION-x86_64-linux-gnu.tar.gz
@@ -117,28 +115,24 @@ jobs:
       - run:
           name: prepare bitcoind
           command: |
-            . ~/venv/bin/activate
             make bitcoind
           background: true
 
       - run:
           name: prepare electrumx
           command: |
-            . ~/venv/bin/activate
             make electrumx
           background: true
 
       - run:
           name: prepare regtest daemon
           command: |
-            . ~/venv/bin/activate
             make regtest
           background: true
 
       - run:
           name: run tests
           command: |
-            . ~/venv/bin/activate
             sleep 10s
             make functional
             codecov -F functional-tests
