@@ -8,4 +8,4 @@ black
 isort>=5
 codecov
 async-asgi-testclient
-electrumx
+https://github.com/spesmilo/electrumx/archive/1.16.0.zip
