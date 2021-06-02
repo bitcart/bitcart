@@ -16,15 +16,10 @@ executors:
 
 commands:
   install_dependencies:
-    parameters:
-      v:
-        type: string
-        default: "3.7"
-
     steps:
       - restore_cache:
           keys:
-            - v35-dependencies-{{ .Branch }}-<< parameters.v >>-{{ checksum "requirements/web.txt" }}-{{ checksum "requirements/test.txt" }}-{{ checksum "requirements/daemons/btc.txt" }}
+            - v36-dependencies-{{ .Branch }}-{{ checksum "~/.pyenv/version" }}-{{ checksum "requirements/web.txt" }}-{{ checksum "requirements/test.txt" }}-{{ checksum "requirements/daemons/btc.txt" }}
 
       - run:
           name: install dependencies
@@ -41,7 +36,7 @@ commands:
       - save_cache:
           paths:
             - ~/venv
-          key: v35-dependencies-{{ .Branch }}-<< parameters.v >>-{{ checksum "requirements/web.txt" }}-{{ checksum "requirements/test.txt" }}-{{ checksum "requirements/daemons/btc.txt" }}
+          key: v36-dependencies-{{ .Branch }}-{{ checksum "~/.pyenv/version" }}-{{ checksum "requirements/web.txt" }}-{{ checksum "requirements/test.txt" }}-{{ checksum "requirements/daemons/btc.txt" }}
 
 jobs:
   test:
