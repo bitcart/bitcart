@@ -55,7 +55,7 @@ def queue():
 
 @pytest.fixture
 async def ipn_server(queue):
-    host = "localhost"
+    host = "0.0.0.0"
     port = 8080
 
     async def handle_post(request):
