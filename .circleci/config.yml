@@ -14,7 +14,7 @@ executors:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: 123@
     environment:
-      TEST_ARGS: "--cov-report xml:coverage.xml --cov-report html:coverage"
+      TEST_ARGS: "--cov-report xml:test-results/pytest/coverage.xml --cov-report html:coverage"
 
 commands:
   install_dependencies:
@@ -39,6 +39,17 @@ commands:
           paths:
             - ~/venv
           key: v38-dependencies-{{ .Branch }}-{{ checksum "~/.pyenv/version" }}-{{ checksum "requirements/web.txt" }}-{{ checksum "requirements/test.txt" }}-{{ checksum "requirements/daemons/btc.txt" }}
+
+  upload-results:
+    steps:
+      - store_test_results:
+        path: test-results
+
+      - store_artifacts:
+          path: coverage
+
+      - store_artifacts:
+          path: test-results
 
 jobs:
   test:
@@ -73,11 +84,7 @@ jobs:
             make ci
             codecov -F tests -e PYTHON
 
-      - store_test_results:
-          path: .
-
-      - store_artifacts:
-          path: coverage
+      - upload-results
 
   functional-tests:
     executor:
@@ -140,11 +147,7 @@ jobs:
             make functional
             codecov -F functional-tests
 
-      - store_test_results:
-          path: .
-
-      - store_artifacts:
-          path: coverage
+      - upload-results
 
   deploy:
     docker:

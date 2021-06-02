@@ -23,6 +23,8 @@ sleep 6
 bitcoin-cli createwallet test_wallet
 addr=$(bitcoin-cli getnewaddress)
 bitcoin-cli generatetoaddress 150 $addr > /dev/null
-if [[ ! -v CI ]]; then
+if [[ -v CI ]]; then
+    sleep infinity
+else
     screen -r bitcoind
 fi
