@@ -209,8 +209,7 @@ async def update_status(invoice, status, method=None):
         logger.info(f"{log_text} to {status}")
         await invoice.update(status=status).apply()
         await utils.redis.publish_message(f"invoice:{invoice.id}", {"status": status})
-        if not settings.TEST:
-            await invoice_notification(invoice, status)
+        await invoice_notification(invoice, status)
         return True
 
 
