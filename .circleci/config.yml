@@ -13,6 +13,8 @@ executors:
           POSTGRES_DB: bitcart_test
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: 123@
+    environment:
+      TEST_ARGS: "--cov-report xml:coverage.xml --cov-report html:coverage"
 
 commands:
   install_dependencies:
@@ -73,6 +75,9 @@ jobs:
 
       - store_test_results:
           path: .
+
+      - store_artifacts:
+          path: coverage
 
   functional-tests:
     executor:
@@ -137,6 +142,9 @@ jobs:
 
       - store_test_results:
           path: .
+
+      - store_artifacts:
+          path: coverage
 
   deploy:
     docker:

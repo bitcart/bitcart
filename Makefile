@@ -12,7 +12,7 @@ format:
 	isort .
 
 test:
-	pytest tests/
+	pytest tests/ ${TEST_ARGS}
 
 migrate:
 	alembic upgrade head
@@ -43,6 +43,6 @@ electrumx:
 	tests/functional/bootstrap/start_electrumx.sh
 
 functional:
-	pytest tests/functional/ --cov-append
+	pytest tests/functional/ --cov-append ${TEST_ARGS}
 
 ci: checkformat lint test
