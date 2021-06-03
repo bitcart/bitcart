@@ -12,7 +12,7 @@ format:
 	isort .
 
 test:
-	pytest tests/
+	pytest tests/ ${TEST_ARGS}
 
 migrate:
 	alembic upgrade head
@@ -35,5 +35,14 @@ testnet:
 
 mainnet:
 	BTC_DEBUG=true BTC_LIGHTNING=true BTC_NETWORK=mainnet python3 daemons/btc.py
+
+bitcoind:
+	tests/functional/bootstrap/start_bitcoind.sh
+
+electrumx:
+	tests/functional/bootstrap/start_electrumx.sh
+
+functional:
+	pytest tests/functional/ --cov-append ${TEST_ARGS}
 
 ci: checkformat lint test

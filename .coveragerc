@@ -2,17 +2,10 @@
 source = .
 omit =
     main.py,
-    *apps.py,
-    *routing.py,
-    *urls.py,
-    *celery.py,
-    *migrations/*,
+    worker.py,
+    *alembic/*,
     *settings*,
     *tests/*,
-    *wsgi.py,
-    *tasks.py,
-    manage.py,
-    worker.py,
     venv/*,
     env/*,
     api/ext/update.py,
@@ -20,5 +13,6 @@ omit =
     api/logger.py,
     api/logserver.py,
     api/invoices.py,
+    api/tasks.py
     *__init__.py
     

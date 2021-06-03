@@ -36,7 +36,7 @@ def test_rate(client: TestClient):
     resp = client.get("/cryptos/rate")
     data = resp.json()
     assert resp.status_code == 200
-    assert isinstance(data, float)
+    assert isinstance(data, (int, float))
     assert data > 0
     assert client.get("/cryptos/rate?fiat_currency=eur").status_code == 200
     assert client.get("/cryptos/rate?fiat_currency=EUR").status_code == 200
