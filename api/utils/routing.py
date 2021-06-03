@@ -149,7 +149,7 @@ class ModelView:
             user: Union[None, ModelView.schemes.User] = Security(self.auth_dependency, scopes=self.scopes["get_all"]),
         ):
             if self.custom_methods.get("get"):
-                return await self.custom_methods["get"](pagination, user)
+                return await self.custom_methods["get"](pagination, user)  # pragma: no cover
             else:
                 return await utils.database.paginate_object(self.orm_model, pagination, user)
 
