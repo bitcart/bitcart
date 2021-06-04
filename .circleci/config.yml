@@ -185,9 +185,6 @@ workflows:
             - test
       - deploy:
           context: global
-          requires:
-            - test
-            - functional-tests
           filters:
             branches:
               ignore: /.*/
