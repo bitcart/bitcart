@@ -29,6 +29,15 @@ async def get_me(user: models.User = Security(utils.authorization.AuthDependency
     return user
 
 
+@router.patch("/me/settings", response_model=schemes.User)
+async def set_settings(
+    settings: schemes.UserPreferences,
+    user: models.User = Security(utils.authorization.AuthDependency(), scopes=["full_control"]),
+):
+    await user.set_json_key("settings", settings)
+    return user
+
+
 utils.routing.ModelView.register(
     router,
     "/",

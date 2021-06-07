@@ -110,7 +110,7 @@ def test_wallets_balance(client: TestClient, token: str, wallet):
     assert client.get("/wallets/balance").status_code == 401
     resp = client.get("/wallets/balance", headers={"Authorization": f"Bearer {token}"})
     assert resp.status_code == 200
-    assert resp.json() == 0.01
+    assert resp.json() > 1
 
 
 def test_fiatlist(client: TestClient):
@@ -189,16 +189,20 @@ def test_user_stats(client, user, token, store):
     create_invoice(client, user["id"], token, store_id=store_id)
     resp = client.get("/users/stats", headers={"Authorization": f"Bearer {token}"})
     assert resp.status_code == 200
-    assert resp.json() == {
-        "discounts": 0,
-        "invoices": 2,
-        "notifications": 0,
-        "products": 1,
-        "stores": 1,
-        "templates": 0,
-        "wallets": 1,
-        "balance": 0.01,
-    }
+    data = resp.json()
+    assert (
+        data.items()
+        > {
+            "discounts": 0,
+            "invoices": 2,
+            "notifications": 0,
+            "products": 1,
+            "stores": 1,
+            "templates": 0,
+            "wallets": 1,
+        }.items()
+    )
+    assert data["balance"] > 1
 
 
 @Parametrization.autodetect_parameters()
@@ -1063,3 +1067,26 @@ def test_unauthorized_m2m_access(client: TestClient, token: str, limited_user, w
     assert (
         client.post("/stores", json={"name": "new store", "wallets": [2]}, headers={"Authorization": f"Bearer {token_usual}"})
     ).status_code == 403  # Can't access other users' related objects
+
+
+def get_wallet_balances(client, token):
+    return client.get("/wallets/balance", headers={"Authorization": f"Bearer {token}"}).json()
+
+
+def test_users_display_balance(client: TestClient, token: str, wallet):
+    assert get_wallet_balances(client, token) > 1
+    assert client.patch("/users/me/settings").status_code == 401
+    resp = client.patch("/users/me/settings", json={"balance_currency": "BTC"}, headers={"Authorization": f"Bearer {token}"})
+    assert resp.status_code == 200
+    # Changes only the settings provided
+    default_values = schemes.UserPreferences().dict()
+    assert resp.json()["settings"] == {**default_values, "balance_currency": "BTC"}
+    assert get_wallet_balances(client, token) == 0.01
+    resp = client.patch(
+        "/users/me/settings",
+        json={"balance_currency": "USD"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["settings"] == default_values
+    assert get_wallet_balances(client, token) > 1

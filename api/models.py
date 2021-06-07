@@ -38,6 +38,8 @@ async def delete_relations(model_id, key_info):
 
 
 class BaseModel(db.Model):
+    JSON_KEYS: dict = {}
+
     @property
     def M2M_KEYS(self):
         model_variant = getattr(self, "KEYS", {})
@@ -65,7 +67,8 @@ class BaseModel(db.Model):
             await delete_relations(self.id, key_info)
 
     async def add_fields(self):
-        pass
+        for field, scheme in self.JSON_KEYS.items():
+            setattr(self, field, self.get_json_key(field, scheme))
 
     async def load_data(self):
         await self.add_related()
@@ -114,6 +117,16 @@ class BaseModel(db.Model):
     def prepare_edit(cls, kwargs):
         return kwargs
 
+    def get_json_key(self, key, scheme):
+        data = getattr(self, key) or {}
+        return scheme(**data)
+
+    async def set_json_key(self, key, scheme):
+        # Update only passed values, don't modify existing ones
+        json_data = jsonable_encoder(getattr(self, key).copy(update=scheme.dict(exclude_unset=True)))
+        kwargs = {key: json_data}
+        await self.update(**kwargs).apply()
+
 
 # Abstract class to easily implement many-to-many update behaviour
 
@@ -144,11 +157,14 @@ class ManyToManyUpdateRequest(UpdateRequest):
 class User(BaseModel):
     __tablename__ = "users"
 
+    JSON_KEYS = {"settings": schemes.UserPreferences}
+
     id = Column(Text, primary_key=True, index=True)
     email = Column(Text, unique=True, index=True)
     hashed_password = Column(Text)
     is_superuser = Column(Boolean(), default=False)
     created = Column(DateTime(True), nullable=False)
+    settings = Column(JSON)
 
     @classmethod
     def process_kwargs(cls, kwargs):
@@ -244,6 +260,8 @@ class Store(BaseModel):
     __tablename__ = "stores"
     _update_request_cls = StoreUpdateRequest
 
+    JSON_KEYS = {"checkout_settings": schemes.StoreCheckoutSettings}
+
     id = Column(Text, primary_key=True, index=True)
     name = Column(Text, index=True)
     default_currency = Column(Text)
@@ -257,19 +275,6 @@ class Store(BaseModel):
     templates = Column(JSON)
     user_id = Column(Text, ForeignKey(User.id, ondelete="SET NULL"))
     created = Column(DateTime(True), nullable=False)
-
-    def get_setting(self, scheme):
-        data = self.checkout_settings or {}
-        return scheme(**data)
-
-    async def set_setting(self, scheme):
-        # Update only passed values, don't modify existing ones
-        json_data = jsonable_encoder(self.checkout_settings.copy(update=scheme.dict(exclude_unset=True)))
-        await self.update(checkout_settings=json_data).apply()
-
-    async def add_fields(self):
-        await super().add_fields()
-        self.checkout_settings = self.get_setting(schemes.StoreCheckoutSettings)
 
 
 class Discount(BaseModel):

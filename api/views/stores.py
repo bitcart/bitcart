@@ -29,7 +29,7 @@ async def set_store_checkout_settings(
     user: models.User = Security(utils.authorization.AuthDependency(), scopes=["store_management"]),
 ):
     model = await utils.database.get_object(models.Store, model_id, user)
-    await model.set_setting(settings)
+    await model.set_json_key("checkout_settings", settings)
     return model
 
 

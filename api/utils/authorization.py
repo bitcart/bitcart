@@ -80,6 +80,7 @@ class AuthDependency:
                 headers={"WWW-Authenticate": authenticate_value},
             )
         user, token = data  # first validate data, then unpack
+        await user.load_data()
         forbidden_exception = HTTPException(
             status_code=HTTP_403_FORBIDDEN,
             detail="Not enough permissions",

@@ -1,4 +1,3 @@
-import math
 from collections import defaultdict
 from decimal import Decimal
 from operator import attrgetter
@@ -52,13 +51,7 @@ async def create_invoice(invoice: schemes.CreateInvoice, user: schemes.User):
 async def _create_payment_method(invoice, wallet, product, store, discounts, promocode, lightning=False):
     coin = settings.get_coin(wallet.currency, wallet.xpub)
     discount_id = None
-    rate = await coin.rate(invoice.currency)
-    if math.isnan(rate):
-        rate = await coin.rate(store.default_currency)
-    if math.isnan(rate):
-        rate = await coin.rate("USD")
-    if math.isnan(rate):
-        rate = Decimal(1)  # no rate available, no conversion
+    rate = await utils.wallets.get_rate(coin, invoice.currency, store.default_currency)
     price = invoice.price
     if discounts:
         try:

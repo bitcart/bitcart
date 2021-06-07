@@ -19,9 +19,14 @@ class CreatedMixin(BaseModel):
         return v or now()
 
 
+class UserPreferences(BaseModel):
+    balance_currency: str = "USD"
+
+
 class BaseUser(CreatedMixin):
     email: EmailStr
     is_superuser: Optional[bool] = False
+    settings: UserPreferences = UserPreferences()
 
     class Config:
         orm_mode = True
@@ -127,7 +132,7 @@ class BaseStore(CreatedMixin):
     name: str
     default_currency: str = "USD"
     email: Optional[EmailStr] = ""
-    checkout_settings: Optional[StoreCheckoutSettings] = StoreCheckoutSettings()
+    checkout_settings: StoreCheckoutSettings = StoreCheckoutSettings()
 
     @validator("email", pre=True, always=False)
     def validate_email(cls, val):
