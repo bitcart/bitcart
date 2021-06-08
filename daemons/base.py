@@ -390,6 +390,8 @@ class BaseDaemon:
         exec_method, custom, error = await self.get_exec_method(cmd, id, req_method)
         if error:
             return error.send()
+        if self.supported_methods[req_method].requires_wallet and not xpub:
+            return JsonResponse(code=-32000, error="Wallet not loaded", id=id).send()
         try:
             result = await self.get_exec_result(
                 xpub, req_method, req_args, req_kwargs, exec_method, custom, wallet=wallet, config=config
