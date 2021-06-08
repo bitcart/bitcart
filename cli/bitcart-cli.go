@@ -7,8 +7,8 @@ import (
 	"log"
 	"os"
 
-	"github.com/bitcartcc/jsonrpc"
 	"github.com/urfave/cli"
+	"github.com/ybbus/jsonrpc"
 )
 
 func main() {
@@ -86,7 +86,13 @@ func main() {
 				},
 			})
 			// call RPC method
-			result, err := rpcClient.Call(args.Get(0), wallet, args.Slice()[1:])
+			sl := args.Slice()[1:]
+			params := make([]interface{}, len(sl))
+			for i := range sl {
+				params[i] = sl[i]
+			}
+			params = append(params, map[string]interface{}{"xpub": wallet})
+			result, err := rpcClient.Call(args.Get(0), params)
 			if err != nil {
 				fmt.Println("Error:", err)
 				return nil

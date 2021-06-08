@@ -326,7 +326,7 @@ class BaseDaemon:
         args = params
         kwargs = {}
         if isinstance(params, list):
-            if len(params) > 1 and isinstance(params[-1], dict):
+            if len(params) > 0 and isinstance(params[-1], dict):
                 kwargs = params.pop()
         elif isinstance(params, dict):
             kwargs = params
