@@ -8,7 +8,6 @@
         "Request not found": -32003,
         "Invalid Bitcoin address or alias": -32004,
         "Invalid bitcoin address:": -32004,
-        "Invalid Bitcoin address": -32004,
         "Insufficient funds": -32006,
         "Invalid node ID, must be 33 bytes and hexadecimal": -32007,
         "Remove the existing wallet first!": -32008,

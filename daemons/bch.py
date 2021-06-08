@@ -101,6 +101,9 @@ class BCHDaemon(BaseDaemon):
     def recommended_fee(self, target, wallet=None) -> float:  # no fee estimation for BCH
         return 0
 
+    def get_address_balance(self, address, wallet):
+        return self.wallets[wallet]["wallet"].get_addr_balance(self.electrum.address.Address.from_string(address))
+
 
 daemon = BCHDaemon()
 

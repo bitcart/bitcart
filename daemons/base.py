@@ -26,6 +26,24 @@ def format_satoshis(x):
     return str(Decimal(x) / CONVERT_RATE)
 
 
+def load_spec(spec_file, exit_on_error=True):
+    try:
+        with open(spec_file) as f:
+            return json.loads(f.read())
+    except (OSError, json.JSONDecodeError) as e:
+        if exit_on_error:
+            sys.exit(e)
+        return {}
+
+
+def maybe_update_key(dest, other, key):
+    other_value = other.get(key, {})
+    if key in dest:
+        dest[key].update(other_value)
+    else:
+        dest[key] = other_value
+
+
 def rpc(f=None, requires_wallet=False):
     def wrapper(f):
         f.is_handler = True
@@ -102,6 +120,7 @@ class BaseDaemon:
     ]
     NETWORK_MAPPING: dict = {}
     latest_height = -1
+    BASE_SPEC_FILE = "daemons/spec/btc.json"
 
     def __init__(self):
         # if client is sync, use sync _process_events
@@ -153,15 +172,13 @@ class BaseDaemon:
         self.electrum_config = self.electrum.simple_config.SimpleConfig()
         self.copy_config_settings(self.electrum_config)
         self.configure_logging(self.electrum_config)
-        # Load spec file
-        self.spec_file = f"daemons/spec/{self.name.lower()}.json"
-        if not os.path.exists(self.spec_file):
-            self.spec_file = "daemons/spec/btc.json"  # fallback to btc spec
-        try:
-            with open(self.spec_file) as f:
-                self.spec = json.loads(f.read())
-        except (OSError, json.JSONDecodeError) as e:
-            sys.exit(e)
+        # Load spec
+        self.spec = load_spec(self.BASE_SPEC_FILE)
+        custom_spec_file = f"daemons/spec/{self.name.lower()}.json"
+        if custom_spec_file != self.BASE_SPEC_FILE:
+            custom_spec = load_spec(custom_spec_file, exit_on_error=False)
+            maybe_update_key(self.spec, custom_spec, "electrum_map")
+            maybe_update_key(self.spec, custom_spec, "exceptions")
         # initialize wallet storages
         self.wallets = {}
         self.wallets_updates = {}
@@ -401,8 +418,9 @@ class BaseDaemon:
             request.app["websockets"].remove(ws)
 
     def get_error_code(self, error):
+        error = error.lower()
         for error_message in self.spec["electrum_map"]:
-            if error_message in error:
+            if error_message.lower() in error:
                 return self.spec["electrum_map"][error_message]
         return -32603  # fallback
 
@@ -549,7 +567,10 @@ class BaseDaemon:
             raise Exception("Invoice not found")
         return value
 
+    def get_address_balance(self, address, wallet):
+        return self.wallets[wallet]["wallet"].get_addr_balance(address)
+
     @rpc(requires_wallet=True)
     def getaddressbalance_wallet(self, address, wallet):
-        confirmed, unconfirmed, unmatured = map(format_satoshis, self.wallets[wallet]["wallet"].get_addr_balance(address))
+        confirmed, unconfirmed, unmatured = map(format_satoshis, self.get_address_balance(address, wallet))
         return {"confirmed": confirmed, "unconfirmed": unconfirmed, "unmatured": unmatured}
