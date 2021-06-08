@@ -378,6 +378,12 @@ class BaseDaemon:
                 error = JsonResponse(code=-32005, error="Error loading wallet", id=id)
         return wallet, cmd, config, error
 
+    def get_method_data(self, method, custom):
+        if custom:
+            return self.supported_methods[method]
+        else:
+            return self.electrum.commands.known_commands[method]
+
     @authenticate
     async def handle_request(self, request):
         id, req_method, req_args, req_kwargs, error = await self.get_handle_request_params(request)
@@ -390,7 +396,7 @@ class BaseDaemon:
         exec_method, custom, error = await self.get_exec_method(cmd, id, req_method)
         if error:
             return error.send()
-        if self.supported_methods[req_method].requires_wallet and not xpub:
+        if self.get_method_data(req_method, custom).requires_wallet and not xpub:
             return JsonResponse(code=-32000, error="Wallet not loaded", id=id).send()
         try:
             result = await self.get_exec_result(
