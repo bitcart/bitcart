@@ -7,6 +7,7 @@ import sys
 import traceback
 from base64 import b64decode
 from dataclasses import dataclass
+from decimal import Decimal
 from types import ModuleType
 from typing import Any, Optional, Union
 from urllib.parse import urlparse
@@ -18,6 +19,11 @@ from decouple import AutoConfig
 from pkg_resources import parse_version
 
 LEGACY_AIOHTTP = parse_version(aiohttp_version) < parse_version("4.0.0a0")
+CONVERT_RATE = 100000000
+
+
+def format_satoshis(x):
+    return str(Decimal(x) / CONVERT_RATE)
 
 
 def rpc(f=None, requires_wallet=False):
@@ -542,3 +548,8 @@ class BaseDaemon:
         if not value:
             raise Exception("Invoice not found")
         return value
+
+    @rpc(requires_wallet=True)
+    def getaddressbalance_wallet(self, address, wallet):
+        confirmed, unconfirmed, unmatured = map(format_satoshis, self.wallets[wallet]["wallet"].get_addr_balance(address))
+        return {"confirmed": confirmed, "unconfirmed": unconfirmed, "unmatured": unmatured}
