@@ -59,6 +59,13 @@ func main() {
 			Value:   "electrumz",
 			EnvVars: []string{"BITCART_PASSWORD"},
 		},
+		&cli.StringFlag{
+			Name:     "url",
+			Aliases:  []string{"U"},
+			Usage:    "specify daemon URL (overrides defaults)",
+			Required: false,
+			EnvVars:  []string{"BITCART_DAEMON_URL"},
+		},
 	}
 	app.Action = func(c *cli.Context) error {
 		args := c.Args()
@@ -68,8 +75,12 @@ func main() {
 			user := c.String("user")
 			password := c.String("password")
 			coin := c.String("coin")
+			url := c.String("url")
+			if url == "" {
+				url = COINS[coin]
+			}
 			// initialize rpc client
-			rpcClient := jsonrpc.NewClientWithOpts(COINS[coin], &jsonrpc.RPCClientOpts{
+			rpcClient := jsonrpc.NewClientWithOpts(url, &jsonrpc.RPCClientOpts{
 				CustomHeaders: map[string]string{
 					"Authorization": "Basic " + base64.StdEncoding.EncodeToString([]byte(user+":"+password)),
 				},
