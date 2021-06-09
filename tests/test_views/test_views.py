@@ -13,7 +13,7 @@ from api import invoices, models, schemes, settings, templates, utils
 from api.constants import DOCKER_REPO_URL, SUPPORTED_CRYPTOS
 from api.ext import tor as tor_ext
 from tests.fixtures import static_data
-from tests.helper import create_invoice, create_product, create_wallet
+from tests.helper import create_invoice, create_product, create_token, create_user, create_wallet
 
 
 class DummyInstance:
@@ -1090,3 +1090,20 @@ def test_users_display_balance(client: TestClient, token: str, wallet):
     assert resp.status_code == 200
     assert resp.json()["settings"] == default_values
     assert get_wallet_balances(client, token) > 1
+
+
+def test_invoice_products_access_control(client: TestClient):
+    user1 = create_user(client)
+    user2 = create_user(client)
+    token1 = create_token(client, user1)["access_token"]
+    token2 = create_token(client, user2)["access_token"]
+    product1 = create_product(client, user1["id"], token1)
+    product2 = create_product(client, user2["id"], token2)
+    store_id1 = product1["store_id"]
+    store_id2 = product2["store_id"]
+    product_id1 = product1["id"]
+    product_id2 = product2["id"]
+    assert client.post("/invoices", json={"price": 5, "store_id": store_id1, "products": [product_id1]}).status_code == 200
+    assert client.post("/invoices", json={"price": 5, "store_id": store_id1, "products": [product_id2]}).status_code == 403
+    assert client.post("/invoices", json={"price": 5, "store_id": store_id2, "products": [product_id2]}).status_code == 200
+    assert client.post("/invoices", json={"price": 5, "store_id": store_id2, "products": [product_id1]}).status_code == 403

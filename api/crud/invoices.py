@@ -28,7 +28,11 @@ async def create_invoice(invoice: schemes.CreateInvoice, user: schemes.User):
     if isinstance(products, list):
         products = {k: 1 for k in products}
     promocode = d.get("promocode")
-    obj = await utils.database.create_object(models.Invoice, d, user_id=store.user_id)
+    d["user_id"] = store.user_id
+    # Launch products access validation
+    # TODO: handle it better
+    await models.Invoice(**d).validate(**d, products=list(products.keys()))
+    obj = await utils.database.create_object(models.Invoice, d)
     product = None
     if products:
         product = await utils.database.get_object(models.Product, list(products.keys())[0])

@@ -433,17 +433,17 @@ class Invoice(BaseModel):
         pass
 
     @classmethod
+    def process_kwargs(cls, kwargs):
+        kwargs = super().process_kwargs(kwargs)
+        kwargs.pop("products", None)
+        return kwargs
+
+    @classmethod
     def prepare_create(cls, kwargs):
         from api import utils
 
         kwargs = super().prepare_create(kwargs)
         kwargs["id"] = utils.common.unique_id(PUBLIC_ID_LENGTH)
-        return kwargs
-
-    @classmethod
-    def prepare_edit(cls, kwargs):
-        kwargs = super().prepare_edit(kwargs)
-        kwargs.pop("products", None)  # Don't process edit requests for products
         return kwargs
 
     def add_invoice_expiration(self):
