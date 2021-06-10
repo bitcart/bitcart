@@ -23,14 +23,23 @@ def get_kwargs(model, data, additional_kwargs, user=None):
     return model.process_kwargs(kwargs)
 
 
-async def create_object(model, data, user=None, **additional_kwargs):
+def prepare_create_kwargs(model, data, user=None, **additional_kwargs):
     kwargs = get_kwargs(model, data, additional_kwargs, user)
     kwargs = model.prepare_create(kwargs)
+    return kwargs
+
+
+async def create_object_core(model, kwargs):
     model = model(**kwargs)  # Create object instance to allow calling instance methods
     await model.validate(**kwargs)
     with safe_db_write():
         result = await model.create(**kwargs)
     return result
+
+
+async def create_object(model, data, user=None, **additional_kwargs):
+    kwargs = prepare_create_kwargs(model, data, user, **additional_kwargs)
+    return await create_object_core(model, kwargs)
 
 
 async def modify_object(model, data, **additional_kwargs):

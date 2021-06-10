@@ -29,13 +29,11 @@ async def create_product(
     user: models.User = Security(utils.authorization.AuthDependency(), scopes=["product_management"]),
 ):
     data = parse_data(data, schemes.CreateProduct)
-    data.image = utils.files.get_image_filename(image)
-    with utils.database.safe_db_write():
-        obj = await utils.database.create_object(models.Product, data, user)
-        if image:  # TODO: remove when object id gets generated from python
-            filename = utils.files.get_image_filename(image, False, obj)
-            await obj.update(image=filename).apply()
-            await utils.files.save_image(filename, image)
+    kwargs = utils.database.prepare_create_kwargs(models.Product, data, user)
+    kwargs["image"] = utils.files.get_image_filename(kwargs["id"]) if image else None
+    obj = await utils.database.create_object_core(models.Product, kwargs)
+    if image:
+        await utils.files.save_image(kwargs["image"], image)
     return obj
 
 
@@ -56,7 +54,7 @@ async def patch_product(
     data = parse_data(data, OptionalProductScheme)
     item = await utils.database.get_object(models.Product, model_id, user)
     if image:
-        filename = utils.files.get_image_filename(image, False, item)
+        filename = utils.files.get_image_filename(item.id)
         data.image = filename
         await utils.files.save_image(filename, image)
     else:

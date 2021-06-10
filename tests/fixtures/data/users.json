@@ -9,7 +9,10 @@
     },
     "response": {
         "email": "test@example.com",
-        "is_superuser": false
+        "is_superuser": false,
+        "settings": {
+            "balance_currency": "USD"
+        }
     },
     "count": 2
 }

@@ -1,12 +1,8 @@
 import os
 
 
-def get_image_filename(image, create=True, model=None):
-    if create:
-        filename = "images/products/temp.png" if image else None
-    else:
-        filename = f"images/products/{model.id}.png" if image else model.image
-    return filename
+def get_image_filename(model_id):
+    return f"images/products/{model_id}.png"
 
 
 async def save_image(filename, image):

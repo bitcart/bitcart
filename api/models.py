@@ -23,14 +23,10 @@ ForeignKey = db.ForeignKey
 JSON = db.JSON
 UniqueConstraint = db.UniqueConstraint
 
-# TODO: use bulk insert when asyncpg fix is landed
-# See https://github.com/MagicStack/asyncpg/issues/700
-
 
 async def create_relations(model_id, related_ids, key_info):
-    for related_id in related_ids:
-        kwargs = {key_info["current_id"]: model_id, key_info["related_id"]: related_id}
-        await key_info["table"].create(**kwargs)
+    data = [{key_info["current_id"]: model_id, key_info["related_id"]: related_id} for related_id in related_ids]
+    await key_info["table"].insert().gino.all(data)
 
 
 async def delete_relations(model_id, key_info):
