@@ -6,6 +6,9 @@
   "pip-compile": {
     "fileMatch": [
       "^requirements(\/.*)\\.txt$"
+    ],
+    "ignorePaths": [
+      "requirements/deterministic/**"
     ]
   }
 }
