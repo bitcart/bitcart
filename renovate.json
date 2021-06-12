@@ -5,7 +5,7 @@
   ],
   "pip-compile": {
     "fileMatch": [
-      "(^|/)requirements\\.txt$"
+      "^requirements(\/.*)\\.txt$"
     ]
   }
 }
