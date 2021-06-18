@@ -104,9 +104,9 @@ class BCHDaemon(BaseDaemon):
     def get_address_balance(self, address, wallet):
         return self.wallets[wallet]["wallet"].get_addr_balance(self.electrum.address.Address.from_string(address))
 
+if __name__ == "__main__":
+    daemon = BCHDaemon()
 
-daemon = BCHDaemon()
-
-app = web.Application()
-daemon.configure_app(app)
-daemon.start(app)
+    app = web.Application()
+    daemon.configure_app(app)
+    daemon.start(app)
