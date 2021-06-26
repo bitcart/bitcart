@@ -104,6 +104,7 @@ class BCHDaemon(BaseDaemon):
     def get_address_balance(self, address, wallet):
         return self.wallets[wallet]["wallet"].get_addr_balance(self.electrum.address.Address.from_string(address))
 
+
 if __name__ == "__main__":
     daemon = BCHDaemon()
 

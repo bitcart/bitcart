@@ -14,7 +14,6 @@ class XRGDaemon(BCHDaemon):
 
 if __name__ == "__main__":
     daemon = XRGDaemon()
-
     app = web.Application()
     daemon.configure_app(app)
     daemon.start(app)
