@@ -291,6 +291,11 @@
         "divisibility": 8,
         "crypto": true
     },
+    "XRG": {
+        "name": "Ergon",
+        "divisibility": 8,
+        "crypto": true
+    },
     "GZRO": {
         "name": "GZRO",
         "divisibility": 8,

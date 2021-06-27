@@ -13,8 +13,8 @@ class GZRODaemon(BaseDaemon):
         return 0
 
 
-daemon = GZRODaemon()
-
-app = web.Application()
-daemon.configure_app(app)
-daemon.start(app)
+if __name__ == "__main__":
+    daemon = GZRODaemon()
+    app = web.Application()
+    daemon.configure_app(app)
+    daemon.start(app)

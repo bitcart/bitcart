@@ -9,8 +9,8 @@ class LTCDaemon(BaseDaemon):
     DEFAULT_PORT = 5001
 
 
-daemon = LTCDaemon()
-
-app = web.Application()
-daemon.configure_app(app)
-daemon.start(app)
+if __name__ == "__main__":
+    daemon = LTCDaemon()
+    app = web.Application()
+    daemon.configure_app(app)
+    daemon.start(app)

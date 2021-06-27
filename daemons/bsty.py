@@ -9,8 +9,8 @@ class BSTYDaemon(BaseDaemon):
     DEFAULT_PORT = 5003
 
 
-daemon = BSTYDaemon()
-
-app = web.Application()
-daemon.configure_app(app)
-daemon.start(app)
+if __name__ == "__main__":
+    daemon = BSTYDaemon()
+    app = web.Application()
+    daemon.configure_app(app)
+    daemon.start(app)

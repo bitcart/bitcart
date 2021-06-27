@@ -9,8 +9,8 @@ class BTCDaemon(BaseDaemon):
     DEFAULT_PORT = 5000
 
 
-daemon = BTCDaemon()
-
-app = web.Application()
-daemon.configure_app(app)
-daemon.start(app)
+if __name__ == "__main__":
+    daemon = BTCDaemon()
+    app = web.Application()
+    daemon.configure_app(app)
+    daemon.start(app)

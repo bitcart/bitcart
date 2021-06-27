@@ -31,6 +31,15 @@
             "requirements/daemons/bch.txt"
         ]
     },
+    "bitcart-xrg": {
+        "dockerfile": "xrg.Dockerfile",
+        "files": [
+            "daemons/base.py",
+            "daemons/xrg.py",
+            "requirements/base.txt",
+            "requirements/daemons/xrg.txt"
+        ]
+    },
     "bitcart-ltc": {
         "dockerfile": "ltc.Dockerfile",
         "files": [
