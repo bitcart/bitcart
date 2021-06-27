@@ -107,7 +107,6 @@ class BCHDaemon(BaseDaemon):
 
 if __name__ == "__main__":
     daemon = BCHDaemon()
-
     app = web.Application()
     daemon.configure_app(app)
     daemon.start(app)
