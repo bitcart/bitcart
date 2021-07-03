@@ -29,12 +29,7 @@ class BCHDaemon(BaseDaemon):
         self.electrum.util.set_verbosity(electrum_config.get("verbosity"))
 
     def create_daemon(self):
-        return self.electrum.daemon.Daemon(
-            self.electrum_config,
-            self.electrum.daemon.get_fd_or_server(self.electrum_config)[0],
-            False,
-            plugins=[],
-        )
+        return self.electrum.daemon.Daemon(self.electrum_config, fd=None, is_gui=False, plugins=[], listen_jsonrpc=False)
 
     def create_commands(self, config):
         return self.electrum.commands.Commands(config=config, network=self.network, wallet=None)
