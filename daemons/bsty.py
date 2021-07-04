@@ -1,16 +1,16 @@
-import electrum_bsty
-from aiohttp import web
-from base import BaseDaemon
+from btc import BTCDaemon
 
 
-class BSTYDaemon(BaseDaemon):
+class BSTYDaemon(BTCDaemon):
     name = "BSTY"
-    electrum = electrum_bsty
     DEFAULT_PORT = 5003
+
+    def load_electrum(self):
+        import electrum_bsty
+
+        self.electrum = electrum_bsty
 
 
 if __name__ == "__main__":
     daemon = BSTYDaemon()
-    app = web.Application()
-    daemon.configure_app(app)
-    daemon.start(app)
+    daemon.start()
