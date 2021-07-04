@@ -122,8 +122,8 @@ multidict==5.1.0 \
     # via
     #   aiohttp
     #   yarl
-https://github.com/Ergon-moe/Oregano/releases/download/v4.1.17/Oregano-4.1.17.zip \
-    --hash=sha256:ca792ffbd2dca92903c3f86de6466b95f938a75278f66ae02537ffe4cd5e25f1
+https://github.com/Ergon-moe/Oregano/archive/72b06ff6b0cac7cdae4a9fbd1ab82bf8dcfb24d2.zip \
+    --hash=sha256:f8bda7035badf4fd509a5ff7ab57f424ae7e4e88b3c59ea856861ea65fcfb41e
     # via -r requirements/daemons/xrg.txt
 pathvalidate==2.4.1 \
     --hash=sha256:3c9bd94c7ec23e9cfb211ffbe356ae75f979d6c099a2c745ee9490f524f32468 \

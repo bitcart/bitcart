@@ -1,2 +1,2 @@
-https://github.com/Ergon-moe/Oregano/releases/download/v4.1.17/Oregano-4.1.17.zip
+https://github.com/Ergon-moe/Oregano/archive/72b06ff6b0cac7cdae4a9fbd1ab82bf8dcfb24d2.zip
 aiohttp>=3.3.0,<4.0.0
