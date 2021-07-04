@@ -75,18 +75,6 @@ class BCHDaemon(BaseDaemon):
         return result
 
     @rpc
-    async def payto(self, *args, **kwargs):
-        wallet = kwargs.pop("wallet", None)
-        kwargs.pop("feerate", None)  # TODO: add to electron cash
-        return self.wallets[wallet]["cmd"].payto(*args, **kwargs)
-
-    @rpc
-    async def paytomany(self, *args, **kwargs):
-        wallet = kwargs.pop("wallet", None)
-        kwargs.pop("feerate", None)  # TODO: add to electron cash
-        return self.wallets[wallet]["cmd"].paytomany(*args, **kwargs)
-
-    @rpc
     async def broadcast(self, *args, **kwargs):
         wallet = kwargs.pop("wallet", None)
         result = self.wallets[wallet]["cmd"].broadcast(*args, **kwargs)
