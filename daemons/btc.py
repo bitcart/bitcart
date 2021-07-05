@@ -369,9 +369,9 @@ class BTCDaemon(BaseDaemon):
     async def get_transaction(self, tx, wallet=None):
         result = await self.network.interface.session.send_request("blockchain.transaction.get", [tx, True])
         tx = self.electrum.transaction.Transaction(result["hex"])
-        result = tx.to_json()
-        result.update({"confirmations": result.get("confirmations", 0)})
-        return result
+        result_formatted = tx.to_json()
+        result_formatted.update({"confirmations": result.get("confirmations", 0)})
+        return result_formatted
 
     @rpc
     def exchange_rate(self, currency=None, wallet=None) -> str:
