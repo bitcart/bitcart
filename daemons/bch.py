@@ -33,8 +33,8 @@ class BCHDaemon(BTCDaemon):
         self.electrum_config = self.create_config()
         self.copy_config_settings(self.electrum_config)
 
-    def register_callbacks(self):
-        self.network.register_callback(self._process_events, self.AVAILABLE_EVENTS)
+    def register_callbacks(self, callback_function):
+        self.network.register_callback(callback_function, self.AVAILABLE_EVENTS)
 
     def create_daemon(self):
         return self.electrum.daemon.Daemon(self.electrum_config, fd=None, is_gui=False, plugins=[], listen_jsonrpc=False)

@@ -56,8 +56,6 @@ class BTCDaemon(BaseDaemon):
         self.load_electrum()
         super().__init__()
         self.latest_height = -1  # to avoid duplicate block notifications
-        if not self.ASYNC_CLIENT:
-            self._process_events = self._process_events_sync
         # activate network and configure logging
         activate_selected_network = self.NETWORK_MAPPING.get(self.NET.lower())
         if not activate_selected_network:
@@ -147,14 +145,15 @@ class BTCDaemon(BaseDaemon):
     def create_daemon(self):
         return self.electrum.daemon.Daemon(self.electrum_config, listen_jsonrpc=False)
 
-    def register_callbacks(self):
-        self.electrum.util.register_callback(self._process_events, self.AVAILABLE_EVENTS)
+    def register_callbacks(self, callback_function):
+        self.electrum.util.register_callback(callback_function, self.AVAILABLE_EVENTS)
 
     async def on_startup(self, app):
         await super().on_startup(app)
         self.daemon = self.create_daemon()
         self.network = self.daemon.network
-        self.register_callbacks()
+        callback_function = self._process_events if self.ASYNC_CLIENT else self._process_events_sync
+        self.register_callbacks(callback_function)
         self.fx = self.daemon.fx
 
     def create_commands(self, config):
@@ -318,21 +317,7 @@ class BTCDaemon(BaseDaemon):
                 self.wallets_updates[i].append(data)
 
     def _process_events_sync(self, event, *args):
-        """For non-asyncio clients"""
-        mapped_event = self.EVENT_MAPPING.get(event)
-        data = {"event": mapped_event}
-        data_got = None
-        try:
-            data_got, wallet = self.process_events(mapped_event, *args)
-        except Exception:
-            pass
-        if data_got is None:
-            return
-        data.update(data_got)
-        for i in self.wallets:
-            if not wallet or wallet == self.wallets[i]["wallet"]:
-                asyncio.run_coroutine_threadsafe(self.notify_websockets(data, i), self.loop).result()
-                self.wallets_updates[i].append(data)
+        asyncio.run_coroutine_threadsafe(self._process_events(event, *args), self.loop).result()
 
     def process_new_block(self):
         height = self.network.get_local_height()
