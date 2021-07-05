@@ -1,20 +1,14 @@
-import electroncash
-from aiohttp import web
-from base import BaseDaemon, rpc
+from btc import BTCDaemon
+from utils import rpc
 
 
-class BCHDaemon(BaseDaemon):
+class BCHDaemon(BTCDaemon):
     name = "BCH"
-    electrum = electroncash
-    NEW_ELECTRUM = False
-    HAS_FEE_ESTIMATES = False
     ASYNC_CLIENT = False
+    HAS_FEE_ESTIMATES = False
     LIGHTNING_SUPPORTED = False
     DEFAULT_PORT = 5004
-    NETWORK_MAPPING = {
-        "mainnet": electrum.networks.set_mainnet,
-        "testnet": electrum.networks.set_testnet,
-    }
+
     AVAILABLE_EVENTS = ["blockchain_updated", "new_transaction", "payment_received"]
     EVENT_MAPPING = {
         "blockchain_updated": "new_block",
@@ -22,11 +16,25 @@ class BCHDaemon(BaseDaemon):
         "payment_received": "new_payment",
     }
 
-    def register_callbacks(self):
-        self.network.register_callback(self._process_events, self.AVAILABLE_EVENTS)
+    def load_electrum(self):
+        import electroncash
 
-    def configure_logging(self, electrum_config):
-        self.electrum.util.set_verbosity(electrum_config.get("verbosity"))
+        self.electrum = electroncash
+        self.NETWORK_MAPPING = {
+            "mainnet": self.electrum.networks.set_mainnet,
+            "testnet": self.electrum.networks.set_testnet,
+        }
+
+    def add_wallet_to_command(self, wallet, req_method, exec_method, **kwargs):
+        return exec_method
+
+    def setup_config_and_logging(self):
+        self.electrum.util.set_verbosity(self.VERBOSE)
+        self.electrum_config = self.create_config()
+        self.copy_config_settings(self.electrum_config)
+
+    def register_callbacks(self, callback_function):
+        self.network.register_callback(callback_function, self.AVAILABLE_EVENTS)
 
     def create_daemon(self):
         return self.electrum.daemon.Daemon(self.electrum_config, fd=None, is_gui=False, plugins=[], listen_jsonrpc=False)
@@ -45,28 +53,13 @@ class BCHDaemon(BaseDaemon):
     def load_cmd_wallet(self, cmd, wallet, wallet_path):
         cmd.wallet = wallet
 
-    # bitcoin cash has different arguments passing order to new_transaction event
-    def process_events(self, event, *args):
-        wallet = None
-        data = {}
-        if event == "new_block":
-            height = self.process_new_block()
-            if not isinstance(height, int):
-                return None, None
-            data["height"] = height
-        elif event == "new_transaction":
-            tx, wallet = args
-            data["tx"] = tx.txid()
-        elif event == "new_payment":
-            wallet, address, status = args
-            data = {
-                "address": str(address),
-                "status": status,
-                "status_str": self.electrum.paymentrequest.pr_tooltips[status],
-            }
-        else:
-            return None, None
-        return data, wallet
+    def process_new_transaction(self, data, args):
+        tx, wallet = args
+        data["tx"] = tx.txid()
+        return wallet
+
+    def get_status_str(self, status):
+        return self.electrum.paymentrequest.pr_tooltips[status]
 
     @rpc
     async def get_transaction(self, tx, wallet=None):
@@ -90,6 +83,4 @@ class BCHDaemon(BaseDaemon):
 
 if __name__ == "__main__":
     daemon = BCHDaemon()
-    app = web.Application()
-    daemon.configure_app(app)
-    daemon.start(app)
+    daemon.start()

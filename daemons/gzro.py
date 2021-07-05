@@ -1,12 +1,15 @@
-import electrum_gzro
-from aiohttp import web
-from base import BaseDaemon, rpc
+from btc import BTCDaemon
+from utils import rpc
 
 
-class GZRODaemon(BaseDaemon):
+class GZRODaemon(BTCDaemon):
     name = "GZRO"
-    electrum = electrum_gzro
     DEFAULT_PORT = 5002
+
+    def load_electrum(self):
+        import electrum_gzro
+
+        self.electrum = electrum_gzro
 
     @rpc
     def recommended_fee(self, target, wallet=None) -> float:  # no fee estimation for GZRO
@@ -15,6 +18,4 @@ class GZRODaemon(BaseDaemon):
 
 if __name__ == "__main__":
     daemon = GZRODaemon()
-    app = web.Application()
-    daemon.configure_app(app)
-    daemon.start(app)
+    daemon.start()
