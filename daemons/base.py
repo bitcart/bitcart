@@ -45,7 +45,7 @@ class BaseDaemon:
             maybe_update_key(self.spec, custom_spec, "electrum_map")
             maybe_update_key(self.spec, custom_spec, "exceptions")
 
-    def get_error_code(self, error):
+    def get_error_code(self, error, fallback_code=-32603):
         """Get jsonrpc error code returned to client
 
         Matches error message from exceptions with loaded daemon spec
@@ -53,6 +53,7 @@ class BaseDaemon:
 
         Args:
             error (str): error message
+            fallback_code (int, optional): code to return if error is not found in the spec. Defaults to -32603.
 
         Returns:
             int: jsonrpc error code
@@ -61,7 +62,7 @@ class BaseDaemon:
         for error_message in self.spec["electrum_map"]:
             if error_message.lower() in error:
                 return self.spec["electrum_map"][error_message]
-        return -32603  # fallback
+        return fallback_code
 
     ### Base request handling ###
 

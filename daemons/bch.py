@@ -5,6 +5,7 @@ from utils import rpc
 class BCHDaemon(BTCDaemon):
     name = "BCH"
     ASYNC_CLIENT = False
+    HAS_FEE_ESTIMATES = False
     LIGHTNING_SUPPORTED = False
     DEFAULT_PORT = 5004
 
@@ -27,12 +28,10 @@ class BCHDaemon(BTCDaemon):
     def add_wallet_to_command(self, wallet, req_method, exec_method, **kwargs):
         return exec_method
 
-    def add_fallback_fee_estimates(self, config):
-        pass
-
     def setup_config_and_logging(self):
         self.electrum.util.set_verbosity(self.VERBOSE)
         self.electrum_config = self.create_config()
+        self.copy_config_settings(self.electrum_config)
 
     def register_callbacks(self):
         self.network.register_callback(self._process_events, self.AVAILABLE_EVENTS)

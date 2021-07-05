@@ -19,6 +19,8 @@ class BTCDaemon(BaseDaemon):
 
     # specify the module in subclass to use features from
     electrum: ModuleType
+    # whether the coin supports fee estimates or it is disabled
+    HAS_FEE_ESTIMATES = True
     # lightning support
     LIGHTNING_SUPPORTED = True
     # whether client is using asyncio or is synchronous
@@ -122,7 +124,6 @@ class BTCDaemon(BaseDaemon):
             "lightning": self.LIGHTNING,
             "lightning_listen": self.LIGHTNING_LISTEN,
             "use_exchange": self.EXCHANGE,
-            "currency": self.DEFAULT_CURRENCY,
             "server": self.SERVER,
             "oneserver": self.ONESERVER,
             "use_exchange_rate": True,
@@ -137,6 +138,7 @@ class BTCDaemon(BaseDaemon):
 
     def setup_config_and_logging(self):
         self.electrum_config = self.create_config()
+        self.copy_config_settings(self.electrum_config)
         self.configure_logging(self.electrum_config)
 
     def configure_logging(self, electrum_config):
@@ -177,19 +179,21 @@ class BTCDaemon(BaseDaemon):
         wallet.start_network(self.network)
         return wallet
 
-    def add_fallback_fee_estimates(self, config):
-        config.fee_estimates = self.network.config.fee_estimates.copy() or {
-            25: 1000,
-            10: 1000,
-            5: 1000,
-            2: 1000,
-        }
-        config.mempool_fees = self.network.config.mempool_fees.copy() or {
-            25: 1000,
-            10: 1000,
-            5: 1000,
-            2: 1000,
-        }
+    def copy_config_settings(self, config, per_wallet=False):
+        config.set_key("currency", self.DEFAULT_CURRENCY)
+        if self.HAS_FEE_ESTIMATES and per_wallet:
+            config.fee_estimates = self.network.config.fee_estimates.copy() or {
+                25: 1000,
+                10: 1000,
+                5: 1000,
+                2: 1000,
+            }
+            config.mempool_fees = self.network.config.mempool_fees.copy() or {
+                25: 1000,
+                10: 1000,
+                5: 1000,
+                2: 1000,
+            }
 
     # when daemon is syncing or is synced and wallet is not, prevent running commands to avoid unexpected results
     def is_still_syncing(self, wallet):
@@ -206,7 +210,7 @@ class BTCDaemon(BaseDaemon):
             wallet_data = self.wallets[xpub]
             return wallet_data["wallet"], wallet_data["cmd"], wallet_data["config"]
         config = self.create_config()
-        self.add_fallback_fee_estimates(config)
+        self.copy_config_settings(config, per_wallet=True)
         command_runner = self.create_commands(config)
         if not xpub:
             return None, command_runner, config
@@ -244,9 +248,11 @@ class BTCDaemon(BaseDaemon):
         wallet = cmd = config = error = None
         try:
             wallet, cmd, config = await self.load_wallet(xpub)
-        except Exception:
+        except Exception as e:
             if req_method not in self.supported_methods or self.supported_methods[req_method].requires_wallet:
-                error = JsonResponse(code=-32005, error="Error loading wallet", id=id)
+                error = JsonResponse(
+                    code=self.get_error_code(str(e), fallback_code=-32005), error="Error loading wallet", id=id
+                )
         return wallet, cmd, config, error
 
     async def get_exec_method(self, cmd, id, req_method):
@@ -288,9 +294,9 @@ class BTCDaemon(BaseDaemon):
                 xpub, req_method, req_args, req_kwargs, exec_method, custom, wallet=wallet, config=config
             )
             return JsonResponse(result=result, id=id).send()
-        except BaseException:
-            last_line = traceback.format_exc().splitlines()[-1]
-            return JsonResponse(code=self.get_error_code(last_line), error=last_line, id=id).send()
+        except BaseException as e:
+            error_message = str(e)
+            return JsonResponse(code=self.get_error_code(error_message), error=error_message, id=id).send()
 
     async def _process_events(self, event, *args):
         mapped_event = self.EVENT_MAPPING.get(event)
