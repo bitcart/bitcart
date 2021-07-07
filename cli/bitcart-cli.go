@@ -4,12 +4,37 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"log"
+	"io/ioutil"
+	"net/http"
 	"os"
 
 	"github.com/urfave/cli"
 	"github.com/ybbus/jsonrpc"
 )
+
+func getSpec(client *http.Client, endpoint string, user string, password string) map[string]interface{} {
+	req, err := http.NewRequest("GET", endpoint+"/spec", nil)
+	checkErr(err)
+	req.SetBasicAuth(user, password)
+	resp, err := client.Do(req)
+	checkErr(err)
+	defer resp.Body.Close()
+	bodyBytes, _ := ioutil.ReadAll(resp.Body)
+	var result map[string]interface{}
+	json.Unmarshal(bodyBytes, &result)
+	return result
+}
+
+func exitErr(err string) {
+	fmt.Println(err)
+	os.Exit(1)
+}
+
+func checkErr(err error) {
+	if err != nil {
+		exitErr("Error: " + err.Error())
+	}
+}
 
 func main() {
 	COINS := map[string]string{
@@ -80,8 +105,10 @@ func main() {
 			if url == "" {
 				url = COINS[coin]
 			}
+			httpClient := &http.Client{}
 			// initialize rpc client
 			rpcClient := jsonrpc.NewClientWithOpts(url, &jsonrpc.RPCClientOpts{
+				HTTPClient: httpClient,
 				CustomHeaders: map[string]string{
 					"Authorization": "Basic " + base64.StdEncoding.EncodeToString([]byte(user+":"+password)),
 				},
@@ -94,22 +121,28 @@ func main() {
 			}
 			params = append(params, map[string]interface{}{"xpub": wallet})
 			result, err := rpcClient.Call(args.Get(0), params)
-			if err != nil {
-				fmt.Println("Error:", err)
-				return nil
-			}
+			checkErr(err)
 			// Print either error if found or result
 			var b []byte
 			if result.Error != nil {
+				spec := getSpec(httpClient, url, user, password)
+				if spec["error"] != nil {
+					b, err = json.MarshalIndent(spec["error"], "", "  ")
+					checkErr(err)
+					exitErr(string(b))
+				}
 				b, err = json.MarshalIndent(result.Error, "", "  ")
+				exceptions := spec["exceptions"].(map[string]interface{})
+				error_code := fmt.Sprint(result.Error.Code)
+				if val, ok := exceptions[error_code]; ok {
+					v, _ := val.(map[string]interface{})
+					exitErr(v["exc_name"].(string) + ": " + v["docstring"].(string))
+				}
 			} else {
 				b, err = json.MarshalIndent(result.Result, "", "  ")
 			}
-			if err != nil {
-				fmt.Println("error:", err)
-				return nil
-			}
-			fmt.Println(string(b))
+			checkErr(err)
+			exitErr(string(b))
 		} else {
 			cli.ShowAppHelp(c)
 		}
@@ -117,7 +150,5 @@ func main() {
 	}
 
 	err := app.Run(os.Args)
-	if err != nil {
-		log.Fatal(err)
-	}
+	checkErr(err)
 }
