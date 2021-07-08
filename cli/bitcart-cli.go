@@ -4,12 +4,45 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"log"
+	"io/ioutil"
+	"net/http"
 	"os"
 
 	"github.com/urfave/cli"
 	"github.com/ybbus/jsonrpc"
 )
+
+var Version = "dev"
+
+func getSpec(client *http.Client, endpoint string, user string, password string) map[string]interface{} {
+	req, err := http.NewRequest("GET", endpoint+"/spec", nil)
+	checkErr(err)
+	req.SetBasicAuth(user, password)
+	resp, err := client.Do(req)
+	checkErr(err)
+	defer resp.Body.Close()
+	bodyBytes, _ := ioutil.ReadAll(resp.Body)
+	var result map[string]interface{}
+	json.Unmarshal(bodyBytes, &result)
+	return result
+}
+
+func exitErr(err string) {
+	fmt.Println(err)
+	os.Exit(1)
+}
+
+func checkErr(err error) {
+	if err != nil {
+		exitErr("Error: " + err.Error())
+	}
+}
+
+func jsonEncode(data interface{}) string {
+	b, err := json.MarshalIndent(data, "", "  ")
+	checkErr(err)
+	return string(b)
+}
 
 func main() {
 	COINS := map[string]string{
@@ -22,7 +55,7 @@ func main() {
 	}
 	app := cli.NewApp()
 	app.Name = "Bitcart CLI"
-	app.Version = "1.0.0"
+	app.Version = Version
 	app.HideHelp = true
 	app.Usage = "Call RPC methods from console"
 	app.UsageText = "bitcart-cli method [args]"
@@ -80,44 +113,46 @@ func main() {
 			if url == "" {
 				url = COINS[coin]
 			}
+			httpClient := &http.Client{}
 			// initialize rpc client
 			rpcClient := jsonrpc.NewClientWithOpts(url, &jsonrpc.RPCClientOpts{
+				HTTPClient: httpClient,
 				CustomHeaders: map[string]string{
 					"Authorization": "Basic " + base64.StdEncoding.EncodeToString([]byte(user+":"+password)),
 				},
 			})
-			// call RPC method
+			// some magic to make array with the last element being a dictionary with xpub in it
 			sl := args.Slice()[1:]
 			params := make([]interface{}, len(sl))
 			for i := range sl {
 				params[i] = sl[i]
 			}
 			params = append(params, map[string]interface{}{"xpub": wallet})
+			// call RPC method
 			result, err := rpcClient.Call(args.Get(0), params)
-			if err != nil {
-				fmt.Println("Error:", err)
-				return nil
-			}
+			checkErr(err)
 			// Print either error if found or result
-			var b []byte
 			if result.Error != nil {
-				b, err = json.MarshalIndent(result.Error, "", "  ")
+				spec := getSpec(httpClient, url, user, password)
+				if spec["error"] != nil {
+					exitErr(jsonEncode(spec["error"]))
+				}
+				exceptions := spec["exceptions"].(map[string]interface{})
+				errorCode := fmt.Sprint(result.Error.Code)
+				if exception, ok := exceptions[errorCode]; ok {
+					exception, _ := exception.(map[string]interface{})
+					exitErr(exception["exc_name"].(string) + ": " + exception["docstring"].(string))
+				}
+				exitErr(jsonEncode(result.Error))
 			} else {
-				b, err = json.MarshalIndent(result.Result, "", "  ")
-			}
-			if err != nil {
-				fmt.Println("error:", err)
+				fmt.Println(jsonEncode(result.Result))
 				return nil
 			}
-			fmt.Println(string(b))
 		} else {
 			cli.ShowAppHelp(c)
 		}
 		return nil
 	}
-
 	err := app.Run(os.Args)
-	if err != nil {
-		log.Fatal(err)
-	}
+	checkErr(err)
 }

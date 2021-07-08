@@ -136,22 +136,50 @@ jobs:
   deploy:
     docker:
       - image: cimg/python:3.7
+
     working_directory: ~/repo
+
     steps:
       - checkout
+
       - run:
           name: set up build environment
           command: |
             git clone https://github.com/bitcartcc/bitcart-docker
             cd bitcart-docker
             ./dev-setup.sh $CIRCLE_BRANCH
+
       - setup_remote_docker
+
       - run:
           name: Publish docker images
           command: |
             cd .circleci
             docker login --username=$DOCKER_USER --password=$DOCKER_PASS
             python3 build.py
+
+  deploy-cli:
+    docker:
+      - image: cimg/go
+
+    working_directory: ~/repo
+
+    steps:
+      - checkout
+
+      - run:
+          name: Build and publish Go CLI
+          command: |
+            cd cli
+            export VERSION="${CIRCLE_TAG#cli-}"
+            make get-deps
+            make build # ensure it works
+            make release ARGS="-ldflags '-X main.Version=$VERSION'"
+            go get github.com/tcnksm/ghr
+            ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -replace $CIRCLE_TAG dist/
+
+      - store_artifacts:
+          path: cli/dist
 
 workflows:
   version: 2
@@ -175,3 +203,13 @@ workflows:
               ignore: /.*/
             tags:
               only: /[0-9]+(\.[0-9]+)*/
+
+  cli:
+    jobs:
+      - deploy-cli:
+          context: global
+          filters:
+            branches:
+              ignore: /.*/
+            tags:
+              only: /cli-[0-9]+(\.[0-9]+)*/
