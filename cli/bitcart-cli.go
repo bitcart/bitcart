@@ -8,8 +8,8 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/urfave/cli"
-	"github.com/ybbus/jsonrpc"
+	"github.com/urfave/cli/v2"
+	"github.com/ybbus/jsonrpc/v2"
 )
 
 var Version = "dev"
