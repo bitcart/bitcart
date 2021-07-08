@@ -5,11 +5,11 @@ get-deps:
 	go get github.com/urfave/cli
 
 build:
-	go build bitcart-cli.go
+	go build ${ARGS} bitcart-cli.go
 
 dist:
 	go get github.com/mitchellh/gox
-	gox --output "dist/bitcart-cli-{{.OS}}-{{.Arch}}"
+	gox --output "dist/bitcart-cli-{{.OS}}-{{.Arch}}" ${ARGS}
 
 release: clean dist
 

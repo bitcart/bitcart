@@ -12,6 +12,8 @@ import (
 	"github.com/ybbus/jsonrpc"
 )
 
+var Version = "dev"
+
 func getSpec(client *http.Client, endpoint string, user string, password string) map[string]interface{} {
 	req, err := http.NewRequest("GET", endpoint+"/spec", nil)
 	checkErr(err)
@@ -36,6 +38,12 @@ func checkErr(err error) {
 	}
 }
 
+func jsonEncode(data interface{}) string {
+	b, err := json.MarshalIndent(data, "", "  ")
+	checkErr(err)
+	return string(b)
+}
+
 func main() {
 	COINS := map[string]string{
 		"btc":  "http://localhost:5000",
@@ -47,7 +55,7 @@ func main() {
 	}
 	app := cli.NewApp()
 	app.Name = "Bitcart CLI"
-	app.Version = "1.0.0"
+	app.Version = Version
 	app.HideHelp = true
 	app.Usage = "Call RPC methods from console"
 	app.UsageText = "bitcart-cli method [args]"
@@ -113,42 +121,38 @@ func main() {
 					"Authorization": "Basic " + base64.StdEncoding.EncodeToString([]byte(user+":"+password)),
 				},
 			})
-			// call RPC method
+			// some magic to make array with the last element being a dictionary with xpub in it
 			sl := args.Slice()[1:]
 			params := make([]interface{}, len(sl))
 			for i := range sl {
 				params[i] = sl[i]
 			}
 			params = append(params, map[string]interface{}{"xpub": wallet})
+			// call RPC method
 			result, err := rpcClient.Call(args.Get(0), params)
 			checkErr(err)
 			// Print either error if found or result
-			var b []byte
 			if result.Error != nil {
 				spec := getSpec(httpClient, url, user, password)
 				if spec["error"] != nil {
-					b, err = json.MarshalIndent(spec["error"], "", "  ")
-					checkErr(err)
-					exitErr(string(b))
+					exitErr(jsonEncode(spec["error"]))
 				}
-				b, err = json.MarshalIndent(result.Error, "", "  ")
 				exceptions := spec["exceptions"].(map[string]interface{})
-				error_code := fmt.Sprint(result.Error.Code)
-				if val, ok := exceptions[error_code]; ok {
-					v, _ := val.(map[string]interface{})
-					exitErr(v["exc_name"].(string) + ": " + v["docstring"].(string))
+				errorCode := fmt.Sprint(result.Error.Code)
+				if exception, ok := exceptions[errorCode]; ok {
+					exception, _ := exception.(map[string]interface{})
+					exitErr(exception["exc_name"].(string) + ": " + exception["docstring"].(string))
 				}
+				exitErr(jsonEncode(result.Error))
 			} else {
-				b, err = json.MarshalIndent(result.Result, "", "  ")
+				fmt.Println(jsonEncode(result.Result))
+				return nil
 			}
-			checkErr(err)
-			exitErr(string(b))
 		} else {
 			cli.ShowAppHelp(c)
 		}
 		return nil
 	}
-
 	err := app.Run(os.Args)
 	checkErr(err)
 }
