@@ -160,7 +160,7 @@ jobs:
 
   deploy-cli:
     docker:
-      - image: cimg/go
+      - image: cimg/go:1.16
 
     working_directory: ~/repo
 
