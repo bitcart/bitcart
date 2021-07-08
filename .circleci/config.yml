@@ -172,7 +172,6 @@ jobs:
           command: |
             cd cli
             export VERSION="${CIRCLE_TAG#cli-}"
-            make get-deps
             make build # ensure it works
             make release ARGS="-ldflags '-X main.Version=$VERSION'"
             go get github.com/tcnksm/ghr
