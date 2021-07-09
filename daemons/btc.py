@@ -317,7 +317,10 @@ class BTCDaemon(BaseDaemon):
                 self.wallets_updates[i].append(data)
 
     def _process_events_sync(self, event, *args):
-        asyncio.run_coroutine_threadsafe(self._process_events(event, *args), self.loop).result()
+        # NOTE: for sync clients it might not guarantee the right execution order because of event loop nature
+        # calling .result() here would result in a deadlock, because the code is run in main thread and not network thread
+        # revert this change if it would cause issues in the future
+        asyncio.run_coroutine_threadsafe(self._process_events(event, *args), self.loop)
 
     def process_new_block(self):
         height = self.network.get_local_height()
