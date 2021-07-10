@@ -369,12 +369,42 @@ class BTCDaemon(BaseDaemon):
         return updates
 
     @rpc
-    async def get_transaction(self, tx, wallet=None):
-        result = await self.network.interface.session.send_request("blockchain.transaction.get", [tx, True])
-        tx = self.electrum.transaction.Transaction(result["hex"])
+    async def verify_transaction(self, tx_hash, tx_height, wallet=None):
+        merkle = await self.network.get_merkle_for_transaction(tx_hash, tx_height)
+        tx_height = merkle.get("block_height")
+        pos = merkle.get("pos")
+        merkle_branch = merkle.get("merkle")
+        async with self.network.bhi_lock:
+            header = self.network.blockchain().read_header(tx_height)
+        self.electrum.verifier.verify_tx_is_in_block(tx_hash, merkle_branch, pos, header, tx_height)
+        return True
+
+    @rpc
+    async def get_transaction(self, tx_hash, wallet=None):
+        result = await self.network.get_transaction(tx_hash)
+        tx = self.electrum.transaction.Transaction(result)
         tx.deserialize()
         result_formatted = tx.to_json()
-        result_formatted.update({"confirmations": result.get("confirmations", 0)})
+        address = None
+        for output in result_formatted["outputs"]:
+            if output["address"] is not None:
+                address = output["address"]
+                break
+        if address is None:
+            raise Exception("Invalid transaction: output address is None")
+        scripthash = self.electrum.bitcoin.address_to_scripthash(address)
+        history = await self.network.get_history_for_scripthash(scripthash)
+        tx_height = None
+        for tx_info in history:
+            if tx_info["tx_hash"] == tx_hash:
+                tx_height = tx_info["height"]
+                break
+        if tx_height is None:
+            raise Exception("Invalid transaction: not included in address histories")
+        current_height = self.network.get_local_height()
+        confirmations = 0 if tx_height == 0 else current_height - tx_height + 1
+        result_formatted.update({"confirmations": confirmations})
+        await self.verify_transaction(tx_hash, tx_height)
         return result_formatted
 
     @rpc
