@@ -55,12 +55,15 @@ def queue():
 
 
 @pytest.fixture
-async def ipn_server(queue):
+async def ipn_server(queue, async_client):
     host = "0.0.0.0"
     port = 8080
 
     async def handle_post(request):
-        queue.put(await request.json())
+        data = await request.json()
+        # to ensure status during IPN matches the one sent
+        status = await get_status(async_client, data["id"])
+        queue.put((data, status))
         return web.json_response({})
 
     app = web.Application()
@@ -71,6 +74,12 @@ async def ipn_server(queue):
     await site.start()
     yield f"http://{host}:{port}"
     await runner.cleanup()
+
+
+def check_status(queue, data):
+    queue_data = queue.get()
+    assert queue_data[0] == data
+    assert queue_data[0]["status"] == queue_data[1]
 
 
 @pytest.mark.parametrize("speed", range(MAX_CONFIRMATION_WATCH + 1))
@@ -102,5 +111,5 @@ async def test_pay_flow(async_client, store, token, worker, queue, ipn_server, s
         await wait_for_confirmations(address, tx_hash, speed)
         assert await get_status(async_client, invoice_id) == "complete"
     assert queue.qsize() == 2
-    assert queue.get() == {"id": invoice["id"], "status": "paid"}
-    assert queue.get() == {"id": invoice["id"], "status": "complete"}
+    check_status(queue, {"id": invoice["id"], "status": "paid"})
+    check_status(queue, {"id": invoice["id"], "status": "complete"})

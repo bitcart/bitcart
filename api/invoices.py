@@ -131,6 +131,7 @@ async def get_confirmations(method, xpub):
 
 async def new_block_handler(instance, event, height):
     await asyncio.sleep(3)  # wait for electrum to update invoices
+    coros = []
     async for method, invoice, xpub in iterate_pending_invoices(instance.coin_name.lower()):
         with log_errors():  # issues processing one item
             if (
@@ -142,7 +143,9 @@ async def new_block_handler(instance, event, height):
             await invoice.load_data()
             confirmations = await get_confirmations(method, xpub)
             if confirmations != method.confirmations:
-                await update_confirmations(invoice, method, confirmations)
+                coros.append(update_confirmations(invoice, method, confirmations))
+    # NOTE: if another operation in progress exception occurs, make it await one by one
+    await asyncio.gather(*coros)
 
 
 async def invoice_notification(invoice: models.Invoice, status: str):
@@ -222,6 +225,7 @@ async def create_expired_tasks():
 
 
 async def check_pending(currency):
+    coros = []
     async for method, invoice, xpub in iterate_pending_invoices(currency):
         with log_errors():  # issues processing one item
             if invoice.status == InvoiceStatus.EXPIRED:
@@ -231,4 +235,5 @@ async def check_pending(currency):
                 invoice_data = await coin.get_invoice(method.rhash)
             else:
                 invoice_data = await coin.get_request(method.payment_address)
-            await mark_invoice_paid(invoice, method, xpub, invoice_data["status"])
+            coros.append(mark_invoice_paid(invoice, method, xpub, invoice_data["status"]))
+    await asyncio.gather(*coros)
