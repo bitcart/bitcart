@@ -25,13 +25,13 @@ class BTCDaemon(BaseDaemon):
     LIGHTNING_SUPPORTED = True
     # whether client is using asyncio or is synchronous
     ASYNC_CLIENT = True
-    # list of events to subscribe to
-    AVAILABLE_EVENTS = ["blockchain_updated", "new_transaction", "request_status"]
     # map electrum events to bitcart's own events
+    # we will only subscribe to the event keys specified
     EVENT_MAPPING = {
         "blockchain_updated": "new_block",
         "new_transaction": "new_transaction",
         "request_status": "new_payment",
+        "verified": "verified_tx",
     }
     # lightning methods, they have special guard for wallets not supporting it
     LIGHTNING_WALLET_METHODS = [
@@ -116,6 +116,11 @@ class BTCDaemon(BaseDaemon):
 
     @property
     @cached
+    def available_events(self):
+        return list(self.EVENT_MAPPING.keys())
+
+    @property
+    @cached
     def config_options(self):
         options = {
             "verbosity": self.VERBOSE,
@@ -146,7 +151,7 @@ class BTCDaemon(BaseDaemon):
         return self.electrum.daemon.Daemon(self.electrum_config, listen_jsonrpc=False)
 
     def register_callbacks(self, callback_function):
-        self.electrum.util.register_callback(callback_function, self.AVAILABLE_EVENTS)
+        self.electrum.util.register_callback(callback_function, self.available_events)
 
     async def on_startup(self, app):
         await super().on_startup(app)
@@ -328,10 +333,18 @@ class BTCDaemon(BaseDaemon):
             self.latest_height = height
             return height
 
-    def process_new_transaction(self, data, args):
+    def process_new_transaction(self, args):
         wallet, tx = args
-        data["tx"] = tx.txid()
-        return wallet
+        data = {"tx": tx.txid()}
+        return data, wallet
+
+    def process_verified_tx(self, args):
+        wallet, tx_hash, tx_mined_status = args
+        data = {
+            "tx": tx_hash,
+            "height": tx_mined_status.height,
+        }
+        return data, wallet
 
     def get_status_str(self, status):
         return self.electrum.invoices.pr_tooltips[status]
@@ -346,7 +359,7 @@ class BTCDaemon(BaseDaemon):
                 return None, None
             data["height"] = height
         elif event == "new_transaction":
-            wallet = self.process_new_transaction(data, args)
+            data, wallet = self.process_new_transaction(args)
         elif event == "new_payment":
             wallet, address, status = args
             data = {
@@ -354,6 +367,8 @@ class BTCDaemon(BaseDaemon):
                 "status": status,
                 "status_str": self.get_status_str(status),
             }
+        elif event == "verified_tx":
+            data, wallet = self.process_verified_tx(args)
         else:
             return None, None
         return data, wallet

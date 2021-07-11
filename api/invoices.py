@@ -148,6 +148,10 @@ async def new_block_handler(instance, event, height):
     await asyncio.gather(*coros)
 
 
+async def verified_tx_handler(instance, event, tx, height):
+    pass
+
+
 async def invoice_notification(invoice: models.Invoice, status: str):
     await utils.notifications.send_ipn(invoice, status)
     if status == InvoiceStatus.COMPLETE:

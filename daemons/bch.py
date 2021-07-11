@@ -9,11 +9,11 @@ class BCHDaemon(BTCDaemon):
     LIGHTNING_SUPPORTED = False
     DEFAULT_PORT = 5004
 
-    AVAILABLE_EVENTS = ["blockchain_updated", "new_transaction", "payment_received"]
     EVENT_MAPPING = {
         "blockchain_updated": "new_block",
         "new_transaction": "new_transaction",
         "payment_received": "new_payment",
+        "verified2": "verified_tx",
     }
 
     def load_electrum(self):
@@ -34,7 +34,7 @@ class BCHDaemon(BTCDaemon):
         self.copy_config_settings(self.electrum_config)
 
     def register_callbacks(self, callback_function):
-        self.network.register_callback(callback_function, self.AVAILABLE_EVENTS)
+        self.network.register_callback(callback_function, self.available_events)
 
     def create_daemon(self):
         return self.electrum.daemon.Daemon(self.electrum_config, fd=None, is_gui=False, plugins=[], listen_jsonrpc=False)
@@ -53,10 +53,18 @@ class BCHDaemon(BTCDaemon):
     def load_cmd_wallet(self, cmd, wallet, wallet_path):
         cmd.wallet = wallet
 
-    def process_new_transaction(self, data, args):
+    def process_new_transaction(self, args):
         tx, wallet = args
-        data["tx"] = tx.txid()
-        return wallet
+        data = {"tx": tx.txid()}
+        return data, wallet
+
+    def process_verified_tx(self, args):
+        wallet, tx_hash, height, _ = args
+        data = {
+            "tx": tx_hash,
+            "height": height,
+        }
+        return data, wallet
 
     def get_status_str(self, status):
         return self.electrum.paymentrequest.pr_tooltips[status]
