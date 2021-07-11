@@ -21,7 +21,6 @@ async def main():
     asyncio.ensure_future(run_repeated(tor_ext.refresh, 60 * 10, 10))
     asyncio.ensure_future(run_repeated(update_ext.refresh, 60 * 60 * 24))
     settings.manager.add_event_handler("new_payment", invoices.new_payment_handler)
-    settings.manager.add_event_handler("verified_tx", invoices.verified_tx_handler)
     settings.manager.add_event_handler("new_block", invoices.new_block_handler)
     await invoices.create_expired_tasks()  # to ensure invoices get expired actually
     coro = events.start_listening(tasks.event_handler)  # to avoid deleted task errors
