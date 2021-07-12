@@ -1,5 +1,6 @@
 import json
 import sys
+import traceback
 from base64 import b64decode
 from dataclasses import dataclass
 from decimal import Decimal
@@ -88,6 +89,10 @@ def parse_params(params):
         kwargs = params
         args = ()
     return args, kwargs
+
+
+def get_exception_message(e):
+    return traceback.format_exception_only(type(e), e)[-1].strip()
 
 
 @dataclass

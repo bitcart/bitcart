@@ -1,5 +1,5 @@
 from btc import BTCDaemon
-from utils import rpc
+from utils import get_exception_message, rpc
 
 
 class BCHDaemon(BTCDaemon):
@@ -60,6 +60,9 @@ class BCHDaemon(BTCDaemon):
 
     def get_status_str(self, status):
         return self.electrum.paymentrequest.pr_tooltips[status]
+
+    def get_exception_message(self, e):
+        return get_exception_message(e)
 
     @rpc
     async def get_transaction(self, tx, wallet=None):

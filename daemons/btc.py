@@ -9,7 +9,7 @@ from typing import Union
 from urllib.parse import urlparse
 
 from base import BaseDaemon
-from utils import JsonResponse, cached, format_satoshis, rpc
+from utils import JsonResponse, cached, format_satoshis, get_exception_message, rpc
 
 
 class BTCDaemon(BaseDaemon):
@@ -250,7 +250,9 @@ class BTCDaemon(BaseDaemon):
         except Exception as e:
             if req_method not in self.supported_methods or self.supported_methods[req_method].requires_wallet:
                 error = JsonResponse(
-                    code=self.get_error_code(str(e), fallback_code=-32005), error="Error loading wallet", id=id
+                    code=self.get_error_code(self.get_exception_message(e), fallback_code=-32005),
+                    error="Error loading wallet",
+                    id=id,
                 )
         return wallet, cmd, config, error
 
@@ -278,6 +280,11 @@ class BTCDaemon(BaseDaemon):
         result = exec_method(*req_args, **req_kwargs)
         return await result if inspect.isawaitable(result) else result
 
+    def get_exception_message(self, e):
+        if isinstance(e, self.electrum.network.UntrustedServerReturnedError):
+            return get_exception_message(e.original_exception)
+        return get_exception_message(e)
+
     async def execute_method(self, id, req_method, req_args, req_kwargs):
         xpub = req_kwargs.pop("xpub", None)
         wallet, cmd, config, error = await self._get_wallet(id, req_method, xpub)
@@ -294,7 +301,7 @@ class BTCDaemon(BaseDaemon):
             )
             return JsonResponse(result=result, id=id).send()
         except BaseException as e:
-            error_message = str(e)
+            error_message = self.get_exception_message(e)
             return JsonResponse(code=self.get_error_code(error_message), error=error_message, id=id).send()
 
     async def _process_events(self, event, *args):
