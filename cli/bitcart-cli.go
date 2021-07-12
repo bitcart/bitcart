@@ -1,12 +1,14 @@
 package main
 
 import (
+	"bytes"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/urfave/cli/v2"
 	"github.com/ybbus/jsonrpc/v2"
@@ -27,8 +29,13 @@ func getSpec(client *http.Client, endpoint string, user string, password string)
 	return result
 }
 
+func smartPrint(text string) {
+	text = strings.TrimRight(text, "\r\n")
+	fmt.Println(text)
+}
+
 func exitErr(err string) {
-	fmt.Println(err)
+	smartPrint(err)
 	os.Exit(1)
 }
 
@@ -39,9 +46,13 @@ func checkErr(err error) {
 }
 
 func jsonEncode(data interface{}) string {
-	b, err := json.MarshalIndent(data, "", "  ")
+	buf := new(bytes.Buffer)
+	encoder := json.NewEncoder(buf)
+	encoder.SetIndent("", "  ")
+	encoder.SetEscapeHTML(false)
+	err := encoder.Encode(data)
 	checkErr(err)
-	return string(b)
+	return string(buf.String())
 }
 
 func main() {
@@ -100,6 +111,12 @@ func main() {
 			Required: false,
 			EnvVars:  []string{"BITCART_DAEMON_URL"},
 		},
+		&cli.BoolFlag{
+			Name:    "no-spec",
+			Usage:   "Disables spec fetching for better exceptions display",
+			Value:   false,
+			EnvVars: []string{"BITCART_NO_SPEC"},
+		},
 	}
 	app.Action = func(c *cli.Context) error {
 		args := c.Args()
@@ -110,6 +127,7 @@ func main() {
 			password := c.String("password")
 			coin := c.String("coin")
 			url := c.String("url")
+			noSpec := c.Bool("no-spec")
 			if url == "" {
 				url = COINS[coin]
 			}
@@ -133,19 +151,21 @@ func main() {
 			checkErr(err)
 			// Print either error if found or result
 			if result.Error != nil {
-				spec := getSpec(httpClient, url, user, password)
-				if spec["error"] != nil {
-					exitErr(jsonEncode(spec["error"]))
-				}
-				exceptions := spec["exceptions"].(map[string]interface{})
-				errorCode := fmt.Sprint(result.Error.Code)
-				if exception, ok := exceptions[errorCode]; ok {
-					exception, _ := exception.(map[string]interface{})
-					exitErr(exception["exc_name"].(string) + ": " + exception["docstring"].(string))
+				if !noSpec {
+					spec := getSpec(httpClient, url, user, password)
+					if spec["error"] != nil {
+						exitErr(jsonEncode(spec["error"]))
+					}
+					exceptions := spec["exceptions"].(map[string]interface{})
+					errorCode := fmt.Sprint(result.Error.Code)
+					if exception, ok := exceptions[errorCode]; ok {
+						exception, _ := exception.(map[string]interface{})
+						exitErr(exception["exc_name"].(string) + ": " + exception["docstring"].(string))
+					}
 				}
 				exitErr(jsonEncode(result.Error))
 			} else {
-				fmt.Println(jsonEncode(result.Result))
+				smartPrint(jsonEncode(result.Result))
 				return nil
 			}
 		} else {

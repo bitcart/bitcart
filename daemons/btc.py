@@ -9,7 +9,7 @@ from typing import Union
 from urllib.parse import urlparse
 
 from base import BaseDaemon
-from utils import JsonResponse, cached, format_satoshis, rpc
+from utils import JsonResponse, cached, format_satoshis, get_exception_message, rpc
 
 
 class BTCDaemon(BaseDaemon):
@@ -255,7 +255,9 @@ class BTCDaemon(BaseDaemon):
         except Exception as e:
             if req_method not in self.supported_methods or self.supported_methods[req_method].requires_wallet:
                 error = JsonResponse(
-                    code=self.get_error_code(str(e), fallback_code=-32005), error="Error loading wallet", id=id
+                    code=self.get_error_code(self.get_exception_message(e), fallback_code=-32005),
+                    error="Error loading wallet",
+                    id=id,
                 )
         return wallet, cmd, config, error
 
@@ -283,6 +285,11 @@ class BTCDaemon(BaseDaemon):
         result = exec_method(*req_args, **req_kwargs)
         return await result if inspect.isawaitable(result) else result
 
+    def get_exception_message(self, e):
+        if isinstance(e, self.electrum.network.UntrustedServerReturnedError):
+            return get_exception_message(e.original_exception)
+        return get_exception_message(e)
+
     async def execute_method(self, id, req_method, req_args, req_kwargs):
         xpub = req_kwargs.pop("xpub", None)
         wallet, cmd, config, error = await self._get_wallet(id, req_method, xpub)
@@ -299,7 +306,7 @@ class BTCDaemon(BaseDaemon):
             )
             return JsonResponse(result=result, id=id).send()
         except BaseException as e:
-            error_message = str(e)
+            error_message = self.get_exception_message(e)
             return JsonResponse(code=self.get_error_code(error_message), error=error_message, id=id).send()
 
     async def _process_events(self, event, *args):
@@ -383,14 +390,55 @@ class BTCDaemon(BaseDaemon):
         self.wallets_updates[wallet] = []
         return updates
 
-    @rpc
-    async def get_transaction(self, tx, wallet=None):
-        result = await self.network.interface.session.send_request("blockchain.transaction.get", [tx, True])
+    async def _verify_transaction(self, tx_hash, tx_height):
+        merkle = await self.network.get_merkle_for_transaction(tx_hash, tx_height)
+        tx_height = merkle.get("block_height")
+        pos = merkle.get("pos")
+        merkle_branch = merkle.get("merkle")
+        async with self.network.bhi_lock:
+            header = self.network.blockchain().read_header(tx_height)
+        self.electrum.verifier.verify_tx_is_in_block(tx_hash, merkle_branch, pos, header, tx_height)
+
+    async def _get_transaction_verbose(self, tx_hash):
+        result = await self.network.interface.session.send_request("blockchain.transaction.get", [tx_hash, True])
         tx = self.electrum.transaction.Transaction(result["hex"])
         tx.deserialize()
         result_formatted = tx.to_json()
         result_formatted.update({"confirmations": result.get("confirmations", 0)})
         return result_formatted
+
+    async def _get_transaction_spv(self, tx_hash):
+        # Temporarily used to remove frequent CI failures in get_tx until electrum protocol 1.5 is released
+        # Note that this is not efficient, that's why it's not default yet
+        result = await self.network.get_transaction(tx_hash)
+        tx = self.electrum.transaction.Transaction(result)
+        tx.deserialize()
+        result_formatted = tx.to_json()
+        address = None
+        for output in result_formatted["outputs"]:
+            if output["address"] is not None:
+                address = output["address"]
+                break
+        if address is None:
+            raise Exception("Invalid transaction: output address is None")
+        scripthash = self.electrum.bitcoin.address_to_scripthash(address)
+        history = await self.network.get_history_for_scripthash(scripthash)
+        tx_height = None
+        for tx_info in history:
+            if tx_info["tx_hash"] == tx_hash:
+                tx_height = tx_info["height"]
+                break
+        if tx_height is None:
+            raise Exception("Invalid transaction: not included in address histories")
+        current_height = self.network.get_local_height()
+        confirmations = 0 if tx_height == 0 else current_height - tx_height + 1
+        result_formatted.update({"confirmations": confirmations})
+        await self._verify_transaction(tx_hash, tx_height)
+        return result_formatted
+
+    @rpc
+    async def get_transaction(self, tx_hash, use_spv=False, wallet=None):
+        return await self._get_transaction_spv(tx_hash) if use_spv else await self._get_transaction_verbose(tx_hash)
 
     @rpc
     def exchange_rate(self, currency=None, wallet=None) -> str:
