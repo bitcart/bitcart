@@ -375,8 +375,7 @@ class BTCDaemon(BaseDaemon):
         self.wallets_updates[wallet] = []
         return updates
 
-    @rpc
-    async def verify_transaction(self, tx_hash, tx_height, wallet=None):
+    async def _verify_transaction(self, tx_hash, tx_height):
         merkle = await self.network.get_merkle_for_transaction(tx_hash, tx_height)
         tx_height = merkle.get("block_height")
         pos = merkle.get("pos")
@@ -384,10 +383,18 @@ class BTCDaemon(BaseDaemon):
         async with self.network.bhi_lock:
             header = self.network.blockchain().read_header(tx_height)
         self.electrum.verifier.verify_tx_is_in_block(tx_hash, merkle_branch, pos, header, tx_height)
-        return True
 
-    @rpc
-    async def get_transaction(self, tx_hash, wallet=None):
+    async def _get_transaction_verbose(self, tx_hash):
+        result = await self.network.interface.session.send_request("blockchain.transaction.get", [tx_hash, True])
+        tx = self.electrum.transaction.Transaction(result["hex"])
+        tx.deserialize()
+        result_formatted = tx.to_json()
+        result_formatted.update({"confirmations": result.get("confirmations", 0)})
+        return result_formatted
+
+    async def _get_transaction_spv(self, tx_hash):
+        # Temporarily used to remove frequent CI failures in get_tx until electrum protocol 1.5 is released
+        # Note that this is not efficient, that's why it's not default yet
         result = await self.network.get_transaction(tx_hash)
         tx = self.electrum.transaction.Transaction(result)
         tx.deserialize()
@@ -411,8 +418,12 @@ class BTCDaemon(BaseDaemon):
         current_height = self.network.get_local_height()
         confirmations = 0 if tx_height == 0 else current_height - tx_height + 1
         result_formatted.update({"confirmations": confirmations})
-        await self.verify_transaction(tx_hash, tx_height)
+        await self._verify_transaction(tx_hash, tx_height)
         return result_formatted
+
+    @rpc
+    async def get_transaction(self, tx_hash, use_spv=False, wallet=None):
+        return await self._get_transaction_spv(tx_hash) if use_spv else await self._get_transaction_verbose(tx_hash)
 
     @rpc
     def exchange_rate(self, currency=None, wallet=None) -> str:
