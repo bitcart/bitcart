@@ -395,7 +395,9 @@ class BTCDaemon(BaseDaemon):
         tx_height = merkle.get("block_height")
         pos = merkle.get("pos")
         merkle_branch = merkle.get("merkle")
-        async with self.network.bhi_lock:
+        header = self.network.blockchain().read_header(tx_height)
+        if header is None and tx_height <= self.network.get_local_height():
+            await self.network.request_chunk(tx_height, None, can_return_early=True)
             header = self.network.blockchain().read_header(tx_height)
         self.electrum.verifier.verify_tx_is_in_block(tx_hash, merkle_branch, pos, header, tx_height)
 
