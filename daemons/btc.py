@@ -9,7 +9,7 @@ from typing import Union
 from urllib.parse import urlparse
 
 from base import BaseDaemon
-from utils import JsonResponse, cached, format_satoshis, get_exception_message, rpc
+from utils import JsonResponse, cached, format_satoshis, get_exception_message, hide_logging_errors, rpc
 
 
 class BTCDaemon(BaseDaemon):
@@ -33,17 +33,6 @@ class BTCDaemon(BaseDaemon):
         "request_status": "new_payment",
         "verified": "verified_tx",
     }
-    # lightning methods, they have special guard for wallets not supporting it
-    LIGHTNING_WALLET_METHODS = [
-        "add_peer",
-        "nodeid",
-        "add_lightning_request",
-        "open_channel",
-        "close_channel",
-        "lnpay",
-        "list_channels",
-        "list_peers",
-    ]
     # override if your daemon has different networks than default electrum provides
     NETWORK_MAPPING: dict = {}
 
@@ -81,6 +70,9 @@ class BTCDaemon(BaseDaemon):
         self.NET = self.config("NETWORK", default="mainnet")
         self.LIGHTNING = self.config("LIGHTNING", cast=bool, default=False) if self.LIGHTNING_SUPPORTED else False
         self.LIGHTNING_LISTEN = self.config("LIGHTNING_LISTEN", cast=str, default="") if self.LIGHTNING_SUPPORTED else ""
+        self.LIGHTNING_GOSSIP = (
+            self.config("LIGHTNING_GOSSIP", cast=bool, default=False) if self.LIGHTNING_SUPPORTED else False
+        )
         self.DEFAULT_CURRENCY = self.config("FIAT_CURRENCY", default="USD")
         self.EXCHANGE = self.config(
             "FIAT_EXCHANGE",
@@ -95,6 +87,7 @@ class BTCDaemon(BaseDaemon):
             "testnet": self.electrum.constants.set_testnet,
             "regtest": self.electrum.constants.set_regtest,
             "simnet": self.electrum.constants.set_simnet,
+            "signet": self.electrum.constants.set_signet,
         }
 
     def get_proxy_settings(self):
@@ -126,6 +119,7 @@ class BTCDaemon(BaseDaemon):
             "verbosity": self.VERBOSE,
             "lightning": self.LIGHTNING,
             "lightning_listen": self.LIGHTNING_LISTEN,
+            "use_gossip": self.LIGHTNING_GOSSIP,
             "use_exchange": self.EXCHANGE,
             "server": self.SERVER,
             "oneserver": self.ONESERVER,
@@ -173,13 +167,6 @@ class BTCDaemon(BaseDaemon):
     def create_wallet(self, storage, config):
         db = self.electrum.wallet_db.WalletDB(storage.read(), manual_upgrades=False)
         wallet = self.electrum.wallet.Wallet(db=db, storage=storage, config=config)
-        if self.LIGHTNING:
-            try:
-                wallet.init_lightning()
-                wallet = self.electrum.wallet.Wallet(db=db, storage=storage, config=config)  # to load lightning keys
-                wallet.has_lightning = True
-            except AssertionError:
-                wallet.has_lightning = False
         wallet.start_network(self.network)
         return wallet
 
@@ -234,9 +221,10 @@ class BTCDaemon(BaseDaemon):
         return wallet, command_runner, config
 
     def add_wallet_to_command(self, wallet, req_method, exec_method, **kwargs):
-        if self.electrum.commands.known_commands[req_method].requires_wallet:
+        method_data = self.get_method_data(req_method, custom=False)
+        if method_data.requires_wallet:
             config = kwargs.get("config")
-            cmd_name = self.electrum.commands.known_commands[req_method].name
+            cmd_name = method_data.name
             need_path = cmd_name in ["create", "restore"]
             path = wallet.storage.path if wallet else (config.get_wallet_path() if need_path else None)
             exec_method = functools.partial(exec_method, wallet=path)
@@ -280,10 +268,13 @@ class BTCDaemon(BaseDaemon):
             exec_method = self.add_wallet_to_command(wallet, req_method, exec_method, **kwargs)
         else:
             exec_method = functools.partial(exec_method, wallet=xpub)
-        if self.LIGHTNING and req_method in self.LIGHTNING_WALLET_METHODS and not wallet.has_lightning:
+        if self.LIGHTNING and self.get_method_data(req_method, custom).requires_lightning and not wallet.has_lightning():
+            if wallet.can_have_deterministic_lightning():
+                raise Exception("Lightning not enabled, wallet re-creation needed (electrum 4.1 upgrade)")
             raise Exception("Lightning not supported in this wallet type")
-        result = exec_method(*req_args, **req_kwargs)
-        return await result if inspect.isawaitable(result) else result
+        with hide_logging_errors(not self.VERBOSE):
+            result = exec_method(*req_args, **req_kwargs)
+            return await result if inspect.isawaitable(result) else result
 
     def get_exception_message(self, e):
         if isinstance(e, self.electrum.network.UntrustedServerReturnedError):
