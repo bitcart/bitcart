@@ -167,6 +167,11 @@ class BTCDaemon(BaseDaemon):
     def create_wallet(self, storage, config):
         db = self.electrum.wallet_db.WalletDB(storage.read(), manual_upgrades=False)
         wallet = self.electrum.wallet.Wallet(db=db, storage=storage, config=config)
+        if self.LIGHTNING:
+            try:
+                wallet.init_lightning(password=None)
+            except AssertionError:
+                pass
         wallet.start_network(self.network)
         return wallet
 
