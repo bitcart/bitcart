@@ -193,10 +193,11 @@ class Wallet(BaseModel):
 
     async def validate(self, **kwargs):
         await super().validate(**kwargs)
-        currency = kwargs.get("currency", self.currency)
-        coin = settings.get_coin(currency)
-        if not await coin.validate_key(kwargs.get("xpub")):
-            raise HTTPException(422, "Wallet key invalid")
+        if "xpub" in kwargs:
+            currency = kwargs.get("currency", self.currency)
+            coin = settings.get_coin(currency)
+            if not await coin.validate_key(kwargs["xpub"]):
+                raise HTTPException(422, "Wallet key invalid")
 
 
 class Notification(BaseModel):
