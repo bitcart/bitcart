@@ -12,6 +12,7 @@ from starlette.testclient import TestClient
 from api import invoices, models, schemes, settings, templates, utils
 from api.constants import DOCKER_REPO_URL, SUPPORTED_CRYPTOS
 from api.ext import tor as tor_ext
+from api.invoices import InvoiceStatus
 from tests.fixtures import static_data
 from tests.helper import create_invoice, create_product, create_token, create_user, create_wallet
 
@@ -640,7 +641,7 @@ async def test_invoice_ws(async_client, token: str, store):
     async with async_client.websocket_connect(f"/ws/invoices/{invoice_id}") as websocket:
         await asyncio.sleep(1)
         await invoices.new_payment_handler(
-            DummyInstance(), None, data["payments"][0]["payment_address"], "Paid", None
+            DummyInstance(), None, data["payments"][0]["payment_address"], InvoiceStatus.UNCONFIRMED, None
         )  # emulate paid invoice
         await check_ws_response(websocket)
         async with async_client.websocket_connect(
