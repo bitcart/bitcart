@@ -117,6 +117,7 @@ class BTCDaemon(BaseDaemon):
     def config_options(self):
         options = {
             "verbosity": self.VERBOSE,
+            "lightning": self.LIGHTNING,  # used by SDK to query whether lightning is enabled
             "lightning_listen": self.LIGHTNING_LISTEN,
             "use_gossip": self.LIGHTNING_GOSSIP,
             "use_exchange": self.EXCHANGE,
