@@ -117,7 +117,6 @@ class BTCDaemon(BaseDaemon):
     def config_options(self):
         options = {
             "verbosity": self.VERBOSE,
-            "lightning": self.LIGHTNING,
             "lightning_listen": self.LIGHTNING_LISTEN,
             "use_gossip": self.LIGHTNING_GOSSIP,
             "use_exchange": self.EXCHANGE,
@@ -274,8 +273,6 @@ class BTCDaemon(BaseDaemon):
         else:
             exec_method = functools.partial(exec_method, wallet=xpub)
         if self.LIGHTNING and self.get_method_data(req_method, custom).requires_lightning and not wallet.has_lightning():
-            if wallet.can_have_deterministic_lightning():
-                raise Exception("Lightning not enabled, wallet re-creation needed (electrum 4.1 upgrade)")
             raise Exception("Lightning not supported in this wallet type")
         with hide_logging_errors(not self.VERBOSE):
             result = exec_method(*req_args, **req_kwargs)
