@@ -309,6 +309,8 @@ class BTCDaemon(BaseDaemon):
             )
             return JsonResponse(result=result, id=id).send()
         except BaseException as e:
+            if self.VERBOSE:
+                print(traceback.format_exc())
             error_message = self.get_exception_message(e)
             return JsonResponse(code=self.get_error_code(error_message), error=error_message, id=id).send()
 
