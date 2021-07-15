@@ -134,8 +134,8 @@ dnspython==2.0.0 \
     --hash=sha256:044af09374469c3a39eeea1a146e8cac27daec951f1f1f157b1962fc7cb9d1b7 \
     --hash=sha256:40bb3c24b9d4ec12500f0124288a65df232a3aa749bb0c39734b782873a2544d
     # via electrum
-https://github.com/spesmilo/electrum/archive/cf7f66e9e6b011f95668bbadc79d869e7a4c221a.zip#egg=electrum[crypto] \
-    --hash=sha256:01d164f37e776ef14c74df157431c99519ee0c6b7561a35f0bd28820995b5816
+https://github.com/spesmilo/electrum/archive/aafa74ed082edbc01d44bbf874a645c4a43c88aa.zip#egg=electrum[crypto] \
+    --hash=sha256:f8ea37a0d6282c28105b64e8d8fe37c00539cab0162a1be28abf54fb6822da3a
     # via -r requirements/daemons/btc.txt
 helpdev==0.7.1 \
     --hash=sha256:779a761b18c2d96fb181aa699609f802347806125f2fee2f60dad875a625e38e \
