@@ -44,6 +44,6 @@ electrumx:
 	tests/functional/bootstrap/start_electrumx.sh
 
 functional:
-	pytest tests/functional/ --cov-append ${TEST_ARGS}
+	BTC_LIGHTNING=true pytest tests/functional/ --cov-append ${TEST_ARGS}
 
 ci: checkformat lint test

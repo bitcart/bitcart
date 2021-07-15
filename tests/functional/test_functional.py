@@ -39,6 +39,7 @@ async def wait_for_balance(address, expected_balance):
         await asyncio.sleep(1)
         if balance >= expected_balance:
             break
+    await asyncio.sleep(3)
 
 
 async def wait_for_confirmations(address, tx_hash, expected_confirmations):
@@ -74,6 +75,7 @@ async def wait_for_channel_opening(regtest_wallet, channel_point):
         await asyncio.sleep(1)
         if channel["state"] == "OPEN":
             break
+    await asyncio.sleep(1)
 
 
 @pytest.fixture
