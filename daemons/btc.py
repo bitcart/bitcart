@@ -155,6 +155,14 @@ class BTCDaemon(BaseDaemon):
         self.register_callbacks(callback_function)
         self.fx = self.daemon.fx
 
+    async def shutdown_daemon(self):
+        if self.daemon:
+            await self.loop.run_in_executor(None, self.daemon.on_stop)
+
+    async def on_shutdown(self, app):
+        await self.shutdown_daemon()
+        await super().on_shutdown(app)
+
     def create_commands(self, config):
         return self.electrum.commands.Commands(config=config, network=self.network, daemon=self.daemon)
 
@@ -247,9 +255,10 @@ class BTCDaemon(BaseDaemon):
             wallet, cmd, config = await self.load_wallet(xpub)
         except Exception as e:
             if req_method not in self.supported_methods or self.supported_methods[req_method].requires_wallet:
+                error_message = self.get_exception_message(e)
                 error = JsonResponse(
-                    code=self.get_error_code(self.get_exception_message(e), fallback_code=-32005),
-                    error="Error loading wallet",
+                    code=self.get_error_code(error_message, fallback_code=-32005),
+                    error=error_message,
                     id=id,
                 )
         return wallet, cmd, config, error
