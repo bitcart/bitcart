@@ -21,6 +21,12 @@ class BTCDaemon(BaseDaemon):
     electrum: ModuleType
     # whether the coin supports fee estimates or it is disabled
     HAS_FEE_ESTIMATES = True
+    FALLBACK_FEE_ESTIMATES = {
+        25: 1000,
+        10: 1000,
+        5: 1000,
+        2: 1000,
+    }
     # lightning support
     LIGHTNING_SUPPORTED = True
     # whether client is using asyncio or is synchronous
@@ -186,18 +192,12 @@ class BTCDaemon(BaseDaemon):
     def copy_config_settings(self, config, per_wallet=False):
         config.set_key("currency", self.DEFAULT_CURRENCY)
         if self.HAS_FEE_ESTIMATES and per_wallet:
-            config.fee_estimates = self.network.config.fee_estimates.copy() or {
-                25: 1000,
-                10: 1000,
-                5: 1000,
-                2: 1000,
-            }
-            config.mempool_fees = self.network.config.mempool_fees.copy() or {
-                25: 1000,
-                10: 1000,
-                5: 1000,
-                2: 1000,
-            }
+            config.fee_estimates = (
+                self.network.config.fee_estimates if self.network.config.fee_estimates else self.FALLBACK_FEE_ESTIMATES
+            )
+            config.mempool_fees = (
+                self.network.config.mempool_fees if self.network.config.mempool_fees else self.FALLBACK_FEE_ESTIMATES
+            )
 
     # when daemon is syncing or is synced and wallet is not, prevent running commands to avoid unexpected results
     def is_still_syncing(self, wallet):
