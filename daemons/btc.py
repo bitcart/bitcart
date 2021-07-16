@@ -254,6 +254,8 @@ class BTCDaemon(BaseDaemon):
         try:
             wallet, cmd, config = await self.load_wallet(xpub)
         except Exception as e:
+            if self.VERBOSE:
+                print(traceback.format_exc())
             if req_method not in self.supported_methods or self.supported_methods[req_method].requires_wallet:
                 error_message = self.get_exception_message(e)
                 error = JsonResponse(
