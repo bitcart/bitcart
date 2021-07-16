@@ -5,7 +5,6 @@ from utils import get_exception_message, rpc
 class BCHDaemon(BTCDaemon):
     name = "BCH"
     ASYNC_CLIENT = False
-    HAS_FEE_ESTIMATES = False
     LIGHTNING_SUPPORTED = False
     DEFAULT_PORT = 5004
 

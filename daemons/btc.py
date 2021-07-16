@@ -19,14 +19,6 @@ class BTCDaemon(BaseDaemon):
 
     # specify the module in subclass to use features from
     electrum: ModuleType
-    # whether the coin supports fee estimates or it is disabled
-    HAS_FEE_ESTIMATES = True
-    FALLBACK_FEE_ESTIMATES = {
-        25: 1000,
-        10: 1000,
-        5: 1000,
-        2: 1000,
-    }
     # lightning support
     LIGHTNING_SUPPORTED = True
     # whether client is using asyncio or is synchronous
@@ -189,15 +181,8 @@ class BTCDaemon(BaseDaemon):
         wallet.start_network(self.network)
         return wallet
 
-    def copy_config_settings(self, config, per_wallet=False):
+    def copy_config_settings(self, config):
         config.set_key("currency", self.DEFAULT_CURRENCY)
-        if self.HAS_FEE_ESTIMATES and per_wallet:
-            config.fee_estimates = (
-                self.network.config.fee_estimates if self.network.config.fee_estimates else self.FALLBACK_FEE_ESTIMATES
-            )
-            config.mempool_fees = (
-                self.network.config.mempool_fees if self.network.config.mempool_fees else self.FALLBACK_FEE_ESTIMATES
-            )
 
     # when daemon is syncing or is synced and wallet is not, prevent running commands to avoid unexpected results
     def is_still_syncing(self, wallet):
@@ -209,15 +194,13 @@ class BTCDaemon(BaseDaemon):
             and (not wallet.is_up_to_date() or server_height == 0 or server_lag > 1)
         )
 
-    async def load_wallet(self, xpub):
+    async def load_wallet(self, xpub, config):
         if xpub in self.wallets:
             wallet_data = self.wallets[xpub]
-            return wallet_data["wallet"], wallet_data["cmd"], wallet_data["config"]
-        config = self.create_config()
-        self.copy_config_settings(config, per_wallet=True)
+            return wallet_data["wallet"], wallet_data["cmd"]
         command_runner = self.create_commands(config)
         if not xpub:
-            return None, command_runner, config
+            return None, command_runner
 
         # get wallet on disk
         wallet_dir = os.path.dirname(config.get_wallet_path())
@@ -229,9 +212,9 @@ class BTCDaemon(BaseDaemon):
         self.load_cmd_wallet(command_runner, wallet, wallet_path)
         while self.is_still_syncing(wallet):
             await asyncio.sleep(0.1)
-        self.wallets[xpub] = {"wallet": wallet, "cmd": command_runner, "config": config}
+        self.wallets[xpub] = {"wallet": wallet, "cmd": command_runner}
         self.wallets_updates[xpub] = []
-        return wallet, command_runner, config
+        return wallet, command_runner
 
     def add_wallet_to_command(self, wallet, req_method, exec_method, **kwargs):
         method_data = self.get_method_data(req_method, custom=False)
@@ -250,9 +233,9 @@ class BTCDaemon(BaseDaemon):
             return self.electrum.commands.known_commands[method]
 
     async def _get_wallet(self, id, req_method, xpub):
-        wallet = cmd = config = error = None
+        wallet = cmd = error = None
         try:
-            wallet, cmd, config = await self.load_wallet(xpub)
+            wallet, cmd = await self.load_wallet(xpub, config=self.electrum_config)
         except Exception as e:
             if self.VERBOSE:
                 print(traceback.format_exc())
@@ -263,7 +246,7 @@ class BTCDaemon(BaseDaemon):
                     error=error_message,
                     id=id,
                 )
-        return wallet, cmd, config, error
+        return wallet, cmd, error
 
     async def get_exec_method(self, cmd, id, req_method):
         error = None
@@ -297,7 +280,7 @@ class BTCDaemon(BaseDaemon):
 
     async def execute_method(self, id, req_method, req_args, req_kwargs):
         xpub = req_kwargs.pop("xpub", None)
-        wallet, cmd, config, error = await self._get_wallet(id, req_method, xpub)
+        wallet, cmd, error = await self._get_wallet(id, req_method, xpub)
         if error:
             return error.send()
         exec_method, custom, error = await self.get_exec_method(cmd, id, req_method)
@@ -307,7 +290,7 @@ class BTCDaemon(BaseDaemon):
             return JsonResponse(code=-32000, error="Wallet not loaded", id=id).send()
         try:
             result = await self.get_exec_result(
-                xpub, req_method, req_args, req_kwargs, exec_method, custom, wallet=wallet, config=config
+                xpub, req_method, req_args, req_kwargs, exec_method, custom, wallet=wallet, config=self.electrum_config
             )
             return JsonResponse(result=result, id=id).send()
         except BaseException as e:
