@@ -122,6 +122,7 @@ class BTCDaemon(BaseDaemon):
             "server": self.SERVER,
             "oneserver": self.ONESERVER,
             "use_exchange_rate": True,
+            "forget_config": True,
             "electrum_path": self.DATA_PATH,
             self.NET.lower(): True,
         }
