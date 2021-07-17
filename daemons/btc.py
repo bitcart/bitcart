@@ -186,13 +186,13 @@ class BTCDaemon(BaseDaemon):
         config.set_key("currency", self.DEFAULT_CURRENCY)
 
     # when daemon is syncing or is synced and wallet is not, prevent running commands to avoid unexpected results
-    def is_still_syncing(self, wallet):
+    def is_still_syncing(self, wallet=None):
         server_height = self.network.get_server_height()
         server_lag = self.network.get_local_height() - server_height
         return (
             self.network.is_connecting()
             or self.network.is_connected()
-            and (not wallet.is_up_to_date() or server_height == 0 or server_lag > 1)
+            and (server_height == 0 or server_lag > 1 or (wallet and not wallet.is_up_to_date()))
         )
 
     async def load_wallet(self, xpub, config):
@@ -211,8 +211,6 @@ class BTCDaemon(BaseDaemon):
         storage = self.electrum.storage.WalletStorage(wallet_path)
         wallet = self.create_wallet(storage, config)
         self.load_cmd_wallet(command_runner, wallet, wallet_path)
-        while self.is_still_syncing(wallet):
-            await asyncio.sleep(0.1)
         self.wallets[xpub] = {"wallet": wallet, "cmd": command_runner}
         self.wallets_updates[xpub] = []
         return wallet, command_runner
@@ -237,6 +235,8 @@ class BTCDaemon(BaseDaemon):
         wallet = cmd = error = None
         try:
             wallet, cmd = await self.load_wallet(xpub, config=self.electrum_config)
+            while self.is_still_syncing(wallet):
+                await asyncio.sleep(0.1)
         except Exception as e:
             if self.VERBOSE:
                 print(traceback.format_exc())
