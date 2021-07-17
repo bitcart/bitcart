@@ -296,11 +296,6 @@
         "divisibility": 8,
         "crypto": true
     },
-    "GZRO": {
-        "name": "GZRO",
-        "divisibility": 8,
-        "crypto": true
-    },
     "BSTY": {
         "name": "BSTY",
         "divisibility": 8,

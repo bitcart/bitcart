@@ -59,7 +59,6 @@ func main() {
 	COINS := map[string]string{
 		"btc":  "http://localhost:5000",
 		"ltc":  "http://localhost:5001",
-		"gzro": "http://localhost:5002",
 		"bsty": "http://localhost:5003",
 		"bch":  "http://localhost:5004",
 		"xrg":  "http://localhost:5005",
