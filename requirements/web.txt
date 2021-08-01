@@ -4,7 +4,7 @@ email-validator
 gino
 passlib[bcrypt]
 bitcart
-aioredis
+aioredis<2.0 # TODO: upgrade after a few bugfix releases
 uvicorn[standard]
 alembic
 psycopg2-binary
