@@ -106,6 +106,7 @@ async def _create_payment_method(invoice, wallet, product, store, discounts, pro
         node_id=node_id,
         recommended_fee=recommended_fee,
         confirmations=0,
+        label=wallet.label,
         created=utils.time.now(),
     )
 
@@ -161,7 +162,7 @@ def get_methods_inds(methods: list):
     currencies = defaultdict(int)
     met = defaultdict(int)
     for item in methods:
-        if not item.lightning:
+        if not item.label and not item.lightning:  # custom label not counted
             currencies[item.currency] += 1
     for item in methods:
         if not item.lightning:

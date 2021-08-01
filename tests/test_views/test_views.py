@@ -1107,3 +1107,21 @@ def test_invoice_products_access_control(client: TestClient):
     assert client.post("/invoices", json={"price": 5, "store_id": store_id1, "products": [product_id2]}).status_code == 403
     assert client.post("/invoices", json={"price": 5, "store_id": store_id2, "products": [product_id2]}).status_code == 200
     assert client.post("/invoices", json={"price": 5, "store_id": store_id2, "products": [product_id1]}).status_code == 403
+
+
+def test_wallets_labels(client, token: str, user):
+    wallet1_id = create_wallet(client, user["id"], token)["id"]
+    wallet2_id = create_wallet(client, user["id"], token, label="customlabel")["id"]
+    resp = client.post(
+        "/stores",
+        json={"name": "Multiple Currency", "wallets": [wallet1_id, wallet2_id]},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 200
+    store_id = resp.json()["id"]
+    resp = client.post("/invoices", json={"price": 5, "store_id": store_id})
+    assert resp.status_code == 200
+    resp = resp.json()
+    assert len(resp["payments"]) == 2
+    assert resp["payments"][0]["name"] == "BTC"
+    assert resp["payments"][1]["name"] == "customlabel"
