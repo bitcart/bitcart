@@ -22,7 +22,5 @@ htmlcov/
 # CLI builds
 bitcart-cli
 bitcart-cli-*
-# static
-images/products/*.png
-# logs
-logs/bitcart-log.log*
+# datadir
+data/
