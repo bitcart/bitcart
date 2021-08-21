@@ -35,6 +35,17 @@ def init_logging():
     loop.set_exception_handler(handle_exception)
 
 
+# TODO: refactor it all into OOP style, i.e. class Settings
+def set_log_file(filename):
+    global LOG_FILE_NAME, LOG_FILE, LOG_FILE_REGEX
+    LOG_FILE_NAME = filename
+
+    if LOG_FILE_NAME:
+        LOG_FILE = os.path.join(LOG_DIR, LOG_FILE_NAME)
+        filename_no_ext, _, file_extension = LOG_FILE_NAME.partition(".")
+        LOG_FILE_REGEX = re.compile(fnmatch.translate(f"{filename_no_ext}*{file_extension}"))
+
+
 config = Config("conf/.env")
 
 # bitcart-related
@@ -70,13 +81,10 @@ ensure_exists(IMAGES_DIR)
 
 LOG_DIR = os.path.join(DATADIR, "logs")
 ensure_exists(LOG_DIR)
-LOG_FILE_NAME = config("LOG_FILE", default=None)
+LOG_FILE_NAME = None
 LOG_FILE = None
 LOG_FILE_REGEX = None
-if LOG_FILE_NAME:
-    LOG_FILE = os.path.join(LOG_DIR, LOG_FILE_NAME)
-    filename_no_ext, _, file_extension = LOG_FILE_NAME.partition(".")
-    LOG_FILE_REGEX = re.compile(fnmatch.translate(f"{filename_no_ext}*{file_extension}"))
+set_log_file(config("LOG_FILE", default=None))
 
 # SSH to host
 
