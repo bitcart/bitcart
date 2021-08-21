@@ -32,7 +32,7 @@ def timed_log_namer(default_name):
 
 def configure_file_logging():
     if LOG_FILE:
-        handler = TimedRotatingFileHandler(LOG_FILE, when="M")
+        handler = TimedRotatingFileHandler(LOG_FILE, when="midnight")
         handler.suffix = "%Y%m%d"
         handler.extMatch = re.compile(r"^\d{8}(\.\w+)?$")
         handler.namer = timed_log_namer
