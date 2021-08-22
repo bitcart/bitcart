@@ -30,7 +30,7 @@ async def create_product(
 ):
     data = parse_data(data, schemes.CreateProduct)
     kwargs = utils.database.prepare_create_kwargs(models.Product, data, user)
-    kwargs["image"] = utils.files.get_product_image_path(kwargs["id"]) if image else None
+    kwargs["image"] = utils.files.get_image_filename(kwargs["id"]) if image else None
     obj = await utils.database.create_object_core(models.Product, kwargs)
     if image:
         await utils.files.save_image(kwargs["image"], image)
@@ -54,7 +54,7 @@ async def patch_product(
     data = parse_data(data, OptionalProductScheme)
     item = await utils.database.get_object(models.Product, model_id, user)
     if image:
-        filename = utils.files.get_product_image_path(item.id)
+        filename = utils.files.get_image_filename(item.id)
         data.image = filename
         await utils.files.save_image(filename, image)
     else:
