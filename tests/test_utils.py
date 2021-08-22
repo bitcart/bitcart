@@ -181,3 +181,10 @@ def test_run_host(mocker):
     time.sleep(1)  # wait for command to execute (non-blocking)
     assert os.path.exists(TEST_FILE)
     os.remove(TEST_FILE)  # Cleanup
+
+
+def test_versiontuple():
+    assert utils.common.versiontuple("1.2.3") == (1, 2, 3)
+    assert utils.common.versiontuple("0.6.0.0") == (0, 6, 0, 0)
+    with pytest.raises(ValueError):
+        utils.common.versiontuple("0.6.0.0dev")  # not supported for now

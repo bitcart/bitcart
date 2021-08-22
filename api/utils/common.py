@@ -32,3 +32,7 @@ def prepare_compliant_response(data):
         "previous": None,
         "result": data,
     }
+
+
+def versiontuple(v):
+    return tuple(map(int, v.split(".")))

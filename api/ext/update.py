@@ -31,7 +31,7 @@ async def refresh():
         if settings.UPDATE_URL and (await utils.policies.get_setting(schemes.Policy)).check_updates:
             logger.info("Checking for updates...")
             latest_tag = await get_update_data()
-            if latest_tag and VERSION != latest_tag:
+            if latest_tag and utils.common.versiontuple(latest_tag) > utils.common.versiontuple(VERSION):
                 logger.info(f"New update available: {latest_tag}")
                 await settings.redis_pool.hset(REDIS_KEY, "new_update_tag", latest_tag)
             else:
