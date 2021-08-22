@@ -1,16 +1,16 @@
 import copy
 import datetime
 import logging
-import os
+import re
 import traceback
 from decimal import Decimal
 from logging.handlers import TimedRotatingFileHandler
 
 import msgpack
 from pydantic import BaseModel
-from starlette.config import Config
 
-from api.constants import LOG_FILE_NAME, LOGSERVER_PORT
+from api.constants import LOGSERVER_PORT
+from api.settings import LOG_FILE, LOGSERVER_HOST
 
 
 def get_exception_message(exc: Exception):
@@ -25,12 +25,20 @@ def _shorten_name_of_logrecord(record: logging.LogRecord) -> logging.LogRecord:
     return record
 
 
+def timed_log_namer(default_name):
+    base_filename, *ext, date = default_name.split(".")
+    return f"{base_filename}{date}.{'.'.join(ext)}"  # i.e. "bitcart12345678.log"
+
+
 def configure_file_logging():
     if LOG_FILE:
-        file_handler = TimedRotatingFileHandler(LOG_FILE, when="midnight")
-        file_handler.setFormatter(formatter)
-        file_handler.setLevel(logging.DEBUG)
-        logger.addHandler(file_handler)
+        handler = TimedRotatingFileHandler(LOG_FILE, when="midnight")
+        handler.suffix = "%Y%m%d"
+        handler.extMatch = re.compile(r"^\d{8}(\.\w+)?$")
+        handler.namer = timed_log_namer
+        handler.setFormatter(formatter)
+        handler.setLevel(logging.DEBUG)
+        logger.addHandler(handler)
 
 
 class Formatter(logging.Formatter):
@@ -55,13 +63,6 @@ class MsgpackHandler(logging.handlers.SocketHandler):
     def makePickle(self, record):
         return msgpack.packb(record.__dict__, default=self.msgpack_encoder)
 
-
-# Env
-config = Config("conf/.env")
-LOG_DIR = config("LOG_DIR", default=None)
-LOG_FILE = os.path.join(LOG_DIR, LOG_FILE_NAME) if LOG_DIR else None
-DOCKER_ENV = config("IN_DOCKER", cast=bool, default=False)
-LOGSERVER_HOST = "worker" if DOCKER_ENV else "localhost"
 
 formatter = Formatter(
     "%(asctime)s - [PID %(process)d] - %(name)s.%(funcName)s [line %(lineno)d] - %(levelname)s - %(message)s"

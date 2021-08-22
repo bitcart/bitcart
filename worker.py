@@ -13,6 +13,7 @@ from api.utils.common import run_repeated
 
 
 async def main():
+    settings.init_logging()
     await settings.init_db()
     settings.log_startup_info()
     await tor_ext.refresh(log=False)  # to pre-load data for initial requests
