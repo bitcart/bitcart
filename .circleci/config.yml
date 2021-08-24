@@ -6,7 +6,7 @@ executors:
       v:
         type: string
     docker:
-      - image: cimg/python:<< parameters.v >>
+      - image: circleci/python:<< parameters.v >>
       - image: circleci/redis:latest
       - image: circleci/postgres:9-alpine-ram
         environment:
@@ -192,6 +192,7 @@ workflows:
                 - "3.7"
                 - "3.8"
                 - "3.9"
+                - "3.10-rc"
       - functional-tests:
           requires:
             - test
