@@ -69,12 +69,12 @@ class Pagination:
         if not self.query:
             return []
         return or_(
-            *[
+            *(
                 getattr(self.model, m.key)
                 .cast(Text)
                 .op("~*")(f"{self.query}")  # NOTE: not cross-db, postgres case-insensitive regex
                 for m in self.model.__table__.columns
-            ]
+            )
         )
 
     async def paginate(

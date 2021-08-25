@@ -90,7 +90,7 @@ async def set_store_policies(
 async def get_logs_list(user: models.User = Security(utils.authorization.AuthDependency(), scopes=["server_management"])):
     if not settings.LOG_FILE:
         return []
-    data = sorted([f for f in os.listdir(settings.LOG_DIR) if utils.logging.log_filter(f)], reverse=True)
+    data = sorted((f for f in os.listdir(settings.LOG_DIR) if utils.logging.log_filter(f)), reverse=True)
     if os.path.exists(settings.LOG_FILE):
         data = [settings.LOG_FILE_NAME] + data
     return data
