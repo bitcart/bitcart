@@ -15,4 +15,3 @@ omit =
     api/invoices.py,
     api/tasks.py
     *__init__.py
-
