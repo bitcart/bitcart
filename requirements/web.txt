@@ -1,16 +1,16 @@
 -r base.txt
-fastapi
-email-validator
-gino
-passlib[bcrypt]
-bitcart
-aioredis<2.0 # TODO: upgrade after a few bugfix releases
-uvicorn[standard]
-alembic
-psycopg2-binary
-Jinja2
-python-multipart
 aiofiles
-notifiers
+aioredis<2.0 # TODO: upgrade after a few bugfix releases
+alembic
+bitcart
+email-validator
+fastapi
+gino
+Jinja2
 msgpack
+notifiers
 paramiko
+passlib[bcrypt]
+psycopg2-binary
+python-multipart
+uvicorn[standard]
