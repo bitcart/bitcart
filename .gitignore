@@ -1,26 +1,17 @@
-# virtualenv
 env/
 venv
-# cache
 __pycache__/
-# python optimizations
 *.pyo
 *.pyc
-# real config
 .env
-# vs code
 .vscode/
-# backups
 backups/
 backup/
 .idea/
-# tests and coverage
 .pytest_cache/
 htmlcov/
 .coverage
 .mypy_cache
-# CLI builds
 bitcart-cli
 bitcart-cli-*
-# datadir
 data/
