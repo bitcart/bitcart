@@ -16,7 +16,7 @@ To work with the spec, all SDK's must:
 - Otherwise, fallback to the following spec:
 
     `{"exceptions": {"-32600": {"exc_name": "UnauthorizedError", "docstring": "Unauthorized"}}}`
-    
+
     It allows to raise unauthorized error if spec failed to fetch because of wrong credentials
 - When raising error, if error code is in the spec, raise that error with
 error name got from `exc_name` key with error message got from `docstring` ley.
@@ -31,9 +31,9 @@ It is a json object with the following keys:
 
 - version (`str`): version of spec
 - electrum_map (`dict`): dictionary mapping electrum error messages to json-rpc error codes. Used by daemon
-- exceptions (`dict`): dictionary mapping json-rpc error codes to exceptions. Used by SDK. 
+- exceptions (`dict`): dictionary mapping json-rpc error codes to exceptions. Used by SDK.
 
     Each object value is a dictionary
-with keys `exc_name` and `docstring`. 
+with keys `exc_name` and `docstring`.
 
     Each object key is a string (JSON-RPC error code).
