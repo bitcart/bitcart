@@ -104,7 +104,7 @@ async def get_log_contents(
         raise HTTPException(400, "Log file unconfigured")
     try:
         with open(os.path.join(settings.LOG_DIR, log)) as f:
-            contents = f.read()
+            contents = f.read().strip()
         return contents
     except OSError:
         raise HTTPException(404, "This log doesn't exist")
