@@ -5,6 +5,7 @@ executors:
     parameters:
       v:
         type: string
+        default: "3.7"
     docker:
       - image: cimg/python:<< parameters.v >>
       - image: circleci/redis:latest
@@ -21,7 +22,7 @@ commands:
     steps:
       - restore_cache:
           keys:
-            - v38-dependencies-{{ .Branch }}-{{ checksum "~/.pyenv/version" }}-{{ checksum "requirements/web.txt" }}-{{ checksum "requirements/test.txt" }}-{{ checksum "requirements/daemons/btc.txt" }}
+            - v1-dependencies-{{ .Branch }}-{{ checksum "~/.pyenv/version" }}-{{ checksum "requirements/web.txt" }}-{{ checksum "requirements/test.txt" }}-{{ checksum "requirements/dev.txt" }}-{{ checksum "requirements/daemons/btc.txt" }}
 
       - run:
           name: install dependencies
@@ -34,11 +35,12 @@ commands:
             pip install -U -r requirements.txt
             pip install -U -r requirements/daemons/btc.txt
             pip install -U -r requirements/test.txt
+            pip install -U -r requirements/dev.txt
 
       - save_cache:
           paths:
             - ~/venv
-          key: v38-dependencies-{{ .Branch }}-{{ checksum "~/.pyenv/version" }}-{{ checksum "requirements/web.txt" }}-{{ checksum "requirements/test.txt" }}-{{ checksum "requirements/daemons/btc.txt" }}
+          key: v1-dependencies-{{ .Branch }}-{{ checksum "~/.pyenv/version" }}-{{ checksum "requirements/web.txt" }}-{{ checksum "requirements/test.txt" }}-{{ checksum "requirements/dev.txt" }}-{{ checksum "requirements/daemons/btc.txt" }}
 
   upload-results:
     steps:
@@ -52,11 +54,26 @@ commands:
           path: test-results
 
 jobs:
+  lint:
+    docker:
+      - image: cimg/python:3.7
+
+    working_directory: ~/repo
+
+    steps:
+      - checkout
+
+      - install_dependencies
+
+      - run:
+          name: run pre-commit checks
+          command: |
+            pre-commit run --all-files --show-diff-on-failure
+
   test:
     parameters:
       v:
         type: string
-        default: "3.7"
 
     executor:
       name: main-executor
@@ -89,7 +106,6 @@ jobs:
   functional-tests:
     executor:
       name: main-executor
-      v: "3.7"
 
     working_directory: ~/repo
 
@@ -184,8 +200,11 @@ workflows:
   version: 2
   build_and_test:
     jobs:
+      - lint
       - test:
           name: test-<< matrix.v >>
+          requires:
+            - lint
           matrix:
             parameters:
               v:
