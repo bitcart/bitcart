@@ -52,3 +52,13 @@ repos:
     rev: v2.3.2
     hooks:
       - id: prettier
+  - repo: local
+    hooks:
+      - id: check-compiled
+        name: Check compiled requirements
+        language: system
+        entry: ./scripts/check-compiled.py
+        files: >-
+          ^requirements/.*.txt$
+        exclude: >-
+          ^requirements/deterministic/.*.txt$
