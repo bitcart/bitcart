@@ -22,7 +22,7 @@ commands:
     steps:
       - restore_cache:
           keys:
-            - v1-dependencies-{{ .Branch }}-{{ checksum "~/.pyenv/version" }}-{{ checksum "requirements/web.txt" }}-{{ checksum "requirements/test.txt" }}-{{ checksum "requirements/dev.txt" }}-{{ checksum "requirements/daemons/btc.txt" }}
+            - v1-dependencies-{{ .Branch }}-{{ checksum "~/.pyenv/version" }}-{{ checksum "requirements/web.txt" }}-{{ checksum "requirements/test.txt" }}-{{ checksum "requirements/daemons/btc.txt" }}
 
       - run:
           name: install dependencies
@@ -35,12 +35,11 @@ commands:
             pip install -U -r requirements.txt
             pip install -U -r requirements/daemons/btc.txt
             pip install -U -r requirements/test.txt
-            pip install -U -r requirements/dev.txt
 
       - save_cache:
           paths:
             - ~/venv
-          key: v1-dependencies-{{ .Branch }}-{{ checksum "~/.pyenv/version" }}-{{ checksum "requirements/web.txt" }}-{{ checksum "requirements/test.txt" }}-{{ checksum "requirements/dev.txt" }}-{{ checksum "requirements/daemons/btc.txt" }}
+          key: v1-dependencies-{{ .Branch }}-{{ checksum "~/.pyenv/version" }}-{{ checksum "requirements/web.txt" }}-{{ checksum "requirements/test.txt" }}-{{ checksum "requirements/daemons/btc.txt" }}
 
   upload-results:
     steps:
@@ -63,12 +62,33 @@ jobs:
     steps:
       - checkout
 
-      - install_dependencies
+      - restore_cache:
+          keys:
+            - v1-lint-dependencies-{{ .Branch }}-{{ checksum "~/.pyenv/version" }}
+            - v1-lint-pre-commit-{{ .Branch }}-{{ checksum ".pre-commit-config.yaml" }}
+
+      - run:
+          name: install dependencies
+          command: |
+            virtualenv ~/venv
+            echo ". ~/venv/bin/activate" >> $BASH_ENV
+            source $BASH_ENV
+            pip install -U -r requirements/dev.txt
+
+      - save_cache:
+          paths:
+            - ~/venv
+          key: v1-lint-dependencies-{{ .Branch }}-{{ checksum "~/.pyenv/version" }}
 
       - run:
           name: run pre-commit checks
           command: |
             pre-commit run --all-files --show-diff-on-failure
+
+      - save_cache:
+          paths:
+            - ~/.cache/pre-commit
+          key: v1-lint-pre-commit-{{ .Branch }}-{{ checksum ".pre-commit-config.yaml" }}
 
   test:
     parameters:
