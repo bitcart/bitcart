@@ -19,7 +19,7 @@ class Template:
     def load_from_file(self, name):
         try:
             with open(f"api/templates/{name}.j2") as f:
-                self.template_text = f.read()
+                self.template_text = f.read().strip()
         except OSError as e:
             raise TemplateLoadError(f"Failed to load template {name}: {e.strerror}")
 

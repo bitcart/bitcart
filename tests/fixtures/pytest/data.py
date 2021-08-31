@@ -18,7 +18,7 @@ from tests.helper import (
 @pytest.fixture(scope="session", autouse=True)
 def notification_template():
     with open("api/templates/notification.j2") as f:
-        text = f.read()
+        text = f.read().strip()
     return text
 
 

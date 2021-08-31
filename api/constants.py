@@ -2,11 +2,10 @@ import string
 
 from bitcart import COINS as _COINS
 
-VERSION = "0.5.0.0"  # Version, used for openapi schemas and update checks
+VERSION = "0.6.0.0"  # Version, used for openapi schemas and update checks
 WEBSITE = "https://bitcartcc.com"  # BitcartCC official site
 GIT_REPO_URL = "https://github.com/bitcartcc/bitcart"  # BitcartCC github repository
 DOCKER_REPO_URL = "https://github.com/bitcartcc/bitcart-docker"  # BitcartCC Docker Packaging repository
-LOG_FILE_NAME = "bitcart-log.log"  # base log file name
 MAX_CONFIRMATION_WATCH = 6  # maximum number of confirmations to save
 FEE_ETA_TARGETS = [25, 10, 5, 2, 1]  # supported target blocks confirmation ETA fee
 EVENTS_CHANNEL = "events"  # default redis channel for event system (inter-process communication)

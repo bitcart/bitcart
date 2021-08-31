@@ -83,6 +83,7 @@ class CreateWallet(CreatedMixin):
     xpub: str = ""
     currency: str = "btc"
     lightning_enabled: bool = False
+    label: str = ""
 
     class Config:
         orm_mode = True
@@ -90,6 +91,10 @@ class CreateWallet(CreatedMixin):
     @validator("lightning_enabled", pre=True, always=True)
     def set_lightning_enabled(cls, v):
         return v or False
+
+    @validator("label", pre=True)
+    def set_label(cls, val):
+        return val or ""
 
 
 class Wallet(CreateWallet):

@@ -14,7 +14,7 @@ from api.constants import DOCKER_REPO_URL, SUPPORTED_CRYPTOS
 from api.ext import tor as tor_ext
 from api.invoices import InvoiceStatus
 from tests.fixtures import static_data
-from tests.helper import create_invoice, create_product, create_token, create_user, create_wallet
+from tests.helper import create_invoice, create_product, create_token, create_user, create_wallet, enabled_logs
 
 
 class DummyInstance:
@@ -353,7 +353,7 @@ def test_delete_token(client: TestClient, token: str, token_exists: bool, author
         resp.status_code == 401
 
 
-def test_management_commands(client: TestClient, log_file_deleting: str, token: str, limited_token: str):
+def test_management_commands(client: TestClient, log_file: str, token: str, limited_token: str):
     assert client.post("/manage/update").status_code == 401
     assert client.post("/manage/update", headers={"Authorization": f"Bearer {limited_token}"}).status_code == 403
     assert client.post("/manage/update", headers={"Authorization": f"Bearer {token}"}).status_code == 200
@@ -362,10 +362,9 @@ def test_management_commands(client: TestClient, log_file_deleting: str, token: 
     assert client.post("/manage/cleanup/logs", headers={"Authorization": f"Bearer {token}"}).status_code == 200
     assert client.post("/manage/cleanup", headers={"Authorization": f"Bearer {token}"}).status_code == 200
     assert client.get("/manage/daemons", headers={"Authorization": f"Bearer {token}"}).status_code == 200
-    settings.LOG_DIR = "tests/fixtures/log"
-    assert client.post("/manage/cleanup", headers={"Authorization": f"Bearer {token}"}).status_code == 200
-    assert not os.path.exists(log_file_deleting)
-    settings.LOG_DIR = None  # cleanup
+    with enabled_logs():
+        assert client.post("/manage/cleanup", headers={"Authorization": f"Bearer {token}"}).status_code == 200
+        assert not os.path.exists(log_file)
 
 
 def test_policies(client: TestClient, token: str):
@@ -838,38 +837,36 @@ def test_logs_list(client: TestClient, token: str):
     resp = client.get("/manage/logs", headers={"Authorization": f"Bearer {token}"})
     assert resp.status_code == 200
     assert resp.json() == []
-    settings.LOG_DIR = "tests/fixtures/log"
-    assert client.get("/manage/logs", headers={"Authorization": f"Bearer {token}"}).json() == [
-        "bitcart-log.log",
-        "bitcart-log.log.test",
-    ]
-    settings.LOG_DIR = None  # cleanup
+    with enabled_logs():
+        assert client.get("/manage/logs", headers={"Authorization": f"Bearer {token}"}).json() == [
+            "bitcart.log",
+            "bitcart20210821.log",
+        ]
 
 
 def test_logs_get(client: TestClient, token: str):
     assert client.get("/manage/logs/1").status_code == 401
     assert client.get("/manage/logs/1", headers={"Authorization": f"Bearer {token}"}).status_code == 400
-    settings.LOG_DIR = "tests/fixtures/log"
-    assert client.get("/manage/logs/1", headers={"Authorization": f"Bearer {token}"}).status_code == 404
-    resp = client.get("/manage/logs/bitcart-log.log", headers={"Authorization": f"Bearer {token}"})
-    assert resp.status_code == 200
-    assert resp.json() == "Test"
-    settings.LOG_DIR = None  # cleanup
+    with enabled_logs():
+        assert client.get("/manage/logs/1", headers={"Authorization": f"Bearer {token}"}).status_code == 404
+        resp = client.get("/manage/logs/bitcart.log", headers={"Authorization": f"Bearer {token}"})
+        assert resp.status_code == 200
+        assert resp.json() == "Test"
 
 
 def test_logs_delete(client: TestClient, log_file: str, token: str):
+    log_name = os.path.basename(log_file)
     assert client.delete("/manage/logs/1").status_code == 401
     assert client.delete("/manage/logs/1", headers={"Authorization": f"Bearer {token}"}).status_code == 400
     # Tests that it is impossible to delete files outside logs directory:
     assert client.delete("/manage/logs//root/path", headers={"Authorization": f"Bearer {token}"}).status_code == 404
     assert client.delete("/manage/logs/..%2F.gitignore", headers={"Authorization": f"Bearer {token}"}).status_code == 404
-    settings.LOG_DIR = "tests/fixtures/log"
-    assert client.delete("/manage/logs/1", headers={"Authorization": f"Bearer {token}"}).status_code == 404
-    assert client.delete("/manage/logs/bitcart-log.log", headers={"Authorization": f"Bearer {token}"}).status_code == 403
-    resp = client.delete("/manage/logs/bitcart.log", headers={"Authorization": f"Bearer {token}"})
-    assert resp.status_code == 200
-    assert resp.json() is True
-    settings.LOG_DIR = None  # cleanup
+    with enabled_logs():
+        assert client.delete("/manage/logs/1", headers={"Authorization": f"Bearer {token}"}).status_code == 404
+        assert client.delete("/manage/logs/bitcart.log", headers={"Authorization": f"Bearer {token}"}).status_code == 403
+        resp = client.delete(f"/manage/logs/{log_name}", headers={"Authorization": f"Bearer {token}"})
+        assert resp.status_code == 200
+        assert resp.json() is True
     assert not os.path.exists(log_file)
 
 
@@ -1108,3 +1105,21 @@ def test_invoice_products_access_control(client: TestClient):
     assert client.post("/invoices", json={"price": 5, "store_id": store_id1, "products": [product_id2]}).status_code == 403
     assert client.post("/invoices", json={"price": 5, "store_id": store_id2, "products": [product_id2]}).status_code == 200
     assert client.post("/invoices", json={"price": 5, "store_id": store_id2, "products": [product_id1]}).status_code == 403
+
+
+def test_wallets_labels(client, token: str, user):
+    wallet1_id = create_wallet(client, user["id"], token)["id"]
+    wallet2_id = create_wallet(client, user["id"], token, label="customlabel")["id"]
+    resp = client.post(
+        "/stores",
+        json={"name": "Multiple Currency", "wallets": [wallet1_id, wallet2_id]},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 200
+    store_id = resp.json()["id"]
+    resp = client.post("/invoices", json={"price": 5, "store_id": store_id})
+    assert resp.status_code == 200
+    resp = resp.json()
+    assert len(resp["payments"]) == 2
+    assert resp["payments"][0]["name"] == "BTC"
+    assert resp["payments"][1]["name"] == "customlabel"

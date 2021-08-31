@@ -14,7 +14,7 @@ from api.views import router
 logger = get_logger(__name__)
 
 app = FastAPI(title="BitcartCC", version=VERSION, docs_url="/", redoc_url="/redoc", root_path=settings.ROOT_PATH)
-app.mount("/images", StaticFiles(directory="images"), name="images")
+app.mount("/images", StaticFiles(directory=settings.IMAGES_DIR), name="images")
 app.include_router(router)
 app.add_middleware(
     CORSMiddleware,
@@ -39,6 +39,7 @@ async def add_onion_host(request: Request, call_next):
 
 @app.on_event("startup")
 async def startup():
+    settings.init_logging()
     await settings.init_db()
 
 

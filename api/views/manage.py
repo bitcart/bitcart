@@ -2,7 +2,7 @@ import os
 
 from fastapi import APIRouter, HTTPException, Security
 
-from api import constants, models, schemes, settings, utils
+from api import models, schemes, settings, utils
 
 router = APIRouter()
 
@@ -32,10 +32,10 @@ async def cleanup_images(user: models.User = Security(utils.authorization.AuthDe
 
 @router.post("/cleanup/logs")
 async def cleanup_logs(user: models.User = Security(utils.authorization.AuthDependency(), scopes=["server_management"])):
-    if not settings.LOG_DIR:
+    if not settings.LOG_FILE:
         return {"status": "error", "message": "Log file unconfigured"}
     for f in os.listdir(settings.LOG_DIR):
-        if f.startswith(f"{constants.LOG_FILE_NAME}."):
+        if utils.logging.log_filter(f):
             try:
                 os.remove(os.path.join(settings.LOG_DIR, f))
             except OSError:  # pragma: no cover
@@ -88,11 +88,11 @@ async def set_store_policies(
 
 @router.get("/logs")
 async def get_logs_list(user: models.User = Security(utils.authorization.AuthDependency(), scopes=["server_management"])):
-    if not settings.LOG_DIR:
+    if not settings.LOG_FILE:
         return []
-    data = sorted([f for f in os.listdir(settings.LOG_DIR) if f.startswith(f"{constants.LOG_FILE_NAME}.")], reverse=True)
-    if os.path.exists(os.path.join(settings.LOG_DIR, constants.LOG_FILE_NAME)):
-        data = [constants.LOG_FILE_NAME] + data
+    data = sorted((f for f in os.listdir(settings.LOG_DIR) if utils.logging.log_filter(f)), reverse=True)
+    if os.path.exists(settings.LOG_FILE):
+        data = [settings.LOG_FILE_NAME] + data
     return data
 
 
@@ -100,11 +100,11 @@ async def get_logs_list(user: models.User = Security(utils.authorization.AuthDep
 async def get_log_contents(
     log: str, user: models.User = Security(utils.authorization.AuthDependency(), scopes=["server_management"])
 ):
-    if not settings.LOG_DIR:
+    if not settings.LOG_FILE:
         raise HTTPException(400, "Log file unconfigured")
     try:
         with open(os.path.join(settings.LOG_DIR, log)) as f:
-            contents = f.read()
+            contents = f.read().strip()
         return contents
     except OSError:
         raise HTTPException(404, "This log doesn't exist")
@@ -114,9 +114,9 @@ async def get_log_contents(
 async def delete_log(
     log: str, user: models.User = Security(utils.authorization.AuthDependency(), scopes=["server_management"])
 ):
-    if not settings.LOG_DIR:
+    if not settings.LOG_FILE:
         raise HTTPException(400, "Log file unconfigured")
-    if log == constants.LOG_FILE_NAME:
+    if log == settings.LOG_FILE_NAME:
         raise HTTPException(403, "Forbidden to delete current log file")
     try:
         os.remove(os.path.join(settings.LOG_DIR, log))

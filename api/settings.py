@@ -1,6 +1,8 @@
 import asyncio
+import fnmatch
 import os
 import platform
+import re
 import sys
 import traceback
 import warnings
@@ -12,12 +14,37 @@ from notifiers import all_providers, get_notifier
 from starlette.config import Config
 from starlette.datastructures import CommaSeparatedStrings
 
-from api.constants import GIT_REPO_URL, LOG_FILE_NAME, VERSION, WEBSITE
+from api.constants import GIT_REPO_URL, VERSION, WEBSITE
 from api.ext.notifiers import parse_notifier_schema
 from api.ext.ssh import load_ssh_settings
-from api.logger import get_exception_message, get_logger
 
-logger = get_logger(__name__)
+
+def ensure_exists(path):
+    os.makedirs(path, exist_ok=True)
+
+
+logger = None
+
+
+def init_logging():
+    from api.logger import get_logger
+
+    global logger
+    logger = get_logger(__name__)
+    sys.excepthook = excepthook_handler(sys.excepthook)
+    loop.set_exception_handler(handle_exception)
+
+
+# TODO: refactor it all into OOP style, i.e. class Settings
+def set_log_file(filename):
+    global LOG_FILE_NAME, LOG_FILE, LOG_FILE_REGEX
+    LOG_FILE_NAME = filename
+
+    if LOG_FILE_NAME:
+        LOG_FILE = os.path.join(LOG_DIR, LOG_FILE_NAME)
+        filename_no_ext, _, file_extension = LOG_FILE_NAME.partition(".")
+        LOG_FILE_REGEX = re.compile(fnmatch.translate(f"{filename_no_ext}*{file_extension}"))
+
 
 config = Config("conf/.env")
 
@@ -32,6 +59,7 @@ TEST = config("TEST", cast=bool, default="pytest" in sys.modules)
 
 # environment
 DOCKER_ENV = config("IN_DOCKER", cast=bool, default=False)
+LOGSERVER_HOST = "worker" if DOCKER_ENV else "localhost"
 ROOT_PATH = config("BITCART_BACKEND_ROOTPATH", default="")
 
 # database
@@ -43,10 +71,20 @@ DB_PORT = config("DB_PORT", default="5432")
 if TEST:
     DB_NAME = "bitcart_test"
 
+DATADIR = os.path.abspath(config("BITCART_DATADIR", default="data"))
+ensure_exists(DATADIR)
+IMAGES_DIR = os.path.join(DATADIR, "images")
+ensure_exists(IMAGES_DIR)
+
+
 # Logs
 
-LOG_DIR = config("LOG_DIR", default=None)
-LOG_FILE = os.path.join(LOG_DIR, LOG_FILE_NAME) if LOG_DIR else None
+LOG_DIR = os.path.join(DATADIR, "logs")
+ensure_exists(LOG_DIR)
+LOG_FILE_NAME = None
+LOG_FILE = None
+LOG_FILE_REGEX = None
+set_log_file(config("LOG_FILE", default=None))
 
 # SSH to host
 
@@ -58,17 +96,6 @@ UPDATE_URL = config("UPDATE_URL", default=None)
 
 # Tor support
 TORRC_FILE = config("TORRC_FILE", default=None)
-
-# initialize image dir
-
-
-def create_ifn(path):
-    if not os.path.exists(path):
-        os.mkdir(path)
-
-
-create_ifn("images")
-create_ifn("images/products")
 
 # initialize bitcart instances
 cryptos = {}
@@ -152,6 +179,8 @@ def excepthook_handler(excepthook):
 
 
 def handle_exception(loop, context):
+    from api.logger import get_exception_message
+
     if "exception" in context:
         msg = get_exception_message(context["exception"])
     else:
@@ -163,11 +192,7 @@ def log_startup_info():
     logger.info(f"BitcartCC version: {VERSION} - {WEBSITE} - {GIT_REPO_URL}")
     logger.info(f"Python version: {sys.version}. On platform: {platform.platform()}")
     logger.info(
-        f"BITCART_CRYPTOS={','.join([item for item in ENABLED_CRYPTOS])}; IN_DOCKER={DOCKER_ENV}; " f"LOG_FILE={LOG_FILE}"
+        f"BITCART_CRYPTOS={','.join([item for item in ENABLED_CRYPTOS])}; IN_DOCKER={DOCKER_ENV}; " f"LOG_FILE={LOG_FILE_NAME}"
     )
     logger.info(f"Successfully loaded {len(cryptos)} cryptos")
     logger.info(f"{len(notifiers)} notification providers available")
-
-
-sys.excepthook = excepthook_handler(sys.excepthook)
-loop.set_exception_handler(handle_exception)

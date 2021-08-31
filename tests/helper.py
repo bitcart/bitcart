@@ -1,10 +1,11 @@
 import json as json_module
 import random
+from contextlib import contextmanager
 from datetime import timedelta
 
 from starlette.testclient import TestClient
 
-from api import utils
+from api import settings, utils
 from tests.fixtures import static_data
 
 
@@ -109,3 +110,14 @@ def create_model_obj(client, endpoint, default_attrs, custom_attrs={}, token: st
         resp = client.post(endpoint, json=attrs, headers=headers)
     assert resp.status_code == 200
     return resp.json()
+
+
+@contextmanager
+def enabled_logs():
+    settings.LOG_DIR = "tests/fixtures/log"
+    settings.set_log_file("bitcart.log")
+    yield
+    settings.LOG_DIR = None
+    settings.LOG_FILE_NAME = None
+    settings.LOG_FILE = None
+    settings.LOG_FILE_REGEX = None

@@ -184,6 +184,7 @@ class Wallet(BaseModel):
     user_id = Column(Text, ForeignKey(User.id, ondelete="SET NULL"))
     created = Column(DateTime(True), nullable=False)
     lightning_enabled = Column(Boolean(), default=False)
+    label = Column(Text)
 
     async def add_fields(self):
         await super().add_fields()
@@ -361,6 +362,7 @@ class PaymentMethod(BaseModel):
     rhash = Column(Text)
     lightning = Column(Boolean(), default=False)
     node_id = Column(Text)
+    label = Column(Text)
     created = Column(DateTime(True), nullable=False)
 
     async def to_dict(self, index: int = None):
@@ -376,6 +378,8 @@ class PaymentMethod(BaseModel):
         return data
 
     def get_name(self, index: int = None):
+        if self.label:
+            return self.label
         name = f"{self.currency} (⚡)" if self.lightning else self.currency
         if index:
             name += f" ({index})"
