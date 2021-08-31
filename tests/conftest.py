@@ -72,11 +72,11 @@ HiddenServicePort 80 127.0.0.1:80"""
 def deleting_file_base(filename):
     assert os.path.exists(filename)
     with open(filename) as f:
-        contents = f.read()
+        contents = f.read().strip()
     yield filename
     if not os.path.exists(filename):
         with open(filename, "w") as f:
-            f.write(contents)
+            f.write(f"{contents}\n")
 
 
 @pytest.fixture

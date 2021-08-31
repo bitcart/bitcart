@@ -72,7 +72,7 @@ async def _create_payment_method(invoice, wallet, product, store, discounts, pro
             price -= price * (Decimal(discount.percent) / Decimal(100))
         except ValueError:  # no matched discounts
             pass
-    request_price = price * ((1 - (Decimal(store.checkout_settings.underpaid_percentage) / 100)))
+    request_price = price * (1 - (Decimal(store.checkout_settings.underpaid_percentage) / 100))
     request_price = currency_table.normalize(wallet.currency, request_price / rate)
     price = currency_table.normalize(wallet.currency, price / rate)
     method = coin.add_request

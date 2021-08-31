@@ -1,11 +1,11 @@
+async-asgi-testclient
+black
+codecov
+flake8
+https://github.com/spesmilo/electrumx/archive/1.16.0.zip
+isort>=5
 pytest
 pytest-asyncio
 pytest-cov
 pytest-mock
 pytest-parametrization
-flake8
-black
-isort>=5
-codecov
-async-asgi-testclient
-https://github.com/spesmilo/electrumx/archive/1.16.0.zip

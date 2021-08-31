@@ -1,4 +1,5 @@
 # BitcartCC
+
 ![Github All Contributors](https://img.shields.io/github/all-contributors/bitcartcc/bitcart?style=flat-square)
 [![CircleCI](https://circleci.com/gh/bitcartcc/bitcart.svg?style=svg)](https://circleci.com/gh/bitcartcc/bitcart)
 ![Codecov](https://img.shields.io/codecov/c/github/bitcartcc/bitcart?style=flat-square)
@@ -6,8 +7,8 @@
 
 BitcartCC is a platform for merchants, users and developers which offers easy setup and use.
 
-Linked repositories
--------------------
+## Linked repositories
+
 Our ecosystem consists of a few packages, this is our central repository.
 
 It is recommended to propose feature requests to BitcartCC ecosystem as a whole on that repository.
@@ -30,12 +31,12 @@ https://github.com/bitcartcc/bitcart-docs - [BitcartCC documentation](https://do
 
 https://github.com/bitcartcc/bitcart-site - [BitcartCC official site](https://bitcartcc.com)
 
-Docs
-----
+## Docs
+
 Docs are available at https://docs.bitcartcc.com or in our [docs repository](https://github.com/bitcartcc/bitcart-docs)
 
-Contributing
-------------
+## Contributing
+
 See [our contributing guidelines](https://github.com/bitcartcc/bitcart/blob/master/CONTRIBUTING.md) for details.
 
 ## Contributors ✨

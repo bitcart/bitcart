@@ -156,6 +156,27 @@ Where coin is coin symbol, for example, btc.
 
 Make sure to install the infrastructure parts of BitcartCC, refer to [Manual Installation Instuctions](https://docs.bitcartcc.com/deployment/manual#typical-manual-installation) and install needed requirements for the repository you are contributing to.
 
+Install development packages:
+
+```
+pip3 install -r requirements/dev.txt
+pip3 install -r requirements/test.txt
+```
+
+This repository uses pre-commit hooks for better development experience. Install them with:
+
+```
+pre-commit install
+```
+
+It will run automatically on commits.
+
+If you ever need to run the full pre-commit checks on all files, run:
+
+```
+pre-commit run --all-files
+```
+
 After you have completed manual installation, you can start development.
 
 ### Run everything
