@@ -259,9 +259,6 @@ workflows:
       - deploy:
           name: deploy
           context: global
-          requires:
-            - deploy-amd64
-            - deploy-arm
           pre-steps:
             - run: |
                 echo 'export CIRCLE_TAG=0.6.0.0' >> $BASH_ENV
