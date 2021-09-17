@@ -60,7 +60,7 @@ commands:
       - run:
           name: Prepare bitcart-docker
           command: |
-            git clone https://github.com/bitcartcc/bitcart-docker -b 0.6.0.0
+            git clone https://github.com/bitcartcc/bitcart-docker
             cd bitcart-docker
             ./dev-setup.sh $CIRCLE_BRANCH
 
@@ -255,11 +255,44 @@ workflows:
   version: 2
   build_and_test:
     jobs:
+      - lint
+      - test:
+          name: test-<< matrix.v >>
+          requires:
+            - lint
+          matrix:
+            parameters:
+              v:
+                - "3.7"
+                - "3.8"
+                - "3.9"
+      - functional-tests:
+          requires:
+            - test
+      - deploy-amd64:
+          context: global
+          filters:
+            branches:
+              ignore: /.*/
+            tags:
+              only: /[0-9]+(\.[0-9]+)*/
       - deploy-arm:
           context: global
-          pre-steps:
-            - run: |
-                echo 'export CIRCLE_TAG=0.6.0.0' >> $BASH_ENV
+          filters:
+            branches:
+              ignore: /.*/
+            tags:
+              only: /[0-9]+(\.[0-9]+)*/
+      - deploy:
+          context: global
+          requires:
+            - deploy-amd64
+            - deploy-arm
+          filters:
+            branches:
+              ignore: /.*/
+            tags:
+              only: /[0-9]+(\.[0-9]+)*/
 
   cli:
     jobs:
