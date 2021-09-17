@@ -248,12 +248,12 @@ workflows:
           context: global
           pre-steps:
             - run: |
-                echo 'CIRCLE_TAG=0.6.0.0' >> $BASH_ENV
+                echo 'export CIRCLE_TAG=0.6.0.0' >> $BASH_ENV
       - deploy-arm:
           context: global
           pre-steps:
             - run: |
-                echo 'CIRCLE_TAG=0.6.0.0' >> $BASH_ENV
+                echo 'export CIRCLE_TAG=0.6.0.0' >> $BASH_ENV
       - bitcartcc/deploy:
           name: deploy
           context: global
@@ -262,7 +262,7 @@ workflows:
             - deploy-arm
           pre-steps:
             - run: |
-                echo 'CIRCLE_TAG=0.6.0.0' >> $BASH_ENV
+                echo 'export CIRCLE_TAG=0.6.0.0' >> $BASH_ENV
 
   cli:
     jobs:
