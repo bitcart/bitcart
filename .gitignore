@@ -11,6 +11,7 @@ backup/
 backups/
 bitcart-cli
 bitcart-cli-*
+bitcart-docker
 data/
 env/
 htmlcov/

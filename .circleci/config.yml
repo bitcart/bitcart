@@ -1,5 +1,8 @@
 version: 2.1
 
+orbs:
+  bitcartcc: bitcartcc/bitcartcc-shared@1
+
 executors:
   main-executor:
     parameters:
@@ -51,6 +54,27 @@ commands:
 
       - store_artifacts:
           path: test-results
+
+  setup-bitcart-docker:
+    steps:
+      - run:
+          name: Prepare bitcart-docker
+          command: |
+            git clone https://github.com/bitcartcc/bitcart-docker
+            cd bitcart-docker
+            ./dev-setup.sh $CIRCLE_BRANCH
+
+  build-bitcart-images:
+    steps:
+      - checkout
+      - setup-bitcart-docker
+      - bitcartcc/login-to-dockerhub
+      - bitcartcc/enable-buildx
+      - run:
+          name: Publish docker images
+          command: |
+            cd .circleci
+            python3 build.py
 
 jobs:
   lint:
@@ -172,30 +196,38 @@ jobs:
 
       - upload-results
 
-  deploy:
-    docker:
-      - image: cimg/python:3.7
+  deploy-amd64:
+    executor: bitcartcc/build-ubuntu
 
     working_directory: ~/repo
 
+    environment:
+      ARCH: amd64
+
     steps:
-      - checkout
+      - build-bitcart-images
 
-      - run:
-          name: set up build environment
-          command: |
-            git clone https://github.com/bitcartcc/bitcart-docker
-            cd bitcart-docker
-            ./dev-setup.sh $CIRCLE_BRANCH
+  deploy-arm:
+    executor: bitcartcc/build-ubuntu-arm
 
-      - setup_remote_docker
+    working_directory: ~/repo
 
-      - run:
-          name: Publish docker images
-          command: |
-            cd .circleci
-            docker login --username=$DOCKER_USER --password=$DOCKER_PASS
-            python3 build.py
+    environment:
+      ARCH: arm
+
+    steps:
+      - build-bitcart-images
+
+  deploy:
+    executor: bitcartcc/build-ubuntu
+
+    working_directory: ~/repo
+
+    environment:
+      MANIFEST: true
+
+    steps:
+      - build-bitcart-images
 
   deploy-cli:
     docker:
@@ -237,8 +269,25 @@ workflows:
       - functional-tests:
           requires:
             - test
+      - deploy-amd64:
+          context: global
+          filters:
+            branches:
+              ignore: /.*/
+            tags:
+              only: /[0-9]+(\.[0-9]+)*/
+      - deploy-arm:
+          context: global
+          filters:
+            branches:
+              ignore: /.*/
+            tags:
+              only: /[0-9]+(\.[0-9]+)*/
       - deploy:
           context: global
+          requires:
+            - deploy-amd64
+            - deploy-arm
           filters:
             branches:
               ignore: /.*/
