@@ -1,5 +1,8 @@
 version: 2.1
 
+orbs:
+  bitcartcc: bitcartcc/bitcartcc-shared@1
+
 executors:
   main-executor:
     parameters:
@@ -51,6 +54,27 @@ commands:
 
       - store_artifacts:
           path: test-results
+
+  setup-bitcart-docker:
+    steps:
+      - run:
+          name: Prepare bitcart-docker
+          command: |
+            git clone https://github.com/bitcartcc/bitcart-docker
+            cd bitcart-docker
+            ./dev-setup.sh $CIRCLE_BRANCH
+
+  build-bitcart-images:
+    steps:
+      - checkout
+      - setup-bitcart-docker
+      - bitcartcc/login-to-dockerhub
+      - bitcartcc/enable-buildx
+      - run:
+          name: Publish docker images
+          command: |
+            cd .circleci
+            python3 build.py
 
 jobs:
   lint:
@@ -172,34 +196,27 @@ jobs:
 
       - upload-results
 
-  deploy:
-    docker:
-      - image: cimg/python:3.7
-
-    environment:
-      BUILD_PLATFORMS: linux/amd64,linux/arm/v7,linux/arm64/v8
+  deploy-amd64:
+    executor: bitcartcc/build-ubuntu
 
     working_directory: ~/repo
 
+    environment:
+      ARCH: amd64
+
     steps:
-      - checkout
+      - build-bitcart-images
 
-      - run:
-          name: set up build environment
-          command: |
-            git clone https://github.com/bitcartcc/bitcart-docker
-            cd bitcart-docker
-            ./dev-setup.sh $CIRCLE_BRANCH
+  deploy-arm:
+    executor: bitcartcc/build-ubuntu-arm
 
-      - setup_remote_docker
+    working_directory: ~/repo
 
-      - run:
-          name: Publish docker images
-          command: |
-            cd .circleci
-            docker login --username=$DOCKER_USER --password=$DOCKER_PASS
-            docker run --privileged --rm tonistiigi/binfmt --install ${BUILD_PLATFORMS}
-            python3 build.py
+    environment:
+      ARCH: arm
+
+    steps:
+      - build-bitcart-images
 
   deploy-cli:
     docker:
@@ -227,27 +244,25 @@ workflows:
   version: 2
   build_and_test:
     jobs:
-      - lint
-      - test:
-          name: test-<< matrix.v >>
-          requires:
-            - lint
-          matrix:
-            parameters:
-              v:
-                - "3.7"
-                - "3.8"
-                - "3.9"
-      - functional-tests:
-          requires:
-            - test
-      - deploy:
+      - deploy-amd64:
           context: global
-          filters:
-            branches:
-              ignore: /.*/
-            tags:
-              only: /[0-9]+(\.[0-9]+)*/
+          pre-steps:
+            - run: |
+                echo 'CIRCLE_TAG=0.6.0.0' >> $BASH_ENV
+      - deploy-arm:
+          context: global
+          pre-steps:
+            - run: |
+                echo 'CIRCLE_TAG=0.6.0.0' >> $BASH_ENV
+      - bitcartcc/deploy:
+          name: deploy
+          context: global
+          requires:
+            - deploy-amd64
+            - deploy-arm
+          pre-steps:
+            - run: |
+                echo 'CIRCLE_TAG=0.6.0.0' >> $BASH_ENV
 
   cli:
     jobs:
