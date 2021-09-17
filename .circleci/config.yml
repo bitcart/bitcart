@@ -214,7 +214,6 @@ jobs:
 
     environment:
       ARCH: arm
-      BUILD_PLATFORMS: linux/arm64/v8
 
     steps:
       - build-bitcart-images
@@ -256,8 +255,7 @@ workflows:
   version: 2
   build_and_test:
     jobs:
-      - deploy:
-          name: deploy
+      - deploy-arm:
           context: global
           pre-steps:
             - run: |
