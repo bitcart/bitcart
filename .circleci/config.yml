@@ -60,7 +60,7 @@ commands:
       - run:
           name: Prepare bitcart-docker
           command: |
-            git clone https://github.com/bitcartcc/bitcart-docker
+            git clone https://github.com/bitcartcc/bitcart-docker -b 0.6.0.0
             cd bitcart-docker
             ./dev-setup.sh $CIRCLE_BRANCH
 
