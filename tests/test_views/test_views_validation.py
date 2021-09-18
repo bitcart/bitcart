@@ -3,7 +3,7 @@ import json
 from parametrization import Parametrization
 from starlette.testclient import TestClient
 
-from api.constants import FEE_ETA_TARGETS, MAX_CONFIRMATION_WATCH
+from api.constants import BACKUP_FREQUENCIES, BACKUP_PROVIDERS, FEE_ETA_TARGETS, MAX_CONFIRMATION_WATCH
 from tests.fixtures.static_data import TEST_XPUB
 from tests.helper import create_store
 
@@ -12,6 +12,8 @@ BAD_UNDERPAID_PERCENTAGE_MESSAGE = "Underpaid percentage must be in range from 0
 BAD_TARGET_FEE_BLOCKS_MESSAGE = (
     f"Recommended fee confirmation target blocks must be either of: {', '.join(map(str, FEE_ETA_TARGETS))}"
 )
+BAD_BACKUP_PROVIDER_MESSAGE = f"Backup provider must be either of: {', '.join(map(str, BACKUP_PROVIDERS))}"
+BAD_BACKUP_FREQUENCIES_MESSAGE = f"Backup frequency must be either of: {', '.join(map(str, BACKUP_FREQUENCIES))}"
 
 
 def check_validation_failed(resp, error):
@@ -127,4 +129,36 @@ def test_product_patch_validation_works(client: TestClient, token, product):
             headers={"Authorization": f"Bearer {token}"},
         ).status_code
         == 422
+    )
+
+
+@Parametrization.autodetect_parameters()
+@Parametrization.case(
+    name="Provider: google",
+    data={"provider": "google"},
+    error=BAD_BACKUP_PROVIDER_MESSAGE,
+)
+@Parametrization.case(
+    name="Provider: Local",  # only lowercase names are allowed
+    data={"provider": "Local"},
+    error=BAD_BACKUP_PROVIDER_MESSAGE,
+)
+@Parametrization.case(
+    name="Frequency: cron",  # not yet supported
+    data={"frequency": "cron"},
+    error=BAD_BACKUP_FREQUENCIES_MESSAGE,
+)
+@Parametrization.case(
+    name="Frequency: yearly",  # noone uses it
+    data={"frequency": "yearly"},
+    error=BAD_BACKUP_FREQUENCIES_MESSAGE,
+)
+def test_invalid_backup_policies(client: TestClient, token, data, error):
+    check_validation_failed(
+        client.post(
+            "/manage/backups",
+            json=data,
+            headers={"Authorization": f"Bearer {token}"},
+        ),
+        error,
     )

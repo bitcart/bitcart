@@ -1,3 +1,4 @@
+import asyncio
 import os
 import shlex
 import subprocess
@@ -37,7 +38,7 @@ async def test_make_subscriber():
     assert isinstance(sub, aioredis.Redis)
     assert isinstance(chan, aioredis.Channel)
     await sub.subscribe("channel:test")
-    settings.loop.create_task(reader(chan))
+    utils.tasks.create_task(reader(chan), loop=settings.loop)
     assert await utils.redis.publish_message("test", {"hello": "world"}) == 1
 
 
@@ -188,3 +189,20 @@ def test_versiontuple():
     assert utils.common.versiontuple("0.6.0.0") == (0, 6, 0, 0)
     with pytest.raises(ValueError):
         utils.common.versiontuple("0.6.0.0dev")  # not supported for now
+
+
+@pytest.mark.asyncio
+async def test_custom_create_task(caplog):
+    err_msg = "Test exception"
+
+    async def task():
+        raise Exception(err_msg)
+
+    loop = asyncio.get_event_loop()
+    utils.tasks.create_task(task(), loop=loop)
+    await asyncio.sleep(1)
+    assert err_msg in caplog.text
+    caplog.clear()
+    utils.tasks.create_task(task(), loop=loop).cancel()
+    await asyncio.sleep(1)
+    assert err_msg not in caplog.text

@@ -45,7 +45,7 @@ class GenericWebsocketEndpoint(WebSocketEndpoint):
         if await self.maybe_exit_early(websocket):
             return
         self.subscriber, self.channel = await utils.redis.make_subscriber(f"{self.NAME}:{self.object_id}")
-        settings.loop.create_task(self.poll_subs(websocket))
+        utils.tasks.create_task(self.poll_subs(websocket), loop=settings.loop)
 
     async def poll_subs(self, websocket):
         while await self.channel.wait_message():

@@ -39,8 +39,7 @@ async def add_onion_host(request: Request, call_next):
 
 @app.on_event("startup")
 async def startup():
-    settings.init_logging()
-    await settings.init_db()
+    await settings.init()
 
 
 @app.exception_handler(500)

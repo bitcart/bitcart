@@ -6,7 +6,7 @@ import paramiko
 from fastapi.exceptions import HTTPException
 from pydantic import BaseModel, EmailStr, validator
 
-from api.constants import FEE_ETA_TARGETS, MAX_CONFIRMATION_WATCH
+from api.constants import BACKUP_FREQUENCIES, BACKUP_PROVIDERS, FEE_ETA_TARGETS, MAX_CONFIRMATION_WATCH
 
 
 class CreatedMixin(BaseModel):
@@ -115,10 +115,9 @@ class StoreCheckoutSettings(BaseModel):
 
     @validator("recommended_fee_target_blocks")
     def validate_recommended_fee_target_blocks(cls, v):
-        if v not in FEE_ETA_TARGETS:
-            message = ", ".join(map(str, FEE_ETA_TARGETS))
-            raise HTTPException(422, f"Recommended fee confirmation target blocks must be either of: {message}")
-        return v
+        from api import utils
+
+        return utils.common.validate_list(v, FEE_ETA_TARGETS, "Recommended fee confirmation target blocks")
 
     @validator("transaction_speed")
     def validate_transaction_speed(cls, v):
@@ -333,6 +332,29 @@ class Policy(BaseModel):
 class GlobalStorePolicy(BaseModel):
     pos_id: str = ""
     email_required: bool = True
+
+
+class BackupsPolicy(BaseModel):
+    provider: str = "local"
+    scheduled: bool = False
+    frequency: str = "weekly"
+    environment_variables: Dict[str, str] = {}
+
+    @validator("provider")
+    def validate_provider(cls, v):
+        from api import utils
+
+        return utils.common.validate_list(v, BACKUP_PROVIDERS, "Backup provider")
+
+    @validator("frequency")
+    def validate_frequency(cls, v):
+        from api import utils
+
+        return utils.common.validate_list(v, BACKUP_FREQUENCIES, "Backup frequency")
+
+
+class BackupState(BaseModel):
+    last_run: Optional[int] = None
 
 
 class BatchSettings(BaseModel):

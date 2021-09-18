@@ -160,9 +160,6 @@ async def init_redis():
     redis_pool = await aioredis.create_redis_pool(REDIS_HOST)
 
 
-loop.create_task(init_redis())
-
-
 async def init_db():
     from api import db
 
@@ -196,3 +193,9 @@ def log_startup_info():
     )
     logger.info(f"Successfully loaded {len(cryptos)} cryptos")
     logger.info(f"{len(notifiers)} notification providers available")
+
+
+async def init():
+    init_logging()
+    await init_redis()
+    await init_db()
