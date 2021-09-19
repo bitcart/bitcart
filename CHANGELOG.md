@@ -155,6 +155,14 @@ Other improvements:
 - Support for custom payment methods labels, this is configurable via `label` field of a wallet
 - Better reponsibility on mobile
 
+### BitcartCC CLI is now included in docker deployments
+
+You can access it with `bitcart-cli.sh` script, like so:
+
+`./bitcart-cli.sh help`
+
+It requires a running `worker` container
+
 ### Maintenance and other improvements
 
 - We have disabled dependabot (spammy) on all our repositories and enabled renovate instead.
