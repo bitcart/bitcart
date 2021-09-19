@@ -1,6 +1,8 @@
 import os
+import tempfile
 
-from fastapi import APIRouter, HTTPException, Security
+import aiofiles
+from fastapi import APIRouter, File, HTTPException, Security, UploadFile
 
 from api import constants, models, schemes, settings, utils
 from api.ext import backups as backups_ext
@@ -159,4 +161,17 @@ async def get_backup_frequencies():
 async def perform_backup(user: models.User = Security(utils.authorization.AuthDependency(), scopes=["server_management"])):
     if settings.DOCKER_ENV:  # pragma: no cover
         return await backups_ext.manager.perform_backup()
+    return {"status": "error", "message": "Not running in docker"}
+
+
+@router.post("/backups/restore")
+async def restore_backup(
+    backup: UploadFile = File(...),
+    user: models.User = Security(utils.authorization.AuthDependency(), scopes=["server_management"]),
+):
+    if settings.DOCKER_ENV:  # pragma: no cover
+        path = os.path.join(tempfile.mkdtemp(), "backup.tar.gz")
+        async with aiofiles.open(path, "wb") as f:
+            await f.write(await backup.read())
+        return utils.host.run_host_output(f"./restore.sh --delete-backup {path}", "Successfully started restore process!")
     return {"status": "error", "message": "Not running in docker"}

@@ -361,6 +361,14 @@ def test_management_commands(client: TestClient, log_file: str, token: str, limi
     assert client.post("/manage/cleanup/logs", headers={"Authorization": f"Bearer {token}"}).status_code == 200
     assert client.post("/manage/cleanup", headers={"Authorization": f"Bearer {token}"}).status_code == 200
     assert client.post("/manage/backups/backup", headers={"Authorization": f"Bearer {token}"}).status_code == 200
+    assert (
+        client.post(
+            "/manage/backups/restore",
+            headers={"Authorization": f"Bearer {token}"},
+            files={"backup": ("backup.tar.gz", "test")},
+        ).status_code
+        == 200
+    )  # requires uploading file
     assert client.get("/manage/daemons", headers={"Authorization": f"Bearer {token}"}).status_code == 200
     with enabled_logs():
         assert client.post("/manage/cleanup", headers={"Authorization": f"Bearer {token}"}).status_code == 200
