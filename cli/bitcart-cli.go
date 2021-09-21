@@ -10,11 +10,21 @@ import (
 	"os"
 	"strings"
 
+	"github.com/joho/godotenv"
 	"github.com/urfave/cli/v2"
 	"github.com/ybbus/jsonrpc/v2"
 )
 
 var Version = "dev"
+var envFile = "../conf/.env"
+var COINS = map[string]string{
+	"btc": "5000",
+	"ltc": "5001",
+	// 5002 reserved for new coins
+	"bsty": "5003",
+	"bch":  "5004",
+	"xrg":  "5005",
+}
 
 func getSpec(client *http.Client, endpoint string, user string, password string) map[string]interface{} {
 	req, err := http.NewRequest("GET", endpoint+"/spec", nil)
@@ -24,9 +34,7 @@ func getSpec(client *http.Client, endpoint string, user string, password string)
 	checkErr(err)
 	defer resp.Body.Close()
 	bodyBytes, _ := ioutil.ReadAll(resp.Body)
-	var result map[string]interface{}
-	json.Unmarshal(bodyBytes, &result)
-	return result
+	return jsonDecodeBytes(bodyBytes)
 }
 
 func smartPrint(text string) {
@@ -55,14 +63,30 @@ func jsonEncode(data interface{}) string {
 	return string(buf.String())
 }
 
-func main() {
-	COINS := map[string]string{
-		"btc":  "http://localhost:5000",
-		"ltc":  "http://localhost:5001",
-		"bsty": "http://localhost:5003",
-		"bch":  "http://localhost:5004",
-		"xrg":  "http://localhost:5005",
+func jsonDecodeBytes(data []byte) map[string]interface{} {
+	var result map[string]interface{}
+	err := json.Unmarshal(data, &result)
+	checkErr(err)
+	return result
+}
+
+func getDefaultURL(coin string) string {
+	symbol := strings.ToUpper(coin)
+	envHost := os.Getenv(symbol + "_HOST")
+	envPort := os.Getenv(symbol + "_PORT")
+	host := "localhost"
+	if envHost != "" {
+		host = envHost
 	}
+	var port = COINS[coin]
+	if envPort != "" {
+		port = envPort
+	}
+	return "http://" + host + ":" + port
+}
+
+func main() {
+
 	app := cli.NewApp()
 	app.Name = "Bitcart CLI"
 	app.Version = Version
@@ -128,7 +152,7 @@ func main() {
 			url := c.String("url")
 			noSpec := c.Bool("no-spec")
 			if url == "" {
-				url = COINS[coin]
+				url = getDefaultURL(coin)
 			}
 			httpClient := &http.Client{}
 			// initialize rpc client
@@ -172,6 +196,8 @@ func main() {
 		}
 		return nil
 	}
-	err := app.Run(os.Args)
+	err := godotenv.Load(envFile)
+	checkErr(err)
+	err = app.Run(os.Args)
 	checkErr(err)
 }

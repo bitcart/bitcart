@@ -4,6 +4,7 @@ import sys
 from multiprocessing import Process
 
 from api import events, invoices, settings, tasks
+from api.ext import backups as backup_ext
 from api.ext import configurator as configurator_ext
 from api.ext import tor as tor_ext
 from api.ext import update as update_ext
@@ -13,12 +14,12 @@ from api.utils.common import run_repeated
 
 
 async def main():
-    settings.init_logging()
-    await settings.init_db()
+    await settings.init()
     settings.log_startup_info()
     await tor_ext.refresh(log=False)  # to pre-load data for initial requests
     await update_ext.refresh()
     await configurator_ext.refresh_pending_deployments()
+    await backup_ext.manager.start()
     asyncio.ensure_future(run_repeated(tor_ext.refresh, 60 * 10, 10))
     asyncio.ensure_future(run_repeated(update_ext.refresh, 60 * 60 * 24))
     settings.manager.add_event_handler("new_payment", invoices.new_payment_handler)

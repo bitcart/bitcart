@@ -2,6 +2,8 @@ import asyncio
 import inspect
 import secrets
 
+from fastapi import HTTPException
+
 from api.constants import ALPHABET, ID_LENGTH
 
 
@@ -36,3 +38,10 @@ def prepare_compliant_response(data):
 
 def versiontuple(v):
     return tuple(map(int, v.split(".")))
+
+
+def validate_list(v, allowed_values, error_text):
+    if v not in allowed_values:
+        message = ", ".join(map(str, allowed_values))
+        raise HTTPException(422, f"{error_text} must be either of: {message}")
+    return v

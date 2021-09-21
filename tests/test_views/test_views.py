@@ -10,7 +10,7 @@ from parametrization import Parametrization
 from starlette.testclient import TestClient
 
 from api import invoices, models, schemes, settings, templates, utils
-from api.constants import DOCKER_REPO_URL, SUPPORTED_CRYPTOS
+from api.constants import BACKUP_FREQUENCIES, BACKUP_PROVIDERS, DOCKER_REPO_URL, SUPPORTED_CRYPTOS
 from api.ext import tor as tor_ext
 from api.invoices import InvoiceStatus
 from tests.fixtures import static_data
@@ -361,6 +361,15 @@ def test_management_commands(client: TestClient, log_file: str, token: str, limi
     assert client.post("/manage/cleanup/images", headers={"Authorization": f"Bearer {token}"}).status_code == 200
     assert client.post("/manage/cleanup/logs", headers={"Authorization": f"Bearer {token}"}).status_code == 200
     assert client.post("/manage/cleanup", headers={"Authorization": f"Bearer {token}"}).status_code == 200
+    assert client.post("/manage/backups/backup", headers={"Authorization": f"Bearer {token}"}).status_code == 200
+    assert (
+        client.post(
+            "/manage/backups/restore",
+            headers={"Authorization": f"Bearer {token}"},
+            files={"backup": ("backup.tar.gz", "test")},
+        ).status_code
+        == 200
+    )  # requires uploading file
     assert client.get("/manage/daemons", headers={"Authorization": f"Bearer {token}"}).status_code == 200
     with enabled_logs():
         assert client.post("/manage/cleanup", headers={"Authorization": f"Bearer {token}"}).status_code == 200
@@ -1123,3 +1132,40 @@ def test_wallets_labels(client, token: str, user):
     assert len(resp["payments"]) == 2
     assert resp["payments"][0]["name"] == "BTC"
     assert resp["payments"][1]["name"] == "customlabel"
+
+
+def test_backup_providers(client: TestClient):
+    resp = client.get("/manage/backups/providers")
+    assert resp.status_code == 200
+    assert resp.json() == BACKUP_PROVIDERS
+
+
+def test_backup_frequencies(client: TestClient):
+    resp = client.get("/manage/backups/frequencies")
+    assert resp.status_code == 200
+    assert resp.json() == BACKUP_FREQUENCIES
+
+
+def test_backup_policies(client: TestClient, token):
+    assert client.get("/manage/backups").status_code == 401
+    resp = client.get("/manage/backups", headers={"Authorization": f"Bearer {token}"})
+    assert resp.status_code == 200
+    assert resp.json() == {
+        "provider": "local",
+        "scheduled": False,
+        "frequency": "weekly",
+        "environment_variables": {},
+    }
+    assert client.post("/manage/backups").status_code == 401
+    resp = client.post(
+        "/manage/backups",
+        json={"scheduled": True},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 200
+    assert resp.json() == {
+        "provider": "local",
+        "scheduled": True,
+        "frequency": "weekly",
+        "environment_variables": {},
+    }

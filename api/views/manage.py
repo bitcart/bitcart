@@ -1,8 +1,11 @@
 import os
+import tempfile
 
-from fastapi import APIRouter, HTTPException, Security
+import aiofiles
+from fastapi import APIRouter, File, HTTPException, Security, UploadFile
 
-from api import models, schemes, settings, utils
+from api import constants, models, schemes, settings, utils
+from api.ext import backups as backups_ext
 
 router = APIRouter()
 
@@ -123,3 +126,52 @@ async def delete_log(
         return True
     except OSError:
         raise HTTPException(404, "This log doesn't exist")
+
+
+@router.get("/backups", response_model=schemes.BackupsPolicy)
+async def get_backup_policies(
+    user: models.User = Security(utils.authorization.AuthDependency(), scopes=["server_management"])
+):
+    return await utils.policies.get_setting(schemes.BackupsPolicy)
+
+
+@router.post("/backups", response_model=schemes.BackupsPolicy)
+async def set_backup_policies(
+    settings: schemes.BackupsPolicy,
+    user: models.User = Security(utils.authorization.AuthDependency(), scopes=["server_management"]),
+):
+    async with backups_ext.manager.lock:
+        old_settings = await utils.policies.get_setting(schemes.BackupsPolicy)
+        got = await utils.policies.set_setting(settings)
+        await backups_ext.manager.process_new_policy(old_settings, got)
+        return got
+
+
+@router.get("/backups/providers")
+async def get_backup_providers():
+    return constants.BACKUP_PROVIDERS
+
+
+@router.get("/backups/frequencies")
+async def get_backup_frequencies():
+    return constants.BACKUP_FREQUENCIES
+
+
+@router.post("/backups/backup")
+async def perform_backup(user: models.User = Security(utils.authorization.AuthDependency(), scopes=["server_management"])):
+    if settings.DOCKER_ENV:  # pragma: no cover
+        return await backups_ext.manager.perform_backup()
+    return {"status": "error", "message": "Not running in docker"}
+
+
+@router.post("/backups/restore")
+async def restore_backup(
+    backup: UploadFile = File(...),
+    user: models.User = Security(utils.authorization.AuthDependency(), scopes=["server_management"]),
+):
+    if settings.DOCKER_ENV:  # pragma: no cover
+        path = os.path.join(tempfile.mkdtemp(), "backup.tar.gz")
+        async with aiofiles.open(path, "wb") as f:
+            await f.write(await backup.read())
+        return utils.host.run_host_output(f"./restore.sh --delete-backup {path}", "Successfully started restore process!")
+    return {"status": "error", "message": "Not running in docker"}
