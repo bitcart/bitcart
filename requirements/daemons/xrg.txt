@@ -1,2 +1,2 @@
 aiohttp>=3.3.0,<4.0.0
-https://github.com/Ergon-moe/Oregano/archive/072447f975488ce72ea02ea39cf9d920ed259e82.zip
+https://github.com/Ergon-moe/Oregano/archive/e7ecb028b796230588711193bcc51271f53e5e39.zip

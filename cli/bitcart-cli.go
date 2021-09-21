@@ -18,9 +18,9 @@ import (
 var Version = "dev"
 var envFile = "../conf/.env"
 var COINS = map[string]string{
-	"btc":  "5000",
-	"ltc":  "5001",
-	"gzro": "5002",
+	"btc": "5000",
+	"ltc": "5001",
+	// 5002 reserved for new coins
 	"bsty": "5003",
 	"bch":  "5004",
 	"xrg":  "5005",

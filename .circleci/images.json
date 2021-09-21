@@ -49,15 +49,6 @@
             "requirements/daemons/ltc.txt"
         ]
     },
-    "bitcart-gzro": {
-        "dockerfile": "gzro.Dockerfile",
-        "files": [
-            "daemons/base.py",
-            "daemons/gzro.py",
-            "requirements/base.txt",
-            "requirements/daemons/gzro.txt"
-        ]
-    },
     "bitcart-bsty": {
         "dockerfile": "bsty.Dockerfile",
         "files": [

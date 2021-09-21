@@ -12,6 +12,7 @@ from starlette.testclient import TestClient
 from api import invoices, models, schemes, settings, templates, utils
 from api.constants import BACKUP_FREQUENCIES, BACKUP_PROVIDERS, DOCKER_REPO_URL, SUPPORTED_CRYPTOS
 from api.ext import tor as tor_ext
+from api.invoices import InvoiceStatus
 from tests.fixtures import static_data
 from tests.helper import create_invoice, create_product, create_token, create_user, create_wallet, enabled_logs
 
@@ -648,7 +649,7 @@ async def test_invoice_ws(async_client, token: str, store):
     async with async_client.websocket_connect(f"/ws/invoices/{invoice_id}") as websocket:
         await asyncio.sleep(1)
         await invoices.new_payment_handler(
-            DummyInstance(), None, data["payments"][0]["payment_address"], "Paid", None
+            DummyInstance(), None, data["payments"][0]["payment_address"], InvoiceStatus.UNCONFIRMED, None
         )  # emulate paid invoice
         await check_ws_response(websocket)
         async with async_client.websocket_connect(
@@ -900,6 +901,23 @@ def test_lightning_endpoints(client: TestClient, token: str, wallet):
     wallet_id = wallet["id"]
     assert client.get(f"/wallets/{wallet_id}/checkln").status_code == 401
     assert client.get("/wallets/555/checkln", headers={"Authorization": f"Bearer {token}"}).status_code == 404
+    assert client.get("/wallets/555/channels", headers={"Authorization": f"Bearer {token}"}).status_code == 404
+    assert (
+        client.post(
+            "/wallets/555/channels/open", json={"node_id": "test", "amount": 0.1}, headers={"Authorization": f"Bearer {token}"}
+        ).status_code
+        == 404
+    )
+    assert (
+        client.post(
+            "/wallets/555/channels/close", json={"channel_point": "test"}, headers={"Authorization": f"Bearer {token}"}
+        ).status_code
+        == 404
+    )
+    assert (
+        client.post("/wallets/555/lnpay", json={"invoice": "test"}, headers={"Authorization": f"Bearer {token}"}).status_code
+        == 404
+    )
     resp = client.get(f"/wallets/{wallet_id}/checkln", headers={"Authorization": f"Bearer {token}"})
     assert resp.status_code == 200
     assert resp.json() is False

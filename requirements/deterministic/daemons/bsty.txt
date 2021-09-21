@@ -136,16 +136,12 @@ cryptography==3.4.8 \
     --hash=sha256:d9ec0e67a14f9d1d48dd87a2531009a9b251c02ea42851c060b25c782516ff06 \
     --hash=sha256:f44d141b8c4ea5eb4dbc9b3ad992d45580c1d22bf5e24363f2fbf50c2d7ae8a7
     # via electrum-bsty
-dnspython==1.16.0 \
-    --hash=sha256:36c5e8e38d4369a08b6780b7f27d790a292b2b08eea01607865bf0936c558e01 \
-    --hash=sha256:f69c21288a962f4da86e56c4905b49d11aba7938d3d740e80d9e366ee4f1632d
+dnspython==2.0.0 \
+    --hash=sha256:044af09374469c3a39eeea1a146e8cac27daec951f1f1f157b1962fc7cb9d1b7 \
+    --hash=sha256:40bb3c24b9d4ec12500f0124288a65df232a3aa749bb0c39734b782873a2544d
     # via electrum-bsty
-ecdsa==0.16.1 \
-    --hash=sha256:881fa5e12bb992972d3d1b3d4dfbe149ab76a89f13da02daa5ea1ec7dea6e747 \
-    --hash=sha256:cfc046a2ddd425adbd1a78b3c46f0d1325c657811c0f45ecc3a0a6236c1e50ff
-    # via electrum-bsty
-https://github.com/GlobalBoost/electrum/archive/6d7c7a1cb5c384377b24391bcbc7b797462b980a.zip#egg=electrum-bsty[crypto] \
-    --hash=sha256:7590bc350c99e2375bf262ca90c0dbcbe65169b2d6429fad76477ba647d1a220
+https://github.com/GlobalBoost/electrum/archive/f487baa864904df2591d43d5420fc01370955230.zip#egg=electrum-bsty[crypto] \
+    --hash=sha256:13afcbb50bec22f7416f26268981e5e04808c51f56f785d98957e538ea68bb48
     # via -r requirements/daemons/bsty.txt
 helpdev==0.7.1 \
     --hash=sha256:779a761b18c2d96fb181aa699609f802347806125f2fee2f60dad875a625e38e \
@@ -246,7 +242,6 @@ six==1.15.0 \
     --hash=sha256:30639c035cdb23534cd4aa2dd52c3bf48f06e5f4a941509c8bafd8ce11080259 \
     --hash=sha256:8b74bedcbbbaca38ff6d7491d76f2b06b3592611af620f8426e82dddb04a5ced
     # via
-    #   ecdsa
     #   protobuf
     #   qrcode
 typing-extensions==3.7.4.3 \

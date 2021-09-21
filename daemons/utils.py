@@ -1,7 +1,9 @@
 import json
+import logging
 import sys
 import traceback
 from base64 import b64decode
+from contextlib import contextmanager
 from dataclasses import dataclass
 from decimal import Decimal
 from typing import Any, Optional
@@ -37,10 +39,11 @@ def maybe_update_key(dest, other, key):
         dest[key] = other_value
 
 
-def rpc(f=None, requires_wallet=False):
+def rpc(f=None, requires_wallet=False, requires_lightning=False):
     def wrapper(f):
         f.is_handler = True
         f.requires_wallet = bool(requires_wallet)
+        f.requires_lightning = bool(requires_lightning)
         return f
 
     if f:
@@ -93,6 +96,15 @@ def parse_params(params):
 
 def get_exception_message(e):
     return traceback.format_exception_only(type(e), e)[-1].strip()
+
+
+@contextmanager
+def hide_logging_errors(enable):
+    if enable:
+        logging.disable(logging.ERROR)
+    yield
+    if enable:
+        logging.disable(logging.NOTSET)
 
 
 @dataclass

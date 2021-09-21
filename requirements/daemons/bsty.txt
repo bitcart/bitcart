@@ -1,1 +1,1 @@
-https://github.com/GlobalBoost/electrum/archive/6d7c7a1cb5c384377b24391bcbc7b797462b980a.zip#egg=electrum-bsty[crypto]
+https://github.com/GlobalBoost/electrum/archive/f487baa864904df2591d43d5420fc01370955230.zip#egg=electrum-bsty[crypto]

@@ -5,7 +5,6 @@ from utils import get_exception_message, rpc
 class BCHDaemon(BTCDaemon):
     name = "BCH"
     ASYNC_CLIENT = False
-    HAS_FEE_ESTIMATES = False
     LIGHTNING_SUPPORTED = False
     DEFAULT_PORT = 5004
 
@@ -37,7 +36,14 @@ class BCHDaemon(BTCDaemon):
         self.network.register_callback(callback_function, self.available_events)
 
     def create_daemon(self):
-        return self.electrum.daemon.Daemon(self.electrum_config, fd=None, is_gui=False, plugins=[], listen_jsonrpc=False)
+        daemon = self.electrum.daemon.Daemon(self.electrum_config, fd=None, is_gui=False, plugins=[], listen_jsonrpc=False)
+        daemon.start()
+        return daemon
+
+    async def shutdown_daemon(self):
+        if self.daemon:
+            self.daemon.stop()
+            await self.loop.run_in_executor(None, self.daemon.join)
 
     def create_commands(self, config):
         return self.electrum.commands.Commands(config=config, network=self.network, wallet=None)
@@ -51,6 +57,7 @@ class BCHDaemon(BTCDaemon):
         return wallet
 
     def load_cmd_wallet(self, cmd, wallet, wallet_path):
+        super().load_cmd_wallet(cmd, wallet, wallet_path)
         cmd.wallet = wallet
 
     def process_new_transaction(self, args):

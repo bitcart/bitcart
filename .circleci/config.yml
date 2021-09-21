@@ -188,6 +188,12 @@ jobs:
           background: true
 
       - run:
+          name: prepare regtest ln daemon
+          command: |
+            make regtestln
+          background: true
+
+      - run:
           name: run tests
           command: |
             sleep 10s
