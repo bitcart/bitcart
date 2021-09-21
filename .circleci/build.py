@@ -9,5 +9,3 @@ with open("images.json") as f:
 
 for image, settings in contents.items():
     subprocess.run(f"./build.sh {image} {settings['dockerfile']}", shell=True, check=True)
-
-# test ci
