@@ -2,6 +2,12 @@
 
 ## Latest changes
 
+## 0.6.0.1
+
+Fixes admin panel weird UI of buttons near datatables
+
+Now all exceptions are caught when creating invoices
+
 ## 0.6.0.0
 
 ### Major update

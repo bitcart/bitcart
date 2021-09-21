@@ -2,7 +2,6 @@ from collections import defaultdict
 from decimal import Decimal
 from operator import attrgetter
 
-from bitcart.errors import BaseError as BitcartBaseError
 from bitcart.errors import errors
 from fastapi import HTTPException
 from sqlalchemy import select
@@ -126,7 +125,7 @@ async def update_invoice_payments(invoice, wallets, discounts, store, product, p
         wallet = await models.Wallet.get(wallet_id)
         try:
             await create_payment_method(invoice, wallet, product, store, discounts, promocode)
-        except (BitcartBaseError, HTTPException) as e:
+        except Exception as e:
             logger.error(
                 f"Invoice {invoice.id}: failed creating payment method {wallet.currency.upper()}:\n{get_exception_message(e)}"
             )
