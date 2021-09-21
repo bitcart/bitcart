@@ -35,7 +35,7 @@ class LogRecordStreamHandler(socketserver.StreamRequestHandler):
                 self.handle_log_record(record)
 
     def handle_log_record(self, record):
-        record.name = record.name.replace("bitcart.logclient.", "")
+        record.name = record.name.replace("api.logclient.", "")
         logger = get_logger(record.name)
         logger.handle(record)
 

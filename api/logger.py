@@ -1,4 +1,3 @@
-import copy
 import datetime
 import logging
 import re
@@ -17,14 +16,6 @@ def get_exception_message(exc: Exception):
     return "\n" + "".join(traceback.format_exception(etype=type(exc), value=exc, tb=exc.__traceback__))
 
 
-def _shorten_name_of_logrecord(record: logging.LogRecord) -> logging.LogRecord:
-    record = copy.copy(record)  # avoid mutating arg
-    # strip the main module name from the logger name
-    if record.name.startswith("bitcart."):
-        record.name = record.name.replace("bitcart.", "", 1)
-    return record
-
-
 def timed_log_namer(default_name):
     base_filename, *ext, date = default_name.split(".")
     return f"{base_filename}{date}.{'.'.join(ext)}"  # i.e. "bitcart12345678.log"
@@ -39,12 +30,6 @@ def configure_file_logging():
         handler.setFormatter(formatter)
         handler.setLevel(logging.DEBUG)
         logger.addHandler(handler)
-
-
-class Formatter(logging.Formatter):
-    def format(self, record):
-        record = _shorten_name_of_logrecord(record)
-        return super().format(record)
 
 
 class MsgpackHandler(logging.handlers.SocketHandler):
@@ -64,7 +49,7 @@ class MsgpackHandler(logging.handlers.SocketHandler):
         return msgpack.packb(record.__dict__, default=self.msgpack_encoder)
 
 
-formatter = Formatter(
+formatter = logging.Formatter(
     "%(asctime)s - [PID %(process)d] - %(name)s.%(funcName)s [line %(lineno)d] - %(levelname)s - %(message)s"
 )
 
@@ -72,17 +57,20 @@ console = logging.StreamHandler()
 console.setFormatter(formatter)
 console.setLevel(logging.INFO)
 
-logger = logging.getLogger("bitcart.logserver")
+logger = logging.getLogger("api.logserver")
 logger.setLevel(logging.DEBUG)
 
 logger.addHandler(console)
 
-logger_client = logging.getLogger("bitcart.logclient")
+logger_client = logging.getLogger("api.logclient")
+bitcart_logger = logging.getLogger("bitcart")
 logger_client.setLevel(logging.DEBUG)
+bitcart_logger.setLevel(logging.DEBUG)
 
 socket_handler = MsgpackHandler(LOGSERVER_HOST, LOGSERVER_PORT)
 socket_handler.setLevel(logging.DEBUG)
 logger_client.addHandler(socket_handler)
+bitcart_logger.addHandler(socket_handler)
 
 
 def get_logger_server(name):
@@ -90,4 +78,4 @@ def get_logger_server(name):
 
 
 def get_logger(name):
-    return logger_client.getChild(name.replace("bitcart.logclient.", ""))
+    return logger_client.getChild(name.replace("api.logclient.", ""))
