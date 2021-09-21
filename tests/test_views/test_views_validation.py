@@ -1,5 +1,6 @@
 import json
 
+from bitcart.errors import BaseError as BitcartBaseError
 from parametrization import Parametrization
 from starlette.testclient import TestClient
 
@@ -162,3 +163,47 @@ def test_invalid_backup_policies(client: TestClient, token, data, error):
         ),
         error,
     )
+
+
+class MockBTC:
+    coin_name = "BTC"
+
+    async def list_fiat(self):
+        raise BitcartBaseError("Doesn't work")
+
+    async def validate_key(self, key):
+        raise BitcartBaseError("Broken")
+
+
+def test_edge_fiatlist_cases(client: TestClient, token, mocker, caplog):
+    mocker.patch("api.settings.cryptos", {})
+    resp = client.get("/cryptos/fiatlist")
+    assert resp.status_code == 200
+    assert resp.json() == []
+    mocker.patch("api.settings.cryptos", {"btc": MockBTC()})
+    resp = client.get("/cryptos/fiatlist")
+    assert resp.status_code == 200
+    assert resp.json() == []
+    assert "Failed fetching supported currencies for coin BTC" in caplog.text
+
+
+def test_edge_invoice_cases(client: TestClient, token, store, mocker, caplog):
+    mocker.patch("api.crud.invoices.create_payment_method", side_effect=BitcartBaseError("Doesn't work"))
+    resp = client.post("/invoices", json={"price": 5, "store_id": store["id"]}, headers={"Authorization": f"Bearer {token}"})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert not data["payments"]
+    assert f"Invoice {data['id']}: failed creating payment method BTC" in caplog.text
+
+
+def test_create_wallet_validate_xpub_broken(client: TestClient, mocker, token, caplog):
+    mocker.patch("api.settings.cryptos", {"btc": MockBTC()})
+    assert (
+        client.post(
+            "/wallets",
+            json={"name": "brokenvalidate", "xpub": TEST_XPUB},
+            headers={"Authorization": f"Bearer {token}"},
+        ).status_code
+        == 422
+    )
+    assert "Failed to validate xpub for currency btc" in caplog.text

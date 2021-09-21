@@ -39,8 +39,8 @@ async def get_balances(user: models.User = Security(utils.authorization.AuthDepe
 async def get_wallet_balance(
     model_id: str, user: models.User = Security(utils.authorization.AuthDependency(), scopes=["wallet_management"])
 ):
-    coin = await crud.wallets.get_wallet_coin_by_id(model_id, user)
-    return await coin.balance()
+    wallet = await utils.database.get_object(models.Wallet, model_id, user)
+    return (await utils.wallets.get_wallet_balance(wallet))[1]
 
 
 @router.get("/{model_id}/checkln")
@@ -51,7 +51,9 @@ async def check_wallet_lightning(
     try:
         coin = await crud.wallets.get_wallet_coin_by_id(model_id, user)
         return await coin.node_id
-    except BitcartBaseError:
+    except (BitcartBaseError, HTTPException) as e:
+        if isinstance(e, HTTPException) and e.status_code != 422:
+            raise
         return False
 
 
@@ -63,7 +65,9 @@ async def get_wallet_channels(
     try:
         coin = await crud.wallets.get_wallet_coin_by_id(model_id, user)
         return await coin.list_channels()
-    except BitcartBaseError:
+    except (BitcartBaseError, HTTPException) as e:
+        if isinstance(e, HTTPException) and e.status_code != 422:
+            raise
         return []
 
 
@@ -76,7 +80,9 @@ async def open_wallet_channel(
     try:
         coin = await crud.wallets.get_wallet_coin_by_id(model_id, user)
         return await coin.open_channel(params.node_id, params.amount)
-    except BitcartBaseError:
+    except (BitcartBaseError, HTTPException) as e:
+        if isinstance(e, HTTPException) and e.status_code != 422:
+            raise
         raise HTTPException(400, "Failed to open channel")
 
 
@@ -89,7 +95,9 @@ async def close_wallet_channel(
     try:
         coin = await crud.wallets.get_wallet_coin_by_id(model_id, user)
         return await coin.close_channel(params.channel_point, force=params.force)
-    except BitcartBaseError:
+    except (BitcartBaseError, HTTPException) as e:
+        if isinstance(e, HTTPException) and e.status_code != 422:
+            raise
         raise HTTPException(400, "Failed to close channel")
 
 
@@ -102,7 +110,9 @@ async def wallet_lnpay(
     try:
         coin = await crud.wallets.get_wallet_coin_by_id(model_id, user)
         return await coin.lnpay(params.invoice)
-    except BitcartBaseError:
+    except (BitcartBaseError, HTTPException) as e:
+        if isinstance(e, HTTPException) and e.status_code != 422:
+            raise
         raise HTTPException(400, "Failed to pay the invoice")
 
 

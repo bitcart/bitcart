@@ -1,6 +1,7 @@
 import secrets
 from datetime import timedelta
 
+from bitcart.errors import BaseError as BitcartBaseError
 from fastapi import HTTPException
 from fastapi.encoders import jsonable_encoder
 from gino.crud import UpdateRequest
@@ -10,6 +11,7 @@ from api import schemes, settings
 from api.constants import PUBLIC_ID_LENGTH
 from api.db import db
 from api.ext.moneyformat import currency_table
+from api.logger import get_exception_message, get_logger
 
 # shortcuts
 Column = db.Column
@@ -22,6 +24,8 @@ Text = db.Text
 ForeignKey = db.ForeignKey
 JSON = db.JSON
 UniqueConstraint = db.UniqueConstraint
+
+logger = get_logger(__name__)
 
 
 async def create_relations(model_id, related_ids, key_info):
@@ -190,14 +194,19 @@ class Wallet(BaseModel):
         await super().add_fields()
         from api import utils
 
-        self.balance = await utils.wallets.get_wallet_balance(settings.get_coin(self.currency, self.xpub))
+        success, self.balance = await utils.wallets.get_confirmed_wallet_balance(self)
+        self.error = not success
 
     async def validate(self, **kwargs):
         await super().validate(**kwargs)
         if "xpub" in kwargs:
             currency = kwargs.get("currency", self.currency)
             coin = settings.get_coin(currency)
-            if not await coin.validate_key(kwargs["xpub"]):
+            try:
+                if not await coin.validate_key(kwargs["xpub"]):
+                    raise HTTPException(422, "Wallet key invalid")
+            except BitcartBaseError as e:
+                logger.error(f"Failed to validate xpub for currency {currency}:\n{get_exception_message(e)}")
                 raise HTTPException(422, "Wallet key invalid")
 
 

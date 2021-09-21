@@ -2,6 +2,7 @@ from collections import defaultdict
 from decimal import Decimal
 from operator import attrgetter
 
+from bitcart.errors import BaseError as BitcartBaseError
 from bitcart.errors import errors
 from fastapi import HTTPException
 from sqlalchemy import select
@@ -9,7 +10,7 @@ from starlette.datastructures import CommaSeparatedStrings
 
 from api import events, invoices, models, schemes, settings, utils
 from api.ext.moneyformat import currency_table, round_up
-from api.logger import get_logger
+from api.logger import get_exception_message, get_logger
 from api.utils.database import safe_db_write
 
 logger = get_logger(__name__)
@@ -55,7 +56,7 @@ async def create_invoice(invoice: schemes.CreateInvoice, user: schemes.User):
 async def _create_payment_method(invoice, wallet, product, store, discounts, promocode, lightning=False):
     coin = settings.get_coin(wallet.currency, wallet.xpub)
     discount_id = None
-    rate = await utils.wallets.get_rate(coin, invoice.currency, store.default_currency)
+    rate = await utils.wallets.get_rate(wallet, invoice.currency, store.default_currency)
     price = invoice.price
     if discounts:
         try:
@@ -123,7 +124,12 @@ async def update_invoice_payments(invoice, wallets, discounts, store, product, p
     logger.info(f"Started adding invoice payments for invoice {invoice.id}")
     for wallet_id in wallets:
         wallet = await models.Wallet.get(wallet_id)
-        await create_payment_method(invoice, wallet, product, store, discounts, promocode)
+        try:
+            await create_payment_method(invoice, wallet, product, store, discounts, promocode)
+        except (BitcartBaseError, HTTPException) as e:
+            logger.error(
+                f"Invoice {invoice.id}: failed creating payment method {wallet.currency.upper()}:\n{get_exception_message(e)}"
+            )
     await invoice.load_data()  # add payment methods with correct names and other related objects
     logger.info(f"Successfully added {len(invoice.payments)} payment methods to invoice {invoice.id}")
     await events.event_handler.publish("expired_task", {"id": invoice.id})

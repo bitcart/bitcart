@@ -4,11 +4,13 @@ import shlex
 import subprocess
 import time
 from dataclasses import dataclass
+from decimal import Decimal
 
 import aioredis
 import pytest
+from bitcart.errors import BaseError as BitcartBaseError
 
-from api import exceptions, settings, utils
+from api import exceptions, schemes, settings, utils
 
 
 def test_verify_password():
@@ -206,3 +208,20 @@ async def test_custom_create_task(caplog):
     utils.tasks.create_task(task(), loop=loop).cancel()
     await asyncio.sleep(1)
     assert err_msg not in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_no_exchange_rates_available(mocker, caplog, wallet):
+    mocker.patch("bitcart.BTC.rate", side_effect=BitcartBaseError("No exchange rates available"))
+    rate = await utils.wallets.get_rate(schemes.Wallet(**wallet), "USD")
+    assert rate == Decimal(1)
+    assert "Error fetching rates" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_broken_coin(mocker, caplog, wallet):
+    mocker.patch("bitcart.BTC.balance", side_effect=BitcartBaseError("Coin broken"))
+    success, balance = await utils.wallets.get_confirmed_wallet_balance(schemes.Wallet(**wallet))
+    assert not success
+    assert balance == Decimal(0)
+    assert "Error getting wallet balance" in caplog.text

@@ -100,6 +100,7 @@ class CreateWallet(CreatedMixin):
 class Wallet(CreateWallet):
     id: Optional[str]
     user_id: str
+    error: bool = False
     balance: Decimal = Decimal(0)
 
 

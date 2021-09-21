@@ -2,10 +2,14 @@ import math
 import re
 from typing import Optional
 
+from bitcart.errors import BaseError as BitcartBaseError
 from fastapi import APIRouter, HTTPException
 
 from api import constants, settings
+from api.logger import get_exception_message, get_logger
 from api.utils.common import prepare_compliant_response
+
+logger = get_logger(__name__)
 
 router = APIRouter()
 
@@ -32,11 +36,20 @@ async def rate(currency: str = "btc", fiat_currency: str = "USD"):
 async def get_fiatlist(query: Optional[str] = None):
     s = None
     for coin in settings.cryptos:
-        fiat_list = await settings.cryptos[coin].list_fiat()
+        try:
+            fiat_list = await settings.cryptos[coin].list_fiat()
+        except BitcartBaseError as e:
+            logger.error(
+                f"Failed fetching supported currencies for coin {settings.cryptos[coin].coin_name}. Daemon not running?\n"
+                f"{get_exception_message(e)}"
+            )
+            continue
         if not s:
             s = set(fiat_list)
         else:
             s = s.intersection(fiat_list)
+    if not s:
+        s = set()
     if query is not None:
         pattern = re.compile(query, re.IGNORECASE)
         s = [x for x in s if pattern.match(x)]

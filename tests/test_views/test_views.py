@@ -901,6 +901,23 @@ def test_lightning_endpoints(client: TestClient, token: str, wallet):
     wallet_id = wallet["id"]
     assert client.get(f"/wallets/{wallet_id}/checkln").status_code == 401
     assert client.get("/wallets/555/checkln", headers={"Authorization": f"Bearer {token}"}).status_code == 404
+    assert client.get("/wallets/555/channels", headers={"Authorization": f"Bearer {token}"}).status_code == 404
+    assert (
+        client.post(
+            "/wallets/555/channels/open", json={"node_id": "test", "amount": 0.1}, headers={"Authorization": f"Bearer {token}"}
+        ).status_code
+        == 404
+    )
+    assert (
+        client.post(
+            "/wallets/555/channels/close", json={"channel_point": "test"}, headers={"Authorization": f"Bearer {token}"}
+        ).status_code
+        == 404
+    )
+    assert (
+        client.post("/wallets/555/lnpay", json={"invoice": "test"}, headers={"Authorization": f"Bearer {token}"}).status_code
+        == 404
+    )
     resp = client.get(f"/wallets/{wallet_id}/checkln", headers={"Authorization": f"Bearer {token}"})
     assert resp.status_code == 200
     assert resp.json() is False
