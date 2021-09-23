@@ -77,46 +77,6 @@ commands:
             python3 build.py
 
 jobs:
-  lint:
-    docker:
-      - image: cimg/python:3.7
-
-    working_directory: ~/repo
-
-    steps:
-      - checkout
-
-      - restore_cache:
-          keys:
-            - v1-lint-dependencies-{{ .Branch }}-{{ checksum "~/.pyenv/version" }}
-
-      - restore_cache:
-          keys:
-            - v1-lint-pre-commit-{{ .Branch }}-{{ checksum ".pre-commit-config.yaml" }}
-
-      - run:
-          name: install dependencies
-          command: |
-            virtualenv ~/venv
-            echo ". ~/venv/bin/activate" >> $BASH_ENV
-            source $BASH_ENV
-            pip install -U -r requirements/dev.txt
-
-      - save_cache:
-          paths:
-            - ~/venv
-          key: v1-lint-dependencies-{{ .Branch }}-{{ checksum "~/.pyenv/version" }}
-
-      - run:
-          name: run pre-commit checks
-          command: |
-            pre-commit run --all-files --show-diff-on-failure
-
-      - save_cache:
-          paths:
-            - ~/.cache/pre-commit
-          key: v1-lint-pre-commit-{{ .Branch }}-{{ checksum ".pre-commit-config.yaml" }}
-
   test:
     parameters:
       v:
@@ -261,7 +221,8 @@ workflows:
   version: 2
   build_and_test:
     jobs:
-      - lint
+      - bitcartcc/lint:
+          name: lint
       - test:
           name: test-<< matrix.v >>
           requires:
