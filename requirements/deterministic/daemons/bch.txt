@@ -71,7 +71,7 @@ ecdsa==0.16.1 \
     --hash=sha256:881fa5e12bb992972d3d1b3d4dfbe149ab76a89f13da02daa5ea1ec7dea6e747 \
     --hash=sha256:cfc046a2ddd425adbd1a78b3c46f0d1325c657811c0f45ecc3a0a6236c1e50ff
     # via electron-cash
-https://github.com/bitcartcc/Electron-Cash/archive/c4642e397041d4a68e62ac28c86dc5a0787b94e9.zip \
+electron-cash @ https://github.com/bitcartcc/Electron-Cash/archive/c4642e397041d4a68e62ac28c86dc5a0787b94e9.zip \
     --hash=sha256:807d5ead3a2f017b27e26d2b1f4a3e98360fcd52c98007e0b29c45cc3856903a
     # via -r requirements/daemons/bch.txt
 idna==2.10 \
