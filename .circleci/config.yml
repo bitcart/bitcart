@@ -46,6 +46,8 @@ commands:
 
   install-lint-dependencies:
     steps:
+      - checkout
+
       - restore_cache:
           keys:
             - v1-lint-dependencies-{{ .Branch }}-{{ checksum "~/.pyenv/version" }}
