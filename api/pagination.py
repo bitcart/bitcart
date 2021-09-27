@@ -3,7 +3,7 @@ from typing import Callable, Optional, Union
 
 import asyncpg
 from fastapi import Query
-from sqlalchemy import Text, func, or_, text
+from sqlalchemy import Text, and_, func, or_, text
 from starlette.requests import Request
 
 from api import models, utils
@@ -29,10 +29,10 @@ class Pagination:
         self.request = request
         self.offset = offset
         self.limit = limit
-        self.query = query
+        self.query = utils.common.SearchQuery(query)
         self.multiple = multiple
         if self.multiple:
-            self.query = self.query.replace(",", "|")
+            self.query.text = self.query.text.replace(",", "|")
         self.sort = sort
         self.desc = desc
         self.desc_s = "desc" if desc else ""
@@ -51,7 +51,10 @@ class Pagination:
         return str(self.request.url.include_query_params(limit=self.limit, offset=self.offset + self.limit))
 
     async def get_count(self, query) -> int:
-        return await utils.database.get_scalar(query, db.func.count, self.model.id)
+        try:
+            return await utils.database.get_scalar(query, db.func.count, self.model.id)
+        except asyncpg.exceptions.DataError:
+            return 0
 
     async def get_list(self, query) -> list:
         if not self.sort:
@@ -62,20 +65,29 @@ class Pagination:
         query = query.order_by(text(f"{self.sort} {self.desc_s}"))
         try:
             return await query.offset(self.offset).gino.all()
-        except asyncpg.exceptions.UndefinedColumnError:
+        except (asyncpg.exceptions.UndefinedColumnError, asyncpg.exceptions.DataError):
             return []
 
     def search(self):
         if not self.query:
             return []
-        return or_(
-            *(
-                getattr(self.model, m.key)
-                .cast(Text)
-                .op("~*")(f"{self.query}")  # NOTE: not cross-db, postgres case-insensitive regex
-                for m in self.model.__table__.columns
+        queries = []
+        queries.extend(self.query.get_created_filter(self.model))
+        for search_filter, value in self.query.filters.items():
+            column = getattr(self.model, search_filter, None)
+            if column is not None:
+                queries.append(column.in_(value))
+        queries.append(
+            or_(
+                *(
+                    getattr(self.model, m.key)
+                    .cast(Text)
+                    .op("~*")(f"{self.query.text}")  # NOTE: not cross-db, postgres case-insensitive regex
+                    for m in self.model.__table__.columns
+                )
             )
         )
+        return and_(*queries)
 
     async def paginate(
         self,

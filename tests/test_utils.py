@@ -4,6 +4,7 @@ import shlex
 import subprocess
 import time
 from dataclasses import dataclass
+from datetime import timedelta
 from decimal import Decimal
 
 import aioredis
@@ -225,3 +226,31 @@ async def test_broken_coin(mocker, caplog, wallet):
     assert not success
     assert balance == Decimal(0)
     assert "Error getting wallet balance" in caplog.text
+
+
+def test_search_query_parsing():
+    q1 = utils.common.SearchQuery("text")
+    assert q1.text == "text"
+    assert q1.filters == {}
+    q2 = utils.common.SearchQuery(
+        'column:value column:value2 text column2:value2 text2 column3:other:value column2:value3 "column3:other:value"'
+    )
+    assert q2.text == "text text2 column3:other:value"
+    assert q2.filters == {"column": ["value", "value2"], "column2": ["value2", "value3"], "column3": ["other:value"]}
+
+
+def check_date(date, **kwargs):
+    now = utils.time.now()
+    assert now - date >= timedelta(**kwargs)
+
+
+def test_search_query_parse_datetime():
+    assert utils.common.SearchQuery("start_date:-1").parse_datetime("start_date") is None
+    assert utils.common.SearchQuery("start_date:-testd").parse_datetime("start_date") is None
+    check_date(utils.common.SearchQuery("start_date:-1d").parse_datetime("start_date"), days=1)
+    check_date(utils.common.SearchQuery("end_date:-1d").parse_datetime("end_date"), days=1)
+    check_date(utils.common.SearchQuery("start_date:-1h").parse_datetime("start_date"), hours=1)
+    check_date(utils.common.SearchQuery("start_date:-1w").parse_datetime("start_date"), weeks=1)
+    check_date(utils.common.SearchQuery("start_date:-1m").parse_datetime("start_date"), days=30)
+    check_date(utils.common.SearchQuery("start_date:-1y").parse_datetime("start_date"), days=30 * 12)
+    check_date(utils.common.SearchQuery("start_date:-150d").parse_datetime("start_date"), days=150)

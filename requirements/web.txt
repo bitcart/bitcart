@@ -12,5 +12,6 @@ notifiers
 paramiko
 passlib[bcrypt]
 psycopg2-binary
+python-dateutil
 python-multipart
 uvicorn[standard]
