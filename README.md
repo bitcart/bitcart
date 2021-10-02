@@ -61,6 +61,7 @@ Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/d
     <td align="center"><a href="http://tobyase.de/"><img src="https://avatars0.githubusercontent.com/u/6002167?v=4?s=100" width="100px;" alt=""/><br /><sub><b>TobyAsE</b></sub></a><br /><a href="https://github.com/bitcartcc/bitcart/commits?author=TobyAsE" title="Code">💻</a> <a href="#design-TobyAsE" title="Design">🎨</a></td>
     <td align="center"><a href="https://github.com/Shadman-Ahmed-Chowdhury"><img src="https://avatars3.githubusercontent.com/u/46925021?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Shadman Ahmed</b></sub></a><br /><a href="#design-Shadman-Ahmed-Chowdhury" title="Design">🎨</a></td>
     <td align="center"><a href="https://github.com/KarolTrzeszczkowski"><img src="https://avatars.githubusercontent.com/u/11697819?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Karol Trzeszczkowski</b></sub></a><br /><a href="https://github.com/bitcartcc/bitcart/commits?author=KarolTrzeszczkowski" title="Code">💻</a></td>
+    <td align="center"><a href="https://github.com/MaximeKoitsalu"><img src="https://avatars.githubusercontent.com/u/8655862?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Maxime Koitsalu</b></sub></a><br /><a href="https://github.com/bitcartcc/bitcart/commits?author=MaximeKoitsalu" title="Code">💻</a> <a href="#design-MaximeKoitsalu" title="Design">🎨</a></td>
   </tr>
 </table>
 
