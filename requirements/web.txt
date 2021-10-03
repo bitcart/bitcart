@@ -1,11 +1,12 @@
 -r base.txt
 aiofiles
-aioredis<2.0 # TODO: upgrade after a few bugfix releases
+aioredis
 alembic
 bitcart
 email-validator
 fastapi
 gino
+hiredis
 Jinja2
 msgpack
 notifiers

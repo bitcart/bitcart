@@ -7,8 +7,8 @@ from dataclasses import dataclass
 from datetime import timedelta
 from decimal import Decimal
 
-import aioredis
 import pytest
+from aioredis.client import PubSub
 from bitcart.errors import BaseError as BitcartBaseError
 
 from api import exceptions, schemes, settings, utils
@@ -21,8 +21,7 @@ def test_verify_password():
 
 
 async def reader(chan):
-    while await chan.wait_message():
-        msg = await chan.get_json()
+    async for msg in utils.redis.listen_channel(chan):
         assert msg == {"hello": "world"}
         break
 
@@ -35,13 +34,10 @@ async def test_auth_dependency():
 
 @pytest.mark.asyncio
 async def test_make_subscriber():
-    sub, chan = await utils.redis.make_subscriber("test")
-    assert sub is not None
-    assert chan is not None
-    assert isinstance(sub, aioredis.Redis)
-    assert isinstance(chan, aioredis.Channel)
+    sub = await utils.redis.make_subscriber("test")
+    assert isinstance(sub, PubSub)
     await sub.subscribe("channel:test")
-    utils.tasks.create_task(reader(chan), loop=settings.loop)
+    utils.tasks.create_task(reader(sub), loop=settings.loop)
     assert await utils.redis.publish_message("test", {"hello": "world"}) == 1
 
 

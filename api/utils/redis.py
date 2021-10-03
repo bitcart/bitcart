@@ -1,7 +1,6 @@
 import asyncio
+import json
 from contextlib import asynccontextmanager
-
-import aioredis
 
 from api import settings
 
@@ -14,12 +13,17 @@ async def wait_for_redis():  # pragma: no cover
 
 
 async def make_subscriber(name):
-    subscriber = await aioredis.create_redis_pool(settings.REDIS_HOST)
-    res = await subscriber.subscribe(f"channel:{name}")
-    channel = res[0]
-    return subscriber, channel
+    async with wait_for_redis():
+        subscriber = settings.redis_pool.pubsub(ignore_subscribe_messages=True)
+        await subscriber.subscribe(f"channel:{name}")
+        return subscriber
 
 
 async def publish_message(channel, message):
     async with wait_for_redis():
-        return await settings.redis_pool.publish_json(f"channel:{channel}", message)
+        return await settings.redis_pool.publish(f"channel:{channel}", json.dumps(message))
+
+
+async def listen_channel(channel):
+    async for message in channel.listen():
+        yield json.loads(message["data"])

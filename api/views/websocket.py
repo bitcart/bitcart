@@ -44,13 +44,12 @@ class GenericWebsocketEndpoint(WebSocketEndpoint):
             return
         if await self.maybe_exit_early(websocket):
             return
-        self.subscriber, self.channel = await utils.redis.make_subscriber(f"{self.NAME}:{self.object_id}")
+        self.subscriber = await utils.redis.make_subscriber(f"{self.NAME}:{self.object_id}")
         utils.tasks.create_task(self.poll_subs(websocket), loop=settings.loop)
 
     async def poll_subs(self, websocket):
-        while await self.channel.wait_message():
-            msg = await self.channel.get_json()
-            await websocket.send_json(msg)
+        async for message in utils.redis.listen_channel(self.subscriber):
+            await websocket.send_json(message)
 
     async def on_disconnect(self, websocket, close_code):
         if self.subscriber:

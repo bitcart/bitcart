@@ -58,13 +58,12 @@ async def send_message(message):
 
 
 async def listen(channel, custom_event_handler=None):  # pragma: no cover
-    while await channel.wait_message():
-        msg = await channel.get_json()
-        asyncio.ensure_future(process_message(msg, custom_event_handler))
+    async for message in utils.redis.listen_channel(channel):
+        asyncio.ensure_future(process_message(message, custom_event_handler))
 
 
 async def start_listening(custom_event_handler=None):  # pragma: no cover
-    _, channel = await utils.redis.make_subscriber(constants.EVENTS_CHANNEL)
+    channel = await utils.redis.make_subscriber(constants.EVENTS_CHANNEL)
     await listen(channel, custom_event_handler)
 
 

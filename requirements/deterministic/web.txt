@@ -49,9 +49,9 @@ aiohttp==3.7.4.post0 \
     # via
     #   bitcart
     #   jsonrpcclient
-aioredis==1.3.1 \
-    --hash=sha256:15f8af30b044c771aee6787e5ec24694c048184c7b9e54c3b60c750a4b93273a \
-    --hash=sha256:b61808d7e97b7cd5a92ed574937a079c9387fdadd22bfbfa7ad2fd319ecc26e3
+aioredis==2.0.0 \
+    --hash=sha256:3a2de4b614e6a5f8e104238924294dc4e811aefbe17ddf52c04a93cbf06e67db \
+    --hash=sha256:9921d68a3df5c5cdb0d5b49ad4fc88a4cfdd60c108325df4f0066e8410c55ffb
     # via -r requirements/web.txt
 alembic==1.5.8 \
     --hash=sha256:8a259f0a4c8b350b03579d77ce9e810b19c65bf0af05f84efb69af13ad50801e \
@@ -246,7 +246,7 @@ hiredis==2.0.0 \
     --hash=sha256:e3447d9e074abf0e3cd85aef8131e01ab93f9f0e86654db7ac8a3f73c63706ce \
     --hash=sha256:f52010e0a44e3d8530437e7da38d11fb822acfb0d5b12e9cd5ba655509937ca0 \
     --hash=sha256:f8196f739092a78e4f6b1b2172679ed3343c39c61a3e9d722ce6fcf1dac2824a
-    # via aioredis
+    # via -r requirements/web.txt
 httptools==0.1.1 \
     --hash=sha256:0a4b1b2012b28e68306575ad14ad5e9120b34fccd02a81eb08838d7e3bbb48be \
     --hash=sha256:3592e854424ec94bd17dc3e0c96a64e459ec4147e6d53c0a42d0ebcef9cb9c5d \
@@ -630,6 +630,7 @@ typing-extensions==3.7.4.3 \
     --hash=sha256:dafc7639cde7f1b6e1acc0f457842a83e722ccca8eef5270af2d74792619a89f
     # via
     #   aiohttp
+    #   aioredis
     #   asyncpg
     #   pydantic
     #   uvicorn
