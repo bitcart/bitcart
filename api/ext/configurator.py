@@ -121,7 +121,7 @@ def execute_ssh_commands(commands, ssh_settings):
 
 async def set_task(task_id, data):
     async with utils.redis.wait_for_redis():
-        await settings.redis_pool.hmset_dict(REDIS_KEY, {task_id: json.dumps(data)})
+        await settings.redis_pool.hset(REDIS_KEY, mapping={task_id: json.dumps(data)})
 
 
 async def create_new_task(script, ssh_settings, is_manual):
@@ -143,7 +143,7 @@ async def create_new_task(script, ssh_settings, is_manual):
 
 async def get_task(task_id):
     async with utils.redis.wait_for_redis():
-        data = await settings.redis_pool.hget(REDIS_KEY, task_id, encoding="utf-8")
+        data = await settings.redis_pool.hget(REDIS_KEY, task_id)
         return json.loads(data) if data else data
 
 
@@ -177,10 +177,8 @@ async def refresh_pending_deployments():
         now = utils.time.now().timestamp()
         async with utils.redis.wait_for_redis():
             to_delete = []
-            async for key, value in settings.redis_pool.ihscan(REDIS_KEY):
+            async for key, value in settings.redis_pool.hscan_iter(REDIS_KEY):
                 with log_errors():
-                    key = key.decode("utf-8")
-                    value = value.decode("utf-8")
                     value = json.loads(value) if value else value
                     # Remove stale deployments
                     if "created" not in value or now - value["created"] >= KEY_TTL:

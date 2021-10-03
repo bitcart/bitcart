@@ -157,7 +157,8 @@ redis_pool = None
 
 async def init_redis():
     global redis_pool
-    redis_pool = await aioredis.create_redis_pool(REDIS_HOST)
+    redis_pool = aioredis.from_url(REDIS_HOST, decode_responses=True)
+    await redis_pool.ping()
 
 
 async def init_db():

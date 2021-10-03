@@ -109,9 +109,9 @@ async def refresh(log=True):  # pragma: no cover: used in production only
         onion_host = services_dict.get("BitcartCC Merchants API", "")
         if onion_host:
             onion_host = onion_host["hostname"] or ""
-        await settings.redis_pool.hmset_dict(
+        await settings.redis_pool.hset(
             REDIS_KEY,
-            {
+            mapping={
                 "onion_host": onion_host,
                 "services_dict": json.dumps(services_dict),
                 "anonymous_services_dict": json.dumps(anonymous_services_dict),
@@ -120,6 +120,6 @@ async def refresh(log=True):  # pragma: no cover: used in production only
 
 
 async def get_data(key, default=None, json_decode=False):
-    data = await settings.redis_pool.hget(REDIS_KEY, key, encoding="utf-8")
+    data = await settings.redis_pool.hget(REDIS_KEY, key)
     data = json.loads(data) if json_decode and data else data
     return data if data else default
