@@ -127,6 +127,16 @@
       "contributions": [
         "translation"
       ]
+    },
+    {
+      "login": "Xaconi",
+      "name": "Nicolás Giacconi",
+      "avatar_url": "https://avatars.githubusercontent.com/u/1944438?v=4",
+      "profile": "https://github.com/Xaconi",
+      "contributions": [
+        "code",
+        "design"
+      ]
     }
   ],
   "contributorsPerLine": 7,
