@@ -137,6 +137,17 @@
         "code",
         "design"
       ]
+    },
+    {
+      "login": "leovoon",
+      "name": "leovoon",
+      "avatar_url": "https://avatars.githubusercontent.com/u/16155802?v=4",
+      "profile": "https://github.com/leovoon",
+      "contributions": [
+        "code",
+        "design",
+        "a11y"
+      ]
     }
   ],
   "contributorsPerLine": 7,

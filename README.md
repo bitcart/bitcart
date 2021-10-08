@@ -65,6 +65,9 @@ Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/d
     <td align="center"><a href="https://git.io/JuT7Z"><img src="https://avatars.githubusercontent.com/u/88304238?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Shubham-Singh-Rajput</b></sub></a><br /><a href="#translation-shubham-singh-748" title="Translation">🌍</a></td>
     <td align="center"><a href="https://github.com/Xaconi"><img src="https://avatars.githubusercontent.com/u/1944438?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Nicolás Giacconi</b></sub></a><br /><a href="https://github.com/bitcartcc/bitcart/commits?author=Xaconi" title="Code">💻</a> <a href="#design-Xaconi" title="Design">🎨</a></td>
   </tr>
+  <tr>
+    <td align="center"><a href="https://github.com/leovoon"><img src="https://avatars.githubusercontent.com/u/16155802?v=4?s=100" width="100px;" alt=""/><br /><sub><b>leovoon</b></sub></a><br /><a href="https://github.com/bitcartcc/bitcart/commits?author=leovoon" title="Code">💻</a> <a href="#design-leovoon" title="Design">🎨</a> <a href="#a11y-leovoon" title="Accessibility">️️️️♿️</a></td>
+  </tr>
 </table>
 
 <!-- markdownlint-restore -->
