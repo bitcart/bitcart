@@ -98,6 +98,11 @@ class BCHDaemon(BTCDaemon):
     def get_address_balance(self, address, wallet):
         return self.wallets[wallet]["wallet"].get_addr_balance(self.electrum.address.Address.from_string(address))
 
+    @rpc(requires_wallet=True)
+    def removelocaltx(self, txid, wallet):
+        self.wallets[wallet]["wallet"].remove_transaction(txid)
+        self.wallets[wallet]["wallet"].save_transactions()
+
 
 if __name__ == "__main__":
     daemon = BCHDaemon()
