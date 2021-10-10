@@ -131,58 +131,6 @@ jobs:
 
       - upload-results
 
-  functional-tests:
-    executor:
-      name: main-executor
-
-    working_directory: ~/repo
-
-    steps:
-      - checkout
-
-      - install_dependencies
-
-      - run:
-          name: install regtest utils
-          command: |
-            sudo add-apt-repository -y ppa:luke-jr/bitcoincore
-            sudo apt update
-            sudo apt install -y bitcoind
-            sudo apt install screen
-
-      - run:
-          name: prepare bitcoind
-          command: |
-            make bitcoind
-          background: true
-
-      - run:
-          name: prepare electrumx
-          command: |
-            make electrumx
-          background: true
-
-      - run:
-          name: prepare regtest daemon
-          command: |
-            make regtest
-          background: true
-
-      - run:
-          name: prepare regtest ln daemon
-          command: |
-            make regtestln
-          background: true
-
-      - run:
-          name: run tests
-          command: |
-            sleep 10s
-            make functional
-            codecov -F functional-tests
-
-      - upload-results
-
   deploy-amd64:
     executor: bitcartcc/build-ubuntu
 
@@ -257,7 +205,11 @@ workflows:
                 - "3.7"
                 - "3.8"
                 - "3.9"
-      - functional-tests:
+      - bitcartcc/functional-tests:
+          name: functional-tests
+          executor: main-executor
+          dependency-steps:
+            - install_dependencies
           requires:
             - test
       - deploy-amd64:
