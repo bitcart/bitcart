@@ -13,7 +13,7 @@ from api.settings import LOG_FILE, LOGSERVER_HOST
 
 
 def get_exception_message(exc: Exception):
-    return "\n" + "".join(traceback.format_exception(etype=type(exc), value=exc, tb=exc.__traceback__))
+    return "\n" + "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
 
 
 def timed_log_namer(default_name):
