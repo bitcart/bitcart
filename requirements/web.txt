@@ -4,7 +4,7 @@ aioredis
 alembic
 bitcart
 email-validator
-fastapi
+fastapi<0.69.0
 gino
 hiredis
 Jinja2

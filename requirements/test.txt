@@ -3,7 +3,7 @@ black
 codecov
 flake8
 https://github.com/spesmilo/electrumx/archive/1.16.0.zip
-isort>=5
+isort
 pytest
 pytest-asyncio
 pytest-cov
