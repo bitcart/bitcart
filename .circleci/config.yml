@@ -210,6 +210,8 @@ workflows:
           executor: main-executor
           dependency-steps:
             - install_dependencies
+          requires:
+            - test
       - deploy-amd64:
           context: global
           filters:
