@@ -44,9 +44,9 @@ pep517==0.11.0 \
     --hash=sha256:3fa6b85b9def7ba4de99fb7f96fe3f02e2d630df8aa2720a5cf3b183f087a738 \
     --hash=sha256:e1ba5dffa3a131387979a68ff3e391ac7d645be409216b961bc2efe6468ab0b2
     # via pip-tools
-pip-tools==6.3.1 \
-    --hash=sha256:992d968df6f1a19d4d37c53b68b3d4b601b894fb3ee0926d1fa762ebc7c7e9e9 \
-    --hash=sha256:a99b891ccd0fda95e1dc426e92fb98fd1c946d01fe6cd2d383e495b52267cbb8
+pip-tools==6.4.0 \
+    --hash=sha256:65553a15b1ba34be5e43889345062e38fb9b219ffa23b084ca0d4c4039b6f53b \
+    --hash=sha256:bb2c3272bc229b4a6d25230ebe255823aba1aa466a0d698c48ab7eb5ab7efdc9
     # via -r requirements/dev.txt
 platformdirs==2.4.0 \
     --hash=sha256:367a5e80b3d04d2428ffa76d33f124cf11e8fff2acdaa9b43d545f5c7d661ef2 \
@@ -120,9 +120,9 @@ zipp==3.6.0 \
     #   pep517
 
 # The following packages are considered to be unsafe in a requirements file:
-pip==21.2.4 \
-    --hash=sha256:0eb8a1516c3d138ae8689c0c1a60fde7143310832f9dc77e11d8a4bc62de193b \
-    --hash=sha256:fa9ebb85d3fd607617c0c44aca302b1b45d87f9c2a1649b46c26167ca4296323
+pip==21.3 \
+    --hash=sha256:4a1de8f97884ecfc10b48fe61c234f7e7dcf4490a37217011ad9369d899ad5a6 \
+    --hash=sha256:741a61baab1dbce2d8ca415effa48a2b6a964564f81a9f4f1fce4c433346c034
     # via pip-tools
 setuptools==58.2.0 \
     --hash=sha256:2551203ae6955b9876741a26ab3e767bb3242dafe86a32a749ea0d78b6792f11 \
