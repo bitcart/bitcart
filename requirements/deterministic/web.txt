@@ -46,9 +46,7 @@ aiohttp==3.7.4.post0 \
     --hash=sha256:f705e12750171c0ab4ef2a3c76b9a4024a62c4103e3a55dd6f99265b9bc6fcfc \
     --hash=sha256:f881853d2643a29e643609da57b96d5f9c9b93f62429dcc1cbb413c7d07f0e1a \
     --hash=sha256:fe60131d21b31fd1a14bd43e6bb88256f69dfc3188b3a89d736d6c71ed43ec95
-    # via
-    #   bitcart
-    #   jsonrpcclient
+    # via bitcart
 aioredis==2.0.0 \
     --hash=sha256:3a2de4b614e6a5f8e104238924294dc4e811aefbe17ddf52c04a93cbf06e67db \
     --hash=sha256:9921d68a3df5c5cdb0d5b49ad4fc88a4cfdd60c108325df4f0066e8410c55ffb
@@ -57,9 +55,6 @@ alembic==1.7.4 \
     --hash=sha256:9d33f3ff1488c4bfab1e1a6dfebbf085e8a8e1a3e047a43ad29ad1f67f012a1d \
     --hash=sha256:e3cab9e59778b3b6726bb2da9ced451c6622d558199fd3ef914f3b1e8f4ef704
     # via -r requirements/web.txt
-apply-defaults==0.1.6 \
-    --hash=sha256:3773de3491b94c0fe44310f1a85888389cdc71e1544b343bce0d2bd6991acea5
-    # via jsonrpcclient
 asgiref==3.4.1 \
     --hash=sha256:4ef1ab46b484e3c706329cedeff284a5d40824200638503f5768edb6de7d58e9 \
     --hash=sha256:ffc141aa908e6f175673e7b1b3b7af4fdb0ecb738fc5c8b88f69f055c2415214
@@ -102,9 +97,9 @@ bcrypt==3.2.0 \
     # via
     #   paramiko
     #   passlib
-bitcart==1.5.0.0 \
-    --hash=sha256:31334e01c44223dfce23bdb0757b8ceaa57a6a14dd272d96b1c0a591b1bd688b \
-    --hash=sha256:926c2e3ac32c6bd579c82b84c03253ba32bb9dc0c118d44fa023a1cfee803fce
+bitcart==1.5.1.1 \
+    --hash=sha256:5303e09c787053c1e67aaa9c1b12780bf543912820b720c0c4731914baa3c00b \
+    --hash=sha256:6b5aafe02d82ebadb452d7475749ed691121a91e35caf0f6853917898bf6a65e
     # via -r requirements/web.txt
 certifi==2021.10.8 \
     --hash=sha256:78884e7c1d4b00ce3cea67b44566851c4343c120abd683433ce934a68ea58872 \
@@ -168,11 +163,10 @@ charset-normalizer==2.0.7 \
     --hash=sha256:e019de665e2bcf9c2b64e2e5aa025fa991da8720daa3c1138cadd2fd1856aed0 \
     --hash=sha256:f7af805c321bfa1ce6714c51f254e0d5bb5e5834039bc17db7ebe3a4cec9492b
     # via requests
-click==7.1.2 \
-    --hash=sha256:d2b5255c7c6349bc1bd1e59e08cd12acbbd63ce649f2588755783aa94dfb6b1a \
-    --hash=sha256:dacca89f4bfadd5de3d7489b7c8a566eee0d3676333fbb50030263894c38c0dc
+click==8.0.3 \
+    --hash=sha256:353f466495adaeb40b6b5f592f9f91cb22372351c84caeb068132442a4518ef3 \
+    --hash=sha256:410e932b050f5eed773c4cda94de75971c89cdb3155a72a0831139a79e5ecb5b
     # via
-    #   jsonrpcclient
     #   notifiers
     #   uvicorn
 cryptography==35.0.0 \
@@ -289,6 +283,7 @@ importlib-metadata==1.7.0 \
     --hash=sha256:dc15b2969b4ce36305c51eebe62d418ac7791e9a157911d58bfb1f9ccd8e2070
     # via
     #   alembic
+    #   click
     #   gino
     #   jsonschema
 importlib-resources==5.2.2 \
@@ -299,15 +294,13 @@ jinja2==3.0.2 \
     --hash=sha256:827a0e32839ab1600d4eb1c4c33ec5a8edfbc5cb42dafa13b81f182f97784b45 \
     --hash=sha256:8569982d3f0889eed11dd620c706d39b60c36d6d25843961f33f77fb6bc6b20c
     # via -r requirements/web.txt
-jsonrpcclient[aiohttp]==3.3.6 \
-    --hash=sha256:2f2d218de00ff7532f69efed2e2515d30c90f873e5cb91bf00de996dfb782f8a
+jsonrpcclient==4.0.1 \
+    --hash=sha256:fbc57c5150d210e350dcb54737a18c39dcd7e2d0ce43e517839ff457334011d5
     # via bitcart
-jsonschema==3.2.0 \
-    --hash=sha256:4e5b3cf8216f577bee9ce139cbe72eca3ea4f292ec60928ff24758ce626cd163 \
-    --hash=sha256:c8a85b28d377cc7737e46e2d9f2b4f44ee3c0e1deac6bf46ddefc7187d30797a
-    # via
-    #   jsonrpcclient
-    #   notifiers
+jsonschema==4.1.0 \
+    --hash=sha256:2b3cca28580511d44326f0e7fc582eab3cbe31aabd1a1c2cfa74a399796ffd84 \
+    --hash=sha256:9dd7c33b4a96138dc37bb86b3610d3b12d30d96433d4d73435ca3025804154a8
+    # via notifiers
 mako==1.1.5 \
     --hash=sha256:169fa52af22a91900d852e937400e79f535496191c63712e3b9fda5a9bed6fc3 \
     --hash=sha256:6804ee66a7f6a6416910463b00d76a7b25194cd27f1918500c5bd7be2a088a23
@@ -654,7 +647,6 @@ six==1.16.0 \
     --hash=sha256:8abb2f1d86890a2dfb989f9a77cfcfd3e47c2a354b01111771326f8aa26e0254
     # via
     #   bcrypt
-    #   jsonschema
     #   pynacl
     #   python-dateutil
     #   python-multipart
@@ -849,9 +841,3 @@ zipp==3.6.0 \
     # via
     #   importlib-metadata
     #   importlib-resources
-
-# The following packages are considered to be unsafe in a requirements file:
-setuptools==58.2.0 \
-    --hash=sha256:2551203ae6955b9876741a26ab3e767bb3242dafe86a32a749ea0d78b6792f11 \
-    --hash=sha256:2c55bdb85d5bb460bd2e3b12052b677879cffcf46c0c688f2e5bf51d36001145
-    # via jsonschema
