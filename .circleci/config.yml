@@ -25,7 +25,7 @@ commands:
     steps:
       - restore_cache:
           keys:
-            - v2-dependencies-{{ .Branch }}-{{ checksum "~/.pyenv/version" }}-{{ checksum "requirements/web.txt" }}-{{ checksum "requirements/test.txt" }}-{{ checksum "requirements/daemons/btc.txt" }}
+            - v3-dependencies-{{ .Branch }}-{{ checksum "~/.pyenv/version" }}-{{ checksum "requirements/web.txt" }}-{{ checksum "requirements/test.txt" }}-{{ checksum "requirements/daemons/btc.txt" }}
 
       - run:
           name: install dependencies
@@ -35,14 +35,15 @@ commands:
             source $BASH_ENV
             sudo apt update
             sudo apt install libsecp256k1-dev
-            pip install -U -r requirements.txt
-            pip install -U -r requirements/daemons/btc.txt
-            pip install -U -r requirements/test.txt
+            pip install -r requirements/deterministic/base.txt
+            pip install -r requirements/deterministic/web.txt
+            pip install -r requirements/deterministic/daemons/btc.txt
+            pip install -r requirements/deterministic/test.txt
 
       - save_cache:
           paths:
             - ~/venv
-          key: v2-dependencies-{{ .Branch }}-{{ checksum "~/.pyenv/version" }}-{{ checksum "requirements/web.txt" }}-{{ checksum "requirements/test.txt" }}-{{ checksum "requirements/daemons/btc.txt" }}
+          key: v3-dependencies-{{ .Branch }}-{{ checksum "~/.pyenv/version" }}-{{ checksum "requirements/web.txt" }}-{{ checksum "requirements/test.txt" }}-{{ checksum "requirements/daemons/btc.txt" }}
 
   install-lint-dependencies:
     steps:
@@ -58,7 +59,7 @@ commands:
             virtualenv ~/venv
             echo ". ~/venv/bin/activate" >> $BASH_ENV
             source $BASH_ENV
-            pip install -U -r requirements/dev.txt
+            pip install -r requirements/deterministic/dev.txt
 
       - save_cache:
           paths:
