@@ -15,4 +15,4 @@ passlib[bcrypt]
 psycopg2-binary
 python-dateutil
 python-multipart
-uvicorn[standard]
+uvicorn[standard]<0.15.0 # has bugs with websockets and see #247
