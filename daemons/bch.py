@@ -41,7 +41,7 @@ class BCHDaemon(BTCDaemon):
         return daemon
 
     async def shutdown_daemon(self):
-        if self.daemon:
+        if self.daemon and self.loop:
             self.daemon.stop()
             await self.loop.run_in_executor(None, self.daemon.join)
 

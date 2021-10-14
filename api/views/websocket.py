@@ -5,7 +5,7 @@ from fastapi.security import SecurityScopes
 from starlette.endpoints import WebSocketEndpoint
 from starlette.status import WS_1008_POLICY_VIOLATION
 
-from api import models, settings, utils
+from api import models, utils
 from api.invoices import InvoiceStatus
 
 router = APIRouter()
@@ -45,7 +45,7 @@ class GenericWebsocketEndpoint(WebSocketEndpoint):
         if await self.maybe_exit_early(websocket):
             return
         self.subscriber = await utils.redis.make_subscriber(f"{self.NAME}:{self.object_id}")
-        utils.tasks.create_task(self.poll_subs(websocket), loop=settings.loop)
+        utils.tasks.create_task(self.poll_subs(websocket))
 
     async def poll_subs(self, websocket):
         async for message in utils.redis.listen_channel(self.subscriber):

@@ -40,4 +40,4 @@ if __name__ == "__main__":
     process.start()
     wait_for_port()
     signal.signal(signal.SIGINT, handler)
-    asyncio.get_event_loop().run_until_complete(main())
+    asyncio.run(main())

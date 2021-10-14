@@ -1,3 +1,4 @@
+import asyncio
 import os
 import shutil
 
@@ -5,7 +6,7 @@ import pytest
 from async_asgi_testclient import TestClient as AsyncClient
 from starlette.testclient import TestClient
 
-from api import models, settings
+from api import models
 from api.db import db
 from main import app
 
@@ -29,9 +30,9 @@ async def cleanup_db():
                 await conn.status(table.delete())
 
 
-@pytest.fixture(scope="session", autouse=True)
+@pytest.fixture(scope="session")
 def event_loop():
-    yield settings.loop
+    yield asyncio.get_event_loop_policy().get_event_loop()
 
 
 @pytest.fixture(scope="session", autouse=True)

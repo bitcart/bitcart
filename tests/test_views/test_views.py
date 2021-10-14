@@ -21,11 +21,19 @@ class DummyInstance:
     coin_name = "BTC"
 
 
+def is_event_loop_running():
+    try:
+        asyncio.get_running_loop()
+        return True
+    except RuntimeError:
+        return False
+
+
 def get_future_return_value(return_val):
     future = asyncio.Future()
     future.set_result(return_val)
     minor_ver = int(platform.python_version_tuple()[1])
-    return future if minor_ver < 8 or asyncio.get_event_loop().is_running() else return_val
+    return future if minor_ver < 8 or is_event_loop_running() else return_val
 
 
 def test_docs_root(client: TestClient):
