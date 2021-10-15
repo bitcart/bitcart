@@ -37,7 +37,7 @@ async def test_make_subscriber():
     sub = await utils.redis.make_subscriber("test")
     assert isinstance(sub, PubSub)
     await sub.subscribe("channel:test")
-    utils.tasks.create_task(reader(sub), loop=settings.loop)
+    utils.tasks.create_task(reader(sub))
     assert await utils.redis.publish_message("test", {"hello": "world"}) == 1
 
 
@@ -197,12 +197,11 @@ async def test_custom_create_task(caplog):
     async def task():
         raise Exception(err_msg)
 
-    loop = asyncio.get_event_loop()
-    utils.tasks.create_task(task(), loop=loop)
+    utils.tasks.create_task(task())
     await asyncio.sleep(1)
     assert err_msg in caplog.text
     caplog.clear()
-    utils.tasks.create_task(task(), loop=loop).cancel()
+    utils.tasks.create_task(task()).cancel()
     await asyncio.sleep(1)
     assert err_msg not in caplog.text
 

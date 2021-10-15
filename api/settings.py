@@ -32,7 +32,7 @@ def init_logging():
     global logger
     logger = get_logger(__name__)
     sys.excepthook = excepthook_handler(sys.excepthook)
-    loop.set_exception_handler(handle_exception)
+    asyncio.get_running_loop().set_exception_handler(handle_exception)
 
 
 # TODO: refactor it all into OOP style, i.e. class Settings
@@ -151,7 +151,6 @@ for provider in all_providers():
     notifiers[notifier.name] = {"properties": properties, "required": required}
 
 # initialize redis pool
-loop = asyncio.get_event_loop()
 redis_pool = None
 
 
@@ -164,7 +163,7 @@ async def init_redis():
 async def init_db():
     from api import db
 
-    await db.db.set_bind(db.CONNECTION_STR, min_size=1, loop=asyncio.get_event_loop())
+    await db.db.set_bind(db.CONNECTION_STR, min_size=1, loop=asyncio.get_running_loop())
 
 
 def excepthook_handler(excepthook):

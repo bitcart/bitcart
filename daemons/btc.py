@@ -55,7 +55,7 @@ class BTCDaemon(BaseDaemon):
         self.wallets = {}
         self.wallets_updates = {}
         # initialize not yet created network
-        self.loop = asyncio.get_event_loop()
+        self.loop = None
         self.network = None
         self.fx = None
         self.daemon = None
@@ -148,6 +148,7 @@ class BTCDaemon(BaseDaemon):
 
     async def on_startup(self, app):
         await super().on_startup(app)
+        self.loop = asyncio.get_running_loop()
         self.daemon = self.create_daemon()
         self.network = self.daemon.network
         callback_function = self._process_events if self.ASYNC_CLIENT else self._process_events_sync
@@ -155,7 +156,7 @@ class BTCDaemon(BaseDaemon):
         self.fx = self.daemon.fx
 
     async def shutdown_daemon(self):
-        if self.daemon:
+        if self.daemon and self.loop:
             await self.loop.run_in_executor(None, self.daemon.on_stop)
 
     async def on_shutdown(self, app):
