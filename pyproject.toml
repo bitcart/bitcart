@@ -14,7 +14,9 @@ addopts = [
 ]
 filterwarnings = [
     "error::DeprecationWarning",
-    "error::PendingDeprecationWarning"
+    "error::PendingDeprecationWarning",
+    "ignore:.*distutils package is deprecated.*:DeprecationWarning:aioredis", # TODO: remove when aioredis fixes this
+    "ignore:There is no current event loop:DeprecationWarning"
 ]
 norecursedirs = ["tests/functional"]
 

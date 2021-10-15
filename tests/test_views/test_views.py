@@ -1,7 +1,7 @@
 import asyncio
 import json as json_module
 import os
-import platform
+import sys
 from decimal import Decimal
 
 import pytest
@@ -32,8 +32,7 @@ def is_event_loop_running():
 def get_future_return_value(return_val):
     future = asyncio.Future()
     future.set_result(return_val)
-    minor_ver = int(platform.python_version_tuple()[1])
-    return future if minor_ver < 8 or is_event_loop_running() else return_val
+    return future if sys.version_info < (3, 8) or is_event_loop_running() else return_val
 
 
 def test_docs_root(client: TestClient):
