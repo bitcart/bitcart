@@ -1,5 +1,5 @@
 import pytest
-from starlette.testclient import TestClient
+from httpx import AsyncClient as TestClient
 
 from api import utils
 from tests.fixtures import static_data
@@ -23,13 +23,13 @@ def notification_template():
 
 
 @pytest.fixture
-def user(client: TestClient):
-    return create_user(client, **static_data.SUPER_USER_DATA)
+async def user(client: TestClient, anyio_backend):
+    return await create_user(client, **static_data.SUPER_USER_DATA)
 
 
 @pytest.fixture
-def token_data(client: TestClient, user):
-    return create_token(client, user)
+async def token_data(client: TestClient, user, anyio_backend):
+    return await create_token(client, user)
 
 
 @pytest.fixture
@@ -38,47 +38,47 @@ def token(token_data):
 
 
 @pytest.fixture
-def limited_user(client: TestClient, user):
+async def limited_user(client: TestClient, user, anyio_backend):
     data = {
         "email": f"nonsuperuser-{utils.common.unique_id()}@example.com",
         "is_superuser": False,
     }
-    return create_user(client, **data)
+    return await create_user(client, **data)
 
 
 @pytest.fixture
-def limited_token(client: TestClient, limited_user):
-    return create_token(client, limited_user, permissions=[])["access_token"]
+async def limited_token(client: TestClient, limited_user, anyio_backend):
+    return await create_token(client, limited_user, permissions=[])["access_token"]
 
 
 @pytest.fixture
-def wallet(client: TestClient, user, token):
-    return create_wallet(client, user["id"], token)
+async def wallet(client: TestClient, user, token, anyio_backend):
+    return await create_wallet(client, user["id"], token)
 
 
 @pytest.fixture
-def store(client: TestClient, user, token):
-    return create_store(client, user["id"], token)
+async def store(client: TestClient, user, token, anyio_backend):
+    return await create_store(client, user["id"], token)
 
 
 @pytest.fixture
-def discount(client: TestClient, user, token):
-    return create_discount(client, user["id"], token)
+async def discount(client: TestClient, user, token, anyio_backend):
+    return await create_discount(client, user["id"], token)
 
 
 @pytest.fixture
-def product(client: TestClient, user, token):
-    return create_product(client, user["id"], token)
+async def product(client: TestClient, user, token, anyio_backend):
+    return await create_product(client, user["id"], token)
 
 
 @pytest.fixture
-def invoice(client: TestClient, user, token):
-    return create_invoice(client, user["id"], token)
+async def invoice(client: TestClient, user, token, anyio_backend):
+    return await create_invoice(client, user["id"], token)
 
 
 @pytest.fixture
-def notification(client: TestClient, user, token):
-    return create_notification(client, user["id"], token)
+async def notification(client: TestClient, user, token, anyio_backend):
+    return await create_notification(client, user["id"], token)
 
 
 @pytest.fixture

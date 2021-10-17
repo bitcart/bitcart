@@ -6,8 +6,8 @@ from decimal import Decimal
 
 import pytest
 from bitcart import BTC
+from httpx import AsyncClient as TestClient
 from parametrization import Parametrization
-from starlette.testclient import TestClient
 
 from api import invoices, models, schemes, settings, templates, utils
 from api.constants import BACKUP_FREQUENCIES, BACKUP_PROVIDERS, DOCKER_REPO_URL, SUPPORTED_CRYPTOS

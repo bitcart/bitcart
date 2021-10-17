@@ -1,10 +1,13 @@
 import json as json_module
+import traceback
 from datetime import datetime
 
 import pytest
-from starlette.testclient import TestClient
+from httpx import AsyncClient as TestClient
 
 from api.constants import ID_LENGTH, PUBLIC_ID_LENGTH
+
+pytestmark = pytest.mark.anyio
 
 
 class ViewTestMixin:
@@ -35,19 +38,29 @@ class ViewTestMixin:
     def expected_count(self):
         return self.tests["count"]
 
-    def create_object(self, client, token):
+    async def create_object(self, client, token):
         # Create initial object for other tests
+        print("O1")
         if self.create_auth:
-            assert client.post(f"/{self.name}", **self.prepare_data(self.create_data)).status_code == 401
-        resp = client.post(
+            assert (await client.post(f"/{self.name}", **self.prepare_data(self.create_data))).status_code == 401
+        print("O2")
+        resp = await client.post(
             f"/{self.name}", **self.prepare_data(self.create_data), headers={"Authorization": f"Bearer {token}"}
         )
+        print("O3")
         assert resp.status_code == 200
+        print("O4")
         self.data = resp.json()
+        print("O5")
 
     @pytest.fixture(autouse=True)
-    def setup(self, client: TestClient, token: str):
-        self.create_object(client, token)
+    async def setup(self, client: TestClient, token: str, anyio_backend):
+        print("CALL")
+        try:
+            await self.create_object(client, token)
+            print(self.data)
+        except:
+            print(traceback.format_exc())
 
     def check_pagination_response(self, data):
         assert data["count"] == self.expected_count
@@ -80,7 +93,8 @@ class ViewTestMixin:
         self.check_created(self.data)
 
     # The actual create is done by data fixture once
-    def test_create(self):
+    async def test_create(self):
+        print("O", getattr(self, "data", None))
         assert self.data.items() > self.expected_resp.items()
         self.check_data()
 
@@ -90,30 +104,30 @@ class ViewTestMixin:
         else:
             return {"data": {"data": json_module.dumps(data)}}
 
-    def test_get_all(self, client: TestClient, token: str):
-        assert client.get(f"/{self.name}").status_code == 401
-        resp = client.get(f"/{self.name}", headers={"Authorization": f"Bearer {token}"})
+    async def test_get_all(self, client: TestClient, token: str):
+        assert (await client.get(f"/{self.name}")).status_code == 401
+        resp = await client.get(f"/{self.name}", headers={"Authorization": f"Bearer {token}"})
         assert resp.status_code == 200
         objects = self.check_pagination_response(resp.json())
         # The objects list is ordered by created date; first object is the last object created
         assert objects[0] == self.data
 
-    def test_get_count(self, client: TestClient, token: str):
-        assert client.get(f"/{self.name}/count").status_code == 401
-        resp = client.get(f"/{self.name}/count", headers={"Authorization": f"Bearer {token}"})
+    async def test_get_count(self, client: TestClient, token: str):
+        assert (await client.get(f"/{self.name}/count")).status_code == 401
+        resp = await client.get(f"/{self.name}/count", headers={"Authorization": f"Bearer {token}"})
         assert resp.status_code == 200
         assert resp.json() == self.expected_count
 
-    def test_get_one(self, client: TestClient, token: str):
+    async def test_get_one(self, client: TestClient, token: str):
         if self.get_one_auth:
-            assert client.get(f"/{self.name}/{self.object_id}").status_code == 401
-        resp = client.get(f"/{self.name}/{self.object_id}", headers={"Authorization": f"Bearer {token}"})
+            assert (await client.get(f"/{self.name}/{self.object_id}")).status_code == 401
+        resp = await client.get(f"/{self.name}/{self.object_id}", headers={"Authorization": f"Bearer {token}"})
         assert resp.status_code == 200
         assert resp.json() == self.data
 
-    def test_update(self, client: TestClient, token: str):
-        assert client.patch(f"/{self.name}/{self.object_id}", **self.prepare_data(self.patch_data)).status_code == 401
-        resp = client.patch(
+    async def test_update(self, client: TestClient, token: str):
+        assert (await client.patch(f"/{self.name}/{self.object_id}", **self.prepare_data(self.patch_data))).status_code == 401
+        resp = await client.patch(
             f"/{self.name}/{self.object_id}",
             **self.prepare_data(self.patch_data),
             headers={"Authorization": f"Bearer {token}"},
@@ -129,20 +143,24 @@ class ViewTestMixin:
                     patch_resp[key] = value
         assert resp.json() == patch_resp
         assert (
-            client.patch(
-                f"/{self.name}/{self.object_id}",
-                **self.prepare_data(self.create_data),
-                headers={"Authorization": f"Bearer {token}"},
+            await (
+                client.patch(
+                    f"/{self.name}/{self.object_id}",
+                    **self.prepare_data(self.create_data),
+                    headers={"Authorization": f"Bearer {token}"},
+                )
             ).status_code
             == 200
         )
 
-    def test_delete(self, client: TestClient, token: str):
-        assert client.delete(f"/{self.name}/{self.object_id}").status_code == 401
-        resp = client.delete(f"/{self.name}/{self.object_id}", headers={"Authorization": f"Bearer {token}"})
+    async def test_delete(self, client: TestClient, token: str):
+        assert (await client.delete(f"/{self.name}/{self.object_id}")).status_code == 401
+        resp = await client.delete(f"/{self.name}/{self.object_id}", headers={"Authorization": f"Bearer {token}"})
         assert resp.status_code == 200
         assert resp.json() == self.data
-        assert client.get(f"/{self.name}/{self.object_id}", headers={"Authorization": f"Bearer {token}"}).status_code == 404
+        assert (
+            await client.get(f"/{self.name}/{self.object_id}", headers={"Authorization": f"Bearer {token}"})
+        ).status_code == 404
 
 
 class TestUsers(ViewTestMixin):
@@ -156,9 +174,9 @@ class TestDiscounts(ViewTestMixin):
     tests = json_module.loads(open("tests/fixtures/data/discounts.json").read())
 
     @pytest.fixture(autouse=True)
-    def setup(self, user, client, token):
+    async def setup(self, user, client, token, anyio_backend):
         self.user = user
-        self.create_object(client, token)
+        await self.create_object(client, token)
 
     @property
     def expected_resp(self):
@@ -172,9 +190,9 @@ class TestNotifications(ViewTestMixin):
     tests = json_module.loads(open("tests/fixtures/data/notifications.json").read())
 
     @pytest.fixture(autouse=True)
-    def setup(self, user, client, token):
+    async def setup(self, user, client, token, anyio_backend):
         self.user = user
-        self.create_object(client, token)
+        await self.create_object(client, token)
 
     @property
     def expected_resp(self):
@@ -188,9 +206,9 @@ class TestTemplates(ViewTestMixin):
     tests = json_module.loads(open("tests/fixtures/data/templates.json").read())
 
     @pytest.fixture(autouse=True)
-    def setup(self, user, client, token):
+    async def setup(self, user, client, token, anyio_backend):
         self.user = user
-        self.create_object(client, token)
+        await self.create_object(client, token)
 
     @property
     def expected_resp(self):
@@ -210,11 +228,11 @@ class TestStores(ViewTestMixin):
     get_one_auth = False
 
     @pytest.fixture(autouse=True)
-    def setup(self, user, wallet, notification, client, token):
+    async def setup(self, user, wallet, notification, client, token, anyio_backend):
         self.user = user
         self.wallet = wallet
         self.notification = notification
-        self.create_object(client, token)
+        await self.create_object(client, token)
 
     def _add_related(self, data):
         data["wallets"] = [self.wallet["id"]]
@@ -242,11 +260,11 @@ class TestProducts(ViewTestMixin):
     json_encoding = False
 
     @pytest.fixture(autouse=True)
-    def setup(self, user, store, discount, client, token):
+    async def setup(self, user, store, discount, client, token, anyio_backend):
         self.user = user
         self.store = store
         self.discount = discount
-        self.create_object(client, token)
+        await self.create_object(client, token)
 
     def _add_related(self, data):
         data["discounts"] = [self.discount["id"]]
@@ -274,11 +292,11 @@ class TestInvoices(ViewTestMixin):
     get_one_auth = False
 
     @pytest.fixture(autouse=True)
-    def setup(self, user, store, product, client, token):
+    async def setup(self, user, store, product, client, token, anyio_backend):
         self.user = user
         self.store = store
         self.product = product
-        self.create_object(client, token)
+        await self.create_object(client, token)
 
     def _add_related(self, data):
         data["products"] = [self.product["id"]]

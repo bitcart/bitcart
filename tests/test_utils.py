@@ -66,14 +66,14 @@ class MockStore:
 
 
 @pytest.mark.anyio
-async def test_get_template(notification_template, async_client, token, user):
+async def test_get_template(notification_template, client, token, user):
     template = await utils.templates.get_template("notification")
     assert template.name == "notification"
     assert template.template_text == notification_template
     assert template.render() == ""
     with pytest.raises(exceptions.TemplateDoesNotExistError):
         await utils.templates.get_template("templ")
-    resp = await async_client.post(
+    resp = await client.post(
         "/templates",
         json={"name": "templ", "text": "Hello {{var1}}!"},
         headers={"Authorization": f"Bearer {token}"},
@@ -93,7 +93,7 @@ async def test_get_template(notification_template, async_client, token, user):
 
 
 @pytest.mark.anyio
-async def test_product_template(async_client, token, user):
+async def test_product_template(client, token, user):
     qty = 10
     product_template = MockTemplateObj(template_name="product", mock_name="MockProduct")
     store = MockStore(user_id=user["id"])
@@ -101,7 +101,7 @@ async def test_product_template(async_client, token, user):
     template = await utils.templates.get_product_template(store, product_template, qty)
     assert template == f"Thanks for buying  x {qty}!\nIt'll ship shortly!\n"
     # custom template
-    resp = await async_client.post(
+    resp = await client.post(
         "/templates",
         json={"name": "product", "text": "store={{store}}|product={{product}}|quantity={{quantity}}"},
         headers={"Authorization": f"Bearer {token}"},
@@ -115,14 +115,14 @@ async def test_product_template(async_client, token, user):
 
 
 @pytest.mark.anyio
-async def test_store_template(async_client, token, user):
+async def test_store_template(client, token, user):
     shop = MockTemplateObj(template_name="shop", mock_name="MockShop", user_id=user["id"])
     product = "my product"
     # default store template
     template = await utils.templates.get_store_template(shop, [product])
     assert template.startswith("Welcome to our shop")
     # custom template
-    resp = await async_client.post(
+    resp = await client.post(
         "/templates",
         json={"name": "shop", "text": "store={{store}}|products={{products}}"},
         headers={"Authorization": f"Bearer {token}"},
@@ -135,14 +135,14 @@ async def test_store_template(async_client, token, user):
 
 
 @pytest.mark.anyio
-async def test_notification_template(async_client, token, user):
+async def test_notification_template(client, token, user):
     invoice = "my invoice"
     notification = MockTemplateObj(template_name="notification", mock_name="MockNotification", user_id=user["id"])
     # default notification template
     template = await utils.templates.get_notify_template(notification, invoice)
     assert template.strip() == "New order from"
     # custom template
-    resp = await async_client.post(
+    resp = await client.post(
         "/templates",
         json={"name": "notification", "text": "store={{store}}|invoice={{invoice}}"},
         headers={"Authorization": f"Bearer {token}"},

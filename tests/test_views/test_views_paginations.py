@@ -1,7 +1,7 @@
 from datetime import timedelta
 from urllib.parse import quote
 
-from starlette.testclient import TestClient
+from httpx import AsyncClient as TestClient
 
 from api import utils
 from tests.helper import create_invoice, create_product, create_token, create_user

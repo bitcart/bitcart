@@ -1,8 +1,8 @@
 import json
 
 from bitcart.errors import BaseError as BitcartBaseError
+from httpx import AsyncClient as TestClient
 from parametrization import Parametrization
-from starlette.testclient import TestClient
 
 from api.constants import BACKUP_FREQUENCIES, BACKUP_PROVIDERS, FEE_ETA_TARGETS, MAX_CONFIRMATION_WATCH
 from tests.fixtures.static_data import TEST_XPUB
