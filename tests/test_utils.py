@@ -26,13 +26,13 @@ async def reader(chan):
         break
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_auth_dependency():
     dep = utils.authorization.AuthDependency(enabled=False)
     assert not await dep(None, None)
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_make_subscriber():
     sub = await utils.redis.make_subscriber("test")
     assert isinstance(sub, PubSub)
@@ -65,7 +65,7 @@ class MockStore:
         return "MockStore"
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_get_template(notification_template, async_client, token, user):
     template = await utils.templates.get_template("notification")
     assert template.name == "notification"
@@ -92,7 +92,7 @@ async def test_get_template(notification_template, async_client, token, user):
     assert template3.template_text == template2.template_text
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_product_template(async_client, token, user):
     qty = 10
     product_template = MockTemplateObj(template_name="product", mock_name="MockProduct")
@@ -114,7 +114,7 @@ async def test_product_template(async_client, token, user):
     assert template == f"store={store}|product={product_template}|quantity={qty}"
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_store_template(async_client, token, user):
     shop = MockTemplateObj(template_name="shop", mock_name="MockShop", user_id=user["id"])
     product = "my product"
@@ -134,7 +134,7 @@ async def test_store_template(async_client, token, user):
     assert template == f"store={shop}|products={product}"
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_notification_template(async_client, token, user):
     invoice = "my invoice"
     notification = MockTemplateObj(template_name="notification", mock_name="MockNotification", user_id=user["id"])
@@ -190,7 +190,7 @@ def test_versiontuple():
         utils.common.versiontuple("0.6.0.0dev")  # not supported for now
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_custom_create_task(caplog):
     err_msg = "Test exception"
 
@@ -206,7 +206,7 @@ async def test_custom_create_task(caplog):
     assert err_msg not in caplog.text
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_no_exchange_rates_available(mocker, caplog, wallet):
     mocker.patch("bitcart.BTC.rate", side_effect=BitcartBaseError("No exchange rates available"))
     rate = await utils.wallets.get_rate(schemes.Wallet(**wallet), "USD")
@@ -214,7 +214,7 @@ async def test_no_exchange_rates_available(mocker, caplog, wallet):
     assert "Error fetching rates" in caplog.text
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_broken_coin(mocker, caplog, wallet):
     mocker.patch("bitcart.BTC.balance", side_effect=BitcartBaseError("Coin broken"))
     success, balance = await utils.wallets.get_confirmed_wallet_balance(schemes.Wallet(**wallet))

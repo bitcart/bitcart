@@ -541,7 +541,7 @@ def test_template_list(client: TestClient):
     }
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_services(async_client: TestClient, token: str):
     resp = await async_client.get("/tor/services")
     assert resp.status_code == 200
@@ -617,7 +617,7 @@ def test_batch_commands(client: TestClient, token: str, store):
     assert client.get(f"/invoices/{invoice_id_3}", headers={"Authorization": f"Bearer {token}"}).json()["status"] == "complete"
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_wallet_ws(async_client, token: str):
     r = await async_client.post(
         "/wallets",
@@ -644,7 +644,7 @@ async def test_wallet_ws(async_client, token: str):
             await check_ws_response2(websocket)
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_invoice_ws(async_client, token: str, store):
     store_id = store["id"]
     r = await async_client.post(
@@ -766,7 +766,7 @@ def test_create_product_with_image(client: TestClient, token: str, image: bytes,
     assert patch_product_resp.status_code == 200
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_create_invoice_without_coin_rate(async_client, token: str, mocker, store):
     store_id = store["id"]
     price = 9.9
@@ -785,7 +785,7 @@ async def test_create_invoice_without_coin_rate(async_client, token: str, mocker
     await async_client.delete(f"/invoices/{invoice_id}", headers={"Authorization": f"Bearer {token}"})
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_create_invoice_and_pay(async_client, token: str, store):
     store_id = store["id"]
     # create invoice

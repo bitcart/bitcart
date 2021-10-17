@@ -4,7 +4,6 @@ codecov
 flake8
 isort
 pytest
-pytest-asyncio
 pytest-cov
 pytest-mock
 pytest-parametrization

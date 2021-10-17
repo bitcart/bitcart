@@ -12,7 +12,7 @@ def test_merge_keys():
     assert merge_keys("test", "test") == "test_test"
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_invoice_db_to_json(invoice):
     items = await models.Invoice.query.gino.all()
     await utils.database.postprocess_func(items)

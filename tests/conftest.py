@@ -1,48 +1,43 @@
-import asyncio
 import os
 import shutil
 
+import anyio
 import pytest
 from async_asgi_testclient import TestClient as AsyncClient
 from starlette.testclient import TestClient
 
-from api import models
 from api.db import db
-from main import app
+from main import get_app
 
 # To separate setup fixtures from code testing helper fixtures
 pytest_plugins = ["tests.fixtures.pytest.data"]
 
 
-@pytest.fixture(scope="session", autouse=True)
-async def init_db():
-    await db.gino.create_all()
-    yield
-    await db.gino.drop_all()
+@pytest.fixture
+def anyio_backend():
+    return ("asyncio", {"use_uvloop": True})
 
 
-# We re-create database per each test to make tests independent of each others' state
+@pytest.fixture
+def app():
+    return get_app()
+
+
 @pytest.fixture(autouse=True)
-async def cleanup_db():
-    async with db.acquire() as conn:
-        async with conn.transaction():
-            for table in reversed(models.db.sorted_tables):
-                await conn.status(table.delete())
+def init_db(client):
+    anyio.run(db.gino.create_all)
+    yield
+    anyio.run(db.gino.drop_all)
 
 
-@pytest.fixture(scope="session")
-def event_loop():
-    yield asyncio.get_event_loop_policy().get_event_loop()
-
-
-@pytest.fixture(scope="session", autouse=True)
-def client(event_loop):
-    with TestClient(app) as client:
+@pytest.fixture
+def client(app):
+    with TestClient(app, backend_options={"use_uvloop": True}) as client:
         yield client
 
 
-@pytest.fixture(scope="session")
-async def async_client(event_loop):
+@pytest.fixture
+async def async_client(app):
     async with AsyncClient(app) as client:
         yield client
 

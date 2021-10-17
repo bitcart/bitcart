@@ -150,7 +150,7 @@ def regtest_api_store(client, user, token, regtest_api_wallet):
 
 
 @pytest.mark.parametrize("speed", range(MAX_CONFIRMATION_WATCH + 1))
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_onchain_pay_flow(async_client, regtest_api_store, token, worker, queue, ipn_server, speed):
     store_id = regtest_api_store["id"]
     resp = await async_client.patch(
@@ -181,7 +181,7 @@ async def test_onchain_pay_flow(async_client, regtest_api_store, token, worker, 
     check_status(queue, {"id": invoice["id"], "status": "complete"})
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_lightning_pay_flow(
     async_client, regtest_api_wallet, regtest_api_store, token, worker, queue, ipn_server, prepare_ln_channels, regtest_lnnode
 ):
