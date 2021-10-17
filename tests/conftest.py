@@ -1,10 +1,9 @@
 import os
 import shutil
 
-import anyio
 import pytest
-from async_asgi_testclient import TestClient as AsyncClient
-from starlette.testclient import TestClient
+from asgi_lifespan import LifespanManager
+from httpx import AsyncClient
 
 from api.db import db
 from main import get_app
@@ -24,21 +23,15 @@ def app():
 
 
 @pytest.fixture(autouse=True)
-def init_db(client):
-    anyio.run(db.gino.create_all)
+async def init_db(client, anyio_backend):
+    await db.gino.create_all()
     yield
-    anyio.run(db.gino.drop_all)
+    await db.gino.drop_all()
 
 
 @pytest.fixture
-def client(app):
-    with TestClient(app, backend_options={"use_uvloop": True}) as client:
-        yield client
-
-
-@pytest.fixture
-async def async_client(app):
-    async with AsyncClient(app) as client:
+async def client(app, anyio_backend):
+    async with LifespanManager(app), AsyncClient(app=app, base_url="http://testserver") as client:
         yield client
 
 

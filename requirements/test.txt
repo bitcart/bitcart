@@ -1,7 +1,9 @@
+asgi-lifespan
 async-asgi-testclient
 black
 codecov
 flake8
+httpx
 isort
 pytest
 pytest-cov
