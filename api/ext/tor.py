@@ -103,13 +103,13 @@ def parse_torrc(torrc, log=True):
 
 async def refresh(log=True):  # pragma: no cover: used in production only
     async with utils.redis.wait_for_redis():
-        services = parse_torrc(settings.TORRC_FILE, log=log)
+        services = parse_torrc(settings.settings.torrc_file, log=log)
         services_dict = {service.name: dataclass_asdict(service) for service in services}
         anonymous_services_dict = {service.name: {"name": service.name, "hostname": service.hostname} for service in services}
         onion_host = services_dict.get("BitcartCC Merchants API", "")
         if onion_host:
             onion_host = onion_host["hostname"] or ""
-        await settings.redis_pool.hset(
+        await settings.settings.redis_pool.hset(
             REDIS_KEY,
             mapping={
                 "onion_host": onion_host,
@@ -120,6 +120,7 @@ async def refresh(log=True):  # pragma: no cover: used in production only
 
 
 async def get_data(key, default=None, json_decode=False):
-    data = await settings.redis_pool.hget(REDIS_KEY, key)
-    data = json.loads(data) if json_decode and data else data
-    return data if data else default
+    async with utils.redis.wait_for_redis():
+        data = await settings.settings.redis_pool.hget(REDIS_KEY, key)
+        data = json.loads(data) if json_decode and data else data
+        return data if data else default

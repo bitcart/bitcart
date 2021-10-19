@@ -604,7 +604,9 @@ python-decouple==3.5 \
 python-dotenv==0.19.1 \
     --hash=sha256:14f8185cc8d494662683e6914addcb7e95374771e707601dfc70166946b4c4b8 \
     --hash=sha256:bbd3da593fc49c249397cbfbcc449cf36cb02e75afc8157fcc6a81df6fb7750a
-    # via uvicorn
+    # via
+    #   -r requirements/web.txt
+    #   uvicorn
 python-multipart==0.0.5 \
     --hash=sha256:f7bb5f611fc600d15fa47b3974c8aa16e93724513b49b5f95c81e6624c83fa43
     # via -r requirements/web.txt

@@ -4,13 +4,13 @@ from api.ext.ssh import execute_ssh_command
 
 def run_host(command):
     try:
-        client = settings.SSH_SETTINGS.create_ssh_client()
+        client = settings.settings.ssh_settings.create_ssh_client()
     except Exception as e:
         return False, f"Connection problem: {e}"
     try:
         execute_ssh_command(
             client,
-            f'. {settings.SSH_SETTINGS.bash_profile_script}; cd "$BITCART_BASE_DIRECTORY"'
+            f'. {settings.settings.ssh_settings.bash_profile_script}; cd "$BITCART_BASE_DIRECTORY"'
             f"; nohup {command} > /dev/null 2>&1 & disown",
         )
     except Exception:  # pragma: no cover

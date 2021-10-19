@@ -5,6 +5,7 @@ import pytest
 from asgi_lifespan import LifespanManager
 from httpx import AsyncClient
 
+from api import settings
 from api.db import db
 from main import get_app
 
@@ -19,7 +20,10 @@ def anyio_backend():
 
 @pytest.fixture
 def app():
-    return get_app()
+    app = get_app()
+    token = settings.settings_ctx.set(app.settings)
+    yield app
+    settings.settings_ctx.reset(token)
 
 
 @pytest.fixture(autouse=True)

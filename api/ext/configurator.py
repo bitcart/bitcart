@@ -121,7 +121,7 @@ def execute_ssh_commands(commands, ssh_settings):
 
 async def set_task(task_id, data):
     async with utils.redis.wait_for_redis():
-        await settings.redis_pool.hset(REDIS_KEY, mapping={task_id: json.dumps(data)})
+        await settings.settings.redis_pool.hset(REDIS_KEY, mapping={task_id: json.dumps(data)})
 
 
 async def create_new_task(script, ssh_settings, is_manual):
@@ -143,7 +143,7 @@ async def create_new_task(script, ssh_settings, is_manual):
 
 async def get_task(task_id):
     async with utils.redis.wait_for_redis():
-        data = await settings.redis_pool.hget(REDIS_KEY, task_id)
+        data = await settings.settings.redis_pool.hget(REDIS_KEY, task_id)
         return json.loads(data) if data else data
 
 
@@ -177,7 +177,7 @@ async def refresh_pending_deployments():
         now = utils.time.now().timestamp()
         async with utils.redis.wait_for_redis():
             to_delete = []
-            async for key, value in settings.redis_pool.hscan_iter(REDIS_KEY):
+            async for key, value in settings.settings.redis_pool.hscan_iter(REDIS_KEY):
                 with log_errors():
                     value = json.loads(value) if value else value
                     # Remove stale deployments
@@ -188,10 +188,10 @@ async def refresh_pending_deployments():
                     except ValidationError:
                         continue
                     # Mark all current instance deployments as complete as we can't do it from the worker task
-                    if ssh_settings == settings.SSH_SETTINGS:
+                    if ssh_settings == settings.settings.ssh_settings:
                         value["finished"] = True
                         value["success"] = True
                         value["output"] = "No output available. Current instance has been restarted"
                         await set_task(key, value)
             if to_delete:
-                await settings.redis_pool.hdel(REDIS_KEY, *to_delete)
+                await settings.settings.redis_pool.hdel(REDIS_KEY, *to_delete)

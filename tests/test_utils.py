@@ -165,10 +165,10 @@ def test_run_host(mocker):
     assert "Name or service not known" in error
     assert utils.host.run_host_output(content, "good")["status"] == "error"
     # Same with key file
-    settings.SSH_SETTINGS.key_file = "something"
+    settings.settings.ssh_settings.key_file = "something"
     assert utils.host.run_host(content)[0] is False
     assert not os.path.exists(TEST_FILE)
-    settings.SSH_SETTINGS.key_file = ""
+    settings.settings.ssh_settings.key_file = ""
     mocker.patch("paramiko.SSHClient.connect", return_value=True)
     mocker.patch(
         "paramiko.SSHClient.exec_command",

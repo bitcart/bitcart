@@ -201,7 +201,7 @@ class Wallet(BaseModel):
         await super().validate(**kwargs)
         if "xpub" in kwargs:
             currency = kwargs.get("currency", self.currency)
-            coin = settings.get_coin(currency)
+            coin = settings.settings.get_coin(currency)
             try:
                 if not await coin.validate_key(kwargs["xpub"]):
                     raise HTTPException(422, "Wallet key invalid")

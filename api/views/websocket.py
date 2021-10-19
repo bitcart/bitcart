@@ -1,5 +1,3 @@
-import secrets
-
 from fastapi import APIRouter, HTTPException
 from fastapi.security import SecurityScopes
 from starlette.endpoints import WebSocketEndpoint
@@ -20,7 +18,6 @@ class GenericWebsocketEndpoint(WebSocketEndpoint):
 
     async def on_connect(self, websocket, **kwargs):
         await websocket.accept()
-        self.channel_name = secrets.token_urlsafe(32)
         self.access_token = None
         self.user = None
         try:

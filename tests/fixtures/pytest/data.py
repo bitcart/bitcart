@@ -1,5 +1,8 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import pytest
-from httpx import AsyncClient as TestClient
 
 from api import utils
 from tests.fixtures import static_data
@@ -13,6 +16,9 @@ from tests.helper import (
     create_user,
     create_wallet,
 )
+
+if TYPE_CHECKING:
+    from httpx import AsyncClient as TestClient
 
 
 @pytest.fixture(scope="session", autouse=True)

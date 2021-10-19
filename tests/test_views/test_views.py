@@ -1,12 +1,14 @@
+from __future__ import annotations
+
 import asyncio
 import json as json_module
 import os
 import sys
 from decimal import Decimal
+from typing import TYPE_CHECKING
 
 import pytest
 from bitcart import BTC
-from httpx import AsyncClient as TestClient
 from parametrization import Parametrization
 
 from api import invoices, models, schemes, settings, templates, utils
@@ -15,6 +17,11 @@ from api.ext import tor as tor_ext
 from api.invoices import InvoiceStatus
 from tests.fixtures import static_data
 from tests.helper import create_invoice, create_product, create_token, create_user, create_wallet, enabled_logs
+
+if TYPE_CHECKING:
+    from httpx import AsyncClient as TestClient
+
+pytestmark = pytest.mark.asyio
 
 
 class DummyInstance:
@@ -35,34 +42,34 @@ def get_future_return_value(return_val):
     return future if sys.version_info < (3, 8) or is_event_loop_running() else return_val
 
 
-def test_docs_root(client: TestClient):
-    response = client.get("/")
+async def test_docs_root(client: TestClient):
+    response = await client.get("/")
     assert response.status_code == 200
 
 
-def test_rate(client: TestClient):
-    resp = client.get("/cryptos/rate")
+async def test_rate(client: TestClient):
+    resp = await client.get("/cryptos/rate")
     data = resp.json()
     assert resp.status_code == 200
     assert isinstance(data, (int, float))
     assert data > 0
-    assert client.get("/cryptos/rate?fiat_currency=eur").status_code == 200
-    assert client.get("/cryptos/rate?fiat_currency=EUR").status_code == 200
-    assert client.get("/cryptos/rate?fiat_currency=test").status_code == 422
+    assert (await client.get("/cryptos/rate?fiat_currency=eur")).status_code == 200
+    assert (await client.get("/cryptos/rate?fiat_currency=EUR")).status_code == 200
+    assert (await client.get("/cryptos/rate?fiat_currency=test")).status_code == 422
 
 
-def test_wallet_history(client: TestClient, token: str, wallet):
-    assert client.get("/wallets/history/999").status_code == 401
-    assert client.get("/wallets/history/all").status_code == 401
+async def test_wallet_history(client: TestClient, token: str, wallet):
+    assert (await client.get("/wallets/history/999")).status_code == 401
+    assert (await client.get("/wallets/history/all")).status_code == 401
     headers = {"Authorization": f"Bearer {token}"}
-    assert client.get("/wallets/history/999", headers=headers).status_code == 404
-    resp1 = client.get(f"/wallets/history/{wallet['id']}", headers=headers)
+    assert (await client.get("/wallets/history/999", headers=headers)).status_code == 404
+    resp1 = await client.get(f"/wallets/history/{wallet['id']}", headers=headers)
     assert resp1.status_code == 200
     data1 = resp1.json()
     assert len(data1) == 1
     assert data1[0]["amount"] == "0.01"
     assert data1[0]["txid"] == "ee4f0c4405f9ba10443958f5c6f6d4552a69a80f3ec3bed1c3d4c98d65abe8f3"
-    resp2 = client.get("/wallets/history/all", headers=headers)
+    resp2 = await client.get("/wallets/history/all", headers=headers)
     assert resp2.status_code == 200
     data2 = resp2.json()
     assert data1 == data2
@@ -541,7 +548,6 @@ def test_template_list(client: TestClient):
     }
 
 
-@pytest.mark.anyio
 async def test_services(async_client: TestClient, token: str):
     resp = await async_client.get("/tor/services")
     assert resp.status_code == 200
@@ -617,7 +623,6 @@ def test_batch_commands(client: TestClient, token: str, store):
     assert client.get(f"/invoices/{invoice_id_3}", headers={"Authorization": f"Bearer {token}"}).json()["status"] == "complete"
 
 
-@pytest.mark.anyio
 async def test_wallet_ws(async_client, token: str):
     r = await async_client.post(
         "/wallets",
@@ -644,7 +649,6 @@ async def test_wallet_ws(async_client, token: str):
             await check_ws_response2(websocket)
 
 
-@pytest.mark.anyio
 async def test_invoice_ws(async_client, token: str, store):
     store_id = store["id"]
     r = await async_client.post(
@@ -766,7 +770,6 @@ def test_create_product_with_image(client: TestClient, token: str, image: bytes,
     assert patch_product_resp.status_code == 200
 
 
-@pytest.mark.anyio
 async def test_create_invoice_without_coin_rate(async_client, token: str, mocker, store):
     store_id = store["id"]
     price = 9.9
@@ -785,7 +788,6 @@ async def test_create_invoice_without_coin_rate(async_client, token: str, mocker
     await async_client.delete(f"/invoices/{invoice_id}", headers={"Authorization": f"Bearer {token}"})
 
 
-@pytest.mark.anyio
 async def test_create_invoice_and_pay(async_client, token: str, store):
     store_id = store["id"]
     # create invoice

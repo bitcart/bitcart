@@ -1,10 +1,16 @@
+from __future__ import annotations
+
 import json as json_module
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 import pytest
-from httpx import AsyncClient as TestClient
 
 from api.constants import ID_LENGTH, PUBLIC_ID_LENGTH
+
+if TYPE_CHECKING:
+    from httpx import AsyncClient as TestClient
+
 
 pytestmark = pytest.mark.anyio
 

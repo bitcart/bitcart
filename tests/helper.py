@@ -1,12 +1,16 @@
+from __future__ import annotations
+
 import json as json_module
 import random
 from contextlib import contextmanager
 from datetime import timedelta
-
-from httpx import AsyncClient as TestClient
+from typing import TYPE_CHECKING
 
 from api import settings, utils
 from tests.fixtures import static_data
+
+if TYPE_CHECKING:
+    from httpx import AsyncClient as TestClient
 
 
 async def create_user(client: TestClient, **custom_attrs) -> dict:

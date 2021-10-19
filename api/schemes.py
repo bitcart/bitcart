@@ -207,7 +207,7 @@ class CreateNotification(CreatedMixin):
     def validate_provider(cls, v):
         from api import settings
 
-        if v not in settings.notifiers:
+        if v not in settings.settings.notifiers:
             raise HTTPException(422, "Unsupported notificaton provider")
         return v
 

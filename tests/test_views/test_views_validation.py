@@ -1,12 +1,18 @@
-import json
+from __future__ import annotations
 
+import json
+from typing import TYPE_CHECKING
+
+import pytest
 from bitcart.errors import BaseError as BitcartBaseError
-from httpx import AsyncClient as TestClient
 from parametrization import Parametrization
 
 from api.constants import BACKUP_FREQUENCIES, BACKUP_PROVIDERS, FEE_ETA_TARGETS, MAX_CONFIRMATION_WATCH
 from tests.fixtures.static_data import TEST_XPUB
 from tests.helper import create_store
+
+if TYPE_CHECKING:
+    from httpx import AsyncClient as TestClient
 
 BAD_TX_SPEED_MESSAGE = f"Transaction speed must be in range from 0 to {MAX_CONFIRMATION_WATCH}"
 BAD_UNDERPAID_PERCENTAGE_MESSAGE = "Underpaid percentage must be in range from 0 to 99.99"
@@ -16,32 +22,36 @@ BAD_TARGET_FEE_BLOCKS_MESSAGE = (
 BAD_BACKUP_PROVIDER_MESSAGE = f"Backup provider must be either of: {', '.join(map(str, BACKUP_PROVIDERS))}"
 BAD_BACKUP_FREQUENCIES_MESSAGE = f"Backup frequency must be either of: {', '.join(map(str, BACKUP_FREQUENCIES))}"
 
+pytestmark = pytest.mark.anyio
+
 
 def check_validation_failed(resp, error):
     assert resp.status_code == 422
     assert resp.json()["detail"] == error
 
 
-def test_invoice_no_wallets(client: TestClient, token, user):
-    store_id = create_store(client, user, token, custom_store_attrs={"wallets": []})["id"]
+async def test_invoice_no_wallets(client: TestClient, token, user):
+    store_id = (await create_store(client, user, token, custom_store_attrs={"wallets": []}))["id"]
     check_validation_failed(
-        client.post("/invoices", json={"price": 5, "store_id": store_id}, headers={"Authorization": f"Bearer {token}"}),
+        await client.post("/invoices", json={"price": 5, "store_id": store_id}, headers={"Authorization": f"Bearer {token}"}),
         "No wallet linked",
     )
 
 
-def test_wallet_invalid_xpub(client: TestClient, token):
+async def test_wallet_invalid_xpub(client: TestClient, token):
     # Unable to create invalid wallet
     check_validation_failed(
-        client.post("/wallets", json={"name": "test", "xpub": "invalid"}, headers={"Authorization": f"Bearer {token}"}),
+        await client.post("/wallets", json={"name": "test", "xpub": "invalid"}, headers={"Authorization": f"Bearer {token}"}),
         "Wallet key invalid",
     )
-    resp = client.post("/wallets", json={"name": "test", "xpub": TEST_XPUB}, headers={"Authorization": f"Bearer {token}"})
+    resp = await client.post(
+        "/wallets", json={"name": "test", "xpub": TEST_XPUB}, headers={"Authorization": f"Bearer {token}"}
+    )
     assert resp.status_code == 200
     wallet_id = resp.json()["id"]
     # Unable to break existing wallet
     check_validation_failed(
-        client.patch(f"/wallets/{wallet_id}", json={"xpub": "invalid"}, headers={"Authorization": f"Bearer {token}"}),
+        await client.patch(f"/wallets/{wallet_id}", json={"xpub": "invalid"}, headers={"Authorization": f"Bearer {token}"}),
         "Wallet key invalid",
     )
 
@@ -69,10 +79,10 @@ def test_wallet_invalid_xpub(client: TestClient, token):
     data={"recommended_fee_target_blocks": 26},
     error=BAD_TARGET_FEE_BLOCKS_MESSAGE,
 )
-def test_store_checkout_settings_valid(client: TestClient, token, store, data, error):
+async def test_store_checkout_settings_valid(client: TestClient, token, store, data, error):
     store_id = store["id"]
     check_validation_failed(
-        client.patch(
+        await client.patch(
             f"/stores/{store_id}",
             json={"checkout_settings": data},
             headers={"Authorization": f"Bearer {token}"},
@@ -81,10 +91,10 @@ def test_store_checkout_settings_valid(client: TestClient, token, store, data, e
     )
 
 
-def test_invalid_notification_provider(client: TestClient, token):
+async def test_invalid_notification_provider(client: TestClient, token):
     # Only allow providers supported by the notifiers library to prevent further errors
     check_validation_failed(
-        client.post(
+        await client.post(
             "/notifications",
             json={"name": "test", "provider": "invalid", "data": {}},
             headers={"Authorization": f"Bearer {token}"},
@@ -92,27 +102,25 @@ def test_invalid_notification_provider(client: TestClient, token):
         "Unsupported notificaton provider",
     )
     assert (
-        client.post(
+        await client.post(
             "/notifications",
             json={"name": "test", "provider": "telegram", "data": {}},
             headers={"Authorization": f"Bearer {token}"},
-        ).status_code
-        == 200
-    )
+        )
+    ).status_code == 200
 
 
-def test_invalid_fk_constaint(client: TestClient, token):
+async def test_invalid_fk_constaint(client: TestClient, token):
     # For m2m, it disallows invalid foreign keys with a bit different error
-    resp = client.post("/stores", json={"name": "test", "wallets": [999]}, headers={"Authorization": f"Bearer {token}"})
+    resp = await client.post("/stores", json={"name": "test", "wallets": [999]}, headers={"Authorization": f"Bearer {token}"})
     assert resp.status_code == 403
     assert resp.json()["detail"] == "Access denied: attempt to use objects not owned by current user"
     # For invoices (custom logic), it returns 404 at initial store fetching stage
     assert (
-        client.post("/invoices", json={"price": 5, "store_id": 999}, headers={"Authorization": f"Bearer {token}"}).status_code
-        == 404
-    )
+        await client.post("/invoices", json={"price": 5, "store_id": 999}, headers={"Authorization": f"Bearer {token}"})
+    ).status_code == 404
     # For others, the database should verify fk integrity
-    resp = client.post(
+    resp = await client.post(
         "/products",
         data={"data": json.dumps({"name": "test", "price": 1, "quantity": 1, "store_id": 999})},
         headers={"Authorization": f"Bearer {token}"},
@@ -121,16 +129,15 @@ def test_invalid_fk_constaint(client: TestClient, token):
     assert "violates foreign key constraint" in resp.json()["detail"]
 
 
-def test_product_patch_validation_works(client: TestClient, token, product):
+async def test_product_patch_validation_works(client: TestClient, token, product):
     product_id = product["id"]
     assert (
-        client.patch(
+        await client.patch(
             f"/products/{product_id}",
             data={"data": json.dumps({"quantity": "invalid"})},
             headers={"Authorization": f"Bearer {token}"},
-        ).status_code
-        == 422
-    )
+        )
+    ).status_code == 422
 
 
 @Parametrization.autodetect_parameters()
@@ -154,9 +161,9 @@ def test_product_patch_validation_works(client: TestClient, token, product):
     data={"frequency": "yearly"},
     error=BAD_BACKUP_FREQUENCIES_MESSAGE,
 )
-def test_invalid_backup_policies(client: TestClient, token, data, error):
+async def test_invalid_backup_policies(client: TestClient, token, data, error):
     check_validation_failed(
-        client.post(
+        await client.post(
             "/manage/backups",
             json=data,
             headers={"Authorization": f"Bearer {token}"},
@@ -175,35 +182,36 @@ class MockBTC:
         raise BitcartBaseError("Broken")
 
 
-def test_edge_fiatlist_cases(client: TestClient, token, mocker, caplog):
-    mocker.patch("api.settings.cryptos", {})
-    resp = client.get("/cryptos/fiatlist")
+async def test_edge_fiatlist_cases(client: TestClient, token, mocker, caplog):
+    mocker.patch("api.settings.settings.cryptos", {})
+    resp = await client.get("/cryptos/fiatlist")
     assert resp.status_code == 200
     assert resp.json() == []
-    mocker.patch("api.settings.cryptos", {"btc": MockBTC()})
-    resp = client.get("/cryptos/fiatlist")
+    mocker.patch("api.settings.settings.cryptos", {"btc": MockBTC()})
+    resp = await client.get("/cryptos/fiatlist")
     assert resp.status_code == 200
     assert resp.json() == []
     assert "Failed fetching supported currencies for coin BTC" in caplog.text
 
 
-def test_edge_invoice_cases(client: TestClient, token, store, mocker, caplog):
+async def test_edge_invoice_cases(client: TestClient, token, store, mocker, caplog):
     mocker.patch("api.crud.invoices.create_payment_method", side_effect=BitcartBaseError("Doesn't work"))
-    resp = client.post("/invoices", json={"price": 5, "store_id": store["id"]}, headers={"Authorization": f"Bearer {token}"})
+    resp = await client.post(
+        "/invoices", json={"price": 5, "store_id": store["id"]}, headers={"Authorization": f"Bearer {token}"}
+    )
     assert resp.status_code == 200
     data = resp.json()
     assert not data["payments"]
     assert f"Invoice {data['id']}: failed creating payment method BTC" in caplog.text
 
 
-def test_create_wallet_validate_xpub_broken(client: TestClient, mocker, token, caplog):
-    mocker.patch("api.settings.cryptos", {"btc": MockBTC()})
+async def test_create_wallet_validate_xpub_broken(client: TestClient, mocker, token, caplog):
+    mocker.patch("api.settings.settings.cryptos", {"btc": MockBTC()})
     assert (
-        client.post(
+        await client.post(
             "/wallets",
             json={"name": "brokenvalidate", "xpub": TEST_XPUB},
             headers={"Authorization": f"Bearer {token}"},
-        ).status_code
-        == 422
-    )
+        )
+    ).status_code == 422
     assert "Failed to validate xpub for currency btc" in caplog.text
