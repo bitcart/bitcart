@@ -148,6 +148,15 @@
         "design",
         "a11y"
       ]
+    },
+    {
+      "login": "MawsFr",
+      "name": "Mustapha Nezzari",
+      "avatar_url": "https://avatars.githubusercontent.com/u/4595534?v=4",
+      "profile": "https://twitter.com/mustaphanezzari",
+      "contributions": [
+        "translation"
+      ]
     }
   ],
   "contributorsPerLine": 7,
