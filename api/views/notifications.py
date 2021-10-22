@@ -8,12 +8,12 @@ router = APIRouter()
 
 @router.get("/list")
 async def get_notifications():
-    return prepare_compliant_response(list(settings.notifiers.keys()))
+    return prepare_compliant_response(list(settings.settings.notifiers.keys()))
 
 
 @router.get("/schema")
 async def get_notifications_schema():
-    return settings.notifiers
+    return settings.settings.notifiers
 
 
 utils.routing.ModelView.register(

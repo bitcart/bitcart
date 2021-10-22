@@ -120,10 +120,10 @@ async def create_model_obj(client, endpoint, default_attrs, custom_attrs={}, tok
 
 @contextmanager
 def enabled_logs():
-    settings.LOG_DIR = "tests/fixtures/log"
-    settings.set_log_file("bitcart.log")
+    settings.settings.datadir = "tests/fixtures"
+    settings.settings.set_log_file("bitcart.log")
     yield
-    settings.LOG_DIR = None
-    settings.LOG_FILE_NAME = None
-    settings.LOG_FILE = None
-    settings.LOG_FILE_REGEX = None
+    settings.settings.datadir = None
+    settings.settings.log_file_name = None
+    settings.settings.log_file = None
+    settings.settings.log_file_regex = None

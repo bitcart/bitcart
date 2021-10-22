@@ -17,7 +17,9 @@ async def generate_deployment(deploy_settings: schemes.ConfiguratorDeploySetting
     scopes = ["server_management"] if this_machine else []
     await configurator.authenticate_request(request, scopes=scopes)
     script = configurator.create_bash_script(deploy_settings)
-    ssh_settings = settings.SSH_SETTINGS if this_machine else schemes.SSHSettings(**deploy_settings.ssh_settings.dict())
+    ssh_settings = (
+        settings.settings.ssh_settings if this_machine else schemes.SSHSettings(**deploy_settings.ssh_settings.dict())
+    )
     return await configurator.create_new_task(script, ssh_settings, deploy_settings.mode == "Manual")
 
 
@@ -34,5 +36,5 @@ async def get_deploy_result(deploy_id: str, request: Request):
 async def get_server_settings(request: Request, ssh_settings: Optional[schemes.SSHSettings] = None):
     if not ssh_settings:
         await utils.authorization.AuthDependency()(request, SecurityScopes(["server_management"]))
-        ssh_settings = settings.SSH_SETTINGS
+        ssh_settings = settings.settings.ssh_settings
     return ssh_ext.collect_server_settings(ssh_settings)

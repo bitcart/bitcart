@@ -3,6 +3,7 @@ import shutil
 
 import pytest
 from asgi_lifespan import LifespanManager
+from async_asgi_testclient import TestClient as WSClient
 from httpx import AsyncClient
 
 from api import settings
@@ -36,6 +37,13 @@ async def init_db(client, anyio_backend):
 @pytest.fixture
 async def client(app, anyio_backend):
     async with LifespanManager(app), AsyncClient(app=app, base_url="http://testserver") as client:
+        yield client
+
+
+# TODO: remove when httpx supports websockets
+@pytest.fixture
+async def ws_client(app, anyio_backend):
+    async with WSClient(app) as client:
         yield client
 
 
@@ -74,4 +82,4 @@ def deleting_file_base(filename):
 
 @pytest.fixture
 def log_file():
-    yield from deleting_file_base("tests/fixtures/log/bitcart20210821.log")
+    yield from deleting_file_base("tests/fixtures/logs/bitcart20210821.log")

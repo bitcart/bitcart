@@ -54,7 +54,7 @@ async def limited_user(client: TestClient, user, anyio_backend):
 
 @pytest.fixture
 async def limited_token(client: TestClient, limited_user, anyio_backend):
-    return await create_token(client, limited_user, permissions=[])["access_token"]
+    return (await create_token(client, limited_user, permissions=[]))["access_token"]
 
 
 @pytest.fixture
