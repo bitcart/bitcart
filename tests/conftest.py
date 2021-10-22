@@ -28,10 +28,22 @@ def app():
 
 
 @pytest.fixture(autouse=True)
-async def init_db(client, anyio_backend):
+async def init_db(request, app, anyio_backend):
+    xdist_suffix = getattr(request.config, "workerinput", {}).get("workerid")
+    db_name = f"{settings.settings.db_name}"
+    if xdist_suffix:
+        db_name += f"_{xdist_suffix}"
+    settings.settings.db_name = "postgres"
+    async with db.with_bind(settings.settings.connection_str) as engine:
+        async with engine.acquire() as conn:
+            await conn.status(f"DROP DATABASE IF EXISTS {db_name}")
+            await conn.status(f"CREATE DATABASE {db_name}")
+    settings.settings.db_name = db_name
+    await db.set_bind(settings.settings.connection_str)
     await db.gino.create_all()
     yield
     await db.gino.drop_all()
+    await db.pop_bind().close()
 
 
 @pytest.fixture
