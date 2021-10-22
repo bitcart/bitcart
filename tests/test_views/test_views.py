@@ -8,7 +8,7 @@ from decimal import Decimal
 from typing import TYPE_CHECKING
 
 import pytest
-from bitcart import BTC
+from bitcart import BTC, LTC
 from parametrization import Parametrization
 
 from api import invoices, models, schemes, settings, templates, utils
@@ -39,7 +39,7 @@ def is_event_loop_running():
 def get_future_return_value(return_val):
     future = asyncio.Future()
     future.set_result(return_val)
-    return future if sys.version_info < (3, 8) else return_val
+    return future if sys.version_info < (3, 8) or is_event_loop_running() else return_val
 
 
 async def test_docs_root(client: TestClient):
@@ -145,18 +145,11 @@ async def test_fiatlist(client: TestClient):
 
 
 async def test_fiatlist_multi_coins(client: TestClient, mocker):
-    class DummyCoin:
-        async def list_fiat(self):
-            ...
-
-    btc, ltc = DummyCoin(), DummyCoin()
-    orig_cryptos = settings.settings.cryptos
-    settings.settings.cryptos = {"btc": btc, "ltc": ltc}
-    mocker.patch.object(btc, "list_fiat", return_value=get_future_return_value(["USD", "RMB", "JPY"]))
-    mocker.patch.object(ltc, "list_fiat", return_value=get_future_return_value(["USD", "RUA", "AUD"]))
+    mocker.patch.object(settings.settings, "cryptos", {"btc": BTC(), "ltc": LTC()})
+    mocker.patch("bitcart.BTC.list_fiat", return_value=get_future_return_value(["USD", "RMB", "JPY"]))
+    mocker.patch("bitcart.LTC.list_fiat", return_value=get_future_return_value(["USD", "RUA", "AUD"]))
     resp = await client.get("/cryptos/fiatlist")
     assert resp.json() == ["USD"]
-    settings.settings.cryptos = orig_cryptos
 
 
 async def check_ws_response(ws):
