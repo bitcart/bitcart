@@ -12,7 +12,7 @@ format:
 	isort .
 
 test:
-	pytest "${TEST_ARGS}"
+	pytest ${TEST_ARGS}
 
 migrate:
 	alembic upgrade head
@@ -44,6 +44,6 @@ fulcrum:
 	tests/functional/bootstrap/start_fulcrum.sh
 
 functional:
-	BTC_LIGHTNING=true pytest tests/functional/ --cov-append "${TEST_ARGS}"
+	BTC_LIGHTNING=true pytest tests/functional/ --cov-append ${TEST_ARGS}
 
 ci: checkformat lint test
