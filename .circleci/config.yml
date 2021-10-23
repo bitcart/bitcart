@@ -107,6 +107,8 @@ jobs:
       name: main-executor
       v: << parameters.v >>
 
+    parallelism: 4
+
     environment:
       PYTHON: << parameters.v >>
 
@@ -126,7 +128,10 @@ jobs:
       - run:
           name: run tests
           command: |
-            make ci
+            make checkformat
+            make lint
+            TEST_FILES=$(find -name "test_*.py" -not -name "test_functional.py" | sed 's/.\///' | circleci tests split --split-by=timings)
+            make test $TEST_FILES
             codecov -F tests -e PYTHON
 
       - upload-results

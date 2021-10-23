@@ -12,7 +12,7 @@ format:
 	isort .
 
 test:
-	pytest tests/ ${TEST_ARGS}
+	pytest ${TEST_ARGS}
 
 migrate:
 	alembic upgrade head
