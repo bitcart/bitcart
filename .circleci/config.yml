@@ -129,7 +129,7 @@ jobs:
             make checkformat
             make lint
             TEST_FILES=$(find -name "test_*.py" -not -name "test_functional.py" | sed 's/.\///' | circleci tests split --split-by=timings)
-            pytest -n $(nproc) $TEST_ARGS $TEST_FILES
+            pytest -n 2 $TEST_ARGS $TEST_FILES
             codecov -F tests -e PYTHON
 
       - upload-results
