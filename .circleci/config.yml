@@ -18,7 +18,7 @@ executors:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: 123@
     environment:
-      TEST_ARGS: "--junitxml test-results/pytest/coverage.xml --cov-report html:coverage"
+      TEST_ARGS: "--junitxml test-results/junit.xml --cov-report html:coverage"
 
 commands:
   install_dependencies:
