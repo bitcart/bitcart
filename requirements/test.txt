@@ -1,4 +1,3 @@
-asgi-lifespan
 async-asgi-testclient
 black
 codecov

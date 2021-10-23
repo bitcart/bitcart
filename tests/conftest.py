@@ -2,7 +2,6 @@ import os
 import shutil
 
 import pytest
-from asgi_lifespan import LifespanManager
 from async_asgi_testclient import TestClient as WSClient
 from httpx import AsyncClient
 
@@ -34,29 +33,29 @@ async def init_db(request, app, anyio_backend):
     if xdist_suffix:
         db_name += f"_{xdist_suffix}"
     settings.settings.db_name = "postgres"
-    async with db.with_bind(settings.settings.connection_str) as engine:
-        async with engine.acquire() as conn:
+    async with settings.settings.with_db():
+        async with db.acquire() as conn:
             await conn.status(f"DROP DATABASE IF EXISTS {db_name}")
             await conn.status(f"CREATE DATABASE {db_name}")
     settings.settings.db_name = db_name
-    await db.set_bind(settings.settings.connection_str)
+    await settings.settings.init()
     await db.gino.create_all()
     yield
     await db.gino.drop_all()
-    await db.pop_bind().close()
+    await settings.settings.shutdown()
 
 
 @pytest.fixture
 async def client(app, anyio_backend):
-    async with LifespanManager(app), AsyncClient(app=app, base_url="http://testserver") as client:
+    async with AsyncClient(app=app, base_url="http://testserver") as client:
         yield client
 
 
 # TODO: remove when httpx supports websockets
 @pytest.fixture
 async def ws_client(app, anyio_backend):
-    async with WSClient(app) as client:
-        yield client
+    client = WSClient(app)
+    yield client
 
 
 @pytest.fixture

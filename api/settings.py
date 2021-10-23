@@ -5,6 +5,7 @@ import platform
 import re
 import sys
 import traceback
+from contextlib import asynccontextmanager
 from contextvars import ContextVar
 from typing import Dict
 
@@ -181,10 +182,27 @@ class Settings(BaseSettings):
             return self.cryptos[coin]
         return COINS[coin.upper()](xpub=xpub, **self.crypto_settings[coin]["credentials"])
 
+    async def create_db_engine(self):
+        return await db.db.set_bind(self.connection_str, min_size=1, loop=asyncio.get_running_loop())
+
+    async def shutdown_db_engine(self):
+        await db.db.pop_bind().close()
+
+    @asynccontextmanager
+    async def with_db(self):
+        engine = await self.create_db_engine()
+        yield engine
+        await self.shutdown_db_engine()
+
     async def init(self):
         self.redis_pool = aioredis.from_url(self.redis_host, decode_responses=True)
         await self.redis_pool.ping()
-        await db.db.set_bind(self.connection_str, min_size=1, loop=asyncio.get_running_loop())
+        await self.create_db_engine()
+
+    async def shutdown(self):
+        if self.redis_pool:
+            await self.redis_pool.close()
+        await self.shutdown_db_engine()
 
 
 def excepthook_handler(excepthook):

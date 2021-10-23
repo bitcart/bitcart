@@ -8,10 +8,6 @@ anyio==3.3.4 \
     --hash=sha256:4fd09a25ab7fa01d34512b7249e366cd10358cdafc95022c7ff8c8f8a5026d66 \
     --hash=sha256:67da67b5b21f96b9d3d65daa6ea99f5d5282cb09f50eb4456f8fb51dffefc3ff
     # via httpcore
-asgi-lifespan==1.0.1 \
-    --hash=sha256:9a33e7da2073c4764bc79bd6136501d6c42f60e3d2168ba71235e84122eadb7f \
-    --hash=sha256:9ea969dc5eb5cf08e52c08dce6f61afcadd28112e72d81c972b1d8eb8691ab53
-    # via -r requirements/test.txt
 async-asgi-testclient==1.4.6 \
     --hash=sha256:ee19bac63e74f003068a8802c6e427d82c457f513f6cf734b2cd7f93b09f960f
     # via -r requirements/test.txt
@@ -330,7 +326,6 @@ sniffio==1.2.0 \
     --hash=sha256:c4666eecec1d3f50960c6bdf61ab7bc350648da6c126e3cf6898d8cd4ddcd3de
     # via
     #   anyio
-    #   asgi-lifespan
     #   httpcore
     #   httpx
 toml==0.10.2 \

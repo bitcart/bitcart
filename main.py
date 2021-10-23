@@ -62,6 +62,10 @@ def get_app():
     async def startup():
         await app.settings.init()
 
+    @app.on_event("shutdown")
+    async def shutdown():
+        await app.settings.shutdown()
+
     @app.exception_handler(500)
     async def exception_handler(request, exc):
         logger.error(traceback.format_exc())
