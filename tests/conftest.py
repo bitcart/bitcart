@@ -35,8 +35,8 @@ async def init_db(request, app, anyio_backend):
     settings.settings.db_name = "postgres"
     async with settings.settings.with_db():
         async with db.acquire() as conn:
-            await conn.status(f"DROP DATABASE IF EXISTS {db_name}")
-            await conn.status(f"CREATE DATABASE {db_name}")
+            await conn.status("DROP DATABASE IF EXISTS $1", db_name)
+            await conn.status("CREATE DATABASE $1", db_name)
     settings.settings.db_name = db_name
     await settings.settings.init()
     await db.gino.create_all()

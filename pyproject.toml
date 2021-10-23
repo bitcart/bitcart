@@ -8,8 +8,8 @@ known_third_party = ["bitcart"]
 
 [tool.pytest.ini_options]
 addopts = [
-    "-p",
-    "xdist",
+    "-n",
+    "auto",
     "--cov=.",
     "--cov-report",
     "term-missing"

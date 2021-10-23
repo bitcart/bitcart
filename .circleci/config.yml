@@ -18,7 +18,7 @@ executors:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: 123@
     environment:
-      TEST_ARGS: "-o junit_family=xunit1 --junitxml test-results/junit.xml --cov-report html:coverage"
+      TEST_ARGS: "-o junit_family=xunit1 --junitxml test-results/pytest/coverage.xml --cov-report html:coverage"
 
 commands:
   install_dependencies:
@@ -129,7 +129,7 @@ jobs:
             make checkformat
             make lint
             TEST_FILES=$(find -name "test_*.py" -not -name "test_functional.py" | sed 's/.\///' | circleci tests split --split-by=timings)
-            pytest $TEST_ARGS $TEST_FILES
+            pytest -n $(nproc) $TEST_ARGS $TEST_FILES
             codecov -F tests -e PYTHON
 
       - upload-results
