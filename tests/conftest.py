@@ -41,8 +41,6 @@ async def init_db(request, app, anyio_backend):
     await settings.settings.init()
     await db.gino.create_all()
     yield
-    await db.gino.drop_all()
-    await settings.settings.shutdown()
 
 
 @pytest.fixture
