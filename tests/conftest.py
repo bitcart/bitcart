@@ -1,21 +1,25 @@
 import os
 import shutil
 
+import anyio
 import pytest
 from async_asgi_testclient import TestClient as WSClient
 from httpx import AsyncClient
+from xdist import is_xdist_master
 
 from api import settings
 from api.db import db
+from api.settings import Settings
 from main import get_app
 
 # To separate setup fixtures from code testing helper fixtures
 pytest_plugins = ["tests.fixtures.pytest.data"]
+ANYIO_BACKEND_OPTIONS = {"use_uvloop": True}
 
 
 @pytest.fixture
 def anyio_backend():
-    return ("asyncio", {"use_uvloop": True})
+    return ("asyncio", ANYIO_BACKEND_OPTIONS)
 
 
 @pytest.fixture
@@ -26,20 +30,37 @@ def app():
     settings.settings_ctx.reset(token)
 
 
+async def setup_template_database():
+    settings = Settings()
+    db_name = settings.db_name
+    template_db_name = f"{db_name}_template"
+    settings.db_name = "postgres"
+    async with settings.with_db():
+        await db.status(f"DROP DATABASE IF EXISTS {template_db_name}")
+        await db.status(f"CREATE DATABASE {template_db_name}")
+    settings.db_name = template_db_name
+    async with settings.with_db():
+        await db.gino.create_all()
+
+
+def pytest_sessionstart(session):
+    if is_xdist_master(session):
+        anyio.run(setup_template_database, backend_options=ANYIO_BACKEND_OPTIONS)
+
+
 @pytest.fixture(autouse=True)
 async def init_db(request, app, anyio_backend):
+    db_name = settings.settings.db_name
+    template_db = f"{db_name}_template"
     xdist_suffix = getattr(request.config, "workerinput", {}).get("workerid")
-    db_name = f"{settings.settings.db_name}"
     if xdist_suffix:
         db_name += f"_{xdist_suffix}"
     settings.settings.db_name = "postgres"
     async with settings.settings.with_db():
-        async with db.acquire() as conn:
-            await conn.status(f"DROP DATABASE IF EXISTS {db_name}")
-            await conn.status(f"CREATE DATABASE {db_name}")
+        await db.status(f"DROP DATABASE IF EXISTS {db_name}")
+        await db.status(f"CREATE DATABASE {db_name} TEMPLATE {template_db}")
     settings.settings.db_name = db_name
     await settings.settings.init()
-    await db.gino.create_all()
     yield
 
 
