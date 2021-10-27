@@ -208,7 +208,6 @@ workflows:
             - install_dependencies
           requires:
             - test
-          tests-target: functional TEST_ARGS="-n 0 --junitxml test-results/pytest/coverage.xml --cov-report html:coverage"
       - deploy-amd64:
           context: global
           filters:

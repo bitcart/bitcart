@@ -5,7 +5,6 @@ import anyio
 import pytest
 from async_asgi_testclient import TestClient as WSClient
 from httpx import AsyncClient
-from xdist import is_xdist_master
 
 from api import settings
 from api.db import db
@@ -44,7 +43,7 @@ async def setup_template_database():
 
 
 def pytest_sessionstart(session):
-    if is_xdist_master(session):
+    if not hasattr(session.config, "workerinput"):
         anyio.run(setup_template_database, backend_options=ANYIO_BACKEND_OPTIONS)
 
 
