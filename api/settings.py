@@ -1,5 +1,6 @@
 import asyncio
 import fnmatch
+import logging
 import os
 import platform
 import re
@@ -22,25 +23,9 @@ from api import db
 from api.constants import GIT_REPO_URL, VERSION, WEBSITE
 from api.ext.notifiers import parse_notifier_schema
 from api.ext.ssh import load_ssh_settings
+from api.logger import configure_logserver, get_exception_message, get_logger
 from api.schemes import SSHSettings
-
-
-def ensure_exists(path):
-    os.makedirs(path, exist_ok=True)
-
-
-logger = None
-
-
-def init_logging():
-    from api.logger import configure_logserver, get_logger
-
-    configure_logserver()
-
-    global logger
-    logger = get_logger(__name__)
-    sys.excepthook = excepthook_handler(sys.excepthook)
-    asyncio.get_running_loop().set_exception_handler(handle_exception)
+from api.utils.files import ensure_exists
 
 
 class Settings(BaseSettings):
@@ -67,6 +52,7 @@ class Settings(BaseSettings):
     notifiers: dict = None
     redis_pool: aioredis.Redis = None
     config: Config = None
+    logger: logging.Logger = None
 
     class Config:
         env_file = "conf/.env"
@@ -204,41 +190,48 @@ class Settings(BaseSettings):
             await self.redis_pool.close()
         await self.shutdown_db_engine()
 
+    def init_logging(self):
+        configure_logserver()
+
+        self.logger = get_logger(__name__)
+        sys.excepthook = excepthook_handler(sys.excepthook)
+        asyncio.get_running_loop().set_exception_handler(handle_exception)
+
 
 def excepthook_handler(excepthook):
     def internal_error_handler(type_, value, tb):
         if type_ != KeyboardInterrupt:
-            logger.error("\n" + "".join(traceback.format_exception(type_, value, tb)))
+            settings = settings_ctx.get()
+            settings.logger.error("\n" + "".join(traceback.format_exception(type_, value, tb)))
         return excepthook(type_, value, tb)
 
     return internal_error_handler
 
 
 def handle_exception(loop, context):
-    from api.logger import get_exception_message
-
     if "exception" in context:
         msg = get_exception_message(context["exception"])
     else:
         msg = context["message"]
-    logger.error(msg)
+    settings = settings_ctx.get()
+    settings.logger.error(msg)
 
 
 def log_startup_info():
     settings = settings_ctx.get()
-    logger.info(f"BitcartCC version: {VERSION} - {WEBSITE} - {GIT_REPO_URL}")
-    logger.info(f"Python version: {sys.version}. On platform: {platform.platform()}")
-    logger.info(
+    settings.logger.info(f"BitcartCC version: {VERSION} - {WEBSITE} - {GIT_REPO_URL}")
+    settings.logger.info(f"Python version: {sys.version}. On platform: {platform.platform()}")
+    settings.logger.info(
         f"BITCART_CRYPTOS={','.join([item for item in settings.enabled_cryptos])}; IN_DOCKER={settings.docker_env}; "
         f"LOG_FILE={settings.log_file_name}"
     )
-    logger.info(f"Successfully loaded {len(settings.cryptos)} cryptos")
-    logger.info(f"{len(settings.notifiers)} notification providers available")
+    settings.logger.info(f"Successfully loaded {len(settings.cryptos)} cryptos")
+    settings.logger.info(f"{len(settings.notifiers)} notification providers available")
 
 
 async def init():
     settings = settings_ctx.get()
-    init_logging()
+    settings.init_logging()
     await settings.init()
 
 

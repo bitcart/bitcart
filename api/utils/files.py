@@ -18,3 +18,7 @@ def safe_remove(filename):
         os.remove(filename)
     except (TypeError, OSError):
         pass
+
+
+def ensure_exists(path):
+    os.makedirs(path, exist_ok=True)

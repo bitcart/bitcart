@@ -161,6 +161,7 @@ Install development packages:
 ```
 pip3 install -r requirements/dev.txt
 pip3 install -r requirements/test.txt
+pip3 install -r requirements/lint.txt
 ```
 
 This repository uses pre-commit hooks for better development experience. Install them with:
