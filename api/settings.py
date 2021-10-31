@@ -36,7 +36,7 @@ class Settings(BaseSettings):
     root_path: str = Field("", env="BITCART_BACKEND_ROOTPATH")
     db_name: str = Field("bitcart", env="DB_DATABASE")
     db_user: str = Field("postgres", env="DB_USER")
-    db_password: str = Field("", env="DB_PASSWORD")
+    db_password: str = Field("123@", env="DB_PASSWORD")
     db_host: str = Field("127.0.0.1", env="DB_HOST")
     db_port: int = Field(5432, env="DB_PORT")
     datadir: str = Field("data", env="BITCART_DATADIR")
