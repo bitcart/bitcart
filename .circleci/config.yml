@@ -120,6 +120,8 @@ jobs:
     environment:
       PYTHON: << parameters.v >>
 
+    working_directory: ~/repo
+
     steps:
       - checkout
 
@@ -143,6 +145,8 @@ jobs:
   deploy-amd64:
     executor: bitcartcc/build-ubuntu
 
+    working_directory: ~/repo
+
     environment:
       ARCH: amd64
 
@@ -151,6 +155,8 @@ jobs:
 
   deploy-arm:
     executor: bitcartcc/build-ubuntu-arm
+
+    working_directory: ~/repo
 
     environment:
       ARCH: arm
@@ -161,6 +167,8 @@ jobs:
   deploy:
     executor: bitcartcc/build-ubuntu
 
+    working_directory: ~/repo
+
     environment:
       MANIFEST: true
 
@@ -170,6 +178,8 @@ jobs:
   deploy-cli:
     docker:
       - image: cimg/go:1.16
+
+    working_directory: ~/repo
 
     steps:
       - checkout
