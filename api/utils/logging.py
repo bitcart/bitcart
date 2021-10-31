@@ -16,4 +16,4 @@ def log_errors():  # pragma: no cover
 
 # Used to find all safe-to-delete logs
 def log_filter(filename):
-    return settings.LOG_FILE_REGEX.match(filename) and filename != settings.LOG_FILE_NAME
+    return settings.settings.log_file_regex.match(filename) and filename != settings.settings.log_file_name

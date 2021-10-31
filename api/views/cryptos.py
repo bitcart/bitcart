@@ -16,7 +16,7 @@ router = APIRouter()
 
 @router.get("")  # Note: we use empty string there as it's included as subrouter, to avoid redirects
 async def get_cryptos():
-    return prepare_compliant_response(list(settings.cryptos.keys()))
+    return prepare_compliant_response(list(settings.settings.cryptos.keys()))
 
 
 @router.get("/supported")
@@ -26,7 +26,7 @@ async def get_supported_cryptos():
 
 @router.get("/rate")
 async def rate(currency: str = "btc", fiat_currency: str = "USD"):
-    rate = await settings.get_coin(currency).rate(fiat_currency.upper())
+    rate = await settings.settings.get_coin(currency).rate(fiat_currency.upper())
     if math.isnan(rate):
         raise HTTPException(422, "Unsupported fiat currency")
     return rate
@@ -35,13 +35,13 @@ async def rate(currency: str = "btc", fiat_currency: str = "USD"):
 @router.get("/fiatlist")
 async def get_fiatlist(query: Optional[str] = None):
     s = None
-    for coin in settings.cryptos:
+    for coin in settings.settings.cryptos:
         try:
-            fiat_list = await settings.cryptos[coin].list_fiat()
+            fiat_list = await settings.settings.cryptos[coin].list_fiat()
         except BitcartBaseError as e:
             logger.error(
-                f"Failed fetching supported currencies for coin {settings.cryptos[coin].coin_name}. Daemon not running?\n"
-                f"{get_exception_message(e)}"
+                f"Failed fetching supported currencies for coin {settings.settings.cryptos[coin].coin_name}. Daemon not"
+                f" running?\n{get_exception_message(e)}"
             )
             continue
         if not s:

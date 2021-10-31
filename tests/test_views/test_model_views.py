@@ -1,10 +1,18 @@
+from __future__ import annotations
+
 import json as json_module
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 import pytest
-from starlette.testclient import TestClient
 
 from api.constants import ID_LENGTH, PUBLIC_ID_LENGTH
+
+if TYPE_CHECKING:
+    from httpx import AsyncClient as TestClient
+
+
+pytestmark = pytest.mark.anyio
 
 
 class ViewTestMixin:
@@ -19,35 +27,41 @@ class ViewTestMixin:
     id_length: int = ID_LENGTH
     json_encoding: bool = True
 
-    @property
-    def create_data(self):
+    @pytest.fixture
+    def state(self):
+        return {}
+
+    @pytest.fixture(autouse=True)
+    async def setup(self, state, client: TestClient, token: str, anyio_backend):
+        state["data"] = await self.create_object(client, token, state)
+
+    @pytest.fixture
+    def object_id(self, state):
+        return state["data"]["id"]
+
+    def create_data(self, state):
         return self.tests["create"]
 
     @property
     def patch_data(self):
         return self.tests["patch"]
 
-    @property
-    def expected_resp(self):
+    def expected_resp(self, state):
         return self.tests["response"]
 
     @property
     def expected_count(self):
         return self.tests["count"]
 
-    def create_object(self, client, token):
+    async def create_object(self, client, token, state):
         # Create initial object for other tests
         if self.create_auth:
-            assert client.post(f"/{self.name}", **self.prepare_data(self.create_data)).status_code == 401
-        resp = client.post(
-            f"/{self.name}", **self.prepare_data(self.create_data), headers={"Authorization": f"Bearer {token}"}
+            assert (await client.post(f"/{self.name}", **self.prepare_data(self.create_data(state)))).status_code == 401
+        resp = await client.post(
+            f"/{self.name}", **self.prepare_data(self.create_data(state)), headers={"Authorization": f"Bearer {token}"}
         )
         assert resp.status_code == 200
-        self.data = resp.json()
-
-    @pytest.fixture(autouse=True)
-    def setup(self, client: TestClient, token: str):
-        self.create_object(client, token)
+        return resp.json()
 
     def check_pagination_response(self, data):
         assert data["count"] == self.expected_count
@@ -71,18 +85,14 @@ class ViewTestMixin:
         except ValueError:
             pytest.fail(f"Invalid created field: {data['created']}")
 
-    @property
-    def object_id(self):
-        return self.data["id"]
-
-    def check_data(self):
-        self.check_id(self.data, id_length=self.id_length)
-        self.check_created(self.data)
+    def check_data(self, data):
+        self.check_id(data, id_length=self.id_length)
+        self.check_created(data)
 
     # The actual create is done by data fixture once
-    def test_create(self):
-        assert self.data.items() > self.expected_resp.items()
-        self.check_data()
+    async def test_create(self, state):
+        assert state["data"].items() > self.expected_resp(state).items()
+        self.check_data(state["data"])
 
     def prepare_data(self, data):
         if self.json_encoding:
@@ -90,37 +100,37 @@ class ViewTestMixin:
         else:
             return {"data": {"data": json_module.dumps(data)}}
 
-    def test_get_all(self, client: TestClient, token: str):
-        assert client.get(f"/{self.name}").status_code == 401
-        resp = client.get(f"/{self.name}", headers={"Authorization": f"Bearer {token}"})
+    async def test_get_all(self, client: TestClient, token: str, state):
+        assert (await client.get(f"/{self.name}")).status_code == 401
+        resp = await client.get(f"/{self.name}", headers={"Authorization": f"Bearer {token}"})
         assert resp.status_code == 200
         objects = self.check_pagination_response(resp.json())
         # The objects list is ordered by created date; first object is the last object created
-        assert objects[0] == self.data
+        assert objects[0] == state["data"]
 
-    def test_get_count(self, client: TestClient, token: str):
-        assert client.get(f"/{self.name}/count").status_code == 401
-        resp = client.get(f"/{self.name}/count", headers={"Authorization": f"Bearer {token}"})
+    async def test_get_count(self, client: TestClient, token: str):
+        assert (await client.get(f"/{self.name}/count")).status_code == 401
+        resp = await client.get(f"/{self.name}/count", headers={"Authorization": f"Bearer {token}"})
         assert resp.status_code == 200
         assert resp.json() == self.expected_count
 
-    def test_get_one(self, client: TestClient, token: str):
+    async def test_get_one(self, client: TestClient, token: str, state, object_id):
         if self.get_one_auth:
-            assert client.get(f"/{self.name}/{self.object_id}").status_code == 401
-        resp = client.get(f"/{self.name}/{self.object_id}", headers={"Authorization": f"Bearer {token}"})
+            assert (await client.get(f"/{self.name}/{object_id}")).status_code == 401
+        resp = await client.get(f"/{self.name}/{object_id}", headers={"Authorization": f"Bearer {token}"})
         assert resp.status_code == 200
-        assert resp.json() == self.data
+        assert resp.json() == state["data"]
 
-    def test_update(self, client: TestClient, token: str):
-        assert client.patch(f"/{self.name}/{self.object_id}", **self.prepare_data(self.patch_data)).status_code == 401
-        resp = client.patch(
-            f"/{self.name}/{self.object_id}",
+    async def test_update(self, client: TestClient, token: str, state, object_id):
+        assert (await client.patch(f"/{self.name}/{object_id}", **self.prepare_data(self.patch_data))).status_code == 401
+        resp = await client.patch(
+            f"/{self.name}/{object_id}",
             **self.prepare_data(self.patch_data),
             headers={"Authorization": f"Bearer {token}"},
         )
         assert resp.status_code == 200
         # Create patched response based on expected one and modified values only
-        patch_resp = self.data.copy()
+        patch_resp = state["data"].copy()
         for key, value in self.patch_data.items():
             if key in patch_resp:
                 if isinstance(patch_resp[key], dict):
@@ -129,20 +139,21 @@ class ViewTestMixin:
                     patch_resp[key] = value
         assert resp.json() == patch_resp
         assert (
-            client.patch(
-                f"/{self.name}/{self.object_id}",
-                **self.prepare_data(self.create_data),
-                headers={"Authorization": f"Bearer {token}"},
-            ).status_code
-            == 200
-        )
+            await (
+                client.patch(
+                    f"/{self.name}/{object_id}",
+                    **self.prepare_data(self.create_data(state)),
+                    headers={"Authorization": f"Bearer {token}"},
+                )
+            )
+        ).status_code == 200
 
-    def test_delete(self, client: TestClient, token: str):
-        assert client.delete(f"/{self.name}/{self.object_id}").status_code == 401
-        resp = client.delete(f"/{self.name}/{self.object_id}", headers={"Authorization": f"Bearer {token}"})
+    async def test_delete(self, client: TestClient, token: str, state, object_id):
+        assert (await client.delete(f"/{self.name}/{object_id}")).status_code == 401
+        resp = await client.delete(f"/{self.name}/{object_id}", headers={"Authorization": f"Bearer {token}"})
         assert resp.status_code == 200
-        assert resp.json() == self.data
-        assert client.get(f"/{self.name}/{self.object_id}", headers={"Authorization": f"Bearer {token}"}).status_code == 404
+        assert resp.json() == state["data"]
+        assert (await client.get(f"/{self.name}/{object_id}", headers={"Authorization": f"Bearer {token}"})).status_code == 404
 
 
 class TestUsers(ViewTestMixin):
@@ -156,14 +167,13 @@ class TestDiscounts(ViewTestMixin):
     tests = json_module.loads(open("tests/fixtures/data/discounts.json").read())
 
     @pytest.fixture(autouse=True)
-    def setup(self, user, client, token):
-        self.user = user
-        self.create_object(client, token)
+    async def setup(self, state, user, client, token, anyio_backend):
+        state["user"] = user
+        state["data"] = await self.create_object(client, token, state)
 
-    @property
-    def expected_resp(self):
-        data = super().expected_resp
-        data["user_id"] = self.user["id"]
+    def expected_resp(self, state):
+        data = super().expected_resp(state)
+        data["user_id"] = state["user"]["id"]
         return data
 
 
@@ -172,14 +182,13 @@ class TestNotifications(ViewTestMixin):
     tests = json_module.loads(open("tests/fixtures/data/notifications.json").read())
 
     @pytest.fixture(autouse=True)
-    def setup(self, user, client, token):
-        self.user = user
-        self.create_object(client, token)
+    async def setup(self, state, user, client, token, anyio_backend):
+        state["user"] = user
+        state["data"] = await self.create_object(client, token, state)
 
-    @property
-    def expected_resp(self):
-        data = super().expected_resp
-        data["user_id"] = self.user["id"]
+    def expected_resp(self, state):
+        data = super().expected_resp(state)
+        data["user_id"] = state["user"]["id"]
         return data
 
 
@@ -188,14 +197,13 @@ class TestTemplates(ViewTestMixin):
     tests = json_module.loads(open("tests/fixtures/data/templates.json").read())
 
     @pytest.fixture(autouse=True)
-    def setup(self, user, client, token):
-        self.user = user
-        self.create_object(client, token)
+    async def setup(self, state, user, client, token, anyio_backend):
+        state["user"] = user
+        state["data"] = await self.create_object(client, token, state)
 
-    @property
-    def expected_resp(self):
-        data = super().expected_resp
-        data["user_id"] = self.user["id"]
+    def expected_resp(self, state):
+        data = super().expected_resp(state)
+        data["user_id"] = state["user"]["id"]
         return data
 
 
@@ -210,27 +218,25 @@ class TestStores(ViewTestMixin):
     get_one_auth = False
 
     @pytest.fixture(autouse=True)
-    def setup(self, user, wallet, notification, client, token):
-        self.user = user
-        self.wallet = wallet
-        self.notification = notification
-        self.create_object(client, token)
+    async def setup(self, state, user, wallet, notification, client, token, anyio_backend):
+        state["user"] = user
+        state["wallet"] = wallet
+        state["notification"] = notification
+        state["data"] = await self.create_object(client, token, state)
 
-    def _add_related(self, data):
-        data["wallets"] = [self.wallet["id"]]
-        data["notifications"] = [self.notification["id"]]
+    def _add_related(self, data, state):
+        data["wallets"] = [state["wallet"]["id"]]
+        data["notifications"] = [state["notification"]["id"]]
 
-    @property
-    def create_data(self):
-        data = super().create_data
-        self._add_related(data)
+    def create_data(self, state):
+        data = super().create_data(state)
+        self._add_related(data, state)
         return data
 
-    @property
-    def expected_resp(self):
-        data = super().expected_resp
-        self._add_related(data)
-        data["user_id"] = self.user["id"]
+    def expected_resp(self, state):
+        data = super().expected_resp(state)
+        self._add_related(data, state)
+        data["user_id"] = state["user"]["id"]
         return data
 
 
@@ -242,27 +248,25 @@ class TestProducts(ViewTestMixin):
     json_encoding = False
 
     @pytest.fixture(autouse=True)
-    def setup(self, user, store, discount, client, token):
-        self.user = user
-        self.store = store
-        self.discount = discount
-        self.create_object(client, token)
+    async def setup(self, state, user, store, discount, client, token, anyio_backend):
+        state["user"] = user
+        state["store"] = store
+        state["discount"] = discount
+        state["data"] = await self.create_object(client, token, state)
 
-    def _add_related(self, data):
-        data["discounts"] = [self.discount["id"]]
-        data["store_id"] = self.store["id"]
+    def _add_related(self, data, state):
+        data["discounts"] = [state["discount"]["id"]]
+        data["store_id"] = state["store"]["id"]
 
-    @property
-    def create_data(self):
-        data = super().create_data
-        self._add_related(data)
+    def create_data(self, state):
+        data = super().create_data(state)
+        self._add_related(data, state)
         return data
 
-    @property
-    def expected_resp(self):
-        data = super().expected_resp
-        self._add_related(data)
-        data["user_id"] = self.user["id"]
+    def expected_resp(self, state):
+        data = super().expected_resp(state)
+        self._add_related(data, state)
+        data["user_id"] = state["user"]["id"]
         return data
 
 
@@ -274,36 +278,34 @@ class TestInvoices(ViewTestMixin):
     get_one_auth = False
 
     @pytest.fixture(autouse=True)
-    def setup(self, user, store, product, client, token):
-        self.user = user
-        self.store = store
-        self.product = product
-        self.create_object(client, token)
+    async def setup(self, state, user, store, product, client, token, anyio_backend):
+        state["user"] = user
+        state["store"] = store
+        state["product"] = product
+        state["data"] = await self.create_object(client, token, state)
 
-    def _add_related(self, data):
-        data["products"] = [self.product["id"]]
-        data["store_id"] = self.store["id"]
+    def _add_related(self, data, state):
+        data["products"] = [state["product"]["id"]]
+        data["store_id"] = state["store"]["id"]
 
-    @property
-    def create_data(self):
-        data = super().create_data
-        self._add_related(data)
+    def create_data(self, state):
+        data = super().create_data(state)
+        self._add_related(data, state)
         return data
 
-    @property
-    def expected_resp(self):
-        data = super().expected_resp
-        self._add_related(data)
-        data["user_id"] = self.user["id"]
+    def expected_resp(self, state):
+        data = super().expected_resp(state)
+        self._add_related(data, state)
+        data["user_id"] = state["user"]["id"]
         return data
 
-    def check_data(self):
-        super().check_data()
-        self.check_payments()
+    def check_data(self, data):
+        super().check_data(data)
+        self.check_payments(data)
 
-    def check_payments(self):
-        self._check_key(self.data, "payments", list)
-        payments = self.data["payments"]
+    def check_payments(self, data):
+        self._check_key(data, "payments", list)
+        payments = data["payments"]
         assert len(payments) == 1
         method = payments[0]
         assert (

@@ -53,7 +53,7 @@ async def create_invoice(invoice: schemes.CreateInvoice, user: schemes.User):
 
 
 async def _create_payment_method(invoice, wallet, product, store, discounts, promocode, lightning=False):
-    coin = settings.get_coin(wallet.currency, wallet.xpub)
+    coin = settings.settings.get_coin(wallet.currency, wallet.xpub)
     discount_id = None
     rate = await utils.wallets.get_rate(wallet, invoice.currency, store.default_currency)
     price = invoice.price
@@ -113,7 +113,7 @@ async def _create_payment_method(invoice, wallet, product, store, discounts, pro
 
 async def create_payment_method(invoice, wallet, product, store, discounts, promocode):
     method = await _create_payment_method(invoice, wallet, product, store, discounts, promocode)
-    coin_settings = settings.crypto_settings.get(wallet.currency.lower())
+    coin_settings = settings.settings.crypto_settings.get(wallet.currency.lower())
     if coin_settings and coin_settings["lightning"] and wallet.lightning_enabled:  # pragma: no cover
         await _create_payment_method(invoice, wallet, product, store, discounts, promocode, lightning=True)
     return method

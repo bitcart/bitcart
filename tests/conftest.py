@@ -1,50 +1,79 @@
-import asyncio
 import os
 import shutil
 
+import anyio
 import pytest
-from async_asgi_testclient import TestClient as AsyncClient
-from starlette.testclient import TestClient
+from async_asgi_testclient import TestClient as WSClient
+from httpx import AsyncClient
 
-from api import models
+from api import settings
 from api.db import db
-from main import app
+from api.settings import Settings
+from main import get_app
 
 # To separate setup fixtures from code testing helper fixtures
 pytest_plugins = ["tests.fixtures.pytest.data"]
+ANYIO_BACKEND_OPTIONS = {"use_uvloop": True}
 
 
-@pytest.fixture(scope="session", autouse=True)
-async def init_db():
-    await db.gino.create_all()
-    yield
-    await db.gino.drop_all()
+@pytest.fixture
+def anyio_backend():
+    return ("asyncio", ANYIO_BACKEND_OPTIONS)
 
 
-# We re-create database per each test to make tests independent of each others' state
+@pytest.fixture
+def app():
+    app = get_app()
+    token = settings.settings_ctx.set(app.settings)
+    yield app
+    settings.settings_ctx.reset(token)
+
+
+async def setup_template_database():
+    settings = Settings()
+    db_name = settings.db_name
+    template_db_name = f"{db_name}_template"
+    settings.db_name = "postgres"
+    async with settings.with_db():
+        await db.status(f"DROP DATABASE IF EXISTS {template_db_name}")
+        await db.status(f"CREATE DATABASE {template_db_name}")
+    settings.db_name = template_db_name
+    async with settings.with_db():
+        await db.gino.create_all()
+
+
+def pytest_sessionstart(session):
+    if not hasattr(session.config, "workerinput"):
+        anyio.run(setup_template_database, backend_options=ANYIO_BACKEND_OPTIONS)
+
+
 @pytest.fixture(autouse=True)
-async def cleanup_db():
-    async with db.acquire() as conn:
-        async with conn.transaction():
-            for table in reversed(models.db.sorted_tables):
-                await conn.status(table.delete())
+async def init_db(request, app, anyio_backend):
+    db_name = settings.settings.db_name
+    template_db = f"{db_name}_template"
+    xdist_suffix = getattr(request.config, "workerinput", {}).get("workerid")
+    if xdist_suffix:
+        db_name += f"_{xdist_suffix}"
+    settings.settings.db_name = "postgres"
+    async with settings.settings.with_db():
+        await db.status(f"DROP DATABASE IF EXISTS {db_name}")
+        await db.status(f"CREATE DATABASE {db_name} TEMPLATE {template_db}")
+    settings.settings.db_name = db_name
+    await settings.settings.init()
+    yield
 
 
-@pytest.fixture(scope="session")
-def event_loop():
-    yield asyncio.get_event_loop_policy().get_event_loop()
-
-
-@pytest.fixture(scope="session", autouse=True)
-def client(event_loop):
-    with TestClient(app) as client:
+@pytest.fixture
+async def client(app, anyio_backend):
+    async with AsyncClient(app=app, base_url="http://testserver") as client:
         yield client
 
 
-@pytest.fixture(scope="session")
-async def async_client(event_loop):
-    async with AsyncClient(app) as client:
-        yield client
+# TODO: remove when httpx supports websockets
+@pytest.fixture
+async def ws_client(app, anyio_backend):
+    client = WSClient(app)
+    yield client
 
 
 @pytest.fixture
@@ -82,4 +111,4 @@ def deleting_file_base(filename):
 
 @pytest.fixture
 def log_file():
-    yield from deleting_file_base("tests/fixtures/log/bitcart20210821.log")
+    yield from deleting_file_base("tests/fixtures/logs/bitcart20210821.log")

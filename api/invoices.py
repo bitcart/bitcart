@@ -144,7 +144,7 @@ async def update_confirmations(invoice, method, confirmations):
 
 
 async def get_confirmations(method, xpub):
-    coin = settings.get_coin(method.currency, xpub)
+    coin = settings.settings.get_coin(method.currency, xpub)
     invoice_data = await coin.get_request(method.payment_address)
     return min(
         constants.MAX_CONFIRMATION_WATCH, invoice_data.get("confirmations", 0)
@@ -238,7 +238,7 @@ async def check_pending(currency):
         with log_errors():  # issues processing one item
             if invoice.status == InvoiceStatus.EXPIRED:
                 continue
-            coin = settings.get_coin(method.currency, xpub)
+            coin = settings.settings.get_coin(method.currency, xpub)
             if method.lightning:
                 invoice_data = await coin.get_invoice(method.rhash)
             else:

@@ -3,19 +3,23 @@ import signal
 import sys
 from multiprocessing import Process
 
-from api import events, invoices, settings, tasks
+from api import events, invoices
+from api import settings as settings_module
+from api import tasks
 from api.ext import backups as backup_ext
 from api.ext import configurator as configurator_ext
 from api.ext import tor as tor_ext
 from api.ext import update as update_ext
 from api.logserver import main as start_logserver
 from api.logserver import wait_for_port
+from api.settings import Settings
 from api.utils.common import run_repeated
 
 
 async def main():
-    await settings.init()
-    settings.log_startup_info()
+    settings = settings_module.settings_ctx.get()
+    await settings_module.init()
+    settings_module.log_startup_info()
     await tor_ext.refresh(log=False)  # to pre-load data for initial requests
     await update_ext.refresh()
     await configurator_ext.refresh_pending_deployments()
@@ -36,8 +40,13 @@ def handler(signum, frame):
 
 
 if __name__ == "__main__":
-    process = Process(target=start_logserver)
-    process.start()
-    wait_for_port()
-    signal.signal(signal.SIGINT, handler)
-    asyncio.run(main())
+    settings = Settings()
+    try:
+        token = settings_module.settings_ctx.set(settings)
+        process = Process(target=start_logserver)
+        process.start()
+        wait_for_port()
+        signal.signal(signal.SIGINT, handler)
+        asyncio.run(main())
+    finally:
+        settings_module.settings_ctx.reset(token)

@@ -8,6 +8,8 @@ known_third_party = ["bitcart"]
 
 [tool.pytest.ini_options]
 addopts = [
+    "-n",
+    "auto",
     "--cov=.",
     "--cov-report",
     "term-missing"
@@ -16,7 +18,6 @@ filterwarnings = [
     "error::DeprecationWarning",
     "error::PendingDeprecationWarning",
     "ignore:.*distutils package is deprecated.*:DeprecationWarning:aioredis", # TODO: remove when aioredis fixes this
-    "ignore:There is no current event loop:DeprecationWarning"
 ]
 norecursedirs = ["tests/functional"]
 

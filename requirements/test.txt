@@ -1,10 +1,9 @@
 async-asgi-testclient
-black
+async-timeout
 codecov
-flake8
-isort
+httpx
 pytest
-pytest-asyncio
 pytest-cov
 pytest-mock
 pytest-parametrization
+pytest-xdist

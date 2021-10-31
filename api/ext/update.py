@@ -15,7 +15,7 @@ REDIS_KEY = "bitcartcc_update_ext"
 async def get_update_data():
     try:
         async with ClientSession() as session:
-            async with session.get(settings.UPDATE_URL) as resp:
+            async with session.get(settings.settings.update_url) as resp:
                 data = await resp.json()
                 tag = data["tag_name"]
                 if re.match(RELEASE_REGEX, tag):
@@ -28,7 +28,7 @@ async def refresh():
     from api import schemes, utils
 
     async with utils.redis.wait_for_redis():
-        if settings.UPDATE_URL and (await utils.policies.get_setting(schemes.Policy)).check_updates:
+        if settings.settings.update_url and (await utils.policies.get_setting(schemes.Policy)).check_updates:
             logger.info("Checking for updates...")
             latest_tag = await get_update_data()
             if latest_tag and utils.common.versiontuple(latest_tag) > utils.common.versiontuple(VERSION):

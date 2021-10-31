@@ -4,7 +4,7 @@ aioredis
 alembic
 bitcart
 email-validator
-fastapi<0.69.0
+fastapi
 gino
 hiredis
 Jinja2
@@ -14,5 +14,6 @@ paramiko
 passlib[bcrypt]
 psycopg2-binary
 python-dateutil
+python-dotenv
 python-multipart
 uvicorn[standard]<0.15.0 # has bugs with websockets and see #247

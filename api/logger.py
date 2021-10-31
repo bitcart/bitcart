@@ -8,8 +8,8 @@ from logging.handlers import TimedRotatingFileHandler
 import msgpack
 from pydantic import BaseModel
 
+from api import settings
 from api.constants import LOGSERVER_PORT
-from api.settings import LOG_FILE, LOGSERVER_HOST
 
 
 def get_exception_message(exc: Exception):
@@ -22,8 +22,8 @@ def timed_log_namer(default_name):
 
 
 def configure_file_logging():
-    if LOG_FILE:
-        handler = TimedRotatingFileHandler(LOG_FILE, when="midnight")
+    if settings.settings.log_file:
+        handler = TimedRotatingFileHandler(settings.settings.log_file, when="midnight")
         handler.suffix = "%Y%m%d"
         handler.extMatch = re.compile(r"^\d{8}(\.\w+)?$")
         handler.namer = timed_log_namer
@@ -49,6 +49,13 @@ class MsgpackHandler(logging.handlers.SocketHandler):
         return msgpack.packb(record.__dict__, default=self.msgpack_encoder)
 
 
+def configure_logserver():
+    socket_handler = MsgpackHandler(settings.settings.logserver_host, LOGSERVER_PORT)
+    socket_handler.setLevel(logging.DEBUG)
+    logger_client.addHandler(socket_handler)
+    bitcart_logger.addHandler(socket_handler)
+
+
 formatter = logging.Formatter(
     "%(asctime)s - [PID %(process)d] - %(name)s.%(funcName)s [line %(lineno)d] - %(levelname)s - %(message)s"
 )
@@ -66,11 +73,6 @@ logger_client = logging.getLogger("api.logclient")
 bitcart_logger = logging.getLogger("bitcart")
 logger_client.setLevel(logging.DEBUG)
 bitcart_logger.setLevel(logging.DEBUG)
-
-socket_handler = MsgpackHandler(LOGSERVER_HOST, LOGSERVER_PORT)
-socket_handler.setLevel(logging.DEBUG)
-logger_client.addHandler(socket_handler)
-bitcart_logger.addHandler(socket_handler)
 
 
 def get_logger_server(name):

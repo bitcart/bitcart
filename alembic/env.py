@@ -20,9 +20,10 @@ fileConfig(config.config_file_name)
 # target_metadata = None
 
 sys.path.insert(0, ".")
-from api.db import CONNECTION_STR  # noqa: E402: sys.path imports
 from api.models import db  # noqa: E402: sys.path imports
+from api.settings import Settings  # noqa: E402: sys.path imports
 
+CONNECTION_STR = Settings().connection_str
 target_metadata = db
 
 # other values from the config, defined by the needs of env.py,

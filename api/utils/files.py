@@ -1,9 +1,6 @@
 import os
 
-from api.settings import DATADIR, IMAGES_DIR, ensure_exists
-
-PRODUCTS_IMAGE_DIR = os.path.join(IMAGES_DIR, "products")
-ensure_exists(PRODUCTS_IMAGE_DIR)
+from api import settings
 
 
 def get_image_filename(model_id):
@@ -11,7 +8,7 @@ def get_image_filename(model_id):
 
 
 async def save_image(filename, image):
-    filename = os.path.join(DATADIR, filename)
+    filename = os.path.join(settings.settings.products_image_dir, os.path.basename(filename))
     with open(filename, "wb") as f:
         f.write(await image.read())
 
@@ -21,3 +18,7 @@ def safe_remove(filename):
         os.remove(filename)
     except (TypeError, OSError):
         pass
+
+
+def ensure_exists(path):
+    os.makedirs(path, exist_ok=True)

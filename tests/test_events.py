@@ -36,7 +36,7 @@ def test_add_event_handler(empty_event_handler, event_handler):
     assert event_handler.events["invalid_event"]["handlers"][0] == func2
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_process_message(event_handler):
     queue = Queue()
 

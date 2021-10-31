@@ -18,7 +18,7 @@ executors:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: 123@
     environment:
-      TEST_ARGS: "--junitxml test-results/pytest/coverage.xml --cov-report html:coverage"
+      TEST_ARGS: "-o junit_family=xunit1 --junitxml test-results/pytest/coverage.xml --cov-report html:coverage"
 
 commands:
   install_dependencies:
@@ -50,7 +50,7 @@ commands:
 
       - restore_cache:
           keys:
-            - v1-lint-dependencies-{{ .Branch }}-{{ checksum "~/.pyenv/version" }}
+            - v1-lint-dependencies-{{ .Branch }}-{{ checksum "~/.pyenv/version" }}-{{ checksum "requirements/lint.txt" }}
 
       - run:
           name: Install dependencies
@@ -59,11 +59,19 @@ commands:
             echo ". ~/venv/bin/activate" >> $BASH_ENV
             source $BASH_ENV
             pip install -U -r requirements/dev.txt
+            pip install -U -r requirements/lint.txt
 
       - save_cache:
           paths:
             - ~/venv
-          key: v1-lint-dependencies-{{ .Branch }}-{{ checksum "~/.pyenv/version" }}
+          key: v1-lint-dependencies-{{ .Branch }}-{{ checksum "~/.pyenv/version" }}-{{ checksum "requirements/lint.txt" }}
+
+  run-lint:
+    steps:
+      - run:
+          name: Check format and lint
+          command: |
+            make checkformat lint
 
   upload-results:
     steps:
@@ -107,6 +115,8 @@ jobs:
       name: main-executor
       v: << parameters.v >>
 
+    parallelism: 4
+
     environment:
       PYTHON: << parameters.v >>
 
@@ -126,7 +136,8 @@ jobs:
       - run:
           name: run tests
           command: |
-            make ci
+            TEST_FILES=$(find -name "test_*.py" -not -name "test_functional.py" | sed 's/.\///' | circleci tests split --split-by=timings)
+            pytest -n 2 $TEST_ARGS $TEST_FILES
             codecov -F tests -e PYTHON
 
       - upload-results
@@ -194,6 +205,7 @@ workflows:
           name: lint
           pre-steps:
             - install-lint-dependencies
+            - run-lint
 
       - test:
           name: test-<< matrix.v >>

@@ -14,33 +14,33 @@ router = APIRouter()
 
 @router.post("/restart")
 async def restart_server(user: models.User = Security(utils.authorization.AuthDependency(), scopes=["server_management"])):
-    if settings.DOCKER_ENV:  # pragma: no cover
+    if settings.settings.docker_env:  # pragma: no cover
         return utils.host.run_host_output("./restart.sh", "Successfully started restart process!")
     return {"status": "error", "message": "Not running in docker"}
 
 
 @router.post("/update")
 async def update_server(user: models.User = Security(utils.authorization.AuthDependency(), scopes=["server_management"])):
-    if settings.DOCKER_ENV:  # pragma: no cover
+    if settings.settings.docker_env:  # pragma: no cover
         return utils.host.run_host_output("./update.sh", "Successfully started update process!")
     return {"status": "error", "message": "Not running in docker"}
 
 
 @router.post("/cleanup/images")
 async def cleanup_images(user: models.User = Security(utils.authorization.AuthDependency(), scopes=["server_management"])):
-    if settings.DOCKER_ENV:  # pragma: no cover
+    if settings.settings.docker_env:  # pragma: no cover
         return utils.host.run_host_output("./cleanup.sh", "Successfully started cleanup process!")
     return {"status": "error", "message": "Not running in docker"}
 
 
 @router.post("/cleanup/logs")
 async def cleanup_logs(user: models.User = Security(utils.authorization.AuthDependency(), scopes=["server_management"])):
-    if not settings.LOG_FILE:
+    if not settings.settings.log_file:
         return {"status": "error", "message": "Log file unconfigured"}
-    for f in os.listdir(settings.LOG_DIR):
+    for f in os.listdir(settings.settings.log_dir):
         if utils.logging.log_filter(f):
             try:
-                os.remove(os.path.join(settings.LOG_DIR, f))
+                os.remove(os.path.join(settings.settings.log_dir, f))
             except OSError:  # pragma: no cover
                 pass
     return {"status": "success", "message": "Successfully cleaned up logs!"}
@@ -60,7 +60,7 @@ async def cleanup_server(user: models.User = Security(utils.authorization.AuthDe
 
 @router.get("/daemons")
 async def get_daemons(user: models.User = Security(utils.authorization.AuthDependency(), scopes=["server_management"])):
-    return settings.crypto_settings
+    return settings.settings.crypto_settings
 
 
 @router.get("/policies", response_model=schemes.Policy)
@@ -91,11 +91,11 @@ async def set_store_policies(
 
 @router.get("/logs")
 async def get_logs_list(user: models.User = Security(utils.authorization.AuthDependency(), scopes=["server_management"])):
-    if not settings.LOG_FILE:
+    if not settings.settings.log_file:
         return []
-    data = sorted((f for f in os.listdir(settings.LOG_DIR) if utils.logging.log_filter(f)), reverse=True)
-    if os.path.exists(settings.LOG_FILE):
-        data = [settings.LOG_FILE_NAME] + data
+    data = sorted((f for f in os.listdir(settings.settings.log_dir) if utils.logging.log_filter(f)), reverse=True)
+    if os.path.exists(settings.settings.log_file):
+        data = [settings.settings.log_file_name] + data
     return data
 
 
@@ -103,10 +103,10 @@ async def get_logs_list(user: models.User = Security(utils.authorization.AuthDep
 async def get_log_contents(
     log: str, user: models.User = Security(utils.authorization.AuthDependency(), scopes=["server_management"])
 ):
-    if not settings.LOG_FILE:
+    if not settings.settings.log_file:
         raise HTTPException(400, "Log file unconfigured")
     try:
-        with open(os.path.join(settings.LOG_DIR, log)) as f:
+        with open(os.path.join(settings.settings.log_dir, log)) as f:
             contents = f.read().strip()
         return contents
     except OSError:
@@ -117,12 +117,12 @@ async def get_log_contents(
 async def delete_log(
     log: str, user: models.User = Security(utils.authorization.AuthDependency(), scopes=["server_management"])
 ):
-    if not settings.LOG_FILE:
+    if not settings.settings.log_file:
         raise HTTPException(400, "Log file unconfigured")
-    if log == settings.LOG_FILE_NAME:
+    if log == settings.settings.log_file_name:
         raise HTTPException(403, "Forbidden to delete current log file")
     try:
-        os.remove(os.path.join(settings.LOG_DIR, log))
+        os.remove(os.path.join(settings.settings.log_dir, log))
         return True
     except OSError:
         raise HTTPException(404, "This log doesn't exist")
@@ -159,7 +159,7 @@ async def get_backup_frequencies():
 
 @router.post("/backups/backup")
 async def perform_backup(user: models.User = Security(utils.authorization.AuthDependency(), scopes=["server_management"])):
-    if settings.DOCKER_ENV:  # pragma: no cover
+    if settings.settings.docker_env:  # pragma: no cover
         return await backups_ext.manager.perform_backup()
     return {"status": "error", "message": "Not running in docker"}
 
@@ -169,7 +169,7 @@ async def restore_backup(
     backup: UploadFile = File(...),
     user: models.User = Security(utils.authorization.AuthDependency(), scopes=["server_management"]),
 ):
-    if settings.DOCKER_ENV:  # pragma: no cover
+    if settings.settings.docker_env:  # pragma: no cover
         path = os.path.join(tempfile.mkdtemp(), "backup.tar.gz")
         async with aiofiles.open(path, "wb") as f:
             await f.write(await backup.read())
