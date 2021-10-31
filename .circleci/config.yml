@@ -11,8 +11,8 @@ executors:
         default: "3.7"
     docker:
       - image: cimg/python:<< parameters.v >>
-      - image: circleci/redis:latest
-      - image: circleci/postgres:9-alpine-ram
+      - image: circleci/redis:alpine
+      - image: circleci/postgres:12-alpine-ram
         environment:
           POSTGRES_DB: bitcart_test
           POSTGRES_USER: postgres
