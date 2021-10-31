@@ -1,7 +1,6 @@
 import traceback
 
 from fastapi import FastAPI, Request
-from fastapi.requests import HTTPConnection
 from starlette.middleware.cors import CORSMiddleware
 from starlette.responses import PlainTextResponse
 from starlette.staticfiles import StaticFiles
@@ -25,8 +24,7 @@ class RawContextMiddleware:
             await self.app(scope, receive, send)
             return
 
-        request = HTTPConnection(scope, receive)
-        token = settings.settings_ctx.set(request.app.settings)
+        token = settings.settings_ctx.set(self.app.settings)
         try:
             await self.app(scope, receive, send)
         finally:
