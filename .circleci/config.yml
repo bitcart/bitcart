@@ -142,6 +142,65 @@ jobs:
 
       - upload-results
 
+  functional-tests:
+    executor: main-executor
+
+    environment:
+      TEST_ARGS: "--junitxml test-results/pytest/coverage.xml --cov-report html:coverage"
+
+    working_directory: ~/repo
+
+    steps:
+      - checkout
+
+      - install_dependencies
+
+      - run:
+          name: install regtest utils
+          command: |
+            sudo add-apt-repository -y ppa:luke-jr/bitcoincore
+            sudo apt update
+            sudo apt install -y bitcoind
+            sudo apt install screen
+
+      - bitcartcc/install-fulcrum
+
+      - run:
+          name: prepare bitcoind
+          command: |
+            make bitcoind
+          background: true
+
+      - run:
+          name: prepare fulcrum
+          command: |
+            sleep 10s
+            make fulcrum
+          background: true
+
+      - run:
+          name: prepare regtest daemon
+          command: |
+            sleep 10s
+            make regtest
+          background: true
+
+      - run:
+          name: prepare regtest ln daemon
+          command: |
+            sleep 10s
+            make regtestln
+          background: true
+
+      - run:
+          name: run tests
+          command: |
+            sleep 15s
+            make functional
+            codecov -F functional-tests
+
+      - bitcartcc/upload-test-results
+
   deploy-amd64:
     executor: bitcartcc/build-ubuntu
 
@@ -218,11 +277,7 @@ workflows:
                 - "3.8"
                 - "3.9"
                 - "3.10"
-      - bitcartcc/functional-tests:
-          name: functional-tests
-          executor: main-executor
-          dependency-steps:
-            - install_dependencies
+      - functional-tests:
           requires:
             - test
       - deploy-amd64:
