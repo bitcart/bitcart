@@ -1,2 +1,2 @@
-aiohttp>=3.3.0,<4.0.0
+aiohttp<4.0
 https://github.com/bitcartcc/Electron-Cash/archive/c4642e397041d4a68e62ac28c86dc5a0787b94e9.zip
