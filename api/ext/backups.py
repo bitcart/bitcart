@@ -74,14 +74,13 @@ class BackupsManager:
 
     async def perform_backup(self):
         backup_policy = await utils.policies.get_setting(schemes.BackupsPolicy)
-        env_vars = f"BACKUP_PROVIDER={backup_policy.provider}"
-        for key, value in backup_policy.environment_variables.items():
-            env_vars += f" {key}={value}"
+        env_vars = {"BACKUP_PROVIDER": backup_policy.provider}
+        env_vars.update(backup_policy.environment_variables)
         self.logger.info("Starting backup, settings:")
         self.logger.info(backup_policy)
-        exec_command = f"{env_vars} ./backup.sh"
-        self.logger.debug(f"Running {exec_command}")
-        output = utils.host.run_host_output(exec_command, "Successfully performed backup!")
+        exec_command = "./backup.sh"
+        self.logger.debug(f"Running {exec_command} with env {env_vars}")
+        output = utils.host.run_host_output(exec_command, "Successfully performed backup!", env=env_vars)
         if output["status"] == "error":
             self.logger.error(output)
         else:

@@ -6,7 +6,8 @@ from starlette.middleware.cors import CORSMiddleware
 from starlette.responses import PlainTextResponse
 from starlette.staticfiles import StaticFiles
 
-from api import settings, utils
+from api import settings as settings_module
+from api import utils
 from api.constants import VERSION
 from api.ext import tor as tor_ext
 from api.logger import get_logger
@@ -26,11 +27,11 @@ class RawContextMiddleware:
             return
 
         request = HTTPConnection(scope, receive)
-        token = settings.settings_ctx.set(request.app.settings)
+        token = settings_module.settings_ctx.set(request.app.settings)
         try:
             await self.app(scope, receive, send)
         finally:
-            settings.settings_ctx.reset(token)
+            settings_module.settings_ctx.reset(token)
 
 
 def get_app():
@@ -60,11 +61,13 @@ def get_app():
 
     @app.on_event("startup")
     async def startup():
-        await app.settings.init()
+        app.ctx_token = settings_module.settings_ctx.set(app.settings)  # for events context
+        await settings_module.init()
 
     @app.on_event("shutdown")
     async def shutdown():
         await app.settings.shutdown()
+        settings_module.settings_ctx.reset(app.ctx_token)
 
     @app.exception_handler(500)
     async def exception_handler(request, exc):
