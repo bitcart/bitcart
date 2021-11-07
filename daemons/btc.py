@@ -451,6 +451,10 @@ class BTCDaemon(BaseDaemon):
         return self.electrum.transaction.Transaction(raw_tx).estimated_size()
 
     @rpc
+    def get_tx_hash(self, raw_tx: dict, wallet=None) -> int:
+        return self.electrum.transaction.Transaction(raw_tx).txid()
+
+    @rpc
     def get_default_fee(self, tx: Union[dict, int], wallet=None) -> float:
         return self.electrum_config.estimate_fee(self.get_tx_size(tx) if isinstance(tx, dict) else tx)
 
