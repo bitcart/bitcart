@@ -33,6 +33,17 @@ async def set_store_checkout_settings(
     return model
 
 
+@router.patch("/{model_id}/theme_settings", response_model=schemes.Store)
+async def set_store_theme_settings(
+    model_id: str,
+    settings: schemes.StoreThemeSettings,
+    user: models.User = Security(utils.authorization.AuthDependency(), scopes=["store_management"]),
+):
+    model = await utils.database.get_object(models.Store, model_id, user)
+    await model.set_json_key("theme_settings", settings)
+    return model
+
+
 utils.routing.ModelView.register(
     router,
     "/",

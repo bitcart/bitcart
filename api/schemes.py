@@ -133,11 +133,17 @@ class StoreCheckoutSettings(BaseModel):
         return float(v)
 
 
+class StoreThemeSettings(BaseModel):
+    store_theme_url: str = ""
+    admin_theme_url: str = ""
+
+
 class BaseStore(CreatedMixin):
     name: str
     default_currency: str = "USD"
     email: Optional[EmailStr] = ""
     checkout_settings: StoreCheckoutSettings = StoreCheckoutSettings()
+    theme_settings: StoreThemeSettings = StoreThemeSettings()
 
     @validator("email", pre=True, always=False)
     def validate_email(cls, val):

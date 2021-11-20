@@ -267,7 +267,7 @@ class Store(BaseModel):
     __tablename__ = "stores"
     _update_request_cls = StoreUpdateRequest
 
-    JSON_KEYS = {"checkout_settings": schemes.StoreCheckoutSettings}
+    JSON_KEYS = {"checkout_settings": schemes.StoreCheckoutSettings, "theme_settings": schemes.StoreThemeSettings}
 
     id = Column(Text, primary_key=True, index=True)
     name = Column(Text, index=True)
@@ -279,6 +279,7 @@ class Store(BaseModel):
     email_use_ssl = Column(Boolean)
     email_user = Column(Text)
     checkout_settings = Column(JSON)
+    theme_settings = Column(JSON)
     templates = Column(JSON)
     user_id = Column(Text, ForeignKey(User.id, ondelete="SET NULL"))
     created = Column(DateTime(True), nullable=False)

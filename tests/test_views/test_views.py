@@ -813,7 +813,16 @@ async def test_get_public_store(client: TestClient, store):
     await client.delete(f"/users/{user_id}")
     # get store without user
     store = await client.get(f"/stores/{store_id}")
-    assert set(store.json().keys()) == {"created", "name", "default_currency", "email", "id", "user_id", "checkout_settings"}
+    assert set(store.json().keys()) == {
+        "created",
+        "name",
+        "default_currency",
+        "email",
+        "id",
+        "user_id",
+        "checkout_settings",
+        "theme_settings",
+    }
 
 
 async def test_get_product_params(client: TestClient, token: str, product):
@@ -991,6 +1000,34 @@ async def test_change_store_checkout_settings(client: TestClient, token: str, st
     )
     assert resp.status_code == 200
     assert resp.json()["checkout_settings"] == {**default_values, "expiration": 60, "use_html_templates": True}
+
+
+async def test_change_store_theme_settings(client: TestClient, token: str, store):
+    store_id = store["id"]
+    assert (await client.patch(f"/stores/{store_id}/theme_settings")).status_code == 401
+    assert (
+        await client.patch(
+            "/stores/555/theme_settings", json={"store_theme_url": "url"}, headers={"Authorization": f"Bearer {token}"}
+        )
+    ).status_code == 404
+    resp = await client.patch(
+        f"/stores/{store_id}/theme_settings", json={"store_theme_url": "url"}, headers={"Authorization": f"Bearer {token}"}
+    )
+    assert resp.status_code == 200
+    # Changes only the settings provided
+    default_values = schemes.StoreThemeSettings().dict()
+    assert resp.json()["theme_settings"] == {**default_values, "store_theme_url": "url"}
+    assert len(resp.json()["wallets"]) > 0
+    resp2 = await client.get(f"/stores/{store_id}", headers={"Authorization": f"Bearer {token}"})
+    assert resp2.status_code == 200
+    assert resp2.json() == resp.json()
+    resp = await client.patch(
+        f"/stores/{store_id}/theme_settings",
+        json={"admin_theme_url": "url2"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["theme_settings"] == {**default_values, "store_theme_url": "url", "admin_theme_url": "url2"}
 
 
 async def test_products_list(client: TestClient):
