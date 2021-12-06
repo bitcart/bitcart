@@ -8,10 +8,11 @@ from decimal import Decimal
 
 import msgpack
 
-from api import settings
+from api import settings as settings_module
 from api.constants import LOGSERVER_PORT
 from api.logger import configure_file_logging
 from api.logger import get_logger_server as get_logger
+from api.settings import Settings
 
 
 class LogRecordStreamHandler(socketserver.StreamRequestHandler):
@@ -80,6 +81,11 @@ def wait_for_port(host="localhost", port=LOGSERVER_PORT, timeout=5.0):
 
 
 def main():
-    configure_file_logging()
-    tcpserver = LogRecordSocketReceiver(host=settings.settings.logserver_host)
-    tcpserver.serve_until_stopped()
+    settings = Settings()
+    try:
+        token = settings_module.settings_ctx.set(settings)
+        configure_file_logging()
+        tcpserver = LogRecordSocketReceiver(host=settings.logserver_host)
+        tcpserver.serve_until_stopped()
+    finally:
+        settings_module.settings_ctx.reset(token)
