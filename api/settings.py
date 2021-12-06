@@ -194,26 +194,24 @@ class Settings(BaseSettings):
         configure_logserver()
 
         self.logger = get_logger(__name__)
-        sys.excepthook = excepthook_handler(sys.excepthook)
-        asyncio.get_running_loop().set_exception_handler(handle_exception)
+        sys.excepthook = excepthook_handler(self, sys.excepthook)
+        asyncio.get_running_loop().set_exception_handler(lambda *args, **kwargs: handle_exception(self, *args, **kwargs))
 
 
-def excepthook_handler(excepthook):
+def excepthook_handler(settings, excepthook):
     def internal_error_handler(type_, value, tb):
         if type_ != KeyboardInterrupt:
-            settings = settings_ctx.get()
             settings.logger.error("\n" + "".join(traceback.format_exception(type_, value, tb)))
         return excepthook(type_, value, tb)
 
     return internal_error_handler
 
 
-def handle_exception(loop, context):
+def handle_exception(settings, loop, context):
     if "exception" in context:
         msg = get_exception_message(context["exception"])
     else:
         msg = context["message"]
-    settings = settings_ctx.get()
     settings.logger.error(msg)
 
 
