@@ -33,7 +33,7 @@ async def refresh():
             latest_tag = await get_update_data()
             if latest_tag and utils.common.versiontuple(latest_tag) > utils.common.versiontuple(VERSION):
                 logger.info(f"New update available: {latest_tag}")
-                await settings.redis_pool.hset(REDIS_KEY, "new_update_tag", latest_tag)
+                await settings.settings.redis_pool.hset(REDIS_KEY, "new_update_tag", latest_tag)
             else:
                 logger.info("No updates found")
-                await settings.redis_pool.hdel(REDIS_KEY, "new_update_tag")  # clean after previous checks
+                await settings.settings.redis_pool.hdel(REDIS_KEY, "new_update_tag")  # clean after previous checks
