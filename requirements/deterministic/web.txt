@@ -144,9 +144,9 @@ bcrypt==3.2.0 \
     # via
     #   paramiko
     #   passlib
-bitcart==1.7.0.0 \
-    --hash=sha256:7f86d79c4bd9e6ecd7537f46e5ec71781d4bdcd9ecda2480e8f7d60791fb196b \
-    --hash=sha256:9a56e31e2b479acdb81212c9b001f45b9b336b7dafb34523e6569f96b275c4a1
+bitcart==1.8.0.0 \
+    --hash=sha256:1e4ef7dc8a9ab088d41cd9e3059c786cace13981177a29280597f738e899db26 \
+    --hash=sha256:e9febe0791cdeb4aaaf311c08c05bac461bf85944fc06fd32c5bf522aa5fbba6
     # via -r requirements/web.txt
 certifi==2021.10.8 \
     --hash=sha256:78884e7c1d4b00ce3cea67b44566851c4343c120abd683433ce934a68ea58872 \
@@ -861,6 +861,10 @@ typing-extensions==3.10.0.2 \
     #   starlette
     #   uvicorn
     #   yarl
+universalasync==0.2.0.1 \
+    --hash=sha256:a204383e3b4d876c0b6a0b01387a11501ec76c6ad55e7d8484774c1696c260bb \
+    --hash=sha256:e8034a84ed1483eb099cb59ecb9a45bd301212ed7ff129946b2f66440d42b612
+    # via bitcart
 urllib3==1.26.7 \
     --hash=sha256:4987c65554f7a2dbf30c18fd48778ef124af6fab771a377103da0585e2336ece \
     --hash=sha256:c4fdf4019605b6e5423637e01bc9fe4daef873709a7973e195ceba0a62bbc844
