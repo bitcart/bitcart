@@ -8,7 +8,7 @@ from dateutil.parser import isoparse
 from fastapi import HTTPException
 
 from api import utils
-from api.constants import ALPHABET, ID_LENGTH
+from api.constants import ALPHABET, ID_LENGTH, STR_TO_BOOL_MAPPING
 
 
 def get_object_name(obj):
@@ -112,3 +112,11 @@ class SearchQuery:
 
     def __bool__(self):
         return bool(self.text or self.filters)
+
+
+def str_to_bool(s):
+    s = s.lower()
+
+    if s in STR_TO_BOOL_MAPPING:
+        return STR_TO_BOOL_MAPPING[s]
+    return False

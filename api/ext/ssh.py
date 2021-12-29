@@ -84,14 +84,6 @@ class ServerEnv:  # pragma: no cover: no valid SSH configuration in CI environme
         return value
 
 
-def str_to_bool(s):  # pragma: no cover
-    s = s.lower()
-    mapping = {"true": True, "1": True, "false": False, "0": False}
-    if s in mapping:
-        return mapping[s]
-    return False
-
-
 def collect_server_settings(ssh_settings):  # pragma: no cover
     from api.schemes import (
         ConfiguratorAdvancedSettings,
@@ -99,6 +91,7 @@ def collect_server_settings(ssh_settings):  # pragma: no cover
         ConfiguratorDomainSettings,
         ConfiguratorServerSettings,
     )
+    from api.utils.common import str_to_bool
 
     settings = ConfiguratorServerSettings()
     try:

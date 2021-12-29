@@ -20,3 +20,11 @@ PUBLIC_ID_LENGTH = 22  # The length of invoice and products ids; should be short
 # as supported by backup.sh
 BACKUP_PROVIDERS = ["local", "scp", "s3"]
 BACKUP_FREQUENCIES = ["daily", "weekly", "monthly"]
+STR_TO_BOOL_MAPPING = {
+    "true": True,
+    "yes": True,
+    "1": True,
+    "false": False,
+    "no": False,
+    "0": False,
+}  # common str -> bool conversions

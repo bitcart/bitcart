@@ -113,8 +113,7 @@ class BaseModel(db.Model):
         kwargs["id"] = utils.common.unique_id()
         return kwargs
 
-    @classmethod
-    def prepare_edit(cls, kwargs):
+    def prepare_edit(self, kwargs):
         return kwargs
 
     def get_json_key(self, key, scheme):
@@ -219,6 +218,11 @@ class Notification(BaseModel):
     provider = Column(Text)
     data = Column(JSON)
     created = Column(DateTime(True), nullable=False)
+
+    def prepare_edit(self, kwargs):
+        if "provider" in kwargs and "data" not in kwargs and self.provider != kwargs["provider"]:
+            kwargs["data"] = {}
+        return kwargs
 
 
 class Template(BaseModel):

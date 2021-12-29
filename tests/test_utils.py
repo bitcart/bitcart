@@ -7,11 +7,13 @@ from dataclasses import dataclass
 from datetime import timedelta
 from decimal import Decimal
 
+import notifiers
 import pytest
 from aioredis.client import PubSub
 from bitcart.errors import BaseError as BitcartBaseError
 
-from api import exceptions, schemes, settings, utils
+from api import exceptions, models, schemes, settings, utils
+from tests.helper import create_notification, create_store
 
 
 def test_verify_password():
@@ -249,3 +251,87 @@ def test_search_query_parse_datetime():
     check_date(utils.common.SearchQuery("start_date:-1m").parse_datetime("start_date"), days=30)
     check_date(utils.common.SearchQuery("start_date:-1y").parse_datetime("start_date"), days=30 * 12)
     check_date(utils.common.SearchQuery("start_date:-150d").parse_datetime("start_date"), days=150)
+
+
+async def notify(store, expect_raises):
+    if expect_raises:
+        with pytest.raises(notifiers.BadArguments):
+            await utils.notifications.notify(store, "Text")
+    else:
+        await utils.notifications.notify(store, "Text")
+
+
+async def check_modify_notify(client, store, notification_id, token, base_data, key, value, convert, expect_raises=False):
+    assert (
+        await client.patch(
+            f"/notifications/{notification_id}",
+            json={"data": {**base_data, key: value}},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+    ).status_code == 200
+    await notify(store, expect_raises)
+    # run only if conversion works
+    try:
+        converted = convert(value)
+        assert (
+            await client.patch(
+                f"/notifications/{notification_id}",
+                json={"data": {**base_data, key: converted}},
+                headers={"Authorization": f"Bearer {token}"},
+            )
+        ).status_code == 200
+        await notify(store, expect_raises)
+    except Exception:
+        pass
+
+
+@pytest.mark.anyio
+async def test_send_notification(client, token, user, mocker):
+    mocker.patch("notifiers.providers.twilio.Twilio._send_notification", return_value=True)
+    notification = await create_notification(client, user["id"], token, data={"user_id": 5})
+    notification_id = notification["id"]
+    store = models.Store(
+        **(await create_store(client, user["id"], token, custom_store_attrs={"notifications": [notification_id]}))
+    )
+    resp = await client.patch(
+        f"/notifications/{notification_id}",
+        json={"provider": "telegram"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["data"] == notification["data"]
+    resp2 = await client.patch(
+        f"/notifications/{notification_id}",
+        json={"provider": "twilio"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp2.status_code == 200
+    assert resp2.json()["data"] == {}
+    await notify(store, expect_raises=True)
+    base_data = {"from": "test", "to": "+111111111111", "account_sid": "test", "auth_token": "test"}
+    assert (
+        await client.patch(
+            f"/notifications/{notification_id}",
+            json={"data": base_data},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+    ).status_code == 200
+    await notify(store, expect_raises=False)
+    # Test that some primitive types are automatically converted
+    await check_modify_notify(
+        client, store, notification_id, token, base_data, "provide_feedback", "test", bool, expect_raises=False
+    )
+    await check_modify_notify(
+        client, store, notification_id, token, base_data, "provide_feedback", "true", bool, expect_raises=False
+    )
+    await check_modify_notify(
+        client, store, notification_id, token, base_data, "provide_feedback", True, bool, expect_raises=False
+    )
+    await check_modify_notify(
+        client, store, notification_id, token, base_data, "validity_period", "5", int, expect_raises=False
+    )
+    await check_modify_notify(
+        client, store, notification_id, token, base_data, "validity_period", "test", int, expect_raises=True
+    )
+    await check_modify_notify(client, store, notification_id, token, base_data, "max_price", "5.5", int, expect_raises=False)
+    await check_modify_notify(client, store, notification_id, token, base_data, "max_price", "test", int, expect_raises=True)
