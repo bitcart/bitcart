@@ -18,6 +18,7 @@ filterwarnings = [
     "error::DeprecationWarning",
     "error::PendingDeprecationWarning",
     "ignore:.*distutils package is deprecated.*:DeprecationWarning:aioredis", # TODO: remove when aioredis fixes this
+    "ignore:.*distutils Version classes are deprecated.*:DeprecationWarning:aioredis"
 ]
 norecursedirs = ["tests/functional"]
 
