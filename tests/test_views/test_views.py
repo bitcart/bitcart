@@ -424,7 +424,7 @@ async def test_policies(client: TestClient, token: str):
     assert (await client.post("/users", json=static_data.POLICY_USER)).status_code == 200  # registration is on again
     resp = await client.get("/manage/stores")
     assert resp.status_code == 200
-    assert resp.json() == {"pos_id": "", "email_required": True}
+    assert resp.json() == {"pos_id": ""}
     assert (await client.post("/manage/stores")).status_code == 401
     resp = await client.post(
         "/manage/stores",
@@ -432,15 +432,15 @@ async def test_policies(client: TestClient, token: str):
         headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 200
-    assert resp.json() == {"pos_id": "2", "email_required": True}
-    assert (await client.get("/manage/stores")).json() == {"pos_id": "2", "email_required": True}
+    assert resp.json() == {"pos_id": "2"}
+    assert (await client.get("/manage/stores")).json() == {"pos_id": "2"}
     resp = await client.post(
         "/manage/stores",
         json={"pos_id": "1"},
         headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 200
-    assert resp.json() == {"pos_id": "1", "email_required": True}
+    assert resp.json() == {"pos_id": "1"}
 
 
 async def test_policies_store_created(client: TestClient, store):

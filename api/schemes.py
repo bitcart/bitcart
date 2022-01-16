@@ -113,6 +113,7 @@ class StoreCheckoutSettings(BaseModel):
     show_recommended_fee: bool = True
     use_dark_mode: bool = False
     use_html_templates: bool = False
+    email_required: bool = True
 
     @validator("recommended_fee_target_blocks")
     def validate_recommended_fee_target_blocks(cls, v):
@@ -338,7 +339,6 @@ class Policy(BaseModel):
 
 class GlobalStorePolicy(BaseModel):
     pos_id: str = ""
-    email_required: bool = True
 
 
 class BackupsPolicy(BaseModel):

@@ -26,7 +26,8 @@
             "transaction_speed": 0,
             "underpaid_percentage": 0,
             "use_dark_mode": false,
-            "use_html_templates": false
+            "use_html_templates": false,
+            "email_required": true
         },
         "notifications": [],
         "templates": {}
