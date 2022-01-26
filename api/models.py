@@ -288,6 +288,16 @@ class Store(BaseModel):
     user_id = Column(Text, ForeignKey(User.id, ondelete="SET NULL"))
     created = Column(DateTime(True), nullable=False)
 
+    async def add_fields(self):
+        await super().add_fields()
+        self.currency_data = currency_table.get_currency_data(self.default_currency)
+
+    @classmethod
+    def process_kwargs(cls, kwargs):
+        kwargs = super().process_kwargs(kwargs)
+        kwargs.pop("currency_data", None)
+        return kwargs
+
 
 class Discount(BaseModel):
     __tablename__ = "discounts"
@@ -351,6 +361,17 @@ class Product(BaseModel):
         kwargs["id"] = utils.common.unique_id(PUBLIC_ID_LENGTH)
         return kwargs
 
+    async def add_fields(self):
+        await super().add_fields()
+        from api import utils
+
+        # TODO: rework logic of deleting related objects, maybe we need cascade delete?
+        try:
+            store = await utils.database.get_object(Store, self.store_id)
+            self.currency = store.default_currency
+        except HTTPException:  # for products associated with deleted stores
+            self.currency = "USD"
+
 
 class ProductxInvoice(BaseModel):
     __tablename__ = "productsxinvoices"
@@ -385,8 +406,8 @@ class PaymentMethod(BaseModel):
         data = super().to_dict()
         invoice_id = data.pop("invoice_id")
         invoice = await utils.database.get_object(Invoice, invoice_id, load_data=False)  # To avoid recursion
-        data["amount"] = currency_table.format_currency(self.currency, self.amount)
-        data["rate"] = currency_table.format_currency(invoice.currency, self.rate, fancy=False)
+        data["amount"] = currency_table.format_decimal(self.currency, self.amount)
+        data["rate"] = currency_table.format_decimal(invoice.currency, self.rate)
         data["rate_str"] = currency_table.format_currency(invoice.currency, self.rate)
         data["name"] = self.get_name(index)
         return data

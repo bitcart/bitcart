@@ -122,7 +122,7 @@ async def test_wallets_balance(client: TestClient, token: str, wallet):
     assert (await client.get("/wallets/balance")).status_code == 401
     resp = await client.get("/wallets/balance", headers={"Authorization": f"Bearer {token}"})
     assert resp.status_code == 200
-    assert resp.json() > 1
+    assert Decimal(resp.json()) > 1
 
 
 async def test_fiatlist(client: TestClient):
@@ -207,7 +207,7 @@ async def test_user_stats(client, user, token, store):
             "wallets": 1,
         }.items()
     )
-    assert data["balance"] > 1
+    assert Decimal(data["balance"]) > 1
 
 
 @Parametrization.autodetect_parameters()
@@ -687,7 +687,7 @@ async def test_create_invoice_discount(client: TestClient, token: str, store, cu
     )
     assert invoice_resp.status_code == 200
     assert {
-        "price": 0.5,
+        "price": "0.50",
         "store_id": store_id,
         "discount": discount_id,
         "products": [product_id],
@@ -774,7 +774,8 @@ async def test_create_invoice_without_coin_rate(client, token: str, mocker, stor
     assert r.status_code == 200
     result = r.json()
     invoice_id = result["id"]
-    assert result["price"] == price
+    assert float(result["price"]) == price
+    assert result["price"] == "9.90"
     await client.delete(f"/invoices/{invoice_id}", headers={"Authorization": f"Bearer {token}"})
 
 
@@ -822,6 +823,7 @@ async def test_get_public_store(client: TestClient, store):
         "user_id",
         "checkout_settings",
         "theme_settings",
+        "currency_data",
     }
 
 
@@ -908,7 +910,12 @@ async def test_wallet_balance(client: TestClient, token: str, wallet: dict):
     assert (await client.get(f"/wallets/{wallet['id']}/balance")).status_code == 401
     resp = await client.get(f"/wallets/{wallet['id']}/balance", headers={"Authorization": f"Bearer {token}"})
     assert resp.status_code == 200
-    assert resp.json() == {"confirmed": 0.01, "lightning": 0.0, "unconfirmed": 0.0, "unmatured": 0.0}
+    assert resp.json() == {
+        "confirmed": "0.01000000",
+        "lightning": "0.00000000",
+        "unconfirmed": "0.00000000",
+        "unmatured": "0.00000000",
+    }
 
 
 async def test_lightning_endpoints(client: TestClient, token: str, wallet):
@@ -1138,7 +1145,7 @@ async def get_wallet_balances(client, token):
 
 
 async def test_users_display_balance(client: TestClient, token: str, wallet):
-    assert await get_wallet_balances(client, token) > 1
+    assert Decimal(await get_wallet_balances(client, token)) > 1
     assert (await client.patch("/users/me/settings")).status_code == 401
     resp = await client.patch(
         "/users/me/settings", json={"balance_currency": "BTC"}, headers={"Authorization": f"Bearer {token}"}
@@ -1147,7 +1154,7 @@ async def test_users_display_balance(client: TestClient, token: str, wallet):
     # Changes only the settings provided
     default_values = schemes.UserPreferences().dict()
     assert resp.json()["settings"] == {**default_values, "balance_currency": "BTC"}
-    assert await get_wallet_balances(client, token) == 0.01
+    assert float(await get_wallet_balances(client, token)) == 0.01
     resp = await client.patch(
         "/users/me/settings",
         json={"balance_currency": "USD"},
@@ -1155,7 +1162,7 @@ async def test_users_display_balance(client: TestClient, token: str, wallet):
     )
     assert resp.status_code == 200
     assert resp.json()["settings"] == default_values
-    assert await get_wallet_balances(client, token) > 1
+    assert Decimal(await get_wallet_balances(client, token)) > 1
 
 
 async def test_invoice_products_access_control(client: TestClient):
@@ -1236,3 +1243,16 @@ async def test_backup_policies(client: TestClient, token):
         "frequency": "weekly",
         "environment_variables": {},
     }
+
+
+async def test_products_pagination_deleted_store(client: TestClient, token, store, user):
+    product = await create_product(client, user["id"], token, store_id=store["id"])
+    assert (await client.get("/products")).status_code == 401
+    resp = await client.get("/products", headers={"Authorization": f"Bearer {token}"})
+    assert resp.status_code == 200
+    assert resp.json()["result"][0] == product
+    new_resp = {**product, "store_id": None}
+    await client.delete(f"/stores/{store['id']}", headers={"Authorization": f"Bearer {token}"})
+    resp = await client.get("/products", headers={"Authorization": f"Bearer {token}"})
+    assert resp.status_code == 200
+    assert resp.json()["result"][0] == new_resp

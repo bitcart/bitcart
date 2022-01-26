@@ -10,7 +10,7 @@
         "name": "Test 2"
     },
     "response": {
-        "price": 0.5,
+        "price": "0.50",
         "description": "",
         "quantity": 0.5,
         "download_url": "",

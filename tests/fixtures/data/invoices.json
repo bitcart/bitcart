@@ -7,7 +7,7 @@
         "order_id": "test"
     },
     "response": {
-        "price": 0.5,
+        "price": "0.50",
         "status": "pending",
         "buyer_email": null,
         "promocode": "",

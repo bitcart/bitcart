@@ -83,6 +83,8 @@ class CurrencyTable:
         return round_up(value, self.get_currency_data(currency)["divisibility"])
 
     def format_currency(self, currency, value, fancy=None):
+        if value is None or currency is None:
+            return value
         currency_info = self.get_currency_data(currency)
         crypto = currency_info["crypto"]
         if fancy is None:
@@ -95,6 +97,11 @@ class CurrencyTable:
         if crypto or not fancy:
             return value
         return f"{value} ({currency})"
+
+    def format_decimal(self, currency, value):
+        if isinstance(value, str):
+            value = Decimal(value)
+        return self.format_currency(currency, value, fancy=False)
 
 
 currency_table = CurrencyTable()
