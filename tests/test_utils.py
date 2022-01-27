@@ -290,9 +290,9 @@ async def test_send_notification(client, token, user, mocker):
     mocker.patch("notifiers.providers.twilio.Twilio._send_notification", return_value=True)
     notification = await create_notification(client, user["id"], token, data={"user_id": 5})
     notification_id = notification["id"]
-    store = models.Store(
-        **(await create_store(client, user["id"], token, custom_store_attrs={"notifications": [notification_id]}))
-    )
+    data = await create_store(client, user["id"], token, custom_store_attrs={"notifications": [notification_id]})
+    data.pop("currency_data", None)
+    store = models.Store(**data)
     resp = await client.patch(
         f"/notifications/{notification_id}",
         json={"provider": "telegram"},

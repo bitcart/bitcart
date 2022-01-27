@@ -67,4 +67,4 @@ async def get_wallet_balances(user):
             else:
                 rate = rates[wallet.currency] = await get_rate(wallet, show_currency)
             balances += crypto_balance * rate
-    return currency_table.normalize(show_currency, balances)
+    return currency_table.format_decimal(show_currency, currency_table.normalize(show_currency, balances))

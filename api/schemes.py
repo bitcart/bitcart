@@ -4,9 +4,23 @@ from typing import Dict, List, Optional, Union
 
 import paramiko
 from fastapi.exceptions import HTTPException
-from pydantic import BaseModel, EmailStr, validator
+from pydantic import BaseModel as PydanticBaseModel
+from pydantic import EmailStr, root_validator, validator
+from pydantic.utils import GetterDict as PydanticGetterDict
 
 from api.constants import BACKUP_FREQUENCIES, BACKUP_PROVIDERS, FEE_ETA_TARGETS, MAX_CONFIRMATION_WATCH
+from api.ext.moneyformat import currency_table
+from api.types import Money
+
+
+class GetterDict(PydanticGetterDict):  # for some reason, by default adding keys is not allowed
+    def __setitem__(self, key, value):
+        return setattr(self._obj, key, value)
+
+
+class BaseModel(PydanticBaseModel):
+    class Config:
+        getter_dict = GetterDict
 
 
 class CreatedMixin(BaseModel):
@@ -101,7 +115,13 @@ class Wallet(CreateWallet):
     id: Optional[str]
     user_id: str
     error: bool = False
-    balance: Decimal = Decimal(0)
+    balance: Money
+
+    @root_validator(pre=True)
+    def set_balance(cls, values):
+        if "balance" in values:
+            values["balance"] = currency_table.format_decimal(values.get("currency"), values["balance"])
+        return values
 
 
 class StoreCheckoutSettings(BaseModel):
@@ -178,11 +198,13 @@ class CreateStore(BaseStore):
 class PublicStore(BaseStore):
     id: Optional[str]
     user_id: str
+    currency_data: dict
 
 
 class Store(CreateStore):
     id: Optional[str]
     user_id: str
+    currency_data: dict
 
 
 class CreateDiscount(CreatedMixin):
@@ -270,6 +292,13 @@ class Product(CreateProduct):
     id: Optional[str]
     store_id: Optional[str]
     user_id: str
+    price: Money
+
+    @root_validator(pre=True)
+    def set_price(cls, values):
+        if "price" in values:
+            values["price"] = currency_table.format_decimal(values.get("currency"), values["price"])
+        return values
 
 
 class CreateInvoice(CreatedMixin):
@@ -315,6 +344,13 @@ class Invoice(CreateInvoice):
     store_id: Optional[str]
     user_id: str
     currency: str = "USD"
+    price: Money
+
+    @root_validator(pre=True)
+    def set_price(cls, values):
+        if "price" in values:
+            values["price"] = currency_table.format_decimal(values.get("currency"), values["price"])
+        return values
 
 
 class DisplayInvoice(Invoice):
@@ -328,6 +364,13 @@ class TxResponse(BaseModel):
     date: Optional[datetime]
     txid: str
     amount: str
+
+
+class BalanceResponse(BaseModel):
+    confirmed: Money
+    unconfirmed: Money
+    unmatured: Money
+    lightning: Money
 
 
 class Policy(BaseModel):

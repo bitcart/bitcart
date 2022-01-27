@@ -1,10 +1,11 @@
-from decimal import Decimal
 from typing import List
 
 from bitcart.errors import BaseError as BitcartBaseError
 from fastapi import APIRouter, HTTPException, Security
 
 from api import crud, models, schemes, utils
+from api.ext.moneyformat import currency_table
+from api.types import Money
 
 router = APIRouter()
 
@@ -30,17 +31,20 @@ async def wallet_history(
     return response
 
 
-@router.get("/balance", response_model=Decimal)
+@router.get("/balance", response_model=Money)
 async def get_balances(user: models.User = Security(utils.authorization.AuthDependency(), scopes=["wallet_management"])):
     return await utils.wallets.get_wallet_balances(user)
 
 
-@router.get("/{model_id}/balance")
+@router.get("/{model_id}/balance", response_model=schemes.BalanceResponse)
 async def get_wallet_balance(
     model_id: str, user: models.User = Security(utils.authorization.AuthDependency(), scopes=["wallet_management"])
 ):
     wallet = await utils.database.get_object(models.Wallet, model_id, user)
-    return (await utils.wallets.get_wallet_balance(wallet))[1]
+    response = (await utils.wallets.get_wallet_balance(wallet))[1]
+    for key in response:
+        response[key] = currency_table.format_decimal(wallet.currency, response[key])
+    return response
 
 
 @router.get("/{model_id}/checkln")

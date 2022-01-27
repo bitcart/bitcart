@@ -12,7 +12,7 @@
         "name": "test",
         "xpub": "tpubDC9zYPoSZUk5W8Rfaex3k324fi1hDLHapbSjPd4gbr7AE8MLSGEy76fNp5m6sVLBy9p2iTjRkiguVyb8iEHCdUBC7SXnhHdHMpXwFcrVMyA",
         "currency": "btc",
-        "balance": 0,
+        "balance": "0.00000000",
         "label": "customlabel",
         "lightning_enabled": false
     },
