@@ -156,8 +156,8 @@ class BTCDaemon(BaseDaemon):
         self.fx = self.daemon.fx
 
     async def shutdown_daemon(self):
-        if self.daemon and self.loop:
-            await self.loop.run_in_executor(None, self.daemon.on_stop)
+        if self.daemon:
+            await self.daemon.stop()
 
     async def on_shutdown(self, app):
         await self.shutdown_daemon()

@@ -1,1 +1,1 @@
-https://github.com/spesmilo/electrum/archive/aafa74ed082edbc01d44bbf874a645c4a43c88aa.zip#egg=electrum[crypto]
+https://github.com/spesmilo/electrum/archive/a3e1d2e25e78231b30ff1103345095827a909d88.zip#egg=electrum[crypto]

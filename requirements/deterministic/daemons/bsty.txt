@@ -196,12 +196,12 @@ cryptography==36.0.1 \
     --hash=sha256:ebc15b1c22e55c4d5566e3ca4db8689470a0ca2babef8e3a9ee057a8b82ce4b1 \
     --hash=sha256:ec63da4e7e4a5f924b90af42eddf20b698a70e58d86a72d943857c4c6045b3ee
     # via electrum-bsty
-dnspython==2.0.0 \
-    --hash=sha256:044af09374469c3a39eeea1a146e8cac27daec951f1f1f157b1962fc7cb9d1b7 \
-    --hash=sha256:40bb3c24b9d4ec12500f0124288a65df232a3aa749bb0c39734b782873a2544d
+dnspython==2.2.0 \
+    --hash=sha256:081649da27ced5e75709a1ee542136eaba9842a0fe4c03da4fb0a3d3ed1f3c44 \
+    --hash=sha256:e79351e032d0b606b98d38a4b0e6e2275b31a5b85c873e587cc11b73aca026d6
     # via electrum-bsty
-electrum-bsty @ https://github.com/GlobalBoost/electrum/archive/f487baa864904df2591d43d5420fc01370955230.zip \
-    --hash=sha256:13afcbb50bec22f7416f26268981e5e04808c51f56f785d98957e538ea68bb48
+electrum-bsty @ https://github.com/GlobalBoost/electrum/archive/413e7e5d684394312aabe9e15b233a1b86ee3be1.zip \
+    --hash=sha256:c447921f056ad54e3ba385d08fea515daf4c373942fed4281697090f773334a9
     # via -r requirements/daemons/bsty.txt
 frozenlist==1.2.0 \
     --hash=sha256:01d79515ed5aa3d699b05f6bdcf1fe9087d61d6b53882aa599a10853f0479c6c \
