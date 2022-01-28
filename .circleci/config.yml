@@ -49,7 +49,7 @@ commands:
 
       - restore_cache:
           keys:
-            - v1-lint-dependencies-{{ .Branch }}-{{ checksum "~/.pyenv/version" }}-{{ checksum "requirements/lint.txt" }}
+            - v1-lint-dependencies-{{ .Branch }}-{{ checksum "~/.pyenv/version" }}-{{ checksum "requirements/dev.txt" }}-{{ checksum "requirements/lint.txt" }}
 
       - run:
           name: Install dependencies
@@ -63,7 +63,7 @@ commands:
       - save_cache:
           paths:
             - ~/venv
-          key: v1-lint-dependencies-{{ .Branch }}-{{ checksum "~/.pyenv/version" }}-{{ checksum "requirements/lint.txt" }}
+          key: v1-lint-dependencies-{{ .Branch }}-{{ checksum "~/.pyenv/version" }}-{{ checksum "requirements/dev.txt" }}-{{ checksum "requirements/lint.txt" }}
 
   run-lint:
     steps:
