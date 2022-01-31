@@ -157,6 +157,15 @@
       "contributions": [
         "translation"
       ]
+    },
+    {
+      "login": "surfer190",
+      "name": "surfer190",
+      "avatar_url": "https://avatars.githubusercontent.com/u/3285222?v=4",
+      "profile": "https://github.com/surfer190",
+      "contributions": [
+        "doc"
+      ]
     }
   ],
   "contributorsPerLine": 7,

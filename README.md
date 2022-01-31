@@ -68,6 +68,7 @@ Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/d
   <tr>
     <td align="center"><a href="https://github.com/leovoon"><img src="https://avatars.githubusercontent.com/u/16155802?v=4?s=100" width="100px;" alt=""/><br /><sub><b>leovoon</b></sub></a><br /><a href="https://github.com/bitcartcc/bitcart/commits?author=leovoon" title="Code">💻</a> <a href="#design-leovoon" title="Design">🎨</a> <a href="#a11y-leovoon" title="Accessibility">️️️️♿️</a></td>
     <td align="center"><a href="https://twitter.com/mustaphanezzari"><img src="https://avatars.githubusercontent.com/u/4595534?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Mustapha Nezzari</b></sub></a><br /><a href="#translation-MawsFr" title="Translation">🌍</a></td>
+    <td align="center"><a href="https://github.com/surfer190"><img src="https://avatars.githubusercontent.com/u/3285222?v=4?s=100" width="100px;" alt=""/><br /><sub><b>surfer190</b></sub></a><br /><a href="https://github.com/bitcartcc/bitcart/commits?author=surfer190" title="Documentation">📖</a></td>
   </tr>
 </table>
 
