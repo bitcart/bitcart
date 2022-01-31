@@ -49,8 +49,8 @@ async def test_undefined_sort(client: TestClient, token: str):
 async def test_products_pagination(client: TestClient, user, token: str):
     product = await create_product(client, user["id"], token)
     resp = await client.get(
-        f"/products?store={product['store_id']}&category={product['category']}&\
-            min_price=0.001&max_price={product['price']}",
+        f"/products?store={product['store_id']}&category={product['category']}&           "
+        f" min_price=0.001&max_price={product['price']}",
         headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.json()["count"] > 0
