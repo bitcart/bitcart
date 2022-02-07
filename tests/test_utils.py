@@ -7,10 +7,10 @@ from dataclasses import dataclass
 from datetime import timedelta
 from decimal import Decimal
 
-import notifiers
 import pytest
 from aioredis.client import PubSub
 from bitcart.errors import BaseError as BitcartBaseError
+from notifiers.exceptions import BadArguments
 
 from api import exceptions, models, schemes, settings, utils
 from tests.helper import create_notification, create_store
@@ -255,7 +255,7 @@ def test_search_query_parse_datetime():
 
 async def notify(store, expect_raises):
     if expect_raises:
-        with pytest.raises(notifiers.BadArguments):
+        with pytest.raises(BadArguments):
             await utils.notifications.notify(store, "Text")
     else:
         await utils.notifications.notify(store, "Text")
