@@ -276,9 +276,13 @@ multidict==5.2.0 \
     # via
     #   aiohttp
     #   yarl
-oregano @ https://github.com/Ergon-moe/Oregano/archive/88c912d769b663660b70bfb04485d747f37588f5.zip \
-    --hash=sha256:bfd5f4027539fac3f1fae5139450e78dd3879d2f1e4f163550befb5edc1a5069
+oregano @ https://github.com/Ergon-moe/Oregano/archive/2d88169256c1e9d3f9e07d01498fdcc73057d972.zip \
+    --hash=sha256:d46d5d63e11f621767da71911de9a8507adf9269a702bac7d20b1d360915861f
     # via -r requirements/daemons/xrg.txt
+packaging==21.3 \
+    --hash=sha256:dd47c42927d89ab911e606518907cc2d3a1f38bbd026385970643f9c5b8ecfeb \
+    --hash=sha256:ef103e05f519cdc783ae24ea4e2e0f508a9c99b2d4969652eed6a2e1ea5bd522
+    # via qtpy
 pathvalidate==2.5.0 \
     --hash=sha256:119ba36be7e9a405d704c7b7aea4b871c757c53c9adc0ed64f40be1ed8da2781 \
     --hash=sha256:e5b2747ad557363e8f4124f0553d68878b12ecabd77bcca7e7312d5346d20262
@@ -314,6 +318,10 @@ protobuf==3.19.3 \
 pyaes==1.6.1 \
     --hash=sha256:02c1b1405c38d3c370b085fb952dd8bea3fadcee6411ad99f312cc129c536d8f
     # via oregano
+pyparsing==3.0.7 \
+    --hash=sha256:18ee9022775d270c55187733956460083db60b37d0d0fb357445f3094eed3eea \
+    --hash=sha256:a6c06a88f252e6c322f65faf8f418b16213b51bdfaece0524c1c1bc30c63c484
+    # via packaging
 pysocks==1.7.1 \
     --hash=sha256:08e69f092cc6dbe92a0fdd16eeb9b9ffbc13cadfe5ca4c7bd92ffb078b293299 \
     --hash=sha256:2725bd0a9925919b9b51739eea5f9e2bae91e83288108a9ad338b2e3a4435ee5 \
@@ -323,13 +331,17 @@ python-dateutil==2.8.2 \
     --hash=sha256:0123cacc1627ae19ddf3c27a5de5bd67ee4586fbdd6440d9748f8abb483d3e86 \
     --hash=sha256:961d03dc3453ebbc59dbdea9e4e11c5651520a876d0f4db161e8674aae935da9
     # via oregano
-qdarkstyle==2.6.8 \
-    --hash=sha256:037a54bf0aa5153f8055b65b8b36ac0d0f7648f2fd906c011a4da22eb0f582a2 \
-    --hash=sha256:fd1abae37d3a0a004089178da7c0b26ec5eb29f965b3e573853b8f280b614dea
+qdarkstyle==3.0.3 \
+    --hash=sha256:936d2d35b552f429803a985dbc17fc879a2f966faa9fbf8983896ccfa33e68f6 \
+    --hash=sha256:ebccb129275dba637a112f0b7fa1040ea51e95938eb332a9f653d963c63aa915
     # via oregano
 qrcode==7.3.1 \
     --hash=sha256:375a6ff240ca9bd41adc070428b5dfc1dcfbb0f2507f1ac848f6cded38956578
     # via oregano
+qtpy==2.0.1 \
+    --hash=sha256:adfd073ffbd2de81dc7aaa0b983499ef5c59c96adcfdcc9dea60d42ca885eb8f \
+    --hash=sha256:d93f2c98e97387fcc9d623d509772af5b6c15ab9d8f9f4c5dfbad9a73ad34812
+    # via qdarkstyle
 requests==2.27.1 \
     --hash=sha256:68d7c56fd5a8999887728ef304a6d12edc7be74f1cfa47714fc8b414525c9a61 \
     --hash=sha256:f22fa1e554c9ddfd16e6e41ac79759e17be9e492b3587efa038054674760e72d

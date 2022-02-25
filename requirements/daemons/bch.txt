@@ -1,2 +1,2 @@
 aiohttp<4.0
-https://github.com/Electron-Cash/Electron-Cash/archive/d5217ed3e878bd56977181f022f9e5c43f449241.zip
+https://github.com/Electron-Cash/Electron-Cash/archive/f9367433e83150ff2a11e223ce4b4eaed52180fb.zip

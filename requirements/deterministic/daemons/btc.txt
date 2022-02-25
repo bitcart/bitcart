@@ -279,18 +279,10 @@ frozenlist==1.2.0 \
     # via
     #   aiohttp
     #   aiosignal
-helpdev==0.7.1 \
-    --hash=sha256:779a761b18c2d96fb181aa699609f802347806125f2fee2f60dad875a625e38e \
-    --hash=sha256:bb62a79acbac141dadf42cadeb92bb7450dd18b9824a62043b6a0b149190db3d
-    # via qdarkstyle
 idna==3.3 \
     --hash=sha256:84d9dd047ffa80596e0f246e2eab0b391788b0503584e8945f2368256d2735ff \
     --hash=sha256:9d643ff0a55b762d5cdb124b8eaa99c66322e2157b69160bc32796e824360e6d
     # via yarl
-importlib-metadata==4.10.0 \
-    --hash=sha256:92a8b58ce734b2a4494878e0ecf7d79ccd7a128b5fc6014c401e0b61f006f0f6 \
-    --hash=sha256:b7cf7d3fef75f1e4c80a96ca660efbd51473d7e8f39b5ab9210febc7809012a4
-    # via helpdev
 multidict==5.2.0 \
     --hash=sha256:06560fbdcf22c9387100979e65b26fba0816c162b888cb65b845d3def7a54c9b \
     --hash=sha256:067150fad08e6f2dd91a650c7a49ba65085303fcc3decbd64a57dc13a2733031 \
@@ -411,9 +403,9 @@ python-socks[asyncio]==2.0.2 \
     --hash=sha256:aa9b7a53e81ae6b6e3ada602761012e470ea1c4cbcd5548f99b3fc102dce4fca \
     --hash=sha256:faa46857c79a8bf7def2e904ac839fb56755d7ab76c4cad12a131a85fec07241
     # via aiohttp-socks
-qdarkstyle==2.8.1 \
-    --hash=sha256:7cead57817a8a1f38b48d76ef38986b6cc397d0315c0dd0431fcd06749556947 \
-    --hash=sha256:d53b0120bddd9e3efba9801731e22ef86ed798bb5fc6a802f5f7bb32dedf0321
+qdarkstyle==3.0.3 \
+    --hash=sha256:936d2d35b552f429803a985dbc17fc879a2f966faa9fbf8983896ccfa33e68f6 \
+    --hash=sha256:ebccb129275dba637a112f0b7fa1040ea51e95938eb332a9f653d963c63aa915
     # via electrum
 qrcode==7.3.1 \
     --hash=sha256:375a6ff240ca9bd41adc070428b5dfc1dcfbb0f2507f1ac848f6cded38956578
@@ -428,7 +420,6 @@ typing-extensions==4.0.1 \
     # via
     #   aiohttp
     #   async-timeout
-    #   importlib-metadata
     #   yarl
 yarl==1.7.2 \
     --hash=sha256:044daf3012e43d4b3538562da94a88fb12a6490652dbc29fb19adfa02cf72eac \
@@ -504,7 +495,3 @@ yarl==1.7.2 \
     --hash=sha256:fce78593346c014d0d986b7ebc80d782b7f5e19843ca798ed62f8e3ba8728576 \
     --hash=sha256:fd547ec596d90c8676e369dd8a581a21227fe9b4ad37d0dc7feb4ccf544c2d59
     # via aiohttp
-zipp==3.7.0 \
-    --hash=sha256:9f50f446828eb9d45b267433fd3e9da8d801f614129124863f9c51ebceafb87d \
-    --hash=sha256:b47250dd24f92b7dd6a0a8fc5244da14608f3ca90a5efcd37a3b1642fac9a375
-    # via importlib-metadata
