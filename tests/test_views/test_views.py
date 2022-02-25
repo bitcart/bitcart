@@ -1256,3 +1256,28 @@ async def test_products_pagination_deleted_store(client: TestClient, token, stor
     resp = await client.get("/products", headers={"Authorization": f"Bearer {token}"})
     assert resp.status_code == 200
     assert resp.json()["result"][0] == new_resp
+
+
+@pytest.mark.parametrize(
+    "name,expected,updated",
+    [
+        ("buyer_email", "test@example.com", "test2@example.com"),
+        ("shipping_address", "test", "test2"),
+        ("notes", "test", "test2"),
+    ],
+)
+async def test_invoice_update_customer(client: TestClient, user, token, name, expected, updated):
+    invoice = await create_invoice(client, user["id"], token)
+    invoice_id = invoice["id"]
+    assert (await client.patch(f"/invoices/{invoice_id}")).status_code == 401
+    assert (await client.patch(f"/invoices/{invoice_id}/customer")).status_code == 422
+    assert (await client.patch("/invoices/test/customer", json={name: expected})).status_code == 404
+    # Can edit only allowed fields
+    assert (await client.patch(f"/invoices/{invoice_id}/customer", json={"price": 1})).json()["price"] == invoice["price"]
+    # Empty string is counted as None
+    assert (await client.patch(f"/invoices/{invoice_id}/customer", json={"buyer_email": ""})).json()["buyer_email"] is None
+    resp = await client.patch(f"/invoices/{invoice_id}/customer", json={name: expected})
+    assert resp.status_code == 200
+    assert resp.json()[name] == expected
+    # when set, don't change anymore
+    assert (await client.patch(f"/invoices/{invoice_id}/customer", json={name: updated})).json()[name] == expected

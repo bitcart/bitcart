@@ -2,6 +2,14 @@
 
 ## Latest changes
 
+## 0.6.2.0
+
+- Maintenance package upgrades
+- `email_required` is now a per-store setting instead of a global one
+- almost all decimals are now pretty-formatted as strings (with correct number of digits)
+- upgraded electrum to 4.1.5
+- added ability to input shipping address/notes
+
 ## 0.6.1.0
 
 This release contains quite a few bugfixes and new changes, but doesn't contain any breaking changes

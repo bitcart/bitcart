@@ -49,6 +49,21 @@ async def export_invoices(
         )
 
 
+@router.patch("/{model_id}/customer", response_model=schemes.DisplayInvoice)
+async def update_invoice(
+    model_id: str,
+    data: schemes.CustomerUpdateData,
+):
+    item = await utils.database.get_object(models.Invoice, model_id)
+    kwargs = {}
+    for field, value in data:
+        if not getattr(item, field) and value:
+            kwargs[field] = value
+    if kwargs:
+        await utils.database.modify_object(item, kwargs)
+    return item
+
+
 utils.routing.ModelView.register(
     router,
     "/",
