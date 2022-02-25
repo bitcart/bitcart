@@ -27,7 +27,8 @@
             "underpaid_percentage": 0,
             "use_dark_mode": false,
             "use_html_templates": false,
-            "email_required": true
+            "email_required": true,
+            "ask_address": false
         },
         "notifications": [],
         "templates": {}

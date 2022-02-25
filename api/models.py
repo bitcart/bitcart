@@ -442,6 +442,8 @@ class Invoice(BaseModel):
     buyer_email = Column(Text)
     discount = Column(Text)
     promocode = Column(Text)
+    shipping_address = Column(Text)
+    notes = Column(Text)
     notification_url = Column(Text)
     redirect_url = Column(Text)
     store_id = Column(

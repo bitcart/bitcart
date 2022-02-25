@@ -134,6 +134,7 @@ class StoreCheckoutSettings(BaseModel):
     use_dark_mode: bool = False
     use_html_templates: bool = False
     email_required: bool = True
+    ask_address: bool = False
 
     @validator("recommended_fee_target_blocks")
     def validate_recommended_fee_target_blocks(cls, v):
@@ -311,6 +312,8 @@ class CreateInvoice(CreatedMixin):
     redirect_url: Optional[str] = ""
     buyer_email: Optional[EmailStr] = ""
     promocode: Optional[str] = ""
+    shipping_address: Optional[str] = ""
+    notes: Optional[str] = ""
     discount: Optional[str]
     status: str = None
     products: Optional[Union[List[str], Dict[str, int]]] = {}
@@ -337,6 +340,18 @@ class CreateInvoice(CreatedMixin):
 
     class Config:
         orm_mode = True
+
+
+class CustomerUpdateData(BaseModel):
+    buyer_email: Optional[EmailStr] = ""
+    shipping_address: Optional[str] = ""
+    notes: Optional[str] = ""
+
+    @validator("buyer_email", pre=True, always=False)
+    def validate_buyer_email(cls, val):
+        if val == "":
+            return None
+        return val  # pragma: no cover
 
 
 class Invoice(CreateInvoice):
