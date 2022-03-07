@@ -19,6 +19,8 @@ class BaseDaemon:
     BASE_SPEC_FILE: str
     # default port, must differ between daemons, in range 500X, assigned in order of coins addition to BitcartCC
     DEFAULT_PORT: int
+    # command aliases
+    ALIASES: dict = {}
 
     def __init__(self):
         self.env_name = self.name.upper()
@@ -29,6 +31,8 @@ class BaseDaemon:
         self.supported_methods = {
             func.__name__: func for func in (getattr(self, name) for name in dir(self)) if getattr(func, "is_handler", False)
         }
+        for alias, func in self.ALIASES.items():
+            self.supported_methods[alias] = self.supported_methods[func]
         self.app = web.Application()
         self.configure_app()
 
@@ -136,6 +140,8 @@ class BaseDaemon:
             default="0.0.0.0" if os.getenv("IN_DOCKER") else "127.0.0.1",
         )
         self.PORT = self.config("PORT", cast=int, default=self.DEFAULT_PORT)
+        self.LOGIN = self.config("LOGIN", default="electrum")
+        self.PASSWORD = self.config("PASSWORD", default="electrumz")
 
     async def on_startup(self, app):
         """Create essential objects for daemon operation here

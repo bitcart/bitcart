@@ -1,0 +1,3 @@
+aiohttp<4.0
+pycoin
+web3
