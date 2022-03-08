@@ -10,9 +10,12 @@ from typing import List
 
 from base import BaseDaemon
 from eth_keys.datatypes import PublicKey
+from hexbytes import HexBytes
+from mnemonic import Mnemonic
 from pycoin.symbols.btc import network as bitcoin_network
 from utils import JsonResponse, get_exception_message, hide_logging_errors, periodic_task, rpc
 from web3 import Web3
+from web3.datastructures import AttributeDict
 
 # average time a new block may appear
 BLOCK_TIME = 5
@@ -23,6 +26,14 @@ ADDRESS_CHECK_TIME = 60
 class Address:
     address: str
     balance: Decimal = 0
+
+
+def to_dict(obj):
+    if isinstance(obj, AttributeDict):
+        return {k: to_dict(v) for k, v in obj.items()}
+    if isinstance(obj, HexBytes):
+        return str(obj.hex())
+    return obj
 
 
 @dataclass
@@ -231,14 +242,6 @@ class ETHDaemon(BaseDaemon):
     ### Methods ###
 
     @rpc
-    def help(self, wallet=None):
-        return list(self.supported_methods.keys())
-
-    @rpc
-    def version(self, wallet=None):
-        return self.VERSION
-
-    @rpc
     def add_peer(self, url, wallet=None):
         self.web3.geth.admin.add_peer(url)
 
@@ -252,9 +255,39 @@ class ETHDaemon(BaseDaemon):
         self.wallets[wallet].pending_invoices = {}
         return True
 
+    @rpc
+    def get_tx_status(self, tx, wallet=None):
+        data = to_dict(self.web3.eth.get_transaction_receipt(tx))
+        data["confirmations"] = max(0, self.web3.eth.block_number - data["blockNumber"])
+        return data
+
+    @rpc
+    def getaddressbalance(self, address, wallet=None):
+        return self.web3.eth.get_balance(address)
+
     @rpc(requires_wallet=True)
-    def balance(self, wallet):
+    def getbalance(self, wallet):
         return sum(self.web3.eth.get_balance(address) for address in self.wallets[wallet].addresses)
+
+    @rpc
+    def getfeerate(self, wallet=None):
+        return self.web3.eth.gas_price
+
+    @rpc
+    def help(self, wallet=None):
+        return list(self.supported_methods.keys())
+
+    @rpc(requires_wallet=True)
+    def ismine(self, address, wallet):
+        return address in self.wallets[wallet].addresses
+
+    @rpc
+    def make_seed(self, nbits=128, language="english", wallet=None):
+        return Mnemonic(language).generate(nbits)
+
+    @rpc
+    def version(self, wallet=None):
+        return self.VERSION
 
 
 if __name__ == "__main__":
