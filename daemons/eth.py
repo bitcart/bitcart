@@ -1,6 +1,7 @@
 import asyncio
 import functools
 import inspect
+import json
 import threading
 import time
 import traceback
@@ -16,10 +17,10 @@ from pycoin.symbols.btc import network as bitcoin_network
 from utils import JsonResponse, get_exception_message, hide_logging_errors, periodic_task, rpc
 from web3 import Web3
 from web3.datastructures import AttributeDict
+from web3.providers.ipc import IPCProvider, get_default_ipc_path
 
-# average time a new block may appear
-BLOCK_TIME = 5
-ADDRESS_CHECK_TIME = 60
+NO_HISTORY_MESSAGE = "We don't access transaction history to remain lightweight"
+WRITE_DOWN_SEED_MESSAGE = "Please keep your seed in a safe place; if you lose it, you will not be able to restore your wallet."
 
 
 @dataclass
@@ -28,18 +29,26 @@ class Address:
     balance: Decimal = 0
 
 
+class JSONEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, AttributeDict):
+            return {k: v for k, v in obj.items()}
+        if isinstance(obj, HexBytes):
+            return str(obj.hex())
+        return super().default(obj)
+
+
 def to_dict(obj):
-    if isinstance(obj, AttributeDict):
-        return {k: to_dict(v) for k, v in obj.items()}
-    if isinstance(obj, HexBytes):
-        return str(obj.hex())
-    return obj
+    return json.loads(json.dumps(obj, cls=JSONEncoder))
 
 
 @dataclass
 class Wallet:
     key: str
     web3: Web3
+    BLOCK_TIME: int = 5
+    ADDRESS_CHECK_TIME: int = 60
+    path: str = ""
     addresses: List[str] = field(default_factory=list)
     updates: dict = field(default_factory=dict)
     invoices: dict = field(default_factory=dict)
@@ -48,17 +57,24 @@ class Wallet:
 
     def __post_init__(self):
         self.lock = threading.RLock()
+        self.mnemonic = Mnemonic("english")
         self.running = False
         self.synchronized = False
         self.loop = asyncio.get_event_loop()
 
     def start(self):
         self.running = True
-        self.loop.create_task(periodic_task(self, self.process_pending, BLOCK_TIME))
-        self.loop.create_task(periodic_task(self, self.maintain_addresses, ADDRESS_CHECK_TIME))
+        self.loop.create_task(periodic_task(self, self.process_pending, self.BLOCK_TIME))
+        self.loop.create_task(periodic_task(self, self.maintain_addresses, self.ADDRESS_CHECK_TIME))
+
+    def get_bip32_node(self):
+        # TODO: replace pycoin with eth-account
+        if self.mnemonic.check(self.key):
+            return bitcoin_network.parse(f"P:{self.key}")
+        return bitcoin_network.parse(self.key)
 
     def derive_address(self, n):
-        bip32_node = bitcoin_network.parse(self.key)
+        bip32_node = self.get_bip32_node()
         public_key_bytes = bip32_node.subkey_for_path(f"0/{n}").sec(is_compressed=True)
         return PublicKey.from_compressed_bytes(public_key_bytes).to_checksum_address()
 
@@ -114,13 +130,16 @@ class ETHDaemon(BaseDaemon):
     BASE_SPEC_FILE = "daemons/spec/eth.json"
     DEFAULT_PORT = 5002
     ALIASES = {"commands": "help", "clear_invoices": "clear_requests"}
+    SKIP_NETWORK = ["getinfo"]
 
-    VERSION = "1.0.0"
+    VERSION = "4.1.5"  # version of electrum API with which we are "compatible"
+    BLOCK_TIME = 5
+    ADDRESS_CHECK_TIME = 60
 
     def __init__(self):
         super().__init__()
         self.latest_height = -1  # to avoid duplicate block notifications
-        self.web3 = Web3()
+        self.web3 = Web3(IPCProvider(self.ICPC_HOST))
         # initialize wallet storages
         self.wallets = {}
         self.wallets_updates = {}
@@ -133,6 +152,7 @@ class ETHDaemon(BaseDaemon):
         self.DATA_PATH = self.config("DATA_PATH", default=None)
         self.NET = self.config("NETWORK", default="mainnet")
         self.VERBOSE = self.config("DEBUG", cast=bool, default=False)
+        self.ICPC_HOST = self.config("ICPC_HOST", default=get_default_ipc_path())
 
     async def on_startup(self, app):
         await super().on_startup(app)
@@ -177,7 +197,7 @@ class ETHDaemon(BaseDaemon):
         if not xpub:
             return None
 
-        wallet = Wallet(xpub, self.web3)
+        wallet = Wallet(xpub, self.web3, self.BLOCK_TIME, self.ADDRESS_CHECK_TIME)
         wallet.start()
         self.wallets[xpub] = wallet
         return wallet
@@ -189,6 +209,8 @@ class ETHDaemon(BaseDaemon):
         wallet = error = None
         try:
             wallet = await self.load_wallet(xpub)
+            if req_method in self.SKIP_NETWORK:
+                return wallet, error
             while self.is_still_syncing(wallet):
                 await asyncio.sleep(0.1)
         except Exception as e:
@@ -256,6 +278,17 @@ class ETHDaemon(BaseDaemon):
         return True
 
     @rpc
+    async def create(self, wallet=None):
+        seed = self.make_seed()
+        wallet = Wallet(seed, self.web3, self.BLOCK_TIME, self.ADDRESS_CHECK_TIME)
+        await wallet.maintain_addresses()
+        return {
+            "seed": seed,
+            "path": wallet.path,  # TODO: add
+            "msg": WRITE_DOWN_SEED_MESSAGE,
+        }
+
+    @rpc
     def get_tx_status(self, tx, wallet=None):
         data = to_dict(self.web3.eth.get_transaction_receipt(tx))
         data["confirmations"] = max(0, self.web3.eth.block_number - data["blockNumber"])
@@ -264,6 +297,10 @@ class ETHDaemon(BaseDaemon):
     @rpc
     def getaddressbalance(self, address, wallet=None):
         return self.web3.eth.get_balance(address)
+
+    @rpc
+    def getaddresshistory(self, *args, **kwargs):
+        raise NotImplementedError(NO_HISTORY_MESSAGE)
 
     @rpc(requires_wallet=True)
     def getbalance(self, wallet):
@@ -274,6 +311,30 @@ class ETHDaemon(BaseDaemon):
         return self.web3.eth.gas_price
 
     @rpc
+    def getinfo(self, wallet=None):
+        if not self.web3.isConnected():
+            return {"connected": False, "path": "", "version": self.VERSION}
+        numblocks = self.web3.eth.block_number
+        return {
+            "blockchain_height": numblocks,
+            "connected": self.web3.isConnected(),
+            "gas_price": self.web3.eth.gas_price,
+            "path": "",  # TODO: add
+            "server": self.ICPC_HOST,
+            "server_height": numblocks,
+            "spv_nodes": len(self.web3.geth.admin.peers()),
+            "version": self.VERSION,
+        }
+
+    @rpc
+    def getmerkle(self, *args, **kwargs):
+        raise NotImplementedError("Geth doesn't support get_proof correctly for now")
+
+    @rpc
+    def getservers(self, wallet=None):
+        return [self.ICPC_HOST]
+
+    @rpc
     def help(self, wallet=None):
         return list(self.supported_methods.keys())
 
@@ -282,8 +343,22 @@ class ETHDaemon(BaseDaemon):
         return address in self.wallets[wallet].addresses
 
     @rpc
+    def list_peers(self, wallet=None):
+        return to_dict(self.web3.geth.admin.peers())
+
+    @rpc
+    def list_wallets(self, wallet=None):
+        return [
+            {"path": "", "synchronized": wallet_obj.is_synchronized()} for wallet_obj in self.wallets.values()
+        ]  # TODO: add path
+
+    @rpc
     def make_seed(self, nbits=128, language="english", wallet=None):
         return Mnemonic(language).generate(nbits)
+
+    @rpc
+    def validateaddress(self, address, wallet=None):
+        return Web3.isAddress(address) or Web3.isChecksumAddress(address)
 
     @rpc
     def version(self, wallet=None):

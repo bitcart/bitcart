@@ -1,5 +1,21 @@
 {
-    "version": "0.0.1",
-    "electrum_map": {},
-    "exceptions": {}
+    "version": "4.1.5",
+    "electrum_map": {
+        "wallet not loaded": -32000,
+        "NotImplementedError": -32602
+    },
+    "exceptions": {
+        "-32601": {
+            "exc_name": "ProcedureNotFoundError",
+            "docstring": "Procedure not found"
+        },
+        "-32602": {
+            "exc_name": "NotImplementedError",
+            "docstring": "Not implemented"
+        },
+        "-32000": {
+            "exc_name": "WalletNotLoadedError",
+            "docstring": "Wallet not loaded. No xpub was provided and this function requires wallet"
+        }
+    }
 }
