@@ -17,10 +17,15 @@ from pycoin.symbols.btc import network as bitcoin_network
 from utils import JsonResponse, get_exception_message, hide_logging_errors, periodic_task, rpc
 from web3 import Web3
 from web3.datastructures import AttributeDict
-from web3.providers.ipc import IPCProvider, get_default_ipc_path
+from web3.eth import AsyncEth
+from web3.geth import AsyncGethAdmin, Geth
+from web3.providers.rpc import get_default_http_endpoint
 
 NO_HISTORY_MESSAGE = "We don't access transaction history to remain lightweight"
 WRITE_DOWN_SEED_MESSAGE = "Please keep your seed in a safe place; if you lose it, you will not be able to restore your wallet."
+
+CHUNK_SIZE = 30
+# TODO: limit sync post-reboot to (60/12)*60=5*60=300 blocks (max expiry time)
 
 
 @dataclass
@@ -82,14 +87,14 @@ class Wallet:
         if not self.pending_invoices:
             return
         for address in self.pending_invoices:
-            print(self.web3.eth.get_balance(address))
+            print(await self.web3.eth.get_balance(address))
 
     def is_synchronized(self):
         with self.lock:
             return self.synchronized
 
-    def is_used(self, address):
-        return self.web3.eth.get_transaction_count(address) > 0 or self.web3.eth.get_balance(address) > 0
+    async def is_used(self, address):
+        return await self.web3.eth.get_transaction_count(address) > 0 or await self.web3.eth.get_balance(address) > 0
 
     def get_addresses(self, slice_start=None, slice_stop=None):
         return self.addresses[slice_start:slice_stop]
@@ -101,8 +106,8 @@ class Wallet:
             self.addresses.append(address)
             return address
 
-    def balance(self, idx):
-        return self.web3.eth.get_balance(self.addresses[idx])
+    async def balance(self, idx):
+        return await self.web3.eth.get_balance(self.addresses[idx])
 
     async def maintain_addresses(self):
         limit = self.gap_limit
@@ -114,7 +119,12 @@ class Wallet:
                     self.create_new_address()
                     continue
                 last_few_addresses = self.get_addresses(slice_start=-limit)
-                if any(map(self.is_used, last_few_addresses)):
+                ok = True
+                for addr in last_few_addresses:
+                    if await self.is_used(addr):
+                        ok = False
+                        break
+                if not ok:
                     self.synchronized = False
                     self.create_new_address()
                 else:
@@ -139,7 +149,14 @@ class ETHDaemon(BaseDaemon):
     def __init__(self):
         super().__init__()
         self.latest_height = -1  # to avoid duplicate block notifications
-        self.web3 = Web3(IPCProvider(self.ICPC_HOST))
+        self.web3 = Web3(
+            Web3.AsyncHTTPProvider(self.HTTP_HOST),
+            modules={
+                "eth": (AsyncEth,),
+                "geth": (Geth, {"admin": (AsyncGethAdmin,)}),
+            },
+            middlewares=[],
+        )
         # initialize wallet storages
         self.wallets = {}
         self.wallets_updates = {}
@@ -152,10 +169,28 @@ class ETHDaemon(BaseDaemon):
         self.DATA_PATH = self.config("DATA_PATH", default=None)
         self.NET = self.config("NETWORK", default="mainnet")
         self.VERBOSE = self.config("DEBUG", cast=bool, default=False)
-        self.ICPC_HOST = self.config("ICPC_HOST", default=get_default_ipc_path())
+        self.HTTP_HOST = self.config("HTTP_HOST", default=get_default_http_endpoint())
 
     async def on_startup(self, app):
+        self.loop = asyncio.get_event_loop()
+        self.latest_height = await self.web3.eth.block_number
+        self.loop.create_task(self.process_pending())
         await super().on_startup(app)
+
+    async def process_block(self, start_height, end_height):
+        for block_number in range(start_height, end_height + 1):
+            for tx in (await self.web3.eth.get_block(block_number, full_transactions=True))["transactions"]:
+                pass
+
+    async def process_pending(self):
+        while self.running:
+            current_height = await self.web3.eth.block_number
+            tasks = []
+            for block_number in range(self.latest_height + 1, current_height + 1, CHUNK_SIZE):
+                tasks.append(self.process_block(block_number, min(block_number + CHUNK_SIZE - 1, current_height)))
+            await asyncio.gather(*tasks)
+            self.latest_height = current_height
+            await asyncio.sleep(self.BLOCK_TIME)
 
     async def on_shutdown(self, app):
         self.running = False
@@ -202,8 +237,8 @@ class ETHDaemon(BaseDaemon):
         self.wallets[xpub] = wallet
         return wallet
 
-    def is_still_syncing(self, wallet=None):
-        return not self.web3.isConnected() or self.web3.eth.syncing or (wallet and not wallet.is_synchronized())
+    async def is_still_syncing(self, wallet=None):
+        return not await self.web3.isConnected() or await self.web3.eth.syncing or (wallet and not wallet.is_synchronized())
 
     async def _get_wallet(self, id, req_method, xpub):
         wallet = error = None
@@ -211,7 +246,7 @@ class ETHDaemon(BaseDaemon):
             wallet = await self.load_wallet(xpub)
             if req_method in self.SKIP_NETWORK:
                 return wallet, error
-            while self.is_still_syncing(wallet):
+            while await self.is_still_syncing(wallet):
                 await asyncio.sleep(0.1)
         except Exception as e:
             if self.VERBOSE:
@@ -264,12 +299,12 @@ class ETHDaemon(BaseDaemon):
     ### Methods ###
 
     @rpc
-    def add_peer(self, url, wallet=None):
-        self.web3.geth.admin.add_peer(url)
+    async def add_peer(self, url, wallet=None):
+        await self.web3.geth.admin.add_peer(url)
 
     @rpc
-    def broadcast(self, tx, wallet=None):
-        return self.web3.eth.send_raw_transaction(tx)
+    async def broadcast(self, tx, wallet=None):
+        return await self.web3.eth.send_raw_transaction(tx)
 
     @rpc(requires_wallet=True)
     def clear_requests(self, wallet):
@@ -289,40 +324,40 @@ class ETHDaemon(BaseDaemon):
         }
 
     @rpc
-    def get_tx_status(self, tx, wallet=None):
-        data = to_dict(self.web3.eth.get_transaction_receipt(tx))
-        data["confirmations"] = max(0, self.web3.eth.block_number - data["blockNumber"])
+    async def get_tx_status(self, tx, wallet=None):
+        data = to_dict(await self.web3.eth.get_transaction_receipt(tx))
+        data["confirmations"] = max(0, (await self.web3.eth.block_number) - data["blockNumber"])
         return data
 
     @rpc
-    def getaddressbalance(self, address, wallet=None):
-        return self.web3.eth.get_balance(address)
+    async def getaddressbalance(self, address, wallet=None):
+        return await self.web3.eth.get_balance(address)
 
     @rpc
     def getaddresshistory(self, *args, **kwargs):
         raise NotImplementedError(NO_HISTORY_MESSAGE)
 
     @rpc(requires_wallet=True)
-    def getbalance(self, wallet):
-        return sum(self.web3.eth.get_balance(address) for address in self.wallets[wallet].addresses)
+    async def getbalance(self, wallet):
+        return sum(await self.web3.eth.get_balance(address) for address in self.wallets[wallet].addresses)
 
     @rpc
-    def getfeerate(self, wallet=None):
-        return self.web3.eth.gas_price
+    async def getfeerate(self, wallet=None):
+        return await self.web3.eth.gas_price
 
     @rpc
-    def getinfo(self, wallet=None):
-        if not self.web3.isConnected():
+    async def getinfo(self, wallet=None):
+        if not await self.web3.isConnected():
             return {"connected": False, "path": "", "version": self.VERSION}
         numblocks = self.web3.eth.block_number
         return {
             "blockchain_height": numblocks,
-            "connected": self.web3.isConnected(),
-            "gas_price": self.web3.eth.gas_price,
+            "connected": await self.web3.isConnected(),
+            "gas_price": await self.web3.eth.gas_price,
             "path": "",  # TODO: add
-            "server": self.ICPC_HOST,
+            "server": self.HTTP_HOST,
             "server_height": numblocks,
-            "spv_nodes": len(self.web3.geth.admin.peers()),
+            "spv_nodes": len(await self.web3.geth.admin.peers()),
             "version": self.VERSION,
         }
 
@@ -332,7 +367,7 @@ class ETHDaemon(BaseDaemon):
 
     @rpc
     def getservers(self, wallet=None):
-        return [self.ICPC_HOST]
+        return [self.HTTP_HOST]
 
     @rpc
     def help(self, wallet=None):
@@ -343,8 +378,8 @@ class ETHDaemon(BaseDaemon):
         return address in self.wallets[wallet].addresses
 
     @rpc
-    def list_peers(self, wallet=None):
-        return to_dict(self.web3.geth.admin.peers())
+    async def list_peers(self, wallet=None):
+        return to_dict(await self.web3.geth.admin.peers())
 
     @rpc
     def list_wallets(self, wallet=None):
