@@ -2,24 +2,24 @@ import asyncio
 import functools
 import inspect
 import json
-import threading
 import time
 import traceback
 from dataclasses import dataclass, field
 from decimal import Decimal
-from typing import List
 
 from base import BaseDaemon
+from eth_account import Account
 from eth_keys.datatypes import PublicKey
 from hexbytes import HexBytes
 from mnemonic import Mnemonic
-from pycoin.symbols.btc import network as bitcoin_network
 from utils import JsonResponse, get_exception_message, hide_logging_errors, periodic_task, rpc
 from web3 import Web3
 from web3.datastructures import AttributeDict
 from web3.eth import AsyncEth
 from web3.geth import AsyncGethAdmin, Geth
 from web3.providers.rpc import get_default_http_endpoint
+
+Account.enable_unaudited_hdwallet_features()
 
 NO_HISTORY_MESSAGE = "We don't access transaction history to remain lightweight"
 WRITE_DOWN_SEED_MESSAGE = "Please keep your seed in a safe place; if you lose it, you will not be able to restore your wallet."
@@ -53,35 +53,31 @@ class Wallet:
     web3: Web3
     BLOCK_TIME: int = 5
     ADDRESS_CHECK_TIME: int = 60
+    address: str = None
     path: str = ""
-    addresses: List[str] = field(default_factory=list)
     updates: dict = field(default_factory=dict)
     invoices: dict = field(default_factory=dict)
     pending_invoices: dict = field(default_factory=dict)
-    gap_limit: int = 20
 
     def __post_init__(self):
-        self.lock = threading.RLock()
-        self.mnemonic = Mnemonic("english")
+        try:
+            self.address = Account.from_mnemonic(self.key).address
+        except Exception:
+            try:
+                self.address = Account.from_key(self.key).address
+            except Exception:
+                try:
+                    self.address = PublicKey.from_compressed_bytes(Web3.toBytes(hexstr=self.key)).to_checksum_address()
+                except Exception:
+                    if not Web3.isAddress(self.key) and not Web3.isChecksumAddress(self.key):
+                        raise Exception("Error loading wallet: invalid address")
+                    self.address = Web3.toChecksumAddress(self.key)
         self.running = False
-        self.synchronized = False
         self.loop = asyncio.get_event_loop()
 
     def start(self):
         self.running = True
         self.loop.create_task(periodic_task(self, self.process_pending, self.BLOCK_TIME))
-        self.loop.create_task(periodic_task(self, self.maintain_addresses, self.ADDRESS_CHECK_TIME))
-
-    def get_bip32_node(self):
-        # TODO: replace pycoin with eth-account
-        if self.mnemonic.check(self.key):
-            return bitcoin_network.parse(f"P:{self.key}")
-        return bitcoin_network.parse(self.key)
-
-    def derive_address(self, n):
-        bip32_node = self.get_bip32_node()
-        public_key_bytes = bip32_node.subkey_for_path(f"0/{n}").sec(is_compressed=True)
-        return PublicKey.from_compressed_bytes(public_key_bytes).to_checksum_address()
 
     async def process_pending(self):
         if not self.pending_invoices:
@@ -89,47 +85,11 @@ class Wallet:
         for address in self.pending_invoices:
             print(await self.web3.eth.get_balance(address))
 
-    def is_synchronized(self):
-        with self.lock:
-            return self.synchronized
+    def is_synchronized(self):  # because only one address is used due to eth specifics
+        return True
 
-    async def is_used(self, address):
-        return await self.web3.eth.get_transaction_count(address) > 0 or await self.web3.eth.get_balance(address) > 0
-
-    def get_addresses(self, slice_start=None, slice_stop=None):
-        return self.addresses[slice_start:slice_stop]
-
-    def create_new_address(self):
-        with self.lock:
-            n = len(self.addresses)
-            address = self.derive_address(n)
-            self.addresses.append(address)
-            return address
-
-    async def balance(self, idx):
-        return await self.web3.eth.get_balance(self.addresses[idx])
-
-    async def maintain_addresses(self):
-        limit = self.gap_limit
-        with self.lock:
-            while True:
-                num_addr = len(self.addresses)
-                if num_addr < limit:
-                    self.synchronized = False
-                    self.create_new_address()
-                    continue
-                last_few_addresses = self.get_addresses(slice_start=-limit)
-                ok = True
-                for addr in last_few_addresses:
-                    if await self.is_used(addr):
-                        ok = False
-                        break
-                if not ok:
-                    self.synchronized = False
-                    self.create_new_address()
-                else:
-                    break
-            self.synchronized = True
+    async def balance(self):
+        return await self.web3.eth.get_balance(self.address)
 
     def stop(self):
         self.running = False
@@ -316,7 +276,6 @@ class ETHDaemon(BaseDaemon):
     async def create(self, wallet=None):
         seed = self.make_seed()
         wallet = Wallet(seed, self.web3, self.BLOCK_TIME, self.ADDRESS_CHECK_TIME)
-        await wallet.maintain_addresses()
         return {
             "seed": seed,
             "path": wallet.path,  # TODO: add
@@ -339,7 +298,7 @@ class ETHDaemon(BaseDaemon):
 
     @rpc(requires_wallet=True)
     async def getbalance(self, wallet):
-        return sum(await self.web3.eth.get_balance(address) for address in self.wallets[wallet].addresses)
+        return await self.wallets[wallet].balance()
 
     @rpc
     async def getfeerate(self, wallet=None):
@@ -349,7 +308,7 @@ class ETHDaemon(BaseDaemon):
     async def getinfo(self, wallet=None):
         if not await self.web3.isConnected():
             return {"connected": False, "path": "", "version": self.VERSION}
-        numblocks = self.web3.eth.block_number
+        numblocks = await self.web3.eth.block_number
         return {
             "blockchain_height": numblocks,
             "connected": await self.web3.isConnected(),
@@ -375,7 +334,7 @@ class ETHDaemon(BaseDaemon):
 
     @rpc(requires_wallet=True)
     def ismine(self, address, wallet):
-        return address in self.wallets[wallet].addresses
+        return address == self.wallets[wallet].address
 
     @rpc
     async def list_peers(self, wallet=None):

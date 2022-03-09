@@ -362,9 +362,6 @@ protobuf==3.19.4 \
     --hash=sha256:f358aa33e03b7a84e0d91270a4d4d8f5df6921abe99a377828839e8ed0c04e07 \
     --hash=sha256:f51d5a9f137f7a2cec2d326a74b6e3fc79d635d69ffe1b036d39fc7d75430d37
     # via web3
-pycoin==0.92.20220213 \
-    --hash=sha256:a9bda3b5bfdb1c94a6b6741b6131600a0058d0e0acaf1b1627b48915e103cad7
-    # via -r requirements/daemons/eth.txt
 pycryptodome==3.14.1 \
     --hash=sha256:028dcbf62d128b4335b61c9fbb7dd8c376594db607ef36d5721ee659719935d5 \
     --hash=sha256:12ef157eb1e01a157ca43eda275fa68f8db0dd2792bc4fe00479ab8f0e6ae075 \
