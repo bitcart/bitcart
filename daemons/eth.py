@@ -9,6 +9,7 @@ from decimal import Decimal
 
 from base import BaseDaemon
 from eth_account import Account
+from eth_account.messages import encode_defunct
 from eth_keys.datatypes import PublicKey
 from hexbytes import HexBytes
 from mnemonic import Mnemonic
@@ -23,6 +24,8 @@ Account.enable_unaudited_hdwallet_features()
 
 NO_HISTORY_MESSAGE = "We don't access transaction history to remain lightweight"
 WRITE_DOWN_SEED_MESSAGE = "Please keep your seed in a safe place; if you lose it, you will not be able to restore your wallet."
+ONE_ADDRESS_MESSAGE = "We only support one address per wallet as it is common in ethereum ecosystem"
+GET_PROOF_MESSAGE = "Geth doesn't support get_proof correctly for now"
 
 CHUNK_SIZE = 30
 # TODO: limit sync post-reboot to (60/12)*60=5*60=300 blocks (max expiry time)
@@ -59,19 +62,23 @@ class Wallet:
     invoices: dict = field(default_factory=dict)
     pending_invoices: dict = field(default_factory=dict)
 
-    def __post_init__(self):
+    @staticmethod
+    def get_address(key):
         try:
-            self.address = Account.from_mnemonic(self.key).address
+            return Account.from_mnemonic(key).address
         except Exception:
             try:
-                self.address = Account.from_key(self.key).address
+                return Account.from_key(key).address
             except Exception:
                 try:
-                    self.address = PublicKey.from_compressed_bytes(Web3.toBytes(hexstr=self.key)).to_checksum_address()
+                    return PublicKey.from_compressed_bytes(Web3.toBytes(hexstr=key)).to_checksum_address()
                 except Exception:
-                    if not Web3.isAddress(self.key) and not Web3.isChecksumAddress(self.key):
+                    if not Web3.isAddress(key) and not Web3.isChecksumAddress(key):
                         raise Exception("Error loading wallet: invalid address")
-                    self.address = Web3.toChecksumAddress(self.key)
+                    return Web3.toChecksumAddress(key)
+
+    def __post_init__(self):
+        self.address = self.get_address(self.key)
         self.running = False
         self.loop = asyncio.get_event_loop()
 
@@ -99,7 +106,11 @@ class ETHDaemon(BaseDaemon):
     name = "ETH"
     BASE_SPEC_FILE = "daemons/spec/eth.json"
     DEFAULT_PORT = 5002
-    ALIASES = {"commands": "help", "clear_invoices": "clear_requests"}
+    ALIASES = {
+        "clear_invoices": "clear_requests",
+        "commands": "help",
+        "get_transaction": "gettransaction",
+    }
     SKIP_NETWORK = ["getinfo"]
 
     VERSION = "4.1.5"  # version of electrum API with which we are "compatible"
@@ -282,11 +293,19 @@ class ETHDaemon(BaseDaemon):
             "msg": WRITE_DOWN_SEED_MESSAGE,
         }
 
+    @rpc(requires_wallet=True)
+    async def createnewaddress(self, *args, **kwargs):
+        raise NotImplementedError(ONE_ADDRESS_MESSAGE)
+
     @rpc
     async def get_tx_status(self, tx, wallet=None):
         data = to_dict(await self.web3.eth.get_transaction_receipt(tx))
-        data["confirmations"] = max(0, (await self.web3.eth.block_number) - data["blockNumber"])
+        data["confirmations"] = max(0, await self.web3.eth.block_number - data["blockNumber"] + 1)
         return data
+
+    @rpc(requires_wallet=True)
+    def getaddress(self, wallet):
+        return self.wallets[wallet].address
 
     @rpc
     async def getaddressbalance(self, address, wallet=None):
@@ -322,15 +341,29 @@ class ETHDaemon(BaseDaemon):
 
     @rpc
     def getmerkle(self, *args, **kwargs):
-        raise NotImplementedError("Geth doesn't support get_proof correctly for now")
+        raise NotImplementedError(GET_PROOF_MESSAGE)
 
     @rpc
     def getservers(self, wallet=None):
         return [self.HTTP_HOST]
 
     @rpc
+    async def gettransaction(self, tx, wallet=None):
+        data = to_dict(await self.web3.eth.get_transaction(tx))
+        data["confirmations"] = max(0, await self.web3.eth.block_number - data["blockNumber"] + 1)
+        return data
+
+    @rpc
     def help(self, wallet=None):
         return list(self.supported_methods.keys())
+
+    @rpc(requires_wallet=True)
+    async def history(self, *args, **kwargs):
+        raise NotImplementedError(NO_HISTORY_MESSAGE)
+
+    @rpc(requires_wallet=True)
+    def is_synchronized(self, wallet):
+        return self.wallets[wallet].is_synchronized()
 
     @rpc(requires_wallet=True)
     def ismine(self, address, wallet):
@@ -350,9 +383,39 @@ class ETHDaemon(BaseDaemon):
     def make_seed(self, nbits=128, language="english", wallet=None):
         return Mnemonic(language).generate(nbits)
 
+    @rpc(requires_wallet=True)
+    def removelocaltx(self, *args, **kwargs):
+        raise NotImplementedError(NO_HISTORY_MESSAGE)
+
+    @rpc
+    def restore(self, text, wallet=None):
+        try:
+            Wallet(text, self.web3, self.BLOCK_TIME, self.ADDRESS_CHECK_TIME)
+        except Exception as e:
+            raise Exception("Invalid key provided") from e
+        return {
+            "path": "",  # TODO: add
+            "msg": "",
+        }
+
+    @rpc(requires_wallet=True)
+    def signmessage(self, address=None, message=None, wallet=None):
+        # Mimic electrum API
+        if not address and not message:
+            raise ValueError("No message specified")
+        if not message:
+            message = address
+        return to_dict(Account.sign_message(encode_defunct(text=message), private_key=self.wallets[wallet].key).signature)
+
     @rpc
     def validateaddress(self, address, wallet=None):
         return Web3.isAddress(address) or Web3.isChecksumAddress(address)
+
+    @rpc
+    def verifymessage(self, address, signature, message, wallet=None):
+        return Web3.toChecksumAddress(
+            Account.recover_message(encode_defunct(text=message), signature=signature)
+        ) == Web3.toChecksumAddress(address)
 
     @rpc
     def version(self, wallet=None):

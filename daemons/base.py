@@ -33,6 +33,7 @@ class BaseDaemon:
         }
         for alias, func in self.ALIASES.items():
             self.supported_methods[alias] = self.supported_methods[func]
+        self.supported_methods = dict(sorted(self.supported_methods.items()))
         self.app = web.Application()
         self.configure_app()
 

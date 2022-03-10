@@ -3,7 +3,12 @@
     "electrum_map": {
         "wallet not loaded": -32000,
         "error loading wallet": -32000,
-        "NotImplementedError": -32602
+        "NotImplementedError": -32602,
+        "it must be a hex string": -32001,
+        "TransactionNotFound": -32002,
+        "The private key must be exactly": -32003,
+        "No message specified": -32004,
+        "Invalid key provided": -32005
     },
     "exceptions": {
         "-32601": {
@@ -17,6 +22,26 @@
         "-32000": {
             "exc_name": "WalletNotLoadedError",
             "docstring": "Wallet not loaded. No xpub was provided and this function requires wallet"
+        },
+        "-32001": {
+            "exc_name": "InvalidHexStringError",
+            "docstring": "Invalid hex string provided"
+        },
+        "-32002": {
+            "exc_name": "TxNotFoundError",
+            "docstring": "No such blockchain transaction"
+        },
+        "-32003": {
+            "exc_name": "PrivateKeyRequiredError",
+            "docstring": "This function requires signing capabilities, but no private key was provided"
+        },
+        "-32004": {
+            "exc_name": "NoMessageSpecifiedError",
+            "docstring": "Please specify a message to sign"
+        },
+        "-32005": {
+            "exc_name": "InvalidKeyProvidedError",
+            "docstring": "Invalid key provided. We support seed, private, public keys and address directly as a key"
         }
     }
 }
