@@ -8,7 +8,11 @@
         "TransactionNotFound": -32002,
         "The private key must be exactly": -32003,
         "No message specified": -32004,
-        "Invalid key provided": -32005
+        "Invalid key provided": -32005,
+        "Invalid private key imported: address mismatch": -32005,
+        "This is a watching-only wallet": -32006,
+        "This wallet has no seed words": -32007,
+        "Invalid transaction": -32008
     },
     "exceptions": {
         "-32601": {
@@ -21,7 +25,7 @@
         },
         "-32000": {
             "exc_name": "WalletNotLoadedError",
-            "docstring": "Wallet not loaded. No xpub was provided and this function requires wallet"
+            "docstring": "Wallet not loaded. No address was provided and this function requires wallet"
         },
         "-32001": {
             "exc_name": "InvalidHexStringError",
@@ -42,6 +46,18 @@
         "-32005": {
             "exc_name": "InvalidKeyProvidedError",
             "docstring": "Invalid key provided. We support seed, private, public keys and address directly as a key"
+        },
+        "-32006": {
+            "exc_name": "WatchOnlyWalletError",
+            "docstring": "This is a watch-only wallet. Please restore from seed or private key to use wallet functions"
+        },
+        "-32007": {
+            "exc_name": "NoSeedError",
+            "docstring": "This wallet has no seed words. Please restore from seed"
+        },
+        "-32008": {
+            "exc_name": "InvalidTransactionError",
+            "docstring": "Invalid transaction"
         }
     }
 }
