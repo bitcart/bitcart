@@ -2,8 +2,12 @@ import asyncio
 import functools
 import inspect
 import json
+import random
+import secrets
+import time
 import traceback
 from dataclasses import InitVar, dataclass, field
+from decimal import Decimal
 from typing import ClassVar
 
 from base import BaseDaemon
@@ -28,7 +32,26 @@ GET_PROOF_MESSAGE = "Geth doesn't support get_proof correctly for now"
 NO_MASTER_KEYS_MESSAGE = "As we use only one address per wallet, address keys are used, but not the xprv/xpub"
 
 CHUNK_SIZE = 30
+AMOUNTGEN_PRECISION = Decimal(10) ** (-18)
+AMOUNTGEN_LIMIT = 10**9
 # TODO: limit sync post-reboot to (60/12)*60=5*60=300 blocks (max expiry time)
+
+# statuses of payment requests
+PR_UNPAID = 0  # invoice amt not reached by txs in mempool+chain.
+PR_EXPIRED = 1  # invoice is unpaid and expiry time reached
+PR_UNKNOWN = 2  # e.g. invoice not found
+PR_PAID = 3  # paid and mined (1 conf).
+PR_UNCONFIRMED = 7  # invoice is satisfied but tx is not mined yet.
+
+
+pr_tooltips = {
+    PR_UNPAID: "Unpaid",
+    PR_PAID: "Paid",
+    PR_UNKNOWN: "Unknown",
+    PR_EXPIRED: "Expired",
+    PR_UNCONFIRMED: "Unconfirmed",
+}
+
 
 STR_TO_BOOL_MAPPING = {
     "true": True,
@@ -48,6 +71,10 @@ def str_to_bool(s):
     if s in STR_TO_BOOL_MAPPING:
         return STR_TO_BOOL_MAPPING[s]
     return False
+
+
+def is_address(address):
+    return Web3.isAddress(address) or Web3.isChecksumAddress(address)
 
 
 class JSONEncoder(json.JSONEncoder):
@@ -88,7 +115,7 @@ class KeyStore:
                     self.public_key = PublicKey.from_compressed_bytes(Web3.toBytes(hexstr=self.key))
                     self.address = self.public_key.to_checksum_address()
                 except Exception:
-                    if not Web3.isAddress(self.key) and not Web3.isChecksumAddress(self.key):
+                    if not is_address(self.key):
                         raise Exception("Error loading wallet: invalid address")
                     self.address = Web3.toChecksumAddress(self.key)
         if self.account:
@@ -113,6 +140,28 @@ class KeyStore:
 
 
 @dataclass
+class Invoice:
+    message: str
+    original_amount: Decimal
+    amount: Decimal
+    exp: int
+    time: int
+    height: int
+    address: str
+    id: str = None
+    status: int = 0
+
+    @property
+    def status_str(self):
+        status_str = pr_tooltips[self.status]
+        if self.status == PR_UNPAID:
+            if self.exp > 0:
+                expiration = self.exp + self.time
+                status_str = "Expires at " + time.ctime(expiration)
+        return status_str
+
+
+@dataclass
 class Wallet:
     key: InitVar[str]
     web3: Web3
@@ -120,6 +169,8 @@ class Wallet:
     ADDRESS_CHECK_TIME: ClassVar[int]
     keystore: KeyStore = field(init=False)
     path: str = ""
+    used_amounts: dict = field(default_factory=dict)
+    receive_requests: dict = field(default_factory=dict)
 
     def __post_init__(self, key):
         self.keystore = KeyStore(key=key)
@@ -128,6 +179,9 @@ class Wallet:
 
     def start(self):
         self.running = True
+        for req in self.get_sorted_requests():
+            if req.status == PR_UNPAID and req.exp > 0 and req.time + req.exp < time.time():
+                self.set_request_status(req.id, PR_EXPIRED)
 
     def is_synchronized(self):  # because only one address is used due to eth specifics
         return True
@@ -153,16 +207,116 @@ class Wallet:
     def stop(self):
         self.running = False
 
+    async def make_payment_request(self, address, amount, message, expiration):
+        amount = amount or Decimal()
+        timestamp = int(time.time())
+        expiration = expiration or 0
+        return Invoice(
+            address=address,
+            message=message,
+            time=timestamp,
+            original_amount=amount,
+            amount=self.generate_unique_amount(amount),
+            exp=expiration,
+            id=secrets.token_urlsafe(),
+            height=await self.web3.eth.block_number,
+        )
+
+    def generate_unique_amount(self, amount: Decimal):
+        add_low = 1
+        add_high = 2
+        cur_amount = amount
+        while cur_amount in self.used_amounts:
+            cur_amount = amount + random.randint(add_low, add_high) * AMOUNTGEN_PRECISION
+            if add_high < AMOUNTGEN_LIMIT:
+                add_low = add_high + 1
+                add_high *= 2
+        return cur_amount
+
+    def add_payment_request(self, req, write_to_disk: bool = True):
+        self.receive_requests[req.id] = req
+        self.used_amounts[req.amount] = req
+        # if write_to_disk:
+        #    self.save_db()
+        return req
+
+    async def get_request_url(self, req):
+        chain_id = await self.web3.eth.chain_id
+        return f"ethereum:{req.address}@{chain_id}?value={req.amount}"
+
+    async def export_request(self, req):
+        d = {
+            "id": req.id,
+            "is_lightning": False,
+            "amount_ETH": str(req.amount),
+            "message": req.message,
+            "timestamp": req.time,
+            "expiration": req.exp,
+            "status": req.status,
+            "status_str": req.status_str,
+        }
+        # _, conf = self.get_onchain_request_status(req)
+        conf = None
+        d["amount_sat"] = Web3.toWei(req.amount, "ether")
+        d["address"] = req.address
+        d["URI"] = await self.get_request_url(req)
+        if conf is not None:
+            d["confirmations"] = conf
+        return d
+
+    def get_request(self, key):
+        try:
+            amount = Decimal(key)
+            return self.used_amounts.get(amount)
+        except Exception:
+            return self.receive_requests.get(key)
+
+    def remove_request(self, key):
+        req = self.get_request(key)
+        if not req:
+            return False
+        self.used_amounts.pop(req.amount, None)
+        self.receive_requests.pop(req.id, None)
+        return True
+
+    def get_sorted_requests(self):
+        out = [self.get_request(x) for x in self.receive_requests.keys()]
+        out = [x for x in out if x is not None]
+        out.sort(key=lambda x: x.time)
+        return out
+
+    def set_request_status(self, key, status):
+        req = self.get_request(key)
+        if not req:
+            return None
+        req.status = status
+        self.add_payment_request(req)
+        if status == PR_EXPIRED:
+            self.used_amounts.pop(req.amount, None)
+        return req
+
+    async def expired_task(self, req):
+        left = req.time + req.exp - time.time() + 1  # to ensure it's already expired at that moment
+        if left > 0:
+            await asyncio.sleep(left)
+        req = self.get_request(req.id)
+        if req is None:
+            return
+        self.set_request_status(req.id, PR_EXPIRED)
+
 
 class ETHDaemon(BaseDaemon):
     name = "ETH"
     BASE_SPEC_FILE = "daemons/spec/eth.json"
     DEFAULT_PORT = 5002
     ALIASES = {
+        "add_invoice": "add_request",
         "clear_invoices": "clear_requests",
         "commands": "help",
+        "get_invoice": "getrequest",
         "get_transaction": "gettransaction",
         "getunusedaddress": "getaddress",
+        "list_invoices": "list_requests",
     }
     SKIP_NETWORK = ["getinfo"]
 
@@ -183,8 +337,10 @@ class ETHDaemon(BaseDaemon):
             },
             middlewares=[],
         )
+        self.sync_web3 = Web3(Web3.HTTPProvider(self.HTTP_HOST))
         # initialize wallet storages
         self.wallets = {}
+        self.addresses = {}
         self.wallets_updates = {}
         # initialize not yet created network
         self.running = True
@@ -202,8 +358,15 @@ class ETHDaemon(BaseDaemon):
 
     async def process_block(self, start_height, end_height):
         for block_number in range(start_height, end_height + 1):
+            await self.trigger_event({"height": block_number}, None)
             for tx in (await self.web3.eth.get_block(block_number, full_transactions=True))["transactions"]:
-                pass
+                to = tx["to"]
+                amount = Decimal(Web3.fromWei(tx["value"], "ether"))
+                if to not in self.addresses:
+                    continue
+                key = self.addresses[to]
+                if amount in self.wallets[key].used_amounts:
+                    self.loop.create_task(self.process_payment(key, amount))
 
     async def process_pending(self):
         while self.running:
@@ -219,6 +382,16 @@ class ETHDaemon(BaseDaemon):
                     print("Error processing pending blocks:")
                     print(traceback.format_exc())
             await asyncio.sleep(self.BLOCK_TIME)
+
+    async def trigger_event(self, data, wallet):
+        for key in self.wallets:
+            if not wallet or wallet == key:
+                await self.notify_websockets(data, key)
+                self.wallets_updates[key].append(data)
+
+    async def process_payment(self, wallet, amount):
+        req = self.wallets[wallet].set_request_status(amount, PR_PAID)
+        await self.trigger_event({"address": req.address, "status": req.status, "status_str": req.status_str}, wallet)
 
     async def on_shutdown(self, app):
         self.running = False
@@ -241,6 +414,7 @@ class ETHDaemon(BaseDaemon):
         wallet = Wallet(xpub, self.web3)
         wallet.start()
         self.wallets[xpub] = wallet
+        self.addresses[wallet.address] = xpub
         return wallet
 
     async def is_still_syncing(self, wallet=None):
@@ -306,17 +480,30 @@ class ETHDaemon(BaseDaemon):
     async def add_peer(self, url, wallet=None):
         await self.web3.geth.admin.add_peer(url)
 
+    @rpc(requires_wallet=True)
+    async def add_request(self, amount, memo="", expiration=3600, force=False, wallet=None):
+        amount = Decimal(amount)
+        addr = self.wallets[wallet].address
+        expiration = int(expiration) if expiration else None
+        req = await self.wallets[wallet].make_payment_request(addr, amount, memo, expiration)
+        self.wallets[wallet].add_payment_request(req)
+        self.loop.create_task(self.wallets[wallet].expired_task(req))
+        return await self.wallets[wallet].export_request(req)
+
     @rpc
     async def broadcast(self, tx, wallet=None):
         return to_dict(await self.web3.eth.send_raw_transaction(tx))
 
     @rpc(requires_wallet=True)
     def clear_requests(self, wallet):
+        self.wallets[wallet].receive_requests = {}
+        self.wallets[wallet].used_amounts = {}
         return True
 
     @rpc(requires_wallet=True)
     def close_wallet(self, wallet):
         self.wallets[wallet].stop()
+        del self.addresses[self.wallets[wallet].address]
         del self.wallets[wallet]
         return True
 
@@ -396,14 +583,21 @@ class ETHDaemon(BaseDaemon):
         return self.wallets[wallet].get_private_key()
 
     @rpc(requires_wallet=True)
+    def getpubkeys(self, *args, wallet=None):
+        return self.wallets[wallet].keystore.public_key
+
+    @rpc(requires_wallet=True)
+    async def getrequest(self, key, wallet):
+        req = self.wallets[wallet].get_request(key)
+        if not req:
+            raise Exception("Request not found")
+        return await self.wallets[wallet].export_request(req)
+
+    @rpc(requires_wallet=True)
     def getseed(self, *args, wallet=None):
         if not self.wallets[wallet].keystore.has_seed():
             raise Exception("This wallet has no seed words")
         return self.wallets[wallet].keystore.seed
-
-    @rpc(requires_wallet=True)
-    def getpubkeys(self, *args, wallet=None):
-        return self.wallets[wallet].keystore.public_key
 
     @rpc
     def getservers(self, wallet=None):
@@ -439,6 +633,11 @@ class ETHDaemon(BaseDaemon):
     @rpc
     async def list_peers(self, wallet=None):
         return to_dict(await self.web3.geth.admin.peers())
+
+    @rpc(requires_wallet=True)
+    async def list_requests(self, pending=False, expired=False, paid=False, wallet=None):
+        out = self.wallets[wallet].get_sorted_requests()
+        return [await self.wallets[wallet].export_request(x) for x in out]
 
     @rpc
     def list_wallets(self, wallet=None):
@@ -509,6 +708,10 @@ class ETHDaemon(BaseDaemon):
         }
 
     @rpc(requires_wallet=True)
+    def rmrequest(self, key, wallet):
+        return self.wallets[wallet].remove_request(key)
+
+    @rpc(requires_wallet=True)
     def signmessage(self, address=None, message=None, wallet=None):
         # Mimic electrum API
         if not address and not message:
@@ -538,7 +741,7 @@ class ETHDaemon(BaseDaemon):
 
     @rpc
     def validateaddress(self, address, wallet=None):
-        return Web3.isAddress(address) or Web3.isChecksumAddress(address)
+        return is_address(address)
 
     @rpc
     def verifymessage(self, address, signature, message, wallet=None):
@@ -549,6 +752,14 @@ class ETHDaemon(BaseDaemon):
     @rpc
     def version(self, wallet=None):
         return self.VERSION
+
+    ### BitcartCC methods ###
+
+    @rpc(requires_wallet=True)
+    def get_updates(self, wallet):
+        updates = self.wallets_updates[wallet]
+        self.wallets_updates[wallet] = []
+        return updates
 
 
 if __name__ == "__main__":
