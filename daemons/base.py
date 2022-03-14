@@ -143,6 +143,8 @@ class BaseDaemon:
         self.PORT = self.config("PORT", cast=int, default=self.DEFAULT_PORT)
         self.LOGIN = self.config("LOGIN", default="electrum")
         self.PASSWORD = self.config("PASSWORD", default="electrumz")
+        self.DATA_PATH = self.config("DATA_PATH", default=None)
+        self.VERBOSE = self.config("DEBUG", cast=bool, default=False)
 
     async def on_startup(self, app):
         """Create essential objects for daemon operation here
