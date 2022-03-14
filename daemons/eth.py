@@ -150,6 +150,7 @@ class Invoice:
     address: str
     id: str = None
     status: int = 0
+    tx_hash: str = None
 
     @property
     def status_str(self):
@@ -255,13 +256,16 @@ class Wallet:
             "status": req.status,
             "status_str": req.status_str,
         }
-        # _, conf = self.get_onchain_request_status(req)
-        conf = None
+        if req.tx_hash:
+            d["tx_hash"] = req.tx_hash
+            d["confirmations"] = (
+                await self.web3.eth.block_number
+                - (await self.web3.eth.get_transaction_receipt(req.tx_hash))["blockNumber"]
+                + 1
+            )
         d["amount_wei"] = Web3.toWei(req.amount, "ether")
         d["address"] = req.address
         d["URI"] = await self.get_request_url(req)
-        if conf is not None:
-            d["confirmations"] = conf
         return d
 
     def get_request(self, key):
@@ -285,13 +289,15 @@ class Wallet:
         out.sort(key=lambda x: x.time)
         return out
 
-    def set_request_status(self, key, status):
+    def set_request_status(self, key, status, **kwargs):
         req = self.get_request(key)
         if not req:
             return None
         req.status = status
+        for kwarg in kwargs:
+            setattr(req, kwarg, kwargs[kwarg])
         self.add_payment_request(req)
-        if status == PR_EXPIRED:
+        if status != PR_UNPAID:
             self.used_amounts.pop(req.amount, None)
         return req
 
@@ -337,7 +343,6 @@ class ETHDaemon(BaseDaemon):
             },
             middlewares=[],
         )
-        self.sync_web3 = Web3(Web3.HTTPProvider(self.HTTP_HOST))
         # initialize wallet storages
         self.wallets = {}
         self.addresses = {}
@@ -363,7 +368,7 @@ class ETHDaemon(BaseDaemon):
                 await self.trigger_event({"event": "new_block", "height": block_number}, None)
                 for tx in (await self.web3.eth.get_block(block_number, full_transactions=True))["transactions"]:
                     try:
-                        self.process_transaction(tx)
+                        await self.process_transaction(tx)
                     except Exception:
                         if self.VERBOSE:
                             print(f"Error processing transaction {tx['hash'].hex()}:")
@@ -373,14 +378,16 @@ class ETHDaemon(BaseDaemon):
                     print(f"Error processing block {block_number}:")
                     print(traceback.format_exc())
 
-    def process_transaction(self, tx):
+    async def process_transaction(self, tx):
         to = tx["to"]
         amount = Decimal(Web3.fromWei(tx["value"], "ether"))
         if to not in self.addresses:
             return
-        key = self.addresses[to]
-        if amount in self.wallets[key].used_amounts:
-            self.loop.create_task(self.process_payment(key, amount))
+        wallet = self.addresses[to]
+        tx_hash = str(tx["hash"].hex())
+        await self.trigger_event({"event": "new_transaction", "tx": tx_hash}, wallet)
+        if amount in self.wallets[wallet].used_amounts:
+            self.loop.create_task(self.process_payment(wallet, amount, tx_hash))
 
     async def process_pending(self):
         while self.running:
@@ -407,9 +414,11 @@ class ETHDaemon(BaseDaemon):
                 await self.notify_websockets(data, key)
                 self.wallets_updates[key].append(data)
 
-    async def process_payment(self, wallet, amount):
-        req = self.wallets[wallet].set_request_status(amount, PR_PAID)
-        await self.trigger_event({"address": req.address, "status": req.status, "status_str": req.status_str}, wallet)
+    async def process_payment(self, wallet, amount, tx_hash):
+        req = self.wallets[wallet].set_request_status(amount, PR_PAID, tx_hash=tx_hash)
+        await self.trigger_event(
+            {"event": "new_payment", "address": req.address, "status": req.status, "status_str": req.status_str}, wallet
+        )
 
     async def on_shutdown(self, app):
         self.running = False
