@@ -39,17 +39,13 @@ AMOUNTGEN_LIMIT = 10**9
 # statuses of payment requests
 PR_UNPAID = 0  # invoice amt not reached by txs in mempool+chain.
 PR_EXPIRED = 1  # invoice is unpaid and expiry time reached
-PR_UNKNOWN = 2  # e.g. invoice not found
 PR_PAID = 3  # paid and mined (1 conf).
-PR_UNCONFIRMED = 7  # invoice is satisfied but tx is not mined yet.
 
 
 pr_tooltips = {
     PR_UNPAID: "Unpaid",
     PR_PAID: "Paid",
-    PR_UNKNOWN: "Unknown",
     PR_EXPIRED: "Expired",
-    PR_UNCONFIRMED: "Unconfirmed",
 }
 
 
@@ -88,6 +84,10 @@ class JSONEncoder(json.JSONEncoder):
 
 def to_dict(obj):
     return json.loads(json.dumps(obj, cls=JSONEncoder))
+
+
+def get_exception_traceback(exc):
+    return "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
 
 
 @dataclass
@@ -257,7 +257,7 @@ class Wallet:
         }
         # _, conf = self.get_onchain_request_status(req)
         conf = None
-        d["amount_sat"] = Web3.toWei(req.amount, "ether")
+        d["amount_wei"] = Web3.toWei(req.amount, "ether")
         d["address"] = req.address
         d["URI"] = await self.get_request_url(req)
         if conf is not None:
@@ -356,17 +356,31 @@ class ETHDaemon(BaseDaemon):
         self.latest_height = await self.web3.eth.block_number
         self.loop.create_task(self.process_pending())
 
+    # TODO: retry mechanism?
     async def process_block(self, start_height, end_height):
         for block_number in range(start_height, end_height + 1):
-            await self.trigger_event({"height": block_number}, None)
-            for tx in (await self.web3.eth.get_block(block_number, full_transactions=True))["transactions"]:
-                to = tx["to"]
-                amount = Decimal(Web3.fromWei(tx["value"], "ether"))
-                if to not in self.addresses:
-                    continue
-                key = self.addresses[to]
-                if amount in self.wallets[key].used_amounts:
-                    self.loop.create_task(self.process_payment(key, amount))
+            try:
+                await self.trigger_event({"event": "new_block", "height": block_number}, None)
+                for tx in (await self.web3.eth.get_block(block_number, full_transactions=True))["transactions"]:
+                    try:
+                        self.process_transaction(tx)
+                    except Exception:
+                        if self.VERBOSE:
+                            print(f"Error processing transaction {tx['hash'].hex()}:")
+                            print(traceback.format_exc())
+            except Exception:
+                if self.VERBOSE:
+                    print(f"Error processing block {block_number}:")
+                    print(traceback.format_exc())
+
+    def process_transaction(self, tx):
+        to = tx["to"]
+        amount = Decimal(Web3.fromWei(tx["value"], "ether"))
+        if to not in self.addresses:
+            return
+        key = self.addresses[to]
+        if amount in self.wallets[key].used_amounts:
+            self.loop.create_task(self.process_payment(key, amount))
 
     async def process_pending(self):
         while self.running:
@@ -375,7 +389,11 @@ class ETHDaemon(BaseDaemon):
                 tasks = []
                 for block_number in range(self.latest_height + 1, current_height + 1, CHUNK_SIZE):
                     tasks.append(self.process_block(block_number, min(block_number + CHUNK_SIZE - 1, current_height)))
-                await asyncio.gather(*tasks, return_exceptions=True)
+                results = await asyncio.gather(*tasks, return_exceptions=True)
+                if self.VERBOSE:
+                    for task in results:
+                        if isinstance(task, Exception):
+                            print(get_exception_traceback(task))
                 self.latest_height = current_height
             except Exception:
                 if self.VERBOSE:
@@ -414,6 +432,7 @@ class ETHDaemon(BaseDaemon):
         wallet = Wallet(xpub, self.web3)
         wallet.start()
         self.wallets[xpub] = wallet
+        self.wallets_updates[xpub] = []
         self.addresses[wallet.address] = xpub
         return wallet
 
@@ -503,6 +522,7 @@ class ETHDaemon(BaseDaemon):
     @rpc(requires_wallet=True)
     def close_wallet(self, wallet):
         self.wallets[wallet].stop()
+        del self.wallets_updates[wallet]
         del self.addresses[self.wallets[wallet].address]
         del self.wallets[wallet]
         return True
@@ -541,7 +561,7 @@ class ETHDaemon(BaseDaemon):
 
     @rpc(requires_wallet=True)
     async def getbalance(self, wallet):
-        return await self.wallets[wallet].balance()
+        return {"confirmed": await self.wallets[wallet].balance()}
 
     @rpc
     async def getfeerate(self, wallet=None):
@@ -636,7 +656,17 @@ class ETHDaemon(BaseDaemon):
 
     @rpc(requires_wallet=True)
     async def list_requests(self, pending=False, expired=False, paid=False, wallet=None):
+        if pending:
+            f = PR_UNPAID
+        elif expired:
+            f = PR_EXPIRED
+        elif paid:
+            f = PR_PAID
+        else:
+            f = None
         out = self.wallets[wallet].get_sorted_requests()
+        if f is not None:
+            out = [req for req in out if f.status == f]
         return [await self.wallets[wallet].export_request(x) for x in out]
 
     @rpc
@@ -669,7 +699,7 @@ class ETHDaemon(BaseDaemon):
         return {"maxFeePerGas": max_fee, "maxPriorityFeePerGas": max_priority_fee}
 
     @rpc(requires_wallet=True)
-    async def payto(self, destination, amount, fee=None, feerate=None, gas=None, unsigned=False, wallet=None):
+    async def payto(self, destination, amount, fee=None, feerate=None, gas=None, unsigned=False, wallet=None, *args, **kwargs):
         address = self.wallets[wallet].address
         nonce = await self.web3.eth.get_transaction_count(address)
         tx_dict = {
@@ -679,7 +709,7 @@ class ETHDaemon(BaseDaemon):
             "nonce": nonce,
             "value": Web3.toWei(amount, "ether"),
             "chainId": await self.web3.eth.chain_id,
-            "gas": int(gas) or 21000,
+            "gas": int(gas) if gas else 21000,
             **(await self.get_fee_data()),
         }
         if fee:
