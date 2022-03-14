@@ -1,6 +1,8 @@
+import asyncio
 import json
 import logging
 import sys
+import time
 import traceback
 from base64 import b64decode
 from contextlib import contextmanager
@@ -127,3 +129,15 @@ class JsonResponse:
 
     def send_ok_response(self):
         return web.json_response({"jsonrpc": "2.0", "result": self.result, "id": self.id})
+
+
+async def periodic_task(self, process_func, interval):
+    while self.running:
+        start = time.time()
+        try:
+            await process_func()
+        except Exception:
+            if self.VERBOSE:
+                print(traceback.format_exc())
+        elapsed = time.time() - start
+        await asyncio.sleep(max(interval - elapsed, 0))

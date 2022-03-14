@@ -18,9 +18,9 @@ import (
 var Version = "dev"
 var envFile = "../conf/.env"
 var COINS = map[string]string{
-	"btc": "5000",
-	"ltc": "5001",
-	// 5002 reserved for new coins
+	"btc":  "5000",
+	"ltc":  "5001",
+	"eth":  "5002",
 	"bsty": "5003",
 	"bch":  "5004",
 	"xrg":  "5005",
@@ -196,8 +196,7 @@ func main() {
 		}
 		return nil
 	}
-	err := godotenv.Load(envFile)
-	checkErr(err)
-	err = app.Run(os.Args)
+	godotenv.Load(envFile)
+	err := app.Run(os.Args)
 	checkErr(err)
 }

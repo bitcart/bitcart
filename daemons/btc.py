@@ -62,9 +62,6 @@ class BTCDaemon(BaseDaemon):
 
     def load_env(self):
         super().load_env()
-        self.DATA_PATH = self.config("DATA_PATH", default=None)
-        self.LOGIN = self.config("LOGIN", default="electrum")
-        self.PASSWORD = self.config("PASSWORD", default="electrumz")
         self.NET = self.config("NETWORK", default="mainnet")
         self.LIGHTNING = self.config("LIGHTNING", cast=bool, default=False) if self.LIGHTNING_SUPPORTED else False
         self.LIGHTNING_LISTEN = self.config("LIGHTNING_LISTEN", cast=str, default="") if self.LIGHTNING_SUPPORTED else ""
@@ -76,7 +73,6 @@ class BTCDaemon(BaseDaemon):
             "FIAT_EXCHANGE",
             default=self.electrum.exchange_rate.DEFAULT_EXCHANGE,
         )
-        self.VERBOSE = self.config("DEBUG", cast=bool, default=False)
         self.SERVER = self.config("SERVER", default="")
         self.ONESERVER = self.config("ONESERVER", cast=bool, default=False)
         self.PROXY_URL = self.config("PROXY_URL", default=None)
