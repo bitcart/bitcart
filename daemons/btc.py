@@ -62,7 +62,6 @@ class BTCDaemon(BaseDaemon):
 
     def load_env(self):
         super().load_env()
-        self.NET = self.config("NETWORK", default="mainnet")
         self.LIGHTNING = self.config("LIGHTNING", cast=bool, default=False) if self.LIGHTNING_SUPPORTED else False
         self.LIGHTNING_LISTEN = self.config("LIGHTNING_LISTEN", cast=str, default="") if self.LIGHTNING_SUPPORTED else ""
         self.LIGHTNING_GOSSIP = (

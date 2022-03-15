@@ -1,12 +1,16 @@
 import asyncio
+import copy
 import functools
 import inspect
 import json
+import os
 import random
 import secrets
+import stat
+import threading
 import time
 import traceback
-from dataclasses import InitVar, dataclass, field
+from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import ClassVar
 
@@ -58,6 +62,10 @@ STR_TO_BOOL_MAPPING = {
     "0": False,
 }  # common str -> bool conversions
 
+# storage
+
+WALLET_VERSION = 1
+
 
 def str_to_bool(s):
     if isinstance(s, bool):
@@ -79,6 +87,10 @@ class JSONEncoder(json.JSONEncoder):
             return {k: v for k, v in obj.items()}
         if isinstance(obj, HexBytes):
             return str(obj.hex())
+        if isinstance(obj, Decimal):
+            return str(obj)
+        if hasattr(obj, "to_json") and callable(obj.to_json):
+            return obj.to_json()
         return super().default(obj)
 
 
@@ -88,6 +100,289 @@ def to_dict(obj):
 
 def get_exception_traceback(exc):
     return "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
+
+
+def standardize_path(path):
+    return os.path.normcase(os.path.realpath(os.path.abspath(os.path.expanduser(path))))
+
+
+def user_dir():
+    if os.name == "posix":
+        return os.path.join(os.environ["HOME"], ".bitcart-eth")
+    elif "APPDATA" in os.environ:
+        return os.path.join(os.environ["APPDATA"], "Bitcart-ETH")
+    elif "LOCALAPPDATA" in os.environ:
+        return os.path.join(os.environ["LOCALAPPDATA"], "Bitcart-ETH")
+
+
+class WalletFileException(Exception):
+    pass
+
+
+class Storage:
+    def __init__(self, path):
+        self.path = standardize_path(path)
+        self._file_exists = bool(self.path and os.path.exists(self.path))
+        if self.file_exists():
+            with open(self.path, encoding="utf-8") as f:
+                self.raw = f.read()
+        else:
+            self.raw = ""
+
+    def read(self):
+        return self.raw
+
+    def write(self, data: str) -> None:
+        # write in temporary first to not corrupt the main file
+        s = data
+        temp_path = f"{self.path}.tmp.{os.getpid()}"
+        with open(temp_path, "w", encoding="utf-8") as f:
+            f.write(s)
+            f.flush()
+            os.fsync(f.fileno())
+        try:
+            mode = os.stat(self.path).st_mode
+        except FileNotFoundError:
+            mode = stat.S_IREAD | stat.S_IWRITE
+        if not self.file_exists():
+            assert not os.path.exists(self.path)
+        os.replace(temp_path, self.path)
+        os.chmod(self.path, mode)
+        self._file_exists = True
+
+    def file_exists(self) -> bool:
+        return self._file_exists
+
+
+def modifier(func):
+    def wrapper(self, *args, **kwargs):
+        with self.lock:
+            self._modified = True
+            return func(self, *args, **kwargs)
+
+    return wrapper
+
+
+def locked(func):
+    def wrapper(self, *args, **kwargs):
+        with self.lock:
+            return func(self, *args, **kwargs)
+
+    return wrapper
+
+
+class JsonDB:
+    def __init__(self, data):
+        self.lock = threading.RLock()
+        self.data = data
+        self._modified = False
+
+    def set_modified(self, b):
+        with self.lock:
+            self._modified = b
+
+    def modified(self):
+        return self._modified
+
+    @locked
+    def get(self, key, default=None):
+        v = self.data.get(key)
+        if v is None:
+            v = default
+        return v
+
+    @modifier
+    def put(self, key, value):
+        try:
+            json.dumps(key, cls=JSONEncoder)
+            json.dumps(value, cls=JSONEncoder)
+        except Exception:
+            return False
+        if value is not None:
+            if self.data.get(key) != value:
+                self.data[key] = copy.deepcopy(value)
+                return True
+        elif key in self.data:
+            self.data.pop(key)
+            return True
+        return False
+
+    @locked
+    def dump(self) -> str:
+        return json.dumps(self.data, cls=JSONEncoder)
+
+    def _should_convert_to_stored_dict(self, key) -> bool:
+        return True
+
+
+class StoredObject:
+
+    db = None
+
+    def __setattr__(self, key, value):
+        if self.db:
+            self.db.set_modified(True)
+        super().__setattr__(key, value)
+
+    def set_db(self, db):
+        self.db = db
+
+    def to_json(self):
+        d = dict(vars(self))
+        d.pop("db", None)
+        d = {k: v for k, v in d.items() if not k.startswith("_")}
+        return d
+
+
+_RaiseKeyError = object()
+
+
+class StoredDict(dict):
+    def __init__(self, data, db, path):
+        self.db = db
+        self.lock = self.db.lock if self.db else threading.RLock()
+        self.path = path
+        # recursively convert dicts to StoredDict
+        for k, v in list(data.items()):
+            self.__setitem__(k, v)
+
+    @locked
+    def __setitem__(self, key, v):
+        is_new = key not in self
+        # early return to prevent unnecessary disk writes
+        if not is_new and self[key] == v:
+            return
+        # recursively set db and path
+        if isinstance(v, StoredDict):
+            v.db = self.db
+            v.path = self.path + [key]
+            for k, vv in v.items():
+                v[k] = vv
+        # recursively convert dict to StoredDict.
+        # _convert_dict is called breadth-first
+        elif isinstance(v, dict):
+            if self.db:
+                v = self.db._convert_dict(self.path, key, v)
+            if not self.db or self.db._should_convert_to_stored_dict(key):
+                v = StoredDict(v, self.db, self.path + [key])
+        # set parent of StoredObject
+        if isinstance(v, StoredObject):
+            v.set_db(self.db)
+        # set item
+        super().__setitem__(key, v)
+        if self.db:
+            self.db.set_modified(True)
+
+    @locked
+    def __delitem__(self, key):
+        super().__delitem__(key)
+        if self.db:
+            self.db.set_modified(True)
+
+    @locked
+    def pop(self, key, v=_RaiseKeyError):
+        if v is _RaiseKeyError:
+            r = super().pop(key)
+        else:
+            r = super().pop(key, v)
+        if self.db:
+            self.db.set_modified(True)
+        return r
+
+    @locked
+    def clear(self):
+        super().clear()
+        if self.db:
+            self.db.set_modified(True)
+
+
+# Thanks to https://github.com/spesmilo/electrum/blob/master/electrum/wallet_db.py
+class WalletDB(JsonDB):
+    def __init__(self, raw):
+        super().__init__({})
+        self.upgraded = False
+        if raw:
+            self.load_data(raw)
+        else:
+            self.put("version", WALLET_VERSION)
+        self._after_upgrade_tasks()
+
+    def load_data(self, s):
+        try:
+            self.data = json.loads(s)
+        except Exception as e:
+            raise WalletFileException("Cannot read wallet file. (parsing failed)") from e
+        if not isinstance(self.data, dict):
+            raise WalletFileException("Malformed wallet file (not dict)")
+        if self.requires_upgrade():
+            self.upgrade()
+
+    def requires_upgrade(self):
+        return self.get_version() < WALLET_VERSION
+
+    def upgrade(self):
+        # future upgrade code here
+        self.put("version", WALLET_VERSION)
+        self._after_upgrade_tasks()
+
+    def _after_upgrade_tasks(self):
+        self.upgraded = True
+        self.data = StoredDict(self.data, self, [])
+
+    def _is_upgrade_method_needed(self, min_version, max_version):
+        assert min_version <= max_version
+        cur_version = self.get_version()
+        if cur_version > max_version:
+            return False
+        elif cur_version < min_version:
+            raise WalletFileException(
+                f"storage upgrade: unexpected version {cur_version} (should be {min_version}-{max_version})"
+            )
+        else:
+            return True
+
+    @locked
+    def get_version(self):
+        version = self.get("version")
+        if not version:
+            version = WALLET_VERSION
+        if version > WALLET_VERSION:
+            raise WalletFileException(
+                "This version of BitcartCC ETH daemon is too old to open this wallet.\n"
+                f"(highest supported storage version: {WALLET_VERSION}, version of this file: {version})"
+            )
+        return version
+
+    @locked
+    def get_dict(self, name) -> dict:
+        # Warning: interacts un-intuitively with 'put': certain parts
+        # of 'data' will have pointers saved as separate variables.
+        if name not in self.data:
+            self.data[name] = {}
+        return self.data[name]
+
+    def _convert_dict(self, path, key, v):
+        if key == "payment_requests":
+            v = {k: Invoice(**x) for k, x in v.items()}
+        return v
+
+    def _should_convert_to_stored_dict(self, key) -> bool:
+        if key == "keystore":
+            return False
+        return True
+
+    def write(self, storage):
+        with self.lock:
+            self._write(storage)
+
+    def _write(self, storage):
+        if not self.modified():
+            return
+        storage.write(self.dump())
+        self.set_modified(False)
+
+    def is_ready_to_be_used_by_wallet(self):
+        return not self.requires_upgrade() and self.upgraded
 
 
 @dataclass
@@ -138,9 +433,16 @@ class KeyStore:
     def has_seed(self):
         return bool(self.seed)
 
+    @classmethod
+    def load(cls, db):
+        return cls(key=db.get("key", ""))
+
+    def dump(self):
+        return {"key": self.key}
+
 
 @dataclass
-class Invoice:
+class Invoice(StoredObject):
     message: str
     original_amount: Decimal
     amount: Decimal
@@ -164,8 +466,9 @@ class Invoice:
 
 @dataclass
 class Wallet:
-    key: InitVar[str]
     web3: Web3
+    db: WalletDB
+    storage: Storage
     BLOCK_TIME: ClassVar[int]
     ADDRESS_CHECK_TIME: ClassVar[int]
     keystore: KeyStore = field(init=False)
@@ -173,16 +476,27 @@ class Wallet:
     used_amounts: dict = field(default_factory=dict)
     receive_requests: dict = field(default_factory=dict)
 
-    def __post_init__(self, key):
-        self.keystore = KeyStore(key=key)
+    def __post_init__(self):
+        self.keystore = KeyStore.load(self.db.get("keystore"))
+        self.receive_requests = self.db.get_dict("payment_requests")
+        self.used_amounts = self.db.get_dict("used_amounts")
         self.running = False
         self.loop = asyncio.get_event_loop()
+
+    def save_db(self):
+        if self.storage:
+            self.db.write(self.storage)
 
     def start(self):
         self.running = True
         for req in self.get_sorted_requests():
             if req.status == PR_UNPAID and req.exp > 0 and req.time + req.exp < time.time():
                 self.set_request_status(req.id, PR_EXPIRED)
+
+    def clear_requests(self):
+        self.receive_requests.clear()
+        self.used_amounts.clear()
+        self.save_db()
 
     def is_synchronized(self):  # because only one address is used due to eth specifics
         return True
@@ -227,18 +541,17 @@ class Wallet:
         add_low = 1
         add_high = 2
         cur_amount = amount
-        while cur_amount in self.used_amounts:
+        while str(cur_amount) in self.used_amounts:
             cur_amount = amount + random.randint(add_low, add_high) * AMOUNTGEN_PRECISION
             if add_high < AMOUNTGEN_LIMIT:
                 add_low = add_high + 1
                 add_high *= 2
         return cur_amount
 
-    def add_payment_request(self, req, write_to_disk: bool = True):
+    def add_payment_request(self, req):
         self.receive_requests[req.id] = req
-        self.used_amounts[req.amount] = req
-        # if write_to_disk:
-        #    self.save_db()
+        self.used_amounts[str(req.amount)] = req.id
+        self.save_db()
         return req
 
     async def get_request_url(self, req):
@@ -271,16 +584,17 @@ class Wallet:
     def get_request(self, key):
         try:
             amount = Decimal(key)
-            return self.used_amounts.get(amount)
-        except Exception:
+            key = self.used_amounts.get(str(amount))
+        finally:
             return self.receive_requests.get(key)
 
     def remove_request(self, key):
         req = self.get_request(key)
         if not req:
             return False
-        self.used_amounts.pop(req.amount, None)
+        self.used_amounts.pop(str(req.amount), None)
         self.receive_requests.pop(req.id, None)
+        self.save_db()
         return True
 
     def get_sorted_requests(self):
@@ -298,7 +612,7 @@ class Wallet:
             setattr(req, kwarg, kwargs[kwarg])
         self.add_payment_request(req)
         if status != PR_UNPAID:
-            self.used_amounts.pop(req.amount, None)
+            self.used_amounts.pop(str(req.amount), None)
         return req
 
     async def expired_task(self, req):
@@ -432,13 +746,31 @@ class ETHDaemon(BaseDaemon):
     def get_exception_message(self, e):
         return get_exception_message(e)
 
+    def get_datadir(self):
+        base_dir = self.DATA_PATH or user_dir()
+        datadir = os.path.join(base_dir, self.NET)
+        os.makedirs(datadir, exist_ok=True)
+        return datadir
+
+    def get_wallet_path(self):
+        path = os.path.join(self.get_datadir(), "wallets")
+        os.makedirs(path, exist_ok=True)
+        return path
+
     async def load_wallet(self, xpub):
         if xpub in self.wallets:
             return self.wallets[xpub]
         if not xpub:
             return None
 
-        wallet = Wallet(xpub, self.web3)
+        # get wallet on disk
+        wallet_dir = self.get_wallet_path()
+        wallet_path = os.path.join(wallet_dir, xpub)
+        if not os.path.exists(wallet_path):
+            self.restore(xpub)
+        storage = Storage(wallet_path)
+        db = WalletDB(storage.read())
+        wallet = Wallet(self.web3, db, storage)
         wallet.start()
         self.wallets[xpub] = wallet
         self.wallets_updates[xpub] = []
@@ -524,8 +856,7 @@ class ETHDaemon(BaseDaemon):
 
     @rpc(requires_wallet=True)
     def clear_requests(self, wallet):
-        self.wallets[wallet].receive_requests = {}
-        self.wallets[wallet].used_amounts = {}
+        self.wallets[wallet].clear_requests()
         return True
 
     @rpc(requires_wallet=True)
@@ -537,12 +868,21 @@ class ETHDaemon(BaseDaemon):
         return True
 
     @rpc
-    async def create(self, wallet=None):
+    async def create(self, wallet=None, wallet_path=None):
         seed = self.make_seed()
-        wallet = Wallet(seed, self.web3)
+        if not wallet_path:
+            wallet_path = os.path.join(self.get_wallet_path(), seed)
+        storage = Storage(wallet_path)
+        if storage.file_exists():
+            raise Exception("Remove the existing wallet first!")
+        db = WalletDB("")
+        keystore = KeyStore(seed)
+        db.put("keystore", keystore.dump())
+        wallet_obj = Wallet(self.web3, db, storage)
+        wallet_obj.save_db()
         return {
             "seed": seed,
-            "path": wallet.path,  # TODO: add
+            "path": wallet_obj.storage.path,
             "msg": WRITE_DOWN_SEED_MESSAGE,
         }
 
@@ -585,7 +925,6 @@ class ETHDaemon(BaseDaemon):
             "blockchain_height": numblocks,
             "connected": await self.web3.isConnected(),
             "gas_price": await self.web3.eth.gas_price,
-            "path": "",  # TODO: add
             "server": self.HTTP_HOST,
             "server_height": numblocks,
             "spv_nodes": len(await self.web3.geth.admin.peers()),
@@ -681,8 +1020,9 @@ class ETHDaemon(BaseDaemon):
     @rpc
     def list_wallets(self, wallet=None):
         return [
-            {"path": "", "synchronized": wallet_obj.is_synchronized()} for wallet_obj in self.wallets.values()
-        ]  # TODO: add path
+            {"path": wallet_obj.storage.path, "synchronized": wallet_obj.is_synchronized()}
+            for wallet_obj in self.wallets.values()
+        ]
 
     @rpc(requires_wallet=True)
     async def listaddresses(self, unused=False, funded=False, balance=False, wallet=None):
@@ -736,13 +1076,22 @@ class ETHDaemon(BaseDaemon):
         raise NotImplementedError(NO_HISTORY_MESSAGE)
 
     @rpc
-    def restore(self, text, wallet=None):
+    def restore(self, text, wallet=None, wallet_path=None):
+        if not wallet_path:
+            wallet_path = os.path.join(self.get_wallet_path(), text)
         try:
-            Wallet(text, self.web3)
+            keystore = KeyStore(text)
         except Exception as e:
             raise Exception("Invalid key provided") from e
+        storage = Storage(wallet_path)
+        if storage.file_exists():
+            raise Exception("Remove the existing wallet first!")
+        db = WalletDB("")
+        db.put("keystore", keystore.dump())
+        wallet_obj = Wallet(self.web3, db, storage)
+        wallet_obj.save_db()
         return {
-            "path": "",  # TODO: add
+            "path": wallet_obj.storage.path,
             "msg": "",
         }
 

@@ -145,6 +145,7 @@ class BaseDaemon:
         self.PASSWORD = self.config("PASSWORD", default="electrumz")
         self.DATA_PATH = self.config("DATA_PATH", default=None)
         self.VERBOSE = self.config("DEBUG", cast=bool, default=False)
+        self.NET = self.config("NETWORK", default="mainnet")
 
     async def on_startup(self, app):
         """Create essential objects for daemon operation here
