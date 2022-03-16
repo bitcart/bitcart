@@ -146,6 +146,7 @@ class BaseDaemon:
         self.DATA_PATH = self.env("DATA_PATH", default=None)
         self.VERBOSE = self.env("DEBUG", cast=bool, default=False)
         self.NET = self.env("NETWORK", default="mainnet")
+        self.DEFAULT_CURRENCY = self.env("FIAT_CURRENCY", default="USD")
 
     async def on_startup(self, app):
         """Create essential objects for daemon operation here

@@ -65,7 +65,6 @@ class BTCDaemon(BaseDaemon):
         self.LIGHTNING = self.env("LIGHTNING", cast=bool, default=False) if self.LIGHTNING_SUPPORTED else False
         self.LIGHTNING_LISTEN = self.env("LIGHTNING_LISTEN", cast=str, default="") if self.LIGHTNING_SUPPORTED else ""
         self.LIGHTNING_GOSSIP = self.env("LIGHTNING_GOSSIP", cast=bool, default=False) if self.LIGHTNING_SUPPORTED else False
-        self.DEFAULT_CURRENCY = self.env("FIAT_CURRENCY", default="USD")
         self.EXCHANGE = self.env(
             "FIAT_EXCHANGE",
             default=self.electrum.exchange_rate.DEFAULT_EXCHANGE,

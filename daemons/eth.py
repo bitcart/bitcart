@@ -419,16 +419,18 @@ class ETHDaemon(BaseDaemon):
 
     VERSION = "4.1.5"  # version of electrum API with which we are "compatible"
     BLOCK_TIME = 5
+    FX_FETCH_TIME = 150
 
     latest_height = StoredProperty("latest_height", -1)
 
     def __init__(self):
         super().__init__()
+        self.exchange_rates = {}
         self.latest_blocks = deque(maxlen=MAX_SYNC_BLOCKS)
         self.config_path = os.path.join(self.get_datadir(), "config")
         self.config = ConfigDB(self.config_path)
         self.web3 = Web3(
-            Web3.AsyncHTTPProvider(self.HTTP_HOST),
+            Web3.AsyncHTTPProvider(self.SERVER),
             modules={
                 "eth": (AsyncEth,),
                 "geth": (Geth, {"admin": (AsyncGethAdmin,)}),
@@ -446,7 +448,7 @@ class ETHDaemon(BaseDaemon):
 
     def load_env(self):
         super().load_env()
-        self.HTTP_HOST = self.env("HTTP_HOST", default=get_default_http_endpoint())
+        self.SERVER = self.env("SERVER", default=get_default_http_endpoint())
 
     async def on_startup(self, app):
         await super().on_startup(app)
@@ -454,6 +456,25 @@ class ETHDaemon(BaseDaemon):
         if self.latest_height == -1:
             self.latest_height = await self.web3.eth.block_number
         self.loop.create_task(self.process_pending())
+        self.loop.create_task(self.fetch_exchange_rates())
+
+    async def get_rates(self):
+        async with self.client_session.get(
+            "https://api.coingecko.com/api/v3/coins/ethereum?localization=false&sparkline=false"
+        ) as response:
+            got = await response.json()
+        prices = got["market_data"]["current_price"]
+        return {price[0].upper(): Decimal(price[1]) for price in prices.items()}
+
+    async def fetch_exchange_rates(self):
+        while self.running:
+            try:
+                self.exchange_rates = await self.get_rates()
+            except Exception:
+                if self.VERBOSE:
+                    print("Error fetching exchange rates:")
+                    print(traceback.format_exc())
+            await asyncio.sleep(self.FX_FETCH_TIME)
 
     # TODO: retry mechanism?
     async def process_block(self, start_height, end_height):
@@ -663,6 +684,12 @@ class ETHDaemon(BaseDaemon):
         raise NotImplementedError(ONE_ADDRESS_MESSAGE)
 
     @rpc
+    def exchange_rate(self, currency=None, wallet=None):
+        if not currency:
+            currency = self.DEFAULT_CURRENCY
+        return str(self.exchange_rates.get(currency, Decimal("NaN")))
+
+    @rpc
     async def get_default_fee(self, tx, wallet=None):
         try:
             tx_dict = json.loads(tx)
@@ -720,7 +747,7 @@ class ETHDaemon(BaseDaemon):
             "blockchain_height": numblocks,
             "connected": await self.web3.isConnected(),
             "gas_price": await self.web3.eth.gas_price,
-            "server": self.HTTP_HOST,
+            "server": self.SERVER,
             "server_height": numblocks,
             "spv_nodes": len(await self.web3.geth.admin.peers()),
             "synchronized": not await self.web3.eth.syncing,
@@ -764,7 +791,7 @@ class ETHDaemon(BaseDaemon):
 
     @rpc
     def getservers(self, wallet=None):
-        return [self.HTTP_HOST]
+        return [self.SERVER]
 
     @rpc
     async def gettransaction(self, tx, wallet=None):
@@ -792,6 +819,10 @@ class ETHDaemon(BaseDaemon):
     @rpc(requires_wallet=True)
     def ismine(self, address, wallet):
         return address == self.wallets[wallet].address
+
+    @rpc
+    def list_currencies(self, wallet=None):
+        return list(self.exchange_rates.keys())
 
     @rpc
     async def list_peers(self, wallet=None):
