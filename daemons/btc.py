@@ -62,19 +62,17 @@ class BTCDaemon(BaseDaemon):
 
     def load_env(self):
         super().load_env()
-        self.LIGHTNING = self.config("LIGHTNING", cast=bool, default=False) if self.LIGHTNING_SUPPORTED else False
-        self.LIGHTNING_LISTEN = self.config("LIGHTNING_LISTEN", cast=str, default="") if self.LIGHTNING_SUPPORTED else ""
-        self.LIGHTNING_GOSSIP = (
-            self.config("LIGHTNING_GOSSIP", cast=bool, default=False) if self.LIGHTNING_SUPPORTED else False
-        )
-        self.DEFAULT_CURRENCY = self.config("FIAT_CURRENCY", default="USD")
-        self.EXCHANGE = self.config(
+        self.LIGHTNING = self.env("LIGHTNING", cast=bool, default=False) if self.LIGHTNING_SUPPORTED else False
+        self.LIGHTNING_LISTEN = self.env("LIGHTNING_LISTEN", cast=str, default="") if self.LIGHTNING_SUPPORTED else ""
+        self.LIGHTNING_GOSSIP = self.env("LIGHTNING_GOSSIP", cast=bool, default=False) if self.LIGHTNING_SUPPORTED else False
+        self.DEFAULT_CURRENCY = self.env("FIAT_CURRENCY", default="USD")
+        self.EXCHANGE = self.env(
             "FIAT_EXCHANGE",
             default=self.electrum.exchange_rate.DEFAULT_EXCHANGE,
         )
-        self.SERVER = self.config("SERVER", default="")
-        self.ONESERVER = self.config("ONESERVER", cast=bool, default=False)
-        self.PROXY_URL = self.config("PROXY_URL", default=None)
+        self.SERVER = self.env("SERVER", default="")
+        self.ONESERVER = self.env("ONESERVER", cast=bool, default=False)
+        self.PROXY_URL = self.env("PROXY_URL", default=None)
         self.NETWORK_MAPPING = self.NETWORK_MAPPING or {
             "mainnet": self.electrum.constants.set_mainnet,
             "testnet": self.electrum.constants.set_testnet,

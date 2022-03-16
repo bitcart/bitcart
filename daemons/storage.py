@@ -7,7 +7,7 @@ import threading
 from decimal import Decimal
 
 
-class WalletFileException(Exception):
+class DBFileException(Exception):
     pass
 
 
@@ -139,6 +139,20 @@ class StoredObject:
         return d
 
 
+class StoredProperty:
+    def __init__(self, name, default):
+        self.name = name
+        self.default = default
+
+    def __set__(self, obj, value):
+        obj.config.set_config(self.name, value)
+
+    def __get__(self, obj, objtype=None):
+        if not hasattr(obj, "config"):
+            return None
+        return obj.config.get(self.name, self.default)
+
+
 _RaiseKeyError = object()
 
 
@@ -202,7 +216,8 @@ class StoredDict(dict):
 
 
 class WalletDB(JsonDB):
-    WALLET_VERSION: int
+    STORAGE_VERSION: int
+    NAME: str = "wallet"
 
     def __init__(self, raw):
         super().__init__({})
@@ -210,25 +225,25 @@ class WalletDB(JsonDB):
         if raw:
             self.load_data(raw)
         else:
-            self.put("version", self.WALLET_VERSION)
+            self.put("version", self.STORAGE_VERSION)
         self._after_upgrade_tasks()
 
     def load_data(self, s):
         try:
             self.data = json.loads(s)
         except Exception as e:
-            raise WalletFileException("Cannot read wallet file. (parsing failed)") from e
+            raise DBFileException(f"Cannot read {self.NAME} file. (parsing failed)") from e
         if not isinstance(self.data, dict):
-            raise WalletFileException("Malformed wallet file (not dict)")
+            raise DBFileException(f"Malformed {self.NAME} file (not dict)")
         if self.requires_upgrade():
             self.upgrade()
 
     def requires_upgrade(self):
-        return self.get_version() < self.WALLET_VERSION
+        return self.get_version() < self.STORAGE_VERSION
 
     def upgrade(self):
         # future upgrade code here
-        self.put("version", self.WALLET_VERSION)
+        self.put("version", self.STORAGE_VERSION)
         self._after_upgrade_tasks()
 
     def _after_upgrade_tasks(self):
@@ -241,9 +256,7 @@ class WalletDB(JsonDB):
         if cur_version > max_version:
             return False
         elif cur_version < min_version:
-            raise WalletFileException(
-                f"storage upgrade: unexpected version {cur_version} (should be {min_version}-{max_version})"
-            )
+            raise DBFileException(f"storage upgrade: unexpected version {cur_version} (should be {min_version}-{max_version})")
         else:
             return True
 
@@ -251,11 +264,11 @@ class WalletDB(JsonDB):
     def get_version(self):
         version = self.get("version")
         if not version:
-            version = self.WALLET_VERSION
-        if version > self.WALLET_VERSION:
-            raise WalletFileException(
-                "This version of BitcartCC ETH daemon is too old to open this wallet.\n"
-                f"(highest supported storage version: {self.WALLET_VERSION}, version of this file: {version})"
+            version = self.STORAGE_VERSION
+        if version > self.STORAGE_VERSION:
+            raise DBFileException(
+                f"This version of BitcartCC ETH daemon is too old to open this {self.NAME}.\n"
+                f"(highest supported storage version: {self.STORAGE_VERSION}, version of this file: {version})"
             )
         return version
 
@@ -271,8 +284,6 @@ class WalletDB(JsonDB):
         return v
 
     def _should_convert_to_stored_dict(self, key) -> bool:
-        if key == "keystore":
-            return False
         return True
 
     def write(self, storage):
@@ -285,5 +296,19 @@ class WalletDB(JsonDB):
         storage.write(self.dump())
         self.set_modified(False)
 
-    def is_ready_to_be_used_by_wallet(self):
+    def is_ready_to_be_used(self):
         return not self.requires_upgrade() and self.upgraded
+
+
+class ConfigDB(WalletDB):
+    NAME = "config"
+
+    def __init__(self, path):
+        self.storage = Storage(path)
+        super().__init__(self.storage.read())
+        self.data = StoredDict(self.data, self, [])
+
+    def set_config(self, key, value):
+        super().put(key, value)
+        self.set_modified(True)
+        self.write(self.storage)

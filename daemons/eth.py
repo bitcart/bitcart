@@ -17,8 +17,9 @@ from eth_account.messages import encode_defunct
 from eth_keys.datatypes import PrivateKey, PublicKey
 from hexbytes import HexBytes
 from mnemonic import Mnemonic
+from storage import ConfigDB as StorageConfigDB
 from storage import JSONEncoder as StorageJSONEncoder
-from storage import Storage, StoredObject
+from storage import Storage, StoredObject, StoredProperty
 from storage import WalletDB as StorageWalletDB
 from utils import JsonResponse, get_exception_message, hide_logging_errors, rpc
 from web3 import Web3
@@ -38,7 +39,8 @@ NO_MASTER_KEYS_MESSAGE = "As we use only one address per wallet, address keys ar
 CHUNK_SIZE = 30
 AMOUNTGEN_PRECISION = Decimal(10) ** (-18)
 AMOUNTGEN_LIMIT = 10**9
-# TODO: limit sync post-reboot to (60/12)*60=5*60=300 blocks (max expiry time)
+
+MAX_SYNC_BLOCKS = 300  # (60/12)=5*60 (a block every 12 seconds, max normal expiry time 60 minutes)
 
 # statuses of payment requests
 PR_UNPAID = 0  # invoice amt not reached by txs in mempool+chain.
@@ -66,12 +68,21 @@ STR_TO_BOOL_MAPPING = {
 
 
 class WalletDB(StorageWalletDB):
-    WALLET_VERSION = 1
+    STORAGE_VERSION = 1
 
     def _convert_dict(self, path, key, v):
         if key == "payment_requests":
             v = {k: Invoice(**x) for k, x in v.items()}
         return v
+
+    def _should_convert_to_stored_dict(self, key) -> bool:
+        if key == "keystore":
+            return False
+        return True
+
+
+class ConfigDB(StorageConfigDB):
+    STORAGE_VERSION = 1
 
 
 def user_dir():
@@ -375,11 +386,14 @@ class ETHDaemon(BaseDaemon):
     BLOCK_TIME = 5
     ADDRESS_CHECK_TIME = 60
 
+    latest_height = StoredProperty("latest_height", -1)
+
     def __init__(self):
         super().__init__()
+        self.config_path = os.path.join(self.get_datadir(), "config")
+        self.config = ConfigDB(self.config_path)
         Wallet.BLOCK_TIME = self.BLOCK_TIME
         Wallet.ADDRESS_CHECK_TIME = self.ADDRESS_CHECK_TIME
-        self.latest_height = -1  # to avoid duplicate block notifications
         self.web3 = Web3(
             Web3.AsyncHTTPProvider(self.HTTP_HOST),
             modules={
@@ -398,12 +412,13 @@ class ETHDaemon(BaseDaemon):
 
     def load_env(self):
         super().load_env()
-        self.HTTP_HOST = self.config("HTTP_HOST", default=get_default_http_endpoint())
+        self.HTTP_HOST = self.env("HTTP_HOST", default=get_default_http_endpoint())
 
     async def on_startup(self, app):
         await super().on_startup(app)
         self.loop = asyncio.get_event_loop()
-        self.latest_height = await self.web3.eth.block_number
+        if self.latest_height == -1:
+            self.latest_height = await self.web3.eth.block_number
         self.loop.create_task(self.process_pending())
 
     # TODO: retry mechanism?
@@ -439,7 +454,9 @@ class ETHDaemon(BaseDaemon):
             try:
                 current_height = await self.web3.eth.block_number
                 tasks = []
-                for block_number in range(self.latest_height + 1, current_height + 1, CHUNK_SIZE):
+                for block_number in range(
+                    max(current_height - MAX_SYNC_BLOCKS + 1, self.latest_height + 1), current_height + 1, CHUNK_SIZE
+                ):
                     tasks.append(self.process_block(block_number, min(block_number + CHUNK_SIZE - 1, current_height)))
                 results = await asyncio.gather(*tasks, return_exceptions=True)
                 if self.VERBOSE:
