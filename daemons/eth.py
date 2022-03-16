@@ -687,6 +687,12 @@ class ETHDaemon(BaseDaemon):
         return {"confirmed": await self.wallets[wallet].balance()}
 
     @rpc
+    def getconfig(self, key, wallet=None):
+        if key == "lightning":  # tell SDK we don't support lightning
+            return False
+        return self.config.get(key)
+
+    @rpc
     async def getfeerate(self, wallet=None):
         return await self.web3.eth.gas_price
 
@@ -873,6 +879,11 @@ class ETHDaemon(BaseDaemon):
     def rmrequest(self, key, wallet):
         return self.wallets[wallet].remove_request(key)
 
+    @rpc
+    def setconfig(self, key, value, wallet=None):
+        self.config.set_config(key, value)
+        return True
+
     @rpc(requires_wallet=True)
     def signmessage(self, address=None, message=None, wallet=None):
         # Mimic electrum API
@@ -904,6 +915,14 @@ class ETHDaemon(BaseDaemon):
     @rpc
     def validateaddress(self, address, wallet=None):
         return is_address(address)
+
+    @rpc
+    def validatekey(self, key, wallet=None):
+        try:
+            KeyStore(key)
+            return True
+        except Exception:
+            return False
 
     @rpc
     def verifymessage(self, address, signature, message, wallet=None):
