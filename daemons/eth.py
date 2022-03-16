@@ -7,6 +7,7 @@ import random
 import secrets
 import time
 import traceback
+from collections import deque
 from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import ClassVar
@@ -126,6 +127,13 @@ def get_exception_traceback(exc):
 
 
 @dataclass
+class Transaction:
+    hash: str
+    to: str
+    value: int
+
+
+@dataclass
 class KeyStore:
     key: str
     address: str = None
@@ -222,24 +230,29 @@ class Wallet:
         self.used_amounts = self.db.get_dict("used_amounts")
         self.running = False
         self.loop = asyncio.get_event_loop()
+        self.synchronized = False
 
     def save_db(self):
         if self.storage:
             self.db.write(self.storage)
 
-    def start(self):
+    async def start(self, blocks):
         self.running = True
+        for block in blocks:
+            for tx in block:
+                await process_transaction(tx)
         for req in self.get_sorted_requests():
             if req.status == PR_UNPAID and req.exp > 0 and req.time + req.exp < time.time():
                 self.set_request_status(req.id, PR_EXPIRED)
+        self.synchronized = True
 
     def clear_requests(self):
         self.receive_requests.clear()
         self.used_amounts.clear()
         self.save_db()
 
-    def is_synchronized(self):  # because only one address is used due to eth specifics
-        return True
+    def is_synchronized(self):
+        return self.synchronized
 
     def is_watching_only(self):
         return self.keystore.is_watching_only()
@@ -366,6 +379,28 @@ class Wallet:
             return
         self.set_request_status(req.id, PR_EXPIRED)
 
+    async def process_payment(self, wallet, amount, tx_hash):
+        try:
+            req = self.set_request_status(amount, PR_PAID, tx_hash=tx_hash)
+            await daemon.trigger_event(
+                {"event": "new_payment", "address": req.address, "status": req.status, "status_str": req.status_str}, wallet
+            )
+        except Exception:
+            if daemon.VERBOSE:
+                print(f"Error processing successful payment {tx_hash} with {amount}:")
+                print(traceback.format_exc())
+
+
+async def process_transaction(tx):
+    to = tx.to
+    amount = Decimal(Web3.fromWei(tx.value, "ether"))
+    if to not in daemon.addresses:
+        return
+    wallet = daemon.addresses[to]
+    await daemon.trigger_event({"event": "new_transaction", "tx": tx.hash}, wallet)
+    if str(amount) in daemon.wallets[wallet].used_amounts:
+        daemon.loop.create_task(daemon.wallets[wallet].process_payment(wallet, amount, tx.hash))
+
 
 class ETHDaemon(BaseDaemon):
     name = "ETH"
@@ -390,6 +425,7 @@ class ETHDaemon(BaseDaemon):
 
     def __init__(self):
         super().__init__()
+        self.latest_blocks = deque(maxlen=MAX_SYNC_BLOCKS)
         self.config_path = os.path.join(self.get_datadir(), "config")
         self.config = ConfigDB(self.config_path)
         Wallet.BLOCK_TIME = self.BLOCK_TIME
@@ -426,28 +462,22 @@ class ETHDaemon(BaseDaemon):
         for block_number in range(start_height, end_height + 1):
             try:
                 await self.trigger_event({"event": "new_block", "height": block_number}, None)
-                for tx in (await self.web3.eth.get_block(block_number, full_transactions=True))["transactions"]:
+                block = (await self.web3.eth.get_block(block_number, full_transactions=True))["transactions"]
+                transactions = []
+                for tx_data in block:
                     try:
-                        await self.process_transaction(tx)
+                        tx = Transaction(str(tx_data["hash"].hex()), tx_data["to"], tx_data["value"])
+                        transactions.append(tx)
+                        await process_transaction(tx)
                     except Exception:
                         if self.VERBOSE:
-                            print(f"Error processing transaction {tx['hash'].hex()}:")
+                            print(f"Error processing transaction {tx_data['hash'].hex()}:")
                             print(traceback.format_exc())
+                self.latest_blocks.append(transactions)
             except Exception:
                 if self.VERBOSE:
                     print(f"Error processing block {block_number}:")
                     print(traceback.format_exc())
-
-    async def process_transaction(self, tx):
-        to = tx["to"]
-        amount = Decimal(Web3.fromWei(tx["value"], "ether"))
-        if to not in self.addresses:
-            return
-        wallet = self.addresses[to]
-        tx_hash = str(tx["hash"].hex())
-        await self.trigger_event({"event": "new_transaction", "tx": tx_hash}, wallet)
-        if str(amount) in self.wallets[wallet].used_amounts:
-            self.loop.create_task(self.process_payment(wallet, amount, tx_hash))
 
     async def process_pending(self):
         while self.running:
@@ -475,17 +505,6 @@ class ETHDaemon(BaseDaemon):
             if not wallet or wallet == key:
                 await self.notify_websockets(data, key)
                 self.wallets_updates[key].append(data)
-
-    async def process_payment(self, wallet, amount, tx_hash):
-        try:
-            req = self.wallets[wallet].set_request_status(amount, PR_PAID, tx_hash=tx_hash)
-            await self.trigger_event(
-                {"event": "new_payment", "address": req.address, "status": req.status, "status_str": req.status_str}, wallet
-            )
-        except Exception:
-            if self.VERBOSE:
-                print(f"Error processing successful payment {tx_hash} with {amount}:")
-                print(traceback.format_exc())
 
     async def on_shutdown(self, app):
         self.running = False
@@ -524,10 +543,10 @@ class ETHDaemon(BaseDaemon):
         storage = Storage(wallet_path)
         db = WalletDB(storage.read())
         wallet = Wallet(self.web3, db, storage)
-        wallet.start()
         self.wallets[xpub] = wallet
         self.wallets_updates[xpub] = []
         self.addresses[wallet.address] = xpub
+        await wallet.start(self.latest_blocks)
         return wallet
 
     async def is_still_syncing(self, wallet=None):
