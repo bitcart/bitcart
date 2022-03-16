@@ -242,8 +242,11 @@ class Wallet:
             for tx in block:
                 await process_transaction(tx)
         for req in self.get_sorted_requests():
-            if req.status == PR_UNPAID and req.exp > 0 and req.time + req.exp < time.time():
-                self.set_request_status(req.id, PR_EXPIRED)
+            if req.status == PR_UNPAID:
+                if req.exp > 0 and req.time + req.exp < time.time():
+                    self.set_request_status(req.id, PR_EXPIRED)
+                else:
+                    self.loop.create_task(self.expired_task(req))
         self.synchronized = True
 
     def clear_requests(self):
@@ -484,9 +487,8 @@ class ETHDaemon(BaseDaemon):
             try:
                 current_height = await self.web3.eth.block_number
                 tasks = []
-                for block_number in range(
-                    max(current_height - MAX_SYNC_BLOCKS + 1, self.latest_height + 1), current_height + 1, CHUNK_SIZE
-                ):
+                # process at max 300 blocks since last processed block, fetched by chunks
+                for block_number in range(self.latest_height + 1, self.latest_height + 1 + MAX_SYNC_BLOCKS, CHUNK_SIZE):
                     tasks.append(self.process_block(block_number, min(block_number + CHUNK_SIZE - 1, current_height)))
                 results = await asyncio.gather(*tasks, return_exceptions=True)
                 if self.VERBOSE:
