@@ -10,7 +10,6 @@ import traceback
 from collections import deque
 from dataclasses import dataclass, field
 from decimal import Decimal
-from typing import ClassVar
 
 from base import BaseDaemon
 from eth_account import Account
@@ -217,8 +216,6 @@ class Wallet:
     web3: Web3
     db: WalletDB
     storage: Storage
-    BLOCK_TIME: ClassVar[int]
-    ADDRESS_CHECK_TIME: ClassVar[int]
     keystore: KeyStore = field(init=False)
     used_amounts: dict = field(default_factory=dict)
     receive_requests: dict = field(default_factory=dict)
@@ -414,6 +411,7 @@ class ETHDaemon(BaseDaemon):
         "commands": "help",
         "get_invoice": "getrequest",
         "get_transaction": "gettransaction",
+        "getaddressbalance_wallet": "getaddressbalance",
         "getunusedaddress": "getaddress",
         "list_invoices": "list_requests",
     }
@@ -421,7 +419,6 @@ class ETHDaemon(BaseDaemon):
 
     VERSION = "4.1.5"  # version of electrum API with which we are "compatible"
     BLOCK_TIME = 5
-    ADDRESS_CHECK_TIME = 60
 
     latest_height = StoredProperty("latest_height", -1)
 
@@ -430,8 +427,6 @@ class ETHDaemon(BaseDaemon):
         self.latest_blocks = deque(maxlen=MAX_SYNC_BLOCKS)
         self.config_path = os.path.join(self.get_datadir(), "config")
         self.config = ConfigDB(self.config_path)
-        Wallet.BLOCK_TIME = self.BLOCK_TIME
-        Wallet.ADDRESS_CHECK_TIME = self.ADDRESS_CHECK_TIME
         self.web3 = Web3(
             Web3.AsyncHTTPProvider(self.HTTP_HOST),
             modules={
@@ -668,6 +663,23 @@ class ETHDaemon(BaseDaemon):
         raise NotImplementedError(ONE_ADDRESS_MESSAGE)
 
     @rpc
+    async def get_default_fee(self, tx, wallet=None):
+        try:
+            tx_dict = json.loads(tx)
+        except json.JSONDecodeError as e:
+            raise Exception("Invalid transaction") from e
+        tx_dict.pop("chainId", None)
+        return await self.web3.eth.estimate_gas(tx_dict)
+
+    @rpc
+    def get_tx_hash(self, tx_data, wallet=None):
+        return to_dict(Web3.keccak(hexstr=tx_data))
+
+    @rpc
+    def get_tx_size(self, tx_data, wallet=None):
+        return len(Web3.toBytes(hexstr=tx_data))
+
+    @rpc
     async def get_tx_status(self, tx, wallet=None):
         data = to_dict(await self.web3.eth.get_transaction_receipt(tx))
         data["confirmations"] = max(0, await self.web3.eth.block_number - data["blockNumber"] + 1)
@@ -824,12 +836,6 @@ class ETHDaemon(BaseDaemon):
     def make_seed(self, nbits=128, language="english", wallet=None):
         return Mnemonic(language).generate(nbits)
 
-    async def get_fee_data(self):
-        block = await self.web3.eth.get_block("latest")
-        max_priority_fee = await self.web3.eth.max_priority_fee
-        max_fee = block.baseFeePerGas * 2 + max_priority_fee
-        return {"maxFeePerGas": max_fee, "maxPriorityFeePerGas": max_priority_fee}
-
     @rpc(requires_wallet=True)
     async def payto(self, destination, amount, fee=None, feerate=None, gas=None, unsigned=False, wallet=None, *args, **kwargs):
         address = self.wallets[wallet].address
@@ -842,7 +848,7 @@ class ETHDaemon(BaseDaemon):
             "value": Web3.toWei(amount, "ether"),
             "chainId": await self.web3.eth.chain_id,
             "gas": int(gas) if gas else 21000,
-            **(await self.get_fee_data()),
+            **(await self.recommended_fee()),
         }
         if fee:
             tx_dict["maxFeePerGas"] = Web3.toWei(fee, "ether")
@@ -853,6 +859,13 @@ class ETHDaemon(BaseDaemon):
         if self.wallets[wallet].is_watching_only():
             raise Exception("This is a watching-only wallet")
         return self._sign_transaction(tx_dict, self.wallets[wallet].keystore.private_key)
+
+    @rpc
+    async def recommended_fee(self, target=None, wallet=None):
+        block = await self.web3.eth.get_block("latest")
+        max_priority_fee = await self.web3.eth.max_priority_fee
+        max_fee = block.baseFeePerGas * 2 + max_priority_fee
+        return {"maxFeePerGas": max_fee, "maxPriorityFeePerGas": max_priority_fee}
 
     @rpc(requires_wallet=True)
     def removelocaltx(self, *args, **kwargs):
