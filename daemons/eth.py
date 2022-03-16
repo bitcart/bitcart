@@ -220,7 +220,6 @@ class Wallet:
     BLOCK_TIME: ClassVar[int]
     ADDRESS_CHECK_TIME: ClassVar[int]
     keystore: KeyStore = field(init=False)
-    path: str = ""
     used_amounts: dict = field(default_factory=dict)
     receive_requests: dict = field(default_factory=dict)
 
@@ -448,6 +447,7 @@ class ETHDaemon(BaseDaemon):
         # initialize not yet created network
         self.running = True
         self.loop = None
+        self.synchronized = False
 
     def load_env(self):
         super().load_env()
@@ -496,6 +496,7 @@ class ETHDaemon(BaseDaemon):
                         if isinstance(task, Exception):
                             print(get_exception_traceback(task))
                 self.latest_height = current_height
+                self.synchronized = True  # set it once, as we just need to ensure initial sync was done
             except Exception:
                 if self.VERBOSE:
                     print("Error processing pending blocks:")
@@ -557,6 +558,8 @@ class ETHDaemon(BaseDaemon):
     async def _get_wallet(self, id, req_method, xpub):
         wallet = error = None
         try:
+            while not self.synchronized:  # wait for initial sync to fetch blocks
+                await asyncio.sleep(0.1)
             wallet = await self.load_wallet(xpub)
             if req_method in self.SKIP_NETWORK:
                 return wallet, error
