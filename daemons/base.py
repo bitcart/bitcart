@@ -37,7 +37,7 @@ class BaseDaemon:
         self.app = web.Application()
         self.configure_app()
 
-    def config(self, name, *, default, cast=noop_cast):
+    def env(self, name, *, default, cast=noop_cast):
         return self.config_getter(f"{self.env_name}_{name}", default=default, cast=cast)
 
     ### Spec support ###
@@ -135,16 +135,18 @@ class BaseDaemon:
     ### Overridable methods for completely custom coins ###
 
     def load_env(self):
-        """Use self.config here to load all needed environment variables"""
-        self.HOST = self.config(
+        """Use self.env here to load all needed environment variables"""
+        self.HOST = self.env(
             "HOST",
             default="0.0.0.0" if os.getenv("IN_DOCKER") else "127.0.0.1",
         )
-        self.PORT = self.config("PORT", cast=int, default=self.DEFAULT_PORT)
-        self.LOGIN = self.config("LOGIN", default="electrum")
-        self.PASSWORD = self.config("PASSWORD", default="electrumz")
-        self.DATA_PATH = self.config("DATA_PATH", default=None)
-        self.VERBOSE = self.config("DEBUG", cast=bool, default=False)
+        self.PORT = self.env("PORT", cast=int, default=self.DEFAULT_PORT)
+        self.LOGIN = self.env("LOGIN", default="electrum")
+        self.PASSWORD = self.env("PASSWORD", default="electrumz")
+        self.DATA_PATH = self.env("DATA_PATH", default=None)
+        self.VERBOSE = self.env("DEBUG", cast=bool, default=False)
+        self.NET = self.env("NETWORK", default="mainnet")
+        self.DEFAULT_CURRENCY = self.env("FIAT_CURRENCY", default="USD")
 
     async def on_startup(self, app):
         """Create essential objects for daemon operation here
