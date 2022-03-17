@@ -2,6 +2,35 @@
 
 ## Latest changes
 
+## 0.6.3.0
+
+### Ethereum support
+
+We have added experimental ethereum support in this release.
+
+This was a complex task, but we did it.
+
+Ethereum support allows you to use our SDK the same way as you would do with btc-based coins, even though there are lots of differences
+
+Payment processing works too
+
+We have implemented this via geth fullnodes' light syncmode.
+
+It requires a bit higher system requirements than usual, more exactly:
+
+2 GB of RAM is extremely recommended (1 gb may work if not using many other currencies)
+As for disk, at least a few gigabytes of disk are needed (right now 1 GB is used)
+
+We don't support some methods from electrum like those getting history, but other than that it all works via your local geth node.
+
+In payment processing, as ethereum is fundamentally different from btc-based chains, we decided to use one address for each invoice, but with unique amounts.
+
+That's because in ethereum all wallets are using only one address, and if you would have used multiple addresses it would require you to manually transfer your eth and tokens (which requires additional eth those addresses don't always have)
+
+ETH support is based on our custom implementation, you may even call it CLI-only electrum wallet for ETH.
+
+This prooves that BitcartCC is indeed as extensible as we thought.
+
 ## 0.6.2.0
 
 - Maintenance package upgrades
