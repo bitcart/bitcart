@@ -1,2 +1,2 @@
 aiohttp<4.0
-web3
+https://github.com/ethereum/web3.py/archive/ed305e381b9cc0646ae45d33786a707c10a57c03.zip

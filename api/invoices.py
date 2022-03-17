@@ -121,7 +121,7 @@ async def new_payment_handler(instance, event, address, status, status_str):
     with log_errors():
         data = (
             await get_pending_invoices_query(instance.coin_name.lower())
-            .where(or_(models.PaymentMethod.payment_address == address, models.PaymentMethod.rhash == address))
+            .where(models.PaymentMethod.lookup_field == address)
             .gino.load((models.PaymentMethod, models.Invoice, models.Wallet.xpub))
             .first()
         )
@@ -145,7 +145,7 @@ async def update_confirmations(invoice, method, confirmations):
 
 async def get_confirmations(method, xpub):
     coin = settings.settings.get_coin(method.currency, xpub)
-    invoice_data = await coin.get_request(method.payment_address)
+    invoice_data = await coin.get_request(method.lookup_field)
     return min(
         constants.MAX_CONFIRMATION_WATCH, invoice_data.get("confirmations", 0)
     )  # don't store arbitrary number of confirmations
@@ -214,7 +214,7 @@ async def update_status(invoice, status, method=None):
         log_text = f"Updating status of invoice {invoice.id}"
         if method:
             full_method_name = method.get_name()
-            if not invoice.paid_currency and status in [InvoiceStatus.PAID, InvoiceStatus.COMPLETE]:
+            if not invoice.paid_currency and status in [InvoiceStatus.PAID, InvoiceStatus.CONFIRMED, InvoiceStatus.COMPLETE]:
                 await invoice.update(paid_currency=full_method_name, discount=method.discount).apply()
             log_text += f" with payment method {full_method_name}"
         logger.info(f"{log_text} to {status}")
@@ -240,8 +240,8 @@ async def check_pending(currency):
                 continue
             coin = settings.settings.get_coin(method.currency, xpub)
             if method.lightning:
-                invoice_data = await coin.get_invoice(method.rhash)
+                invoice_data = await coin.get_invoice(method.lookup_field)
             else:
-                invoice_data = await coin.get_request(method.payment_address)
+                invoice_data = await coin.get_request(method.lookup_field)
             coros.append(process_electrum_status(invoice, method, xpub, invoice_data["status"]))
     await asyncio.gather(*coros)

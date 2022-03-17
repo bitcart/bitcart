@@ -300,5 +300,10 @@
         "name": "BSTY",
         "divisibility": 8,
         "crypto": true
+    },
+    "ETH": {
+        "name": "Ethereum",
+        "divisibility": 18,
+        "crypto": true
     }
 }
