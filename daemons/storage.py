@@ -5,6 +5,7 @@ import os
 import stat
 import threading
 from decimal import Decimal
+from functools import singledispatch
 
 
 class DBFileException(Exception):
@@ -76,6 +77,21 @@ def locked(func):
     return wrapper
 
 
+@singledispatch
+def string_keys(obj):
+    return obj
+
+
+@string_keys.register(dict)
+def _(d):
+    return {str(k): string_keys(v) for k, v in d.items()}
+
+
+@string_keys.register(list)
+def _(lst):
+    return [string_keys(v) for v in lst]
+
+
 class JsonDB:
     def __init__(self, data):
         self.lock = threading.RLock()
@@ -114,7 +130,7 @@ class JsonDB:
 
     @locked
     def dump(self) -> str:
-        return json.dumps(self.data, cls=JSONEncoder)
+        return json.dumps(string_keys(self.data), cls=JSONEncoder)
 
     def _should_convert_to_stored_dict(self, key) -> bool:
         return True

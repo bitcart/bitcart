@@ -7,7 +7,7 @@ import random
 import secrets
 import time
 import traceback
-from collections import deque
+from collections import defaultdict, deque
 from dataclasses import dataclass, field
 from decimal import Decimal
 
@@ -73,6 +73,8 @@ class WalletDB(StorageWalletDB):
     def _convert_dict(self, path, key, v):
         if key == "payment_requests":
             v = {k: Invoice(**x) for k, x in v.items()}
+        if key == "used_amounts":
+            v = {Decimal(k): x for k, x in v.items()}
         return v
 
     def _should_convert_to_stored_dict(self, key) -> bool:
@@ -211,6 +213,10 @@ class Invoice(StoredObject):
         return status_str
 
 
+async def get_balance(web3, address):
+    return Web3.fromWei(await web3.eth.get_balance(address), "ether")
+
+
 @dataclass
 class Wallet:
     web3: Web3
@@ -269,7 +275,7 @@ class Wallet:
         return self.keystore.address
 
     async def balance(self):
-        return await self.web3.eth.get_balance(self.address)
+        return to_dict(await get_balance(self.web3, self.address))
 
     def stop(self):
         self.running = False
@@ -293,7 +299,7 @@ class Wallet:
         add_low = 1
         add_high = 2
         cur_amount = amount
-        while str(cur_amount) in self.used_amounts:
+        while cur_amount in self.used_amounts:
             cur_amount = amount + random.randint(add_low, add_high) * AMOUNTGEN_PRECISION
             if add_high < AMOUNTGEN_LIMIT:
                 add_low = add_high + 1
@@ -302,7 +308,7 @@ class Wallet:
 
     def add_payment_request(self, req, save_db=True):
         self.receive_requests[req.id] = req
-        self.used_amounts[str(req.amount)] = req.id
+        self.used_amounts[req.amount] = req.id
         if save_db:
             self.save_db()
         return req
@@ -337,7 +343,7 @@ class Wallet:
     def get_request(self, key):
         try:
             amount = Decimal(key)
-            key = self.used_amounts.get(str(amount))
+            key = self.used_amounts.get(amount)
         finally:
             return self.receive_requests.get(key)
 
@@ -345,7 +351,7 @@ class Wallet:
         req = self.get_request(key)
         if not req:
             return False
-        self.used_amounts.pop(str(req.amount), None)
+        self.used_amounts.pop(req.amount, None)
         self.receive_requests.pop(req.id, None)
         self.save_db()
         return True
@@ -365,7 +371,7 @@ class Wallet:
             setattr(req, kwarg, kwargs[kwarg])
         self.add_payment_request(req, save_db=False)
         if status != PR_UNPAID:
-            self.used_amounts.pop(str(req.amount), None)
+            self.used_amounts.pop(req.amount, None)
         self.save_db()
         return req
 
@@ -382,7 +388,7 @@ class Wallet:
         try:
             req = self.set_request_status(amount, PR_PAID, tx_hash=tx_hash)
             await daemon.trigger_event(
-                {"event": "new_payment", "address": req.address, "status": req.status, "status_str": req.status_str}, wallet
+                {"event": "new_payment", "address": req.id, "status": req.status, "status_str": req.status_str}, wallet
             )
         except Exception:
             if daemon.VERBOSE:
@@ -395,10 +401,10 @@ async def process_transaction(tx):
     amount = Decimal(Web3.fromWei(tx.value, "ether"))
     if to not in daemon.addresses:
         return
-    wallet = daemon.addresses[to]
-    await daemon.trigger_event({"event": "new_transaction", "tx": tx.hash}, wallet)
-    if str(amount) in daemon.wallets[wallet].used_amounts:
-        daemon.loop.create_task(daemon.wallets[wallet].process_payment(wallet, amount, tx.hash))
+    for wallet in daemon.addresses[to]:
+        await daemon.trigger_event({"event": "new_transaction", "tx": tx.hash}, wallet)
+        if amount in daemon.wallets[wallet].used_amounts:
+            daemon.loop.create_task(daemon.wallets[wallet].process_payment(wallet, amount, tx.hash))
 
 
 class ETHDaemon(BaseDaemon):
@@ -439,7 +445,7 @@ class ETHDaemon(BaseDaemon):
         )
         # initialize wallet storages
         self.wallets = {}
-        self.addresses = {}
+        self.addresses = defaultdict(set)
         self.wallets_updates = {}
         # initialize not yet created network
         self.running = True
@@ -564,7 +570,7 @@ class ETHDaemon(BaseDaemon):
         wallet = Wallet(self.web3, db, storage)
         self.wallets[xpub] = wallet
         self.wallets_updates[xpub] = []
-        self.addresses[wallet.address] = xpub
+        self.addresses[wallet.address].add(xpub)
         await wallet.start(self.latest_blocks)
         return wallet
 
@@ -718,7 +724,7 @@ class ETHDaemon(BaseDaemon):
 
     @rpc
     async def getaddressbalance(self, address, wallet=None):
-        return await self.web3.eth.get_balance(address)
+        return to_dict(await get_balance(self.web3, address))
 
     @rpc
     def getaddresshistory(self, *args, **kwargs):
@@ -854,12 +860,12 @@ class ETHDaemon(BaseDaemon):
     async def listaddresses(self, unused=False, funded=False, balance=False, wallet=None):
         unused, funded, balance = str_to_bool(unused), str_to_bool(funded), str_to_bool(balance)
         address = self.wallets[wallet].address
-        addr_balance = await self.web3.eth.get_balance(address)
+        addr_balance = await get_balance(self.web3, address)
         ntxs = await self.web3.eth.get_transaction_count(address)
         if (unused and (addr_balance > 0 or ntxs > 0)) or (funded and addr_balance == 0):
             return []
         if balance:
-            return [(address, addr_balance)]
+            return [(address, to_dict(addr_balance))]
         else:
             return [address]
 
@@ -879,7 +885,7 @@ class ETHDaemon(BaseDaemon):
             "value": Web3.toWei(amount, "ether"),
             "chainId": await self.web3.eth.chain_id,
             "gas": int(gas) if gas else 21000,
-            **(await self.recommended_fee()),
+            **(await self.get_fee_params()),
         }
         if fee:
             tx_dict["maxFeePerGas"] = Web3.toWei(fee, "ether")
@@ -891,12 +897,15 @@ class ETHDaemon(BaseDaemon):
             raise Exception("This is a watching-only wallet")
         return self._sign_transaction(tx_dict, self.wallets[wallet].keystore.private_key)
 
-    @rpc
-    async def recommended_fee(self, target=None, wallet=None):
+    async def get_fee_params(self):
         block = await self.web3.eth.get_block("latest")
         max_priority_fee = await self.web3.eth.max_priority_fee
         max_fee = block.baseFeePerGas * 2 + max_priority_fee
         return {"maxFeePerGas": max_fee, "maxPriorityFeePerGas": max_priority_fee}
+
+    @rpc
+    async def recommended_fee(self, target=None, wallet=None):  # disable fee estimation as it's unclear what to show
+        return 0
 
     @rpc(requires_wallet=True)
     def removelocaltx(self, *args, **kwargs):
