@@ -264,6 +264,10 @@ jsonschema==4.4.0 \
 lru-dict==1.1.7 \
     --hash=sha256:45b81f67d75341d4433abade799a47e9c42a9e22a118531dcb5e549864032d7c
     # via web3
+mnemonic==0.20 \
+    --hash=sha256:7c6fb5639d779388027a77944680aee4870f0fcd09b1e42a5525ee2ce4c625f6 \
+    --hash=sha256:acd2168872d0379e7a10873bb3e12bf6c91b35de758135c4fbd1015ef18fafc5
+    # via -r requirements/daemons/eth.txt
 multiaddr==0.0.9 \
     --hash=sha256:30b2695189edc3d5b90f1c303abb8f02d963a3a4edf2e7178b975eb417ab0ecf \
     --hash=sha256:5c0f862cbcf19aada2a899f80ef896ddb2e85614e0c8f04dd287c06c69dac95b
