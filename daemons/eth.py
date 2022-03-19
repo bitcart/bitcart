@@ -19,10 +19,12 @@ from hexbytes import HexBytes
 from mnemonic import Mnemonic
 from storage import ConfigDB as StorageConfigDB
 from storage import JSONEncoder as StorageJSONEncoder
-from storage import Storage, StoredObject, StoredProperty
+from storage import Storage, StoredDBProperty, StoredObject, StoredProperty
 from storage import WalletDB as StorageWalletDB
-from utils import JsonResponse, get_exception_message, hide_logging_errors, rpc
+from storage import decimal_to_string
+from utils import CastingDataclass, JsonResponse, get_exception_message, hide_logging_errors, rpc
 from web3 import Web3
+from web3.contract import AsyncContract
 from web3.datastructures import AttributeDict
 from web3.eth import AsyncEth
 from web3.geth import AsyncGethAdmin, Geth
@@ -65,6 +67,9 @@ STR_TO_BOOL_MAPPING = {
 }  # common str -> bool conversions
 
 # storage
+
+with open("daemons/abi/erc20.json") as f:
+    ERC20_ABI = json.loads(f.read())
 
 
 class WalletDB(StorageWalletDB):
@@ -191,7 +196,7 @@ class KeyStore:
 
 
 @dataclass
-class Invoice(StoredObject):
+class Invoice(CastingDataclass, StoredObject):
     message: str
     original_amount: Decimal
     amount: Decimal
@@ -225,6 +230,9 @@ class Wallet:
     keystore: KeyStore = field(init=False)
     used_amounts: dict = field(default_factory=dict)
     receive_requests: dict = field(default_factory=dict)
+    contracts: dict = field(default_factory=dict)
+
+    latest_height = StoredDBProperty("latest_height", -1)
 
     def __post_init__(self):
         self.keystore = KeyStore.load(self.db.get("keystore"))
@@ -239,10 +247,20 @@ class Wallet:
             self.db.write(self.storage)
 
     async def start(self, blocks):
+        if self.latest_height == -1:
+            self.latest_height = await self.web3.eth.block_number
         self.running = True
+        # process onchain transactions
         for block in blocks:
             for tx in block:
                 await process_transaction(tx)
+        # process token transactions
+        current_height = await self.web3.eth.block_number
+        for contract in self.contracts.values():
+            await check_contract_logs(
+                contract, from_block=self.latest_height + 1, to_block=min(self.latest_height + MAX_SYNC_BLOCKS, current_height)
+            )
+        self.latest_height = current_height
         for req in self.get_sorted_requests():
             if req.status == PR_UNPAID:
                 if req.exp > 0 and req.time + req.exp < time.time():
@@ -277,8 +295,9 @@ class Wallet:
     async def balance(self):
         return to_dict(await get_balance(self.web3, self.address))
 
-    def stop(self):
+    def stop(self, block_number):
         self.running = False
+        self.latest_height = block_number
 
     async def make_payment_request(self, address, amount, message, expiration):
         amount = amount or Decimal()
@@ -315,13 +334,13 @@ class Wallet:
 
     async def get_request_url(self, req):
         chain_id = await self.web3.eth.chain_id
-        return f"ethereum:{req.address}@{chain_id}?value={req.amount}"
+        return f"ethereum:{req.address}@{chain_id}?value={decimal_to_string(req.amount)}"
 
     async def export_request(self, req):
         d = {
             "id": req.id,
             "is_lightning": False,
-            "amount_ETH": str(req.amount),
+            "amount_ETH": decimal_to_string(req.amount),
             "message": req.message,
             "timestamp": req.time,
             "expiration": req.exp,
@@ -366,6 +385,8 @@ class Wallet:
         req = self.get_request(key)
         if not req:
             return None
+        if req.status == PR_PAID:  # immutable
+            return req
         req.status = status
         for kwarg in kwargs:
             setattr(req, kwarg, kwargs[kwarg])
@@ -396,15 +417,33 @@ class Wallet:
                 print(traceback.format_exc())
 
 
-async def process_transaction(tx):
+async def process_transaction(tx, contract=None):
     to = tx.to
     amount = Decimal(Web3.fromWei(tx.value, "ether"))
     if to not in daemon.addresses:
         return
     for wallet in daemon.addresses[to]:
+        if contract and contract not in daemon.wallets[wallet].contracts:
+            continue
         await daemon.trigger_event({"event": "new_transaction", "tx": tx.hash}, wallet)
         if amount in daemon.wallets[wallet].used_amounts:
             daemon.loop.create_task(daemon.wallets[wallet].process_payment(wallet, amount, tx.hash))
+
+
+async def check_contract_logs(contract, from_block=None, to_block=None):
+    try:
+        for tx_data in await contract.events.Transfer.getLogs(fromBlock=from_block, toBlock=to_block):
+            try:
+                tx = Transaction(str(tx_data["transactionHash"].hex()), tx_data["args"]["to"], tx_data["args"]["value"])
+                await process_transaction(tx, contract.address)
+            except Exception:
+                if daemon.VERBOSE:
+                    print(f"Error processing transaction {tx_data['transactionHash'].hex()}:")
+                    print(traceback.format_exc())
+    except Exception:
+        if daemon.VERBOSE:
+            print(f"Error getting logs on contract {contract.address}:")
+            print(traceback.format_exc())
 
 
 class ETHDaemon(BaseDaemon):
@@ -426,12 +465,14 @@ class ETHDaemon(BaseDaemon):
     VERSION = "4.1.5"  # version of electrum API with which we are "compatible"
     BLOCK_TIME = 5
     FX_FETCH_TIME = 150
+    ABI = ERC20_ABI
 
     latest_height = StoredProperty("latest_height", -1)
 
     def __init__(self):
         super().__init__()
         self.exchange_rates = {}
+        self.contracts = {}
         self.latest_blocks = deque(maxlen=MAX_SYNC_BLOCKS)
         self.config_path = os.path.join(self.get_datadir(), "config")
         self.config = ConfigDB(self.config_path)
@@ -443,6 +484,7 @@ class ETHDaemon(BaseDaemon):
             },
             middlewares=[],
         )
+        self.contract_factory = AsyncContract.factory(self.web3, abi=self.ABI)
         # initialize wallet storages
         self.wallets = {}
         self.addresses = defaultdict(set)
@@ -510,7 +552,9 @@ class ETHDaemon(BaseDaemon):
                 current_height = await self.web3.eth.block_number
                 tasks = []
                 # process at max 300 blocks since last processed block, fetched by chunks
-                for block_number in range(self.latest_height + 1, self.latest_height + 1 + MAX_SYNC_BLOCKS, CHUNK_SIZE):
+                for block_number in range(
+                    self.latest_height + 1, min(self.latest_height + MAX_SYNC_BLOCKS, current_height) + 1, CHUNK_SIZE
+                ):
                     tasks.append(self.process_block(block_number, min(block_number + CHUNK_SIZE - 1, current_height)))
                 results = await asyncio.gather(*tasks, return_exceptions=True)
                 if self.VERBOSE:
@@ -525,6 +569,32 @@ class ETHDaemon(BaseDaemon):
                     print(traceback.format_exc())
             await asyncio.sleep(self.BLOCK_TIME)
 
+    def add_contract(self, contract, wallet):
+        if not contract:
+            return
+        contract = Web3.toChecksumAddress(contract)
+        if contract in self.contracts:
+            self.wallets[wallet].contracts[contract] = self.contracts[contract]
+            return
+        self.contracts[contract] = self.start_contract_listening(contract)
+        self.wallets[wallet].contracts[contract] = self.contracts[contract]
+
+    def start_contract_listening(self, contract):
+        contract_obj = self.create_web3_contract(contract)
+        self.loop.create_task(self.check_contracts(contract_obj))
+        return contract_obj
+
+    def create_web3_contract(self, contract):
+        try:
+            return self.contract_factory(contract)
+        except Exception as e:
+            raise Exception("Invalid contract address or non-ERC20 token") from e
+
+    async def check_contracts(self, contract):
+        while self.running:
+            await check_contract_logs(contract)
+            await asyncio.sleep(self.BLOCK_TIME)
+
     async def trigger_event(self, data, wallet):
         for key in self.wallets:
             if not wallet or wallet == key:
@@ -533,8 +603,9 @@ class ETHDaemon(BaseDaemon):
 
     async def on_shutdown(self, app):
         self.running = False
+        block_number = await self.web3.eth.block_number
         for wallet in self.wallets.values():
-            wallet.stop()
+            wallet.stop(block_number)
         await super().on_shutdown(app)
 
     def get_method_data(self, method):
@@ -554,8 +625,10 @@ class ETHDaemon(BaseDaemon):
         os.makedirs(path, exist_ok=True)
         return path
 
-    async def load_wallet(self, xpub):
+    async def load_wallet(self, xpub, contracts):
         if xpub in self.wallets:
+            for contract in contracts:
+                self.add_contract(contract, xpub)
             return self.wallets[xpub]
         if not xpub:
             return None
@@ -571,18 +644,20 @@ class ETHDaemon(BaseDaemon):
         self.wallets[xpub] = wallet
         self.wallets_updates[xpub] = []
         self.addresses[wallet.address].add(xpub)
+        for contract in contracts:
+            self.add_contract(contract, xpub)
         await wallet.start(self.latest_blocks)
         return wallet
 
     async def is_still_syncing(self, wallet=None):
         return not await self.web3.isConnected() or await self.web3.eth.syncing or (wallet and not wallet.is_synchronized())
 
-    async def _get_wallet(self, id, req_method, xpub):
+    async def _get_wallet(self, id, req_method, xpub, contracts):
         wallet = error = None
         try:
             while not self.synchronized:  # wait for initial sync to fetch blocks
                 await asyncio.sleep(0.1)
-            wallet = await self.load_wallet(xpub)
+            wallet = await self.load_wallet(xpub, contracts)
             if req_method in self.SKIP_NETWORK:
                 return wallet, error
             while await self.is_still_syncing(wallet):
@@ -614,9 +689,16 @@ class ETHDaemon(BaseDaemon):
             result = exec_method(*req_args, **req_kwargs)
             return await result if inspect.isawaitable(result) else result
 
+    def parse_xpub(self, xpub):
+        if isinstance(xpub, str):
+            return xpub, None
+        if isinstance(xpub, dict):
+            return xpub.get("xpub"), xpub.get("contracts")
+
     async def execute_method(self, id, req_method, req_args, req_kwargs):
         xpub = req_kwargs.pop("xpub", None)
-        wallet, error = await self._get_wallet(id, req_method, xpub)
+        xpub, contracts = self.parse_xpub(xpub)
+        wallet, error = await self._get_wallet(id, req_method, xpub, contracts)
         if error:
             return error.send()
         exec_method, error = await self.get_exec_method(id, req_method)

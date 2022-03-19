@@ -1,4 +1,5 @@
 import asyncio
+import dataclasses
 import json
 import logging
 import sys
@@ -141,3 +142,15 @@ async def periodic_task(self, process_func, interval):
                 print(traceback.format_exc())
         elapsed = time.time() - start
         await asyncio.sleep(max(interval - elapsed, 0))
+
+
+class CastingDataclass:
+    def __post_init__(self):
+        for field in dataclasses.fields(self):
+            value = getattr(self, field.name)
+            if (
+                not isinstance(value, field.type)
+                and field.default is dataclasses.MISSING
+                and field.default_factory is dataclasses.MISSING
+            ):
+                setattr(self, field.name, field.type(value))
