@@ -154,3 +154,13 @@ class CastingDataclass:
                 and field.default_factory is dataclasses.MISSING
             ):
                 setattr(self, field.name, field.type(value))
+
+
+def load_json_dict(s, error_message):
+    json_dict = s
+    if isinstance(s, str):
+        try:
+            json_dict = json.loads(s)
+        except json.JSONDecodeError as e:
+            raise Exception(error_message) from e
+    return json_dict
