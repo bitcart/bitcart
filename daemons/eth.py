@@ -7,7 +7,6 @@ import random
 import secrets
 import time
 import traceback
-import warnings
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
 from decimal import Decimal
@@ -212,6 +211,7 @@ class Invoice(CastingDataclass, StoredObject):
     id: str = None
     status: int = 0
     tx_hash: str = None
+    contract: str = None
 
     @property
     def status_str(self):
@@ -354,6 +354,7 @@ class Wallet:
         }
         if req.tx_hash:
             d["tx_hash"] = req.tx_hash
+            d["contract"] = req.contract
             d["confirmations"] = (
                 await self.web3.eth.block_number
                 - (await self.web3.eth.get_transaction_receipt(req.tx_hash))["blockNumber"]
@@ -410,11 +411,18 @@ class Wallet:
             return
         self.set_request_status(req.id, PR_EXPIRED)
 
-    async def process_payment(self, wallet, amount, tx_hash):
+    async def process_payment(self, wallet, amount, tx_hash, contract=None):
         try:
-            req = self.set_request_status(amount, PR_PAID, tx_hash=tx_hash)
+            req = self.set_request_status(amount, PR_PAID, tx_hash=tx_hash, contract=contract)
             await daemon.trigger_event(
-                {"event": "new_payment", "address": req.id, "status": req.status, "status_str": req.status_str}, wallet
+                {
+                    "event": "new_payment",
+                    "address": req.id,
+                    "status": req.status,
+                    "status_str": req.status_str,
+                    "contract": contract,
+                },
+                wallet,
             )
         except Exception:
             if daemon.VERBOSE:
@@ -432,7 +440,7 @@ async def process_transaction(tx, contract=None):
             continue
         await daemon.trigger_event({"event": "new_transaction", "tx": tx.hash}, wallet)
         if amount in daemon.wallets[wallet].used_amounts:
-            daemon.loop.create_task(daemon.wallets[wallet].process_payment(wallet, amount, tx.hash))
+            daemon.loop.create_task(daemon.wallets[wallet].process_payment(wallet, amount, tx.hash, contract))
 
 
 async def check_contract_logs(contract, from_block=None, to_block=None):
@@ -1110,11 +1118,7 @@ class ETHDaemon(BaseDaemon):
         wallet = kwargs.pop("wallet")
         gas = int(kwargs.pop("gas", CONTRACT_DEFAULT_GAS) or CONTRACT_DEFAULT_GAS)
         exec_function = self.load_contract_exec_function(address, function, *args, **kwargs)
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            tx = exec_function.buildTransaction(await self.get_common_payto_params(self.wallets[wallet].address, gas))
-        tx["gasPrice"] = await tx["gasPrice"]
-        tx.pop("gasPrice", None)  # fix web3 bug, TODO: remove when not needed
+        tx = await exec_function.build_transaction(await self.get_common_payto_params(self.wallets[wallet].address, gas))
         signed = self._sign_transaction(tx, self.wallets[wallet].keystore.private_key)
         return await self.broadcast(signed)
 

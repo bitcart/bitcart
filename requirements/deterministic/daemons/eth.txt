@@ -465,7 +465,7 @@ varint==1.0.2 \
     --hash=sha256:a6ecc02377ac5ee9d65a6a8ad45c9ff1dac8ccee19400a5950fb51d594214ca5
     # via multiaddr
 web3 @ https://github.com/bitcartcc/web3.py/archive/asyncify-contract.zip \
-    --hash=sha256:19afb338e17d4cfa7dd62100526e369eba852bc7209621046943b9898a062319
+    --hash=sha256:09dfb6f36a4c6bcb0dee2e70d35f5dad2e1bb675303c51affffcb5de5eacbb68
     # via -r requirements/daemons/eth.txt
 websockets==10.2 \
     --hash=sha256:038afef2a05893578d10dadbdbb5f112bd115c46347e1efe99f6a356ff062138 \
