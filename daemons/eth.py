@@ -75,6 +75,9 @@ STR_TO_BOOL_MAPPING = {
 with open("daemons/abi/erc20.json") as f:
     ERC20_ABI = json.loads(f.read())
 
+with open("daemons/tokens/erc20.json") as f:
+    ERC20_TOKENS = json.loads(f.read())
+
 
 class WalletDB(StorageWalletDB):
     STORAGE_VERSION = 1
@@ -479,6 +482,7 @@ class ETHDaemon(BaseDaemon):
     BLOCK_TIME = 5
     FX_FETCH_TIME = 150
     ABI = ERC20_ABI
+    TOKENS = ERC20_TOKENS
 
     latest_height = StoredProperty("latest_height", -1)
 
@@ -702,15 +706,7 @@ class ETHDaemon(BaseDaemon):
             result = exec_method(*req_args, **req_kwargs)
             return await result if inspect.isawaitable(result) else result
 
-    def parse_xpub(self, xpub):
-        if isinstance(xpub, str):
-            return xpub, []
-        if isinstance(xpub, dict):
-            return xpub.get("xpub"), xpub.get("contracts", [])
-
-    async def execute_method(self, id, req_method, req_args, req_kwargs):
-        xpub = req_kwargs.pop("xpub", None)
-        xpub, contracts = self.parse_xpub(xpub)
+    async def execute_method(self, id, req_method, xpub, contracts, req_args, req_kwargs):
         wallet, error = await self._get_wallet(id, req_method, xpub, contracts)
         if error:
             return error.send()
@@ -795,6 +791,10 @@ class ETHDaemon(BaseDaemon):
         tx_dict = load_json_dict(tx, "Invalid transaction")
         tx_dict.pop("chainId", None)
         return await self.web3.eth.estimate_gas(tx_dict)
+
+    @rpc
+    def get_tokens(self, wallet=None):
+        return self.TOKENS
 
     @rpc
     def get_tx_hash(self, tx_data, wallet=None):
@@ -1094,6 +1094,14 @@ class ETHDaemon(BaseDaemon):
     @rpc
     def validateaddress(self, address, wallet=None):
         return is_address(address)
+
+    @rpc
+    def validatecontract(self, address, wallet=None):
+        try:
+            self.create_web3_contract(Web3.toChecksumAddress(address))
+            return True
+        except Exception:
+            return False
 
     @rpc
     def validatekey(self, key, wallet=None):

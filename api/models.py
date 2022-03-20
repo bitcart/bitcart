@@ -188,6 +188,7 @@ class Wallet(BaseModel):
     created = Column(DateTime(True), nullable=False)
     lightning_enabled = Column(Boolean(), default=False)
     label = Column(Text)
+    contracts = Column(ARRAY(Text))
 
     async def add_fields(self):
         await super().add_fields()
@@ -198,15 +199,35 @@ class Wallet(BaseModel):
 
     async def validate(self, **kwargs):
         await super().validate(**kwargs)
-        if "xpub" in kwargs:
+        if "xpub" in kwargs or "contracts" in kwargs:
             currency = kwargs.get("currency", self.currency)
             coin = settings.settings.get_coin(currency)
-            try:
-                if not await coin.validate_key(kwargs["xpub"]):
-                    raise HTTPException(422, "Wallet key invalid")
-            except BitcartBaseError as e:
-                logger.error(f"Failed to validate xpub for currency {currency}:\n{get_exception_message(e)}")
+            if "xpub" in kwargs:
+                await self.validate_xpub(coin, currency, kwargs["xpub"])
+            if "contracts" in kwargs:
+                tokens = await coin.server.get_tokens()
+                for idx in range(len(kwargs["contracts"])):
+                    kwargs["contracts"][idx] = tokens.get(kwargs["contracts"][idx], kwargs["contracts"][idx])
+                await self.validate_contracts(coin, currency, kwargs["contracts"])
+
+    async def validate_xpub(self, coin, currency, xpub):
+        try:
+            if not await coin.validate_key(xpub):
                 raise HTTPException(422, "Wallet key invalid")
+        except BitcartBaseError as e:
+            logger.error(f"Failed to validate xpub for currency {currency}:\n{get_exception_message(e)}")
+            raise HTTPException(422, "Wallet key invalid")
+
+    async def validate_contracts(self, coin, currency, contracts):
+        try:
+            if not isinstance(contracts, list):
+                raise HTTPException(422, "Invalid contracts")
+            for contract in contracts:
+                if not await coin.server.validatecontract(contract):
+                    raise HTTPException(422, "Contract invalid")
+        except BitcartBaseError as e:
+            logger.error(f"Failed to validate contracts for currency {currency}:\n{get_exception_message(e)}")
+            raise HTTPException(422, "Invalid contracts")
 
 
 class Notification(BaseModel):
@@ -397,6 +418,7 @@ class PaymentMethod(BaseModel):
     rhash = Column(Text)
     lookup_field = Column(Text)
     lightning = Column(Boolean(), default=False)
+    contracts = Column(ARRAY(Text))
     node_id = Column(Text)
     label = Column(Text)
     created = Column(DateTime(True), nullable=False)
@@ -438,6 +460,7 @@ class Invoice(BaseModel):
     price = Column(Numeric(36, 18), nullable=False)
     currency = Column(Text)
     paid_currency = Column(Text)
+    paid_contract = Column(Text)
     status = Column(Text, nullable=False)
     expiration = Column(Integer)
     buyer_email = Column(Text)

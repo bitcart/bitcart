@@ -272,8 +272,7 @@ class BTCDaemon(BaseDaemon):
             return get_exception_message(e.original_exception)
         return get_exception_message(e)
 
-    async def execute_method(self, id, req_method, req_args, req_kwargs):
-        xpub = req_kwargs.pop("xpub", None)
+    async def execute_method(self, id, req_method, xpub, contracts, req_args, req_kwargs):
         wallet, cmd, error = await self._get_wallet(id, req_method, xpub)
         if error:
             return error.send()
@@ -468,6 +467,14 @@ class BTCDaemon(BaseDaemon):
     def getaddressbalance_wallet(self, address, wallet):
         confirmed, unconfirmed, unmatured = map(format_satoshis, self.get_address_balance(address, wallet))
         return {"confirmed": confirmed, "unconfirmed": unconfirmed, "unmatured": unmatured}
+
+    @rpc
+    def validatecontract(self, address, wallet=None):  # fallback for other coins without smart contracts
+        return False
+
+    @rpc
+    def get_tokens(self, wallet=None):  # fallback
+        return {}
 
 
 if __name__ == "__main__":
