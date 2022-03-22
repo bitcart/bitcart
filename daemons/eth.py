@@ -46,7 +46,6 @@ AMOUNTGEN_LIMIT = 10**9
 
 MAX_SYNC_BLOCKS = 300  # (60/12)=5*60 (a block every 12 seconds, max normal expiry time 60 minutes)
 TX_DEFAULT_GAS = 21000
-CONTRACT_DEFAULT_GAS = 70000
 
 # statuses of payment requests
 PR_UNPAID = 0  # invoice amt not reached by txs in mempool+chain.
@@ -788,7 +787,7 @@ class ETHDaemon(BaseDaemon):
 
     @rpc
     async def get_default_fee(self, tx, wallet=None):
-        tx_dict = load_json_dict(tx, "Invalid transaction")
+        tx_dict = load_json_dict(tx, "Invalid transaction").copy()
         tx_dict.pop("chainId", None)
         return await self.web3.eth.estimate_gas(tx_dict)
 
@@ -971,12 +970,12 @@ class ETHDaemon(BaseDaemon):
     def make_seed(self, nbits=128, language="english", wallet=None):
         return Mnemonic(language).generate(nbits)
 
-    async def get_common_payto_params(self, address, gas=None):
+    async def get_common_payto_params(self, address):
         nonce = await self.web3.eth.get_transaction_count(address)
         return {
             "nonce": nonce,
             "chainId": await self.web3.eth.chain_id,
-            "gas": int(gas) if gas else TX_DEFAULT_GAS,
+            "from": address,
             **(await self.get_fee_params()),
         }
 
@@ -985,15 +984,15 @@ class ETHDaemon(BaseDaemon):
         address = self.wallets[wallet].address
         tx_dict = {
             "type": "0x2",
-            "from": self.wallets[wallet].address,
             "to": destination,
             "value": Web3.toWei(amount, "ether"),
-            **(await self.get_common_payto_params(address, gas)),
+            **(await self.get_common_payto_params(address)),
         }
         if fee:
             tx_dict["maxFeePerGas"] = Web3.toWei(fee, "ether")
         if feerate:
             tx_dict["maxPriorityFeePerGas"] = Web3.toWei(feerate, "gwei")
+        tx_dict["gas"] = int(gas) if gas else await self.get_default_fee(tx_dict)
         if unsigned:
             return tx_dict
         if self.wallets[wallet].is_watching_only():
@@ -1124,9 +1123,13 @@ class ETHDaemon(BaseDaemon):
     @rpc(requires_wallet=True)
     async def writecontract(self, address, function, *args, **kwargs):
         wallet = kwargs.pop("wallet")
-        gas = int(kwargs.pop("gas", CONTRACT_DEFAULT_GAS) or CONTRACT_DEFAULT_GAS)
+        gas = kwargs.pop("gas", None)
         exec_function = self.load_contract_exec_function(address, function, *args, **kwargs)
-        tx = await exec_function.build_transaction(await self.get_common_payto_params(self.wallets[wallet].address, gas))
+        # pass gas here to avoid calling estimate_gas on an incomplete tx
+        tx = await exec_function.build_transaction(
+            {**await self.get_common_payto_params(self.wallets[wallet].address), "gas": TX_DEFAULT_GAS}
+        )
+        tx["gas"] = int(gas) if gas else await self.get_default_fee(tx)
         signed = self._sign_transaction(tx, self.wallets[wallet].keystore.private_key)
         return await self.broadcast(signed)
 
