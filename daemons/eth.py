@@ -24,7 +24,6 @@ from storage import WalletDB as StorageWalletDB
 from storage import decimal_to_string
 from utils import CastingDataclass, JsonResponse, get_exception_message, hide_logging_errors, load_json_dict, rpc
 from web3 import Web3
-from web3.contract import AsyncContract
 from web3.datastructures import AttributeDict
 from web3.eth import AsyncEth
 from web3.exceptions import ABIFunctionNotFound
@@ -500,7 +499,6 @@ class ETHDaemon(BaseDaemon):
             },
             middlewares=[],
         )
-        self.contract_factory = AsyncContract.factory(self.web3, abi=self.ABI)
         # initialize wallet storages
         self.wallets = {}
         self.addresses = defaultdict(set)
@@ -602,7 +600,7 @@ class ETHDaemon(BaseDaemon):
 
     def create_web3_contract(self, contract):
         try:
-            return self.contract_factory(contract)
+            return self.web3.eth.contract(address=contract, abi=self.ABI)
         except Exception as e:
             raise Exception("Invalid contract address or non-ERC20 token") from e
 
@@ -1007,6 +1005,10 @@ class ETHDaemon(BaseDaemon):
 
     def load_contract_exec_function(self, address, function, *args, **kwargs):
         kwargs.pop("wallet", None)
+        try:
+            address = Web3.toChecksumAddress(address)
+        except Exception as e:
+            raise Exception("Invalid address") from e
         contract = self.create_web3_contract(address)
         # try converting args to int if possible
         args = [int(x) if x.isdigit() else x for x in args]
