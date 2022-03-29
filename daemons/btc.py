@@ -272,7 +272,7 @@ class BTCDaemon(BaseDaemon):
             return get_exception_message(e.original_exception)
         return get_exception_message(e)
 
-    async def execute_method(self, id, req_method, xpub, contracts, req_args, req_kwargs):
+    async def execute_method(self, id, req_method, xpub, contract, req_args, req_kwargs):
         wallet, cmd, error = await self._get_wallet(id, req_method, xpub)
         if error:
             return error.send()

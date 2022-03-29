@@ -24,6 +24,7 @@ from storage import WalletDB as StorageWalletDB
 from storage import decimal_to_string
 from utils import CastingDataclass, JsonResponse, get_exception_message, hide_logging_errors, load_json_dict, rpc
 from web3 import Web3
+from web3.contract import AsyncContract
 from web3.datastructures import AttributeDict
 from web3.eth import AsyncEth
 from web3.exceptions import ABIFunctionNotFound
@@ -137,6 +138,13 @@ def get_exception_traceback(exc):
     return "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
 
 
+def get_wallet_key(xpub, contract=None):
+    key = xpub
+    if contract:
+        key += f"_{contract}"
+    return key
+
+
 @dataclass
 class Transaction:
     hash: str
@@ -152,11 +160,21 @@ class KeyStore:
     private_key: str = None
     seed: str = None
     account: Account = None
+    contract: str = None
 
     def is_watching_only(self):
         return self.private_key is None
 
+    def load_contract(self):
+        if not self.contract:
+            return
+        try:
+            self.contract = Web3.toChecksumAddress(self.contract)
+        except Exception:
+            raise Exception("Error loading wallet: invalid address")
+
     def __post_init__(self):
+        self.load_contract()
         self.account = None
         try:
             self.account = Account.from_mnemonic(self.key)
@@ -194,10 +212,10 @@ class KeyStore:
 
     @classmethod
     def load(cls, db):
-        return cls(key=db.get("key", ""))
+        return cls(key=db.get("key", ""), contract=db.get("contract", None))
 
     def dump(self):
-        return {"key": self.key}
+        return {"key": self.key, "contract": self.contract}
 
 
 @dataclass
@@ -236,7 +254,9 @@ class Wallet:
     keystore: KeyStore = field(init=False)
     used_amounts: dict = field(default_factory=dict)
     receive_requests: dict = field(default_factory=dict)
-    contracts: dict = field(default_factory=dict)
+    contract: str = None
+    symbol: str = "ETH"
+    divisibility: int = 18
 
     latest_height = StoredDBProperty("latest_height", -1)
 
@@ -252,19 +272,28 @@ class Wallet:
         if self.storage:
             self.db.write(self.storage)
 
+    async def fetch_token_info(self):
+        self.symbol = await daemon.readcontract(self.contract, "symbol")
+        self.divisibility = await daemon.readcontract(self.contract, "decimals")
+
     async def start(self, blocks):
         if self.latest_height == -1:
             self.latest_height = await self.web3.eth.block_number
+        if self.contract:
+            await self.fetch_token_info()
+
         self.running = True
         # process onchain transactions
         for block in blocks:
             for tx in block:
                 await process_transaction(tx)
-        # process token transactions
         current_height = await self.web3.eth.block_number
-        for contract in self.contracts.values():
+        if self.contract:
+            # process token transactions
             await check_contract_logs(
-                contract, from_block=self.latest_height + 1, to_block=min(self.latest_height + MAX_SYNC_BLOCKS, current_height)
+                self.contract,
+                from_block=self.latest_height + 1,
+                to_block=min(self.latest_height + MAX_SYNC_BLOCKS, current_height),
             )
         self.latest_height = current_height
         for req in self.get_sorted_requests():
@@ -340,13 +369,13 @@ class Wallet:
 
     async def get_request_url(self, req):
         chain_id = await self.web3.eth.chain_id
-        return f"ethereum:{req.address}@{chain_id}?value={decimal_to_string(req.amount)}"
+        return f"ethereum:{req.address}@{chain_id}?value={decimal_to_string(req.amount,self.divisibility)}"
 
     async def export_request(self, req):
         d = {
             "id": req.id,
             "is_lightning": False,
-            "amount_ETH": decimal_to_string(req.amount),
+            f"amount_{self.symbol}": decimal_to_string(req.amount, self.divisibility),
             "message": req.message,
             "timestamp": req.time,
             "expiration": req.exp,
@@ -437,7 +466,7 @@ async def process_transaction(tx, contract=None):
     if to not in daemon.addresses:
         return
     for wallet in daemon.addresses[to]:
-        if contract and contract not in daemon.wallets[wallet].contracts:
+        if contract and contract != daemon.wallets[wallet].contract:
             continue
         await daemon.trigger_event({"event": "new_transaction", "tx": tx.hash}, wallet)
         if amount in daemon.wallets[wallet].used_amounts:
@@ -588,10 +617,10 @@ class ETHDaemon(BaseDaemon):
             return
         contract = Web3.toChecksumAddress(contract)
         if contract in self.contracts:
-            self.wallets[wallet].contracts[contract] = self.contracts[contract]
+            self.wallets[wallet].contract = self.contracts[contract]
             return
         self.contracts[contract] = self.start_contract_listening(contract)
-        self.wallets[wallet].contracts[contract] = self.contracts[contract]
+        self.wallets[wallet].contract = self.contracts[contract]
 
     def start_contract_listening(self, contract):
         contract_obj = self.create_web3_contract(contract)
@@ -639,39 +668,38 @@ class ETHDaemon(BaseDaemon):
         os.makedirs(path, exist_ok=True)
         return path
 
-    async def load_wallet(self, xpub, contracts):
-        if xpub in self.wallets:
-            for contract in contracts:
-                self.add_contract(contract, xpub)
-            return self.wallets[xpub]
+    async def load_wallet(self, xpub, contract):
+        wallet_key = get_wallet_key(xpub, contract)
+        if wallet_key in self.wallets:
+            self.add_contract(contract, wallet_key)
+            return self.wallets[wallet_key]
         if not xpub:
             return None
 
         # get wallet on disk
         wallet_dir = self.get_wallet_path()
-        wallet_path = os.path.join(wallet_dir, xpub)
+        wallet_path = os.path.join(wallet_dir, wallet_key)
         if not os.path.exists(wallet_path):
-            self.restore(xpub)
+            self.restore(xpub, wallet_path=wallet_path, contract=contract)
         storage = Storage(wallet_path)
         db = WalletDB(storage.read())
         wallet = Wallet(self.web3, db, storage)
-        self.wallets[xpub] = wallet
-        self.wallets_updates[xpub] = []
-        self.addresses[wallet.address].add(xpub)
-        for contract in contracts:
-            self.add_contract(contract, xpub)
+        self.wallets[wallet_key] = wallet
+        self.wallets_updates[wallet_key] = []
+        self.addresses[wallet.address].add(wallet_key)
+        self.add_contract(contract, wallet_key)
         await wallet.start(self.latest_blocks)
         return wallet
 
     async def is_still_syncing(self, wallet=None):
         return not await self.web3.isConnected() or await self.web3.eth.syncing or (wallet and not wallet.is_synchronized())
 
-    async def _get_wallet(self, id, req_method, xpub, contracts):
+    async def _get_wallet(self, id, req_method, xpub, contract):
         wallet = error = None
         try:
             while not self.synchronized:  # wait for initial sync to fetch blocks
                 await asyncio.sleep(0.1)
-            wallet = await self.load_wallet(xpub, contracts)
+            wallet = await self.load_wallet(xpub, contract)
             if req_method in self.SKIP_NETWORK:
                 return wallet, error
             while await self.is_still_syncing(wallet):
@@ -703,8 +731,8 @@ class ETHDaemon(BaseDaemon):
             result = exec_method(*req_args, **req_kwargs)
             return await result if inspect.isawaitable(result) else result
 
-    async def execute_method(self, id, req_method, xpub, contracts, req_args, req_kwargs):
-        wallet, error = await self._get_wallet(id, req_method, xpub, contracts)
+    async def execute_method(self, id, req_method, xpub, contract, req_args, req_kwargs):
+        wallet, error = await self._get_wallet(id, req_method, xpub, contract)
         if error:
             return error.send()
         exec_method, error = await self.get_exec_method(id, req_method)
@@ -713,7 +741,7 @@ class ETHDaemon(BaseDaemon):
         if self.get_method_data(req_method).requires_wallet and not xpub:
             return JsonResponse(code=-32000, error="Wallet not loaded", id=id).send()
         try:
-            result = await self.get_exec_result(xpub, req_args, req_kwargs, exec_method)
+            result = await self.get_exec_result(get_wallet_key(xpub, contract), req_args, req_kwargs, exec_method)
             return JsonResponse(result=result, id=id).send()
         except BaseException as e:
             if self.VERBOSE:
@@ -1005,11 +1033,14 @@ class ETHDaemon(BaseDaemon):
 
     def load_contract_exec_function(self, address, function, *args, **kwargs):
         kwargs.pop("wallet", None)
-        try:
-            address = Web3.toChecksumAddress(address)
-        except Exception as e:
-            raise Exception("Invalid address") from e
-        contract = self.create_web3_contract(address)
+        if isinstance(address, AsyncContract):
+            contract = address
+        else:
+            try:
+                address = Web3.toChecksumAddress(address)
+            except Exception as e:
+                raise Exception("Invalid address") from e
+            contract = self.create_web3_contract(address)
         # try converting args to int if possible
         args = [int(x) if x.isdigit() else x for x in args]
         kwargs = {k: int(v) if v.isdigit() else v for k, v in kwargs.items()}
@@ -1037,11 +1068,11 @@ class ETHDaemon(BaseDaemon):
         raise NotImplementedError(NO_HISTORY_MESSAGE)
 
     @rpc
-    def restore(self, text, wallet=None, wallet_path=None):
+    def restore(self, text, wallet=None, wallet_path=None, contract=None):
         if not wallet_path:
             wallet_path = os.path.join(self.get_wallet_path(), text)
         try:
-            keystore = KeyStore(text)
+            keystore = KeyStore(text, contract=contract)
         except Exception as e:
             raise Exception("Invalid key provided") from e
         storage = Storage(wallet_path)
