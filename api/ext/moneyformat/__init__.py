@@ -82,7 +82,7 @@ class CurrencyTable:
     def normalize(self, currency, value):
         return round_up(value, self.get_currency_data(currency)["divisibility"])
 
-    def format_currency(self, currency, value, fancy=None):
+    def format_currency(self, currency, value, fancy=None, divisibility=None):
         if value is None or currency is None:
             return value
         currency_info = self.get_currency_data(currency)
@@ -90,7 +90,7 @@ class CurrencyTable:
         if fancy is None:
             fancy = not crypto
         symbol = currency_info["symbol"] if fancy else ""
-        kwargs = {"places": currency_info["divisibility"], "sep": ""}
+        kwargs = {"places": divisibility if divisibility else currency_info["divisibility"], "sep": ""}
         if fancy:
             kwargs.update({"curr": symbol, "sep": ","})
         value = moneyfmt(value, **kwargs)
@@ -98,10 +98,10 @@ class CurrencyTable:
             return value
         return f"{value} ({currency})"
 
-    def format_decimal(self, currency, value):
+    def format_decimal(self, currency, value, divisibility=None):
         if isinstance(value, str):
             value = Decimal(value)
-        return self.format_currency(currency, value, fancy=False)
+        return self.format_currency(currency, value, fancy=False, divisibility=divisibility)
 
 
 currency_table = CurrencyTable()

@@ -98,16 +98,14 @@ class CreateWallet(CreatedMixin):
     currency: str = "btc"
     lightning_enabled: bool = False
     label: str = ""
-    contracts: List[str] = []  # TODO: check if it is optional
+    contract: str = ""
 
     class Config:
         orm_mode = True
 
-    @validator("contracts", pre=True, always=False)
-    def validate_contracts(cls, val):
-        if val == "":
-            return []
-        return val
+    @validator("contract", pre=True, always=False)
+    def validate_contract(cls, val):
+        return val or ""
 
     @validator("lightning_enabled", pre=True, always=True)
     def set_lightning_enabled(cls, v):
@@ -314,7 +312,6 @@ class CreateInvoice(CreatedMixin):
     store_id: str
     currency: str = ""
     paid_currency: Optional[str] = ""
-    paid_contract: Optional[str] = ""
     order_id: Optional[str] = ""
     notification_url: Optional[str] = ""
     redirect_url: Optional[str] = ""

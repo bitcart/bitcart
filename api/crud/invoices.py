@@ -31,7 +31,7 @@ async def create_invoice(invoice: schemes.CreateInvoice, user: schemes.User):
     d["user_id"] = store.user_id
     # Launch products access validation
     # TODO: handle it better
-    await models.Invoice(**d).validate(**d, products=list(products.keys()))
+    await models.Invoice(**d).validate({**d, "products": list(products.keys())})
     obj = await utils.database.create_object(models.Invoice, d)
     product = None
     if products:
@@ -53,9 +53,16 @@ async def create_invoice(invoice: schemes.CreateInvoice, user: schemes.User):
 
 
 async def _create_payment_method(invoice, wallet, product, store, discounts, promocode, lightning=False):
-    coin = settings.settings.get_coin(wallet.currency, {"xpub": wallet.xpub, "contracts": wallet.contracts})
+    coin = settings.settings.get_coin(wallet.currency, {"xpub": wallet.xpub, "contract": wallet.contract})
     discount_id = None
-    rate = await utils.wallets.get_rate(wallet, invoice.currency, store.default_currency)
+    symbol = await coin.server.readcontract(wallet.contract, "symbol") if wallet.contract else wallet.currency
+    divisibility = currency_table.get_currency_data(wallet.currency)["divisibility"]
+    if wallet.contract:
+        divisibility = await coin.server.readcontract(wallet.contract, "decimals")
+    # TODO: check if it's correct in all cases
+    rate = currency_table.normalize(
+        invoice.currency, await utils.wallets.get_rate(wallet, invoice.currency, store.default_currency)
+    )
     price = invoice.price
     if discounts:
         try:
@@ -96,7 +103,7 @@ async def _create_payment_method(invoice, wallet, product, store, discounts, pro
     return await models.PaymentMethod.create(
         id=utils.common.unique_id(),
         invoice_id=invoice.id,
-        amount=price,
+        amount=data_got[coin.amount_field],
         rate=rate,
         discount=discount_id,
         currency=wallet.currency,
@@ -110,7 +117,9 @@ async def _create_payment_method(invoice, wallet, product, store, discounts, pro
         confirmations=0,
         label=wallet.label,
         created=utils.time.now(),
-        contracts=wallet.contracts,
+        contract=wallet.contract,
+        symbol=symbol,
+        divisibility=divisibility,
     )
 
 

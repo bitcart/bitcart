@@ -85,7 +85,7 @@ class BaseModel(db.Model):
         await model.load_data()
         return model
 
-    async def validate(self, **kwargs):
+    async def validate(self, kwargs):
         from api import utils
 
         for key in self.M2M_KEYS:
@@ -188,7 +188,7 @@ class Wallet(BaseModel):
     created = Column(DateTime(True), nullable=False)
     lightning_enabled = Column(Boolean(), default=False)
     label = Column(Text)
-    contracts = Column(ARRAY(Text))
+    contract = Column(Text)
 
     async def add_fields(self):
         await super().add_fields()
@@ -197,18 +197,22 @@ class Wallet(BaseModel):
         success, self.balance = await utils.wallets.get_confirmed_wallet_balance(self)
         self.error = not success
 
-    async def validate(self, **kwargs):
-        await super().validate(**kwargs)
-        if "xpub" in kwargs or "contracts" in kwargs:
+    async def validate(self, kwargs):
+        await super().validate(kwargs)
+        if "xpub" in kwargs or "contract" in kwargs:
             currency = kwargs.get("currency", self.currency)
             coin = settings.settings.get_coin(currency)
             if "xpub" in kwargs:
                 await self.validate_xpub(coin, currency, kwargs["xpub"])
-            if "contracts" in kwargs:
+            if "contract" in kwargs and kwargs["contract"]:
                 tokens = await coin.server.get_tokens()
-                for idx in range(len(kwargs["contracts"])):
-                    kwargs["contracts"][idx] = tokens.get(kwargs["contracts"][idx], kwargs["contracts"][idx])
-                await self.validate_contracts(coin, currency, kwargs["contracts"])
+                kwargs["contract"] = tokens.get(kwargs["contract"], kwargs["contract"])
+                try:
+                    if not await coin.server.validatecontract(kwargs["contract"]):
+                        raise HTTPException(422, "Contract invalid")
+                except BitcartBaseError as e:
+                    logger.error(f"Failed to validate contract for currency {currency}:\n{get_exception_message(e)}")
+                    raise HTTPException(422, "Invalid contract")
 
     async def validate_xpub(self, coin, currency, xpub):
         try:
@@ -217,17 +221,6 @@ class Wallet(BaseModel):
         except BitcartBaseError as e:
             logger.error(f"Failed to validate xpub for currency {currency}:\n{get_exception_message(e)}")
             raise HTTPException(422, "Wallet key invalid")
-
-    async def validate_contracts(self, coin, currency, contracts):
-        try:
-            if not isinstance(contracts, list):
-                raise HTTPException(422, "Invalid contracts")
-            for contract in contracts:
-                if not await coin.server.validatecontract(contract):
-                    raise HTTPException(422, "Contract invalid")
-        except BitcartBaseError as e:
-            logger.error(f"Failed to validate contracts for currency {currency}:\n{get_exception_message(e)}")
-            raise HTTPException(422, "Invalid contracts")
 
 
 class Notification(BaseModel):
@@ -413,12 +406,14 @@ class PaymentMethod(BaseModel):
     confirmations = Column(Integer, nullable=False)
     recommended_fee = Column(Numeric(36, 18), nullable=False)
     currency = Column(Text, index=True)
+    symbol = Column(Text)
     payment_address = Column(Text, nullable=False)
     payment_url = Column(Text, nullable=False)
     rhash = Column(Text)
     lookup_field = Column(Text)
     lightning = Column(Boolean(), default=False)
-    contracts = Column(ARRAY(Text))
+    contract = Column(Text)
+    divisibility = Column(Integer)
     node_id = Column(Text)
     label = Column(Text)
     created = Column(DateTime(True), nullable=False)
@@ -429,7 +424,7 @@ class PaymentMethod(BaseModel):
         data = super().to_dict()
         invoice_id = data.pop("invoice_id")
         invoice = await utils.database.get_object(Invoice, invoice_id, load_data=False)  # To avoid recursion
-        data["amount"] = currency_table.format_decimal(self.currency, self.amount)
+        data["amount"] = currency_table.format_decimal(self.symbol, self.amount, divisibility=self.divisibility)
         data["rate"] = currency_table.format_decimal(invoice.currency, self.rate)
         data["rate_str"] = currency_table.format_currency(invoice.currency, self.rate)
         data["name"] = self.get_name(index)
@@ -438,7 +433,7 @@ class PaymentMethod(BaseModel):
     def get_name(self, index: int = None):
         if self.label:
             return self.label
-        name = f"{self.currency} (⚡)" if self.lightning else self.currency
+        name = f"{self.symbol} (⚡)" if self.lightning else self.symbol
         if index:
             name += f" ({index})"
         return name.upper()
@@ -460,7 +455,6 @@ class Invoice(BaseModel):
     price = Column(Numeric(36, 18), nullable=False)
     currency = Column(Text)
     paid_currency = Column(Text)
-    paid_contract = Column(Text)
     status = Column(Text, nullable=False)
     expiration = Column(Integer)
     buyer_email = Column(Text)
