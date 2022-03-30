@@ -147,6 +147,14 @@ def get_wallet_key(xpub, contract=None):
     return key
 
 
+def from_wei(value: int, precision=18) -> Decimal:
+    return Decimal(value) / Decimal(10**precision)
+
+
+def to_wei(value: Decimal, precision=18) -> int:
+    return int(value * Decimal(10**precision))
+
+
 @dataclass
 class Transaction:
     hash: str
@@ -245,7 +253,7 @@ class Invoice(CastingDataclass, StoredObject):
 
 
 async def get_balance(web3, address):
-    return Web3.fromWei(await web3.eth.get_balance(address), "ether")
+    return from_wei(await web3.eth.get_balance(address))
 
 
 @dataclass
@@ -296,6 +304,7 @@ class Wallet:
             # process token transactions
             await check_contract_logs(
                 self.contract,
+                self.divisibility,
                 from_block=self.latest_height + 1,
                 to_block=min(self.latest_height + MAX_SYNC_BLOCKS, current_height),
             )
@@ -394,7 +403,7 @@ class Wallet:
                 - (await self.web3.eth.get_transaction_receipt(req.tx_hash))["blockNumber"]
                 + 1
             )
-        d["amount_wei"] = Web3.toWei(req.amount, "ether")
+        d["amount_wei"] = to_wei(req.amount, self.divisibility)
         d["address"] = req.address
         d["URI"] = await self.get_request_url(req)
         return d
@@ -464,9 +473,9 @@ class Wallet:
                 print(traceback.format_exc())
 
 
-async def process_transaction(tx, contract=None):
+async def process_transaction(tx, contract=None, divisibility=18):
     to = tx.to
-    amount = Decimal(Web3.fromWei(tx.value, "ether"))
+    amount = from_wei(tx.value, divisibility)
     if to not in daemon.addresses:
         return
     for wallet in daemon.addresses[to]:
@@ -477,12 +486,12 @@ async def process_transaction(tx, contract=None):
             daemon.loop.create_task(daemon.wallets[wallet].process_payment(wallet, amount, tx.hash, contract))
 
 
-async def check_contract_logs(contract, from_block=None, to_block=None):
+async def check_contract_logs(contract, divisibility, from_block=None, to_block=None):
     try:
         for tx_data in await contract.events.Transfer.getLogs(fromBlock=from_block, toBlock=to_block):
             try:
                 tx = Transaction(str(tx_data["transactionHash"].hex()), tx_data["args"]["to"], tx_data["args"]["value"])
-                await process_transaction(tx, contract.address)
+                await process_transaction(tx, contract.address, divisibility)
             except Exception:
                 if daemon.VERBOSE:
                     print(f"Error processing transaction {tx_data['transactionHash'].hex()}:")
@@ -626,14 +635,15 @@ class ETHDaemon(BaseDaemon):
         if contract in self.contracts:
             self.wallets[wallet].contract = self.contracts[contract]
             return
-        self.contracts[contract] = self.start_contract_listening(contract)
+        self.contracts[contract] = await self.start_contract_listening(contract)
         self.wallets[wallet].contract = self.contracts[contract]
         await self.wallets[wallet].fetch_token_info()
         self.loop.create_task(self.fetch_exchange_rates(self.wallets[wallet].symbol, contract))
 
-    def start_contract_listening(self, contract):
+    async def start_contract_listening(self, contract):
         contract_obj = self.create_web3_contract(contract)
-        self.loop.create_task(self.check_contracts(contract_obj))
+        divisibility = await self.readcontract(contract_obj, "decimals")
+        self.loop.create_task(self.check_contracts(contract_obj, divisibility))
         return contract_obj
 
     def create_web3_contract(self, contract):
@@ -642,9 +652,9 @@ class ETHDaemon(BaseDaemon):
         except Exception as e:
             raise Exception("Invalid contract address or non-ERC20 token") from e
 
-    async def check_contracts(self, contract):
+    async def check_contracts(self, contract, divisibility):
         while self.running:
-            await check_contract_logs(contract)
+            await check_contract_logs(contract, divisibility)
             await asyncio.sleep(self.BLOCK_TIME)
 
     async def trigger_event(self, data, wallet):
