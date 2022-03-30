@@ -40,6 +40,8 @@ ONE_ADDRESS_MESSAGE = "We only support one address per wallet as it is common in
 GET_PROOF_MESSAGE = "Geth doesn't support get_proof correctly for now"
 NO_MASTER_KEYS_MESSAGE = "As we use only one address per wallet, address keys are used, but not the xprv/xpub"
 
+DEFAULT_CURRENCY = "ETH"
+
 CHUNK_SIZE = 30
 AMOUNTGEN_PRECISION = Decimal(10) ** (-18)
 AMOUNTGEN_LIMIT = 10**9
@@ -255,8 +257,9 @@ class Wallet:
     used_amounts: dict = field(default_factory=dict)
     receive_requests: dict = field(default_factory=dict)
     contract: str = None
-    symbol: str = "ETH"
+    symbol: str = DEFAULT_CURRENCY
     divisibility: int = 18
+    _token_fetched = False
 
     latest_height = StoredDBProperty("latest_height", -1)
 
@@ -275,11 +278,12 @@ class Wallet:
     async def fetch_token_info(self):
         self.symbol = await daemon.readcontract(self.contract, "symbol")
         self.divisibility = await daemon.readcontract(self.contract, "decimals")
+        self._token_fetched = True
 
     async def start(self, blocks):
         if self.latest_height == -1:
             self.latest_height = await self.web3.eth.block_number
-        if self.contract:
+        if self.contract and not self._token_fetched:
             await self.fetch_token_info()
 
         self.running = True
@@ -490,7 +494,7 @@ async def check_contract_logs(contract, from_block=None, to_block=None):
 
 
 class ETHDaemon(BaseDaemon):
-    name = "ETH"
+    name = DEFAULT_CURRENCY
     BASE_SPEC_FILE = "daemons/spec/eth.json"
     DEFAULT_PORT = 5002
     ALIASES = {
@@ -515,7 +519,7 @@ class ETHDaemon(BaseDaemon):
 
     def __init__(self):
         super().__init__()
-        self.exchange_rates = {}
+        self.exchange_rates = defaultdict(dict)
         self.contracts = {}
         self.latest_blocks = deque(maxlen=MAX_SYNC_BLOCKS)
         self.config_path = os.path.join(self.get_datadir(), "config")
@@ -549,21 +553,24 @@ class ETHDaemon(BaseDaemon):
         self.loop.create_task(self.process_pending())
         self.loop.create_task(self.fetch_exchange_rates())
 
-    async def get_rates(self):
-        async with self.client_session.get(
+    async def get_rates(self, contract=None):
+        url = (
             "https://api.coingecko.com/api/v3/coins/ethereum?localization=false&sparkline=false"
-        ) as response:
+            if not contract
+            else f"https://api.coingecko.com/api/v3/coins/ethereum/contract/{contract}"
+        )
+        async with self.client_session.get(url) as response:
             got = await response.json()
         prices = got["market_data"]["current_price"]
         return {price[0].upper(): Decimal(price[1]) for price in prices.items()}
 
-    async def fetch_exchange_rates(self):
+    async def fetch_exchange_rates(self, currency=DEFAULT_CURRENCY, contract=None):
         while self.running:
             try:
-                self.exchange_rates = await self.get_rates()
+                self.exchange_rates[currency] = await self.get_rates(contract)
             except Exception:
                 if self.VERBOSE:
-                    print("Error fetching exchange rates:")
+                    print(f"Error fetching exchange rates for {currency}:")
                     print(traceback.format_exc())
             await asyncio.sleep(self.FX_FETCH_TIME)
 
@@ -612,7 +619,7 @@ class ETHDaemon(BaseDaemon):
                     print(traceback.format_exc())
             await asyncio.sleep(self.BLOCK_TIME)
 
-    def add_contract(self, contract, wallet):
+    async def add_contract(self, contract, wallet):
         if not contract:
             return
         contract = Web3.toChecksumAddress(contract)
@@ -621,6 +628,8 @@ class ETHDaemon(BaseDaemon):
             return
         self.contracts[contract] = self.start_contract_listening(contract)
         self.wallets[wallet].contract = self.contracts[contract]
+        await self.wallets[wallet].fetch_token_info()
+        self.loop.create_task(self.fetch_exchange_rates(self.wallets[wallet].symbol, contract))
 
     def start_contract_listening(self, contract):
         contract_obj = self.create_web3_contract(contract)
@@ -671,7 +680,7 @@ class ETHDaemon(BaseDaemon):
     async def load_wallet(self, xpub, contract):
         wallet_key = get_wallet_key(xpub, contract)
         if wallet_key in self.wallets:
-            self.add_contract(contract, wallet_key)
+            await self.add_contract(contract, wallet_key)
             return self.wallets[wallet_key]
         if not xpub:
             return None
@@ -687,7 +696,7 @@ class ETHDaemon(BaseDaemon):
         self.wallets[wallet_key] = wallet
         self.wallets_updates[wallet_key] = []
         self.addresses[wallet.address].add(wallet_key)
-        self.add_contract(contract, wallet_key)
+        await self.add_contract(contract, wallet_key)
         await wallet.start(self.latest_blocks)
         return wallet
 
@@ -807,9 +816,10 @@ class ETHDaemon(BaseDaemon):
 
     @rpc
     def exchange_rate(self, currency=None, wallet=None):
+        origin_currency = self.wallets[wallet].symbol if wallet else DEFAULT_CURRENCY
         if not currency:
             currency = self.DEFAULT_CURRENCY
-        return str(self.exchange_rates.get(currency, Decimal("NaN")))
+        return str(self.exchange_rates[origin_currency].get(currency, Decimal("NaN")))
 
     @rpc
     async def get_default_fee(self, tx, wallet=None):
@@ -951,7 +961,8 @@ class ETHDaemon(BaseDaemon):
 
     @rpc
     def list_currencies(self, wallet=None):
-        return list(self.exchange_rates.keys())
+        origin_currency = self.wallets[wallet].symbol if wallet else DEFAULT_CURRENCY
+        return list(self.exchange_rates[origin_currency].keys())
 
     @rpc
     async def list_peers(self, wallet=None):
