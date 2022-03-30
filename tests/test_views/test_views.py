@@ -1281,3 +1281,9 @@ async def test_invoice_update_customer(client: TestClient, user, token, name, ex
     assert resp.json()[name] == expected
     # when set, don't change anymore
     assert (await client.patch(f"/invoices/{invoice_id}/customer", json={name: updated})).json()[name] == expected
+
+
+async def test_get_tokens_btc(client: TestClient):
+    resp = await client.get("/cryptos/tokens/btc")
+    assert resp.status_code == 200
+    assert resp.json() == {"count": 0, "result": [], "previous": None, "next": None}

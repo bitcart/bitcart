@@ -204,7 +204,7 @@ class Wallet(BaseModel):
             coin = settings.settings.get_coin(currency)
             if "xpub" in kwargs:
                 await self.validate_xpub(coin, currency, kwargs["xpub"])
-            if "contract" in kwargs and kwargs["contract"]:
+            if "contract" in kwargs and kwargs["contract"]:  # pragma: no cover
                 tokens = await coin.server.get_tokens()
                 kwargs["contract"] = tokens.get(kwargs["contract"], kwargs["contract"])
                 try:

@@ -57,7 +57,7 @@ async def _create_payment_method(invoice, wallet, product, store, discounts, pro
     discount_id = None
     symbol = await coin.server.readcontract(wallet.contract, "symbol") if wallet.contract else wallet.currency
     divisibility = currency_table.get_currency_data(wallet.currency)["divisibility"]
-    if wallet.contract:
+    if wallet.contract:  # pragma: no cover
         divisibility = await coin.server.readcontract(wallet.contract, "decimals")
     # TODO: check if it's correct in all cases
     rate = currency_table.normalize(
