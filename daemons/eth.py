@@ -43,7 +43,6 @@ NO_MASTER_KEYS_MESSAGE = "As we use only one address per wallet, address keys ar
 DEFAULT_CURRENCY = "ETH"
 
 CHUNK_SIZE = 30
-AMOUNTGEN_PRECISION = Decimal(10) ** (-18)
 AMOUNTGEN_LIMIT = 10**9
 
 MAX_SYNC_BLOCKS = 300  # (60/12)=5*60 (a block every 12 seconds, max normal expiry time 60 minutes)
@@ -366,6 +365,7 @@ class Wallet:
         add_low = 1
         add_high = 2
         cur_amount = amount
+        AMOUNTGEN_PRECISION = Decimal(10) ** (-self.divisibility)
         while cur_amount in self.used_amounts:
             cur_amount = amount + random.randint(add_low, add_high) * AMOUNTGEN_PRECISION
             if add_high < AMOUNTGEN_LIMIT:
@@ -382,6 +382,9 @@ class Wallet:
 
     async def get_request_url(self, req):
         chain_id = await self.web3.eth.chain_id
+        if self.contract:
+            amount_wei = to_wei(req.amount, self.divisibility)
+            return f"ethereum:{self.contract.address}@{chain_id}/transfer?address={req.address}&uint256={amount_wei}"
         return f"ethereum:{req.address}@{chain_id}?value={decimal_to_string(req.amount,self.divisibility)}"
 
     async def export_request(self, req):
@@ -479,7 +482,7 @@ async def process_transaction(tx, contract=None, divisibility=18):
     if to not in daemon.addresses:
         return
     for wallet in daemon.addresses[to]:
-        if contract and contract != daemon.wallets[wallet].contract:
+        if contract and contract != daemon.wallets[wallet].contract.address:
             continue
         await daemon.trigger_event({"event": "new_transaction", "tx": tx.hash}, wallet)
         if amount in daemon.wallets[wallet].used_amounts:
