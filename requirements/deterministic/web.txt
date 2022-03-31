@@ -593,9 +593,9 @@ notifiers==1.3.3 \
     --hash=sha256:152e605c0be595069b187a89ab1bdc1559f51a3ec5ee5803915c7e2ec9464e94 \
     --hash=sha256:9fd8d95ab1ebcd3852423755aa90cbb0f72a805ca77af0d8c9ad7af445f58399
     # via -r requirements/web.txt
-paramiko==2.9.2 \
-    --hash=sha256:04097dbd96871691cdb34c13db1883066b8a13a0df2afd4cb0a92221f51c2603 \
-    --hash=sha256:944a9e5dbdd413ab6c7951ea46b0ab40713235a9c4c5ca81cfe45c6f14fa677b
+paramiko==2.10.3 \
+    --hash=sha256:ac6593479f2b47a9422eca076b22cff9f795495e6733a64723efc75dd8c92101 \
+    --hash=sha256:ddb1977853aef82804b35d72a0e597b244fa326c404c350bd00c5b01dbfee71a
     # via -r requirements/web.txt
 passlib[bcrypt]==1.7.4 \
     --hash=sha256:aa6bca462b8d8bda89c70b382f0c298a20b5560af6cbfa2dce410c0a2fb669f1 \
@@ -796,6 +796,7 @@ six==1.16.0 \
     --hash=sha256:8abb2f1d86890a2dfb989f9a77cfcfd3e47c2a354b01111771326f8aa26e0254
     # via
     #   bcrypt
+    #   paramiko
     #   python-dateutil
     #   python-multipart
 sniffio==1.2.0 \
