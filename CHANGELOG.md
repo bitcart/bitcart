@@ -2,6 +2,10 @@
 
 ## Latest changes
 
+## 0.6.4.1
+
+Fix UI issues and faster commands execution
+
 ## 0.6.4.0
 
 Added ERC20 tokens support and fixed some bugs in ETH implementation
