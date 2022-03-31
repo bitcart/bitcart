@@ -519,7 +519,7 @@ class ETHDaemon(BaseDaemon):
         "getunusedaddress": "getaddress",
         "list_invoices": "list_requests",
     }
-    SKIP_NETWORK = ["getinfo"]
+    SKIP_NETWORK = ["getinfo", "exchange_rate", "list_currencies"]
 
     VERSION = "4.1.5"  # version of electrum API with which we are "compatible"
     BLOCK_TIME = 5
@@ -719,10 +719,11 @@ class ETHDaemon(BaseDaemon):
     async def _get_wallet(self, id, req_method, xpub, contract):
         wallet = error = None
         try:
-            while not self.synchronized:  # wait for initial sync to fetch blocks
+            should_skip = req_method in self.SKIP_NETWORK
+            while not should_skip and not self.synchronized:  # wait for initial sync to fetch blocks
                 await asyncio.sleep(0.1)
             wallet = await self.load_wallet(xpub, contract)
-            if req_method in self.SKIP_NETWORK:
+            if should_skip:
                 return wallet, error
             while await self.is_still_syncing(wallet):
                 await asyncio.sleep(0.1)
