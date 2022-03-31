@@ -2,6 +2,10 @@
 
 ## Latest changes
 
+## 0.6.4.0
+
+Added ERC20 tokens support and fixed some bugs in ETH implementation
+
 ## 0.6.3.0
 
 ### Ethereum support
