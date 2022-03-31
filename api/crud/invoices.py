@@ -180,9 +180,9 @@ def get_methods_inds(methods: list):
     met = defaultdict(int)
     for item in methods:
         if not item.label and not item.lightning:  # custom label not counted
-            currencies[item.currency] += 1
+            currencies[item.symbol] += 1
     for item in methods:
         if not item.lightning:
-            met[item.currency] += 1
-        index = met[item.currency] if currencies[item.currency] > 1 else None
+            met[item.symbol] += 1
+        index = met[item.symbol] if currencies[item.symbol] > 1 else None
         yield index, item
