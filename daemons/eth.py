@@ -147,10 +147,14 @@ def get_wallet_key(xpub, contract=None):
 
 
 def from_wei(value: int, precision=18) -> Decimal:
+    if value == 0:
+        return Decimal(0)
     return Decimal(value) / Decimal(10**precision)
 
 
 def to_wei(value: Decimal, precision=18) -> int:
+    if value == Decimal(0):
+        return 0
     return int(value * Decimal(10**precision))
 
 
@@ -719,7 +723,7 @@ class ETHDaemon(BaseDaemon):
     async def _get_wallet(self, id, req_method, xpub, contract):
         wallet = error = None
         try:
-            should_skip = req_method in self.SKIP_NETWORK
+            should_skip = not self.supported_methods[req_method].requires_network
             while not should_skip and not self.synchronized:  # wait for initial sync to fetch blocks
                 await asyncio.sleep(0.1)
             wallet = await self.load_wallet(xpub, contract)
@@ -774,11 +778,11 @@ class ETHDaemon(BaseDaemon):
 
     ### Methods ###
 
-    @rpc
+    @rpc(requires_network=True)
     async def add_peer(self, url, wallet=None):
         await self.web3.geth.admin.add_peer(url)
 
-    @rpc(requires_wallet=True)
+    @rpc(requires_wallet=True, requires_network=True)
     async def add_request(self, amount, memo="", expiration=3600, force=False, wallet=None):
         amount = Decimal(amount)
         addr = self.wallets[wallet].address
@@ -788,7 +792,7 @@ class ETHDaemon(BaseDaemon):
         self.loop.create_task(self.wallets[wallet].expired_task(req))
         return await self.wallets[wallet].export_request(req)
 
-    @rpc
+    @rpc(requires_network=True)
     async def broadcast(self, tx, wallet=None):
         return to_dict(await self.web3.eth.send_raw_transaction(tx))
 
@@ -797,9 +801,10 @@ class ETHDaemon(BaseDaemon):
         self.wallets[wallet].clear_requests()
         return True
 
-    @rpc(requires_wallet=True)
-    def close_wallet(self, wallet):
-        self.wallets[wallet].stop()
+    @rpc(requires_wallet=True, requires_network=True)
+    async def close_wallet(self, wallet):
+        block_number = await self.web3.eth.block_number
+        self.wallets[wallet].stop(block_number)
         del self.wallets_updates[wallet]
         del self.addresses[self.wallets[wallet].address]
         del self.wallets[wallet]
@@ -824,7 +829,7 @@ class ETHDaemon(BaseDaemon):
             "msg": WRITE_DOWN_SEED_MESSAGE,
         }
 
-    @rpc(requires_wallet=True)
+    @rpc
     async def createnewaddress(self, *args, **kwargs):
         raise NotImplementedError(ONE_ADDRESS_MESSAGE)
 
@@ -835,7 +840,7 @@ class ETHDaemon(BaseDaemon):
             currency = self.DEFAULT_CURRENCY
         return str(self.exchange_rates[origin_currency].get(currency, Decimal("NaN")))
 
-    @rpc
+    @rpc(requires_network=True)
     async def get_default_fee(self, tx, wallet=None):
         tx_dict = load_json_dict(tx, "Invalid transaction").copy()
         tx_dict.pop("chainId", None)
@@ -853,13 +858,13 @@ class ETHDaemon(BaseDaemon):
     def get_tx_size(self, tx_data, wallet=None):
         return len(Web3.toBytes(hexstr=tx_data))
 
-    @rpc
+    @rpc(requires_network=True)
     async def get_tx_status(self, tx, wallet=None):
         data = to_dict(await self.web3.eth.get_transaction_receipt(tx))
         data["confirmations"] = max(0, await self.web3.eth.block_number - data["blockNumber"] + 1)
         return data
 
-    @rpc(requires_wallet=True)
+    @rpc(requires_wallet=True, requires_network=True)
     def get_updates(self, wallet):
         updates = self.wallets_updates[wallet]
         self.wallets_updates[wallet] = []
@@ -869,7 +874,7 @@ class ETHDaemon(BaseDaemon):
     def getaddress(self, wallet):
         return self.wallets[wallet].address
 
-    @rpc
+    @rpc(requires_network=True)
     async def getaddressbalance(self, address, wallet=None):
         return to_dict(await get_balance(self.web3, address))
 
@@ -877,7 +882,7 @@ class ETHDaemon(BaseDaemon):
     def getaddresshistory(self, *args, **kwargs):
         raise NotImplementedError(NO_HISTORY_MESSAGE)
 
-    @rpc(requires_wallet=True)
+    @rpc(requires_wallet=True, requires_network=True)
     async def getbalance(self, wallet):
         return {"confirmed": await self.wallets[wallet].balance()}
 
@@ -887,7 +892,7 @@ class ETHDaemon(BaseDaemon):
             return False
         return self.config.get(key)
 
-    @rpc
+    @rpc(requires_network=True)
     async def getfeerate(self, wallet=None):
         return await self.web3.eth.gas_price
 
@@ -895,6 +900,10 @@ class ETHDaemon(BaseDaemon):
     async def getinfo(self, wallet=None):
         if not await self.web3.isConnected():
             return {"connected": False, "path": "", "version": self.VERSION}
+        try:
+            nodes = len(await self.web3.geth.admin.peers())
+        except Exception:
+            nodes = 0
         numblocks = await self.web3.eth.block_number
         return {
             "blockchain_height": numblocks,
@@ -902,12 +911,12 @@ class ETHDaemon(BaseDaemon):
             "gas_price": await self.web3.eth.gas_price,
             "server": self.SERVER,
             "server_height": numblocks,
-            "spv_nodes": len(await self.web3.geth.admin.peers()),
+            "spv_nodes": nodes,
             "synchronized": not await self.web3.eth.syncing,
             "version": self.VERSION,
         }
 
-    @rpc(requires_wallet=True)
+    @rpc
     def getmasterprivate(self, *args, **kwargs):
         raise NotImplementedError(NO_MASTER_KEYS_MESSAGE)
 
@@ -915,7 +924,7 @@ class ETHDaemon(BaseDaemon):
     def getmerkle(self, *args, **kwargs):
         raise NotImplementedError(GET_PROOF_MESSAGE)
 
-    @rpc(requires_wallet=True)
+    @rpc
     def getmpk(self, *args, **kwargs):
         raise NotImplementedError(NO_MASTER_KEYS_MESSAGE)
 
@@ -929,7 +938,7 @@ class ETHDaemon(BaseDaemon):
     def getpubkeys(self, *args, wallet=None):
         return self.wallets[wallet].keystore.public_key
 
-    @rpc(requires_wallet=True)
+    @rpc(requires_wallet=True, requires_network=True)
     async def getrequest(self, key, wallet):
         req = self.wallets[wallet].get_request(key)
         if not req:
@@ -946,7 +955,7 @@ class ETHDaemon(BaseDaemon):
     def getservers(self, wallet=None):
         return [self.SERVER]
 
-    @rpc
+    @rpc(requires_network=True)
     async def gettransaction(self, tx, wallet=None):
         data = to_dict(await self.web3.eth.get_transaction(tx))
         data["confirmations"] = max(0, await self.web3.eth.block_number - data["blockNumber"] + 1)
@@ -956,7 +965,7 @@ class ETHDaemon(BaseDaemon):
     def help(self, wallet=None):
         return list(self.supported_methods.keys())
 
-    @rpc(requires_wallet=True)
+    @rpc
     async def history(self, *args, **kwargs):
         raise NotImplementedError(NO_HISTORY_MESSAGE)
 
@@ -978,11 +987,11 @@ class ETHDaemon(BaseDaemon):
         origin_currency = self.wallets[wallet].symbol if wallet else DEFAULT_CURRENCY
         return list(self.exchange_rates[origin_currency].keys())
 
-    @rpc
+    @rpc(requires_network=True)
     async def list_peers(self, wallet=None):
         return to_dict(await self.web3.geth.admin.peers())
 
-    @rpc(requires_wallet=True)
+    @rpc(requires_wallet=True, requires_network=True)
     async def list_requests(self, pending=False, expired=False, paid=False, wallet=None):
         if pending:
             f = PR_UNPAID
@@ -1030,7 +1039,7 @@ class ETHDaemon(BaseDaemon):
             **(await self.get_fee_params()),
         }
 
-    @rpc(requires_wallet=True)
+    @rpc(requires_wallet=True, requires_network=True)
     async def payto(self, destination, amount, fee=None, feerate=None, gas=None, unsigned=False, wallet=None, *args, **kwargs):
         address = self.wallets[wallet].address
         tx_dict = {
@@ -1079,7 +1088,7 @@ class ETHDaemon(BaseDaemon):
             raise Exception(f"Invalid arguments for {function} function") from e
         return exec_function
 
-    @rpc
+    @rpc(requires_network=True)
     async def readcontract(self, address, function, *args, **kwargs):
         exec_function = self.load_contract_exec_function(address, function, *args, **kwargs)
         return await exec_function.call()
@@ -1088,7 +1097,7 @@ class ETHDaemon(BaseDaemon):
     async def recommended_fee(self, target=None, wallet=None):  # disable fee estimation as it's unclear what to show
         return 0
 
-    @rpc(requires_wallet=True)
+    @rpc
     def removelocaltx(self, *args, **kwargs):
         raise NotImplementedError(NO_HISTORY_MESSAGE)
 
@@ -1144,7 +1153,7 @@ class ETHDaemon(BaseDaemon):
     def signtransaction_with_privkey(self, tx, privkey, wallet=None):
         return self._sign_transaction(tx, privkey)
 
-    @rpc(requires_wallet=True)
+    @rpc(requires_wallet=True, requires_network=True)
     async def transfer(self, address, to, value, gas=None, wallet=None):
         return await self.writecontract(address, "transfer", to, value, gas=gas, wallet=wallet)
 
@@ -1178,7 +1187,7 @@ class ETHDaemon(BaseDaemon):
     def version(self, wallet=None):
         return self.VERSION
 
-    @rpc(requires_wallet=True)
+    @rpc(requires_wallet=True, requires_network=True)
     async def writecontract(self, address, function, *args, **kwargs):
         wallet = kwargs.pop("wallet")
         gas = kwargs.pop("gas", None)

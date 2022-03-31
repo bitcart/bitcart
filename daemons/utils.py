@@ -42,10 +42,11 @@ def maybe_update_key(dest, other, key):
         dest[key] = other_value
 
 
-def rpc(f=None, requires_wallet=False, requires_lightning=False):
+def rpc(f=None, requires_wallet=False, requires_network=False, requires_lightning=False):
     def wrapper(f):
         f.is_handler = True
         f.requires_wallet = bool(requires_wallet)
+        f.requires_network = bool(requires_network)
         f.requires_lightning = bool(requires_lightning)
         return f
 

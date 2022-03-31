@@ -209,7 +209,7 @@ class BTCDaemon(BaseDaemon):
         return wallet, command_runner
 
     def add_wallet_to_command(self, wallet, req_method, exec_method, **kwargs):
-        method_data = self.get_method_data(req_method, custom=False)
+        method_data = self.get_method_data(req_method)
         if method_data.requires_wallet:
             config = kwargs.get("config")
             cmd_name = method_data.name
@@ -218,17 +218,15 @@ class BTCDaemon(BaseDaemon):
             exec_method = functools.partial(exec_method, wallet=path)
         return exec_method
 
-    def get_method_data(self, method, custom):
-        if custom:
-            return self.supported_methods[method]
-        else:
-            return self.electrum.commands.known_commands[method]
+    def get_method_data(self, method):
+        return self.supported_methods.get(method, None) or self.electrum.commands.known_commands[method]
 
     async def _get_wallet(self, id, req_method, xpub):
         wallet = cmd = error = None
         try:
             wallet, cmd = await self.load_wallet(xpub, config=self.electrum_config)
-            while self.is_still_syncing(wallet):
+            should_skip = not self.get_method_data(req_method).requires_network
+            while not should_skip and self.is_still_syncing(wallet):
                 await asyncio.sleep(0.1)
         except Exception as e:
             if self.VERBOSE:
@@ -261,7 +259,7 @@ class BTCDaemon(BaseDaemon):
             exec_method = self.add_wallet_to_command(wallet, req_method, exec_method, **kwargs)
         else:
             exec_method = functools.partial(exec_method, wallet=xpub)
-        if self.LIGHTNING and self.get_method_data(req_method, custom).requires_lightning and not wallet.has_lightning():
+        if self.LIGHTNING and self.get_method_data(req_method).requires_lightning and not wallet.has_lightning():
             raise Exception("Lightning not supported in this wallet type")
         with hide_logging_errors(not self.VERBOSE):
             result = exec_method(*req_args, **req_kwargs)
@@ -279,7 +277,7 @@ class BTCDaemon(BaseDaemon):
         exec_method, custom, error = await self.get_exec_method(cmd, id, req_method)
         if error:
             return error.send()
-        if self.get_method_data(req_method, custom).requires_wallet and not xpub:
+        if self.get_method_data(req_method).requires_wallet and not xpub:
             return JsonResponse(code=-32000, error="Wallet not loaded", id=id).send()
         try:
             result = await self.get_exec_result(
@@ -367,7 +365,7 @@ class BTCDaemon(BaseDaemon):
     def validatekey(self, key, wallet=None):
         return self.electrum.keystore.is_master_key(key) or self.electrum.keystore.is_seed(key)
 
-    @rpc(requires_wallet=True)
+    @rpc(requires_wallet=True, requires_network=True)
     def get_updates(self, wallet):
         updates = self.wallets_updates[wallet]
         self.wallets_updates[wallet] = []
@@ -421,7 +419,7 @@ class BTCDaemon(BaseDaemon):
         await self._verify_transaction(tx_hash, tx_height)
         return result_formatted
 
-    @rpc
+    @rpc(requires_network=True)
     async def get_transaction(self, tx_hash, use_spv=False, wallet=None):
         return await self._get_transaction_spv(tx_hash) if use_spv else await self._get_transaction_verbose(tx_hash)
 
@@ -445,7 +443,7 @@ class BTCDaemon(BaseDaemon):
     def get_tx_hash(self, raw_tx: dict, wallet=None) -> int:
         return self.electrum.transaction.Transaction(raw_tx).txid()
 
-    @rpc
+    @rpc(requires_network=True)
     def get_default_fee(self, tx: Union[dict, int], wallet=None) -> float:
         return self.electrum_config.estimate_fee(self.get_tx_size(tx) if isinstance(tx, dict) else tx)
 
@@ -453,7 +451,7 @@ class BTCDaemon(BaseDaemon):
     def recommended_fee(self, target, wallet=None) -> float:
         return self.electrum_config.eta_target_to_fee(target)
 
-    @rpc(requires_wallet=True)
+    @rpc(requires_wallet=True, requires_network=True)
     def get_invoice(self, key, wallet):
         value = self.wallets[wallet]["wallet"].get_formatted_request(key)
         if not value:
@@ -463,7 +461,7 @@ class BTCDaemon(BaseDaemon):
     def get_address_balance(self, address, wallet):
         return self.wallets[wallet]["wallet"].get_addr_balance(address)
 
-    @rpc(requires_wallet=True)
+    @rpc(requires_wallet=True, requires_network=True)
     def getaddressbalance_wallet(self, address, wallet):
         confirmed, unconfirmed, unmatured = map(format_satoshis, self.get_address_balance(address, wallet))
         return {"confirmed": confirmed, "unconfirmed": unconfirmed, "unmatured": unmatured}
