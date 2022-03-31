@@ -117,14 +117,12 @@ async def process_electrum_status(invoice, method, xpub, electrum_status):
     return True
 
 
-async def new_payment_handler(instance, event, address, status, status_str):
+async def new_payment_handler(instance, event, address, status, status_str, contract=None):
     with log_errors():
-        data = (
-            await get_pending_invoices_query(instance.coin_name.lower())
-            .where(models.PaymentMethod.lookup_field == address)
-            .gino.load((models.PaymentMethod, models.Invoice, models.Wallet.xpub))
-            .first()
-        )
+        query = get_pending_invoices_query(instance.coin_name.lower()).where(models.PaymentMethod.lookup_field == address)
+        if contract:
+            query = query.where(models.PaymentMethod.contract == contract)
+        data = await query.gino.load((models.PaymentMethod, models.Invoice, models.Wallet.xpub)).first()
         if not data:  # received payment but no matching invoice
             return
         method, invoice, xpub = data
@@ -144,7 +142,7 @@ async def update_confirmations(invoice, method, confirmations):
 
 
 async def get_confirmations(method, xpub):
-    coin = settings.settings.get_coin(method.currency, xpub)
+    coin = settings.settings.get_coin(method.currency, {"xpub": xpub, "contract": method.contract})
     invoice_data = await coin.get_request(method.lookup_field)
     return min(
         constants.MAX_CONFIRMATION_WATCH, invoice_data.get("confirmations", 0)
@@ -238,7 +236,7 @@ async def check_pending(currency):
         with log_errors():  # issues processing one item
             if invoice.status == InvoiceStatus.EXPIRED:
                 continue
-            coin = settings.settings.get_coin(method.currency, xpub)
+            coin = settings.settings.get_coin(method.currency, {"xpub": xpub, "contract": method.contract})
             if method.lightning:
                 invoice_data = await coin.get_invoice(method.lookup_field)
             else:

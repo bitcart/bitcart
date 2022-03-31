@@ -31,7 +31,7 @@ def prepare_create_kwargs(model, data, user=None, **additional_kwargs):
 
 async def create_object_core(model, kwargs):
     model = model(**kwargs)  # Create object instance to allow calling instance methods
-    await model.validate(**kwargs)
+    await model.validate(kwargs)
     with safe_db_write():
         result = await model.create(**kwargs)
     return result
@@ -45,7 +45,7 @@ async def create_object(model, data, user=None, **additional_kwargs):
 async def modify_object(model, data, **additional_kwargs):
     kwargs = get_kwargs(model, data, additional_kwargs)
     kwargs = model.prepare_edit(kwargs)
-    await model.validate(**kwargs)
+    await model.validate(kwargs)
     with safe_db_write():
         await model.update(**kwargs).apply()
 

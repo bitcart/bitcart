@@ -54,3 +54,9 @@ async def get_fiatlist(query: Optional[str] = None):
         pattern = re.compile(query, re.IGNORECASE)
         s = [x for x in s if pattern.match(x)]
     return sorted(s)
+
+
+@router.get("/tokens/{currency}")
+async def get_tokens(currency: str):
+    tokens = await settings.settings.get_coin(currency).server.get_tokens()
+    return prepare_compliant_response(list(tokens.keys()))

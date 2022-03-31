@@ -19,7 +19,7 @@ def standardize_path(path):
 class JSONEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, Decimal):
-            return str(obj)
+            return decimal_to_string(obj)
         if hasattr(obj, "to_json") and callable(obj.to_json):
             return obj.to_json()
         return super().default(obj)
@@ -77,6 +77,16 @@ def locked(func):
     return wrapper
 
 
+def decimal_to_string(d, precision=18):
+    return f"{d:.{precision}f}"
+
+
+def obj_to_string(obj):
+    if isinstance(obj, Decimal):
+        return decimal_to_string(obj)
+    return str(obj)
+
+
 @singledispatch
 def string_keys(obj):
     return obj
@@ -84,7 +94,7 @@ def string_keys(obj):
 
 @string_keys.register(dict)
 def _(d):
-    return {str(k): string_keys(v) for k, v in d.items()}
+    return {obj_to_string(k): string_keys(v) for k, v in d.items()}
 
 
 @string_keys.register(list)
@@ -153,6 +163,22 @@ class StoredObject:
         d.pop("db", None)
         d = {k: v for k, v in d.items() if not k.startswith("_")}
         return d
+
+
+class StoredDBProperty:
+    def __init__(self, name, default):
+        self.name = name
+        self.default = default
+
+    def __set__(self, obj, value):
+        obj.db.put(self.name, value)
+        obj.db.set_modified(True)
+        obj.save_db()
+
+    def __get__(self, obj, objtype=None):
+        if not hasattr(obj, "db"):
+            return None
+        return obj.db.get(self.name, self.default)
 
 
 class StoredProperty:

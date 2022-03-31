@@ -12,7 +12,10 @@
         "Invalid private key imported: address mismatch": -32005,
         "This is a watching-only wallet": -32006,
         "This wallet has no seed words": -32007,
-        "Invalid transaction": -32008
+        "Invalid transaction": -32008,
+        "Invalid contract address or non-ERC20 token": -32009,
+        "Contract ABI is missing": -32010,
+        "Invalid arguments for": -32011
     },
     "exceptions": {
         "-32601": {
@@ -58,6 +61,18 @@
         "-32008": {
             "exc_name": "InvalidTransactionError",
             "docstring": "Invalid transaction"
+        },
+        "-32009": {
+            "exc_name": "InvalidContractAddressError",
+            "docstring": "Invalid contract address or non-ERC20 token"
+        },
+        "-32010": {
+            "exc_name": "NoSuchContractFunctionError",
+            "docstring": "Contract ABI is missing this function"
+        },
+        "-32011": {
+            "exc_name": "InvalidContractArgumentsError",
+            "docstring": "Invalid arguments for this contract function"
         }
     }
 }

@@ -98,9 +98,14 @@ class CreateWallet(CreatedMixin):
     currency: str = "btc"
     lightning_enabled: bool = False
     label: str = ""
+    contract: str = ""
 
     class Config:
         orm_mode = True
+
+    @validator("contract", pre=True, always=False)
+    def validate_contract(cls, val):
+        return val or ""
 
     @validator("lightning_enabled", pre=True, always=True)
     def set_lightning_enabled(cls, v):

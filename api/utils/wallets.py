@@ -15,7 +15,7 @@ logger = get_logger(__name__)
 
 async def get_rate(wallet, currency, fallback_currency=None):
     try:
-        coin = settings.settings.get_coin(wallet.currency, wallet.xpub)
+        coin = settings.settings.get_coin(wallet.currency, {"xpub": wallet.xpub, "contract": wallet.contract})
         rate = await coin.rate(currency)
         if math.isnan(rate) and fallback_currency:
             rate = await coin.rate(fallback_currency)
@@ -33,7 +33,7 @@ async def get_rate(wallet, currency, fallback_currency=None):
 
 
 async def get_wallet_history(model, response):
-    coin = settings.settings.get_coin(model.currency, model.xpub)
+    coin = settings.settings.get_coin(model.currency, {"xpub": model.xpub, "contract": model.contract})
     txes = (await coin.history())["transactions"]
     for i in txes:
         response.append({"date": i["date"], "txid": i["txid"], "amount": i["bc_value"]})
@@ -41,7 +41,7 @@ async def get_wallet_history(model, response):
 
 async def get_wallet_balance(wallet) -> Union[bool, Decimal]:
     try:
-        coin = settings.settings.get_coin(wallet.currency, wallet.xpub)
+        coin = settings.settings.get_coin(wallet.currency, {"xpub": wallet.xpub, "contract": wallet.contract})
         return True, await coin.balance()
     except (BitcartBaseError, HTTPException) as e:
         logger.error(

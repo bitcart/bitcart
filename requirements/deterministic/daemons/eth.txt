@@ -117,18 +117,16 @@ charset-normalizer==2.0.12 \
     #   requests
 cytoolz==0.11.2 \
     --hash=sha256:ea23663153806edddce7e4153d1d407d62357c05120a4e8485bddf1bd5ab22b4
-    # via
-    #   eth-keyfile
-    #   eth-utils
-eth-abi==2.1.1 \
-    --hash=sha256:4bb1d87bb6605823379b07f6c02c8af45df01a27cc85bd6abb7cf1446ce7d188 \
-    --hash=sha256:78df5d2758247a8f0766a7cfcea4575bcfe568c34a33e6d05a72c328a9040444
+    # via eth-utils
+eth-abi==3.0.0 \
+    --hash=sha256:31578b179cf9430c21ac32a4e5f401c14b6e2cc1fd64ca3587cd354068217804 \
+    --hash=sha256:db04aa7c722e0b599e674178f6bc03f0d4185c13aba516b715a22f9c1218092a
     # via
     #   eth-account
     #   web3
-eth-account==0.5.7 \
-    --hash=sha256:a82ff2500d7e7a54535ec3d4ea0a58feaf6e94f3ff65ae999f2a508e9b2e1ec1 \
-    --hash=sha256:c86b59ff92f1bb14dea2632c2df657be6a98c450cfe24e2536fb69b6207364e7
+eth-account==0.6.1 \
+    --hash=sha256:54b0b7d661e73f4cd12d508c9baa5c9a6e8c194aa7bafc39277cd673683ae50e \
+    --hash=sha256:71898127a808d75127a68fa4193aba967489eaf6e62cee1e2e8b08582d01cba8
     # via web3
 eth-hash[pycryptodome]==0.3.2 \
     --hash=sha256:3f40cecd5ead88184aa9550afc19d057f103728108c5102f592f8415949b5a76 \
@@ -136,31 +134,31 @@ eth-hash[pycryptodome]==0.3.2 \
     # via
     #   eth-utils
     #   web3
-eth-keyfile==0.5.1 \
-    --hash=sha256:70d734af17efdf929a90bb95375f43522be4ed80c3b9e0a8bca575fb11cd1159 \
-    --hash=sha256:939540efb503380bc30d926833e6a12b22c6750de80feef3720d79e5a79de47d
+eth-keyfile==0.6.0 \
+    --hash=sha256:7a874b179771827ffc7e38403ec412b8b3ff1a8c5cc945169609e799fadc7000 \
+    --hash=sha256:d30597cdecb8ccd3b56bb275cd86fcdc7a279f86eafa92ddc49f66512f0bff67
     # via eth-account
-eth-keys==0.3.4 \
-    --hash=sha256:565bf62179b8143bcbd302a0ec6c49882d9c7678f9e6ab0484a8a5725f5ef10e \
-    --hash=sha256:e5590797f5e2930086c705a6dd1ac14397f74f19bdcd1b5f837475554f354ad8
+eth-keys==0.4.0 \
+    --hash=sha256:7d18887483bc9b8a3fdd8e32ddcb30044b9f08fcb24a380d93b6eee3a5bb3216 \
+    --hash=sha256:e07915ffb91277803a28a379418bdd1fad1f390c38ad9353a0f189789a440d5d
     # via
     #   eth-account
     #   eth-keyfile
-eth-rlp==0.2.1 \
-    --hash=sha256:cc389ef8d7b6f76a98f90bcdbff1b8684b3a78f53d47e871191b50d4d6aee5a1 \
-    --hash=sha256:f016f980b0ed42ee7650ba6e4e4d3c4e9aa06d8b9c6825a36d3afe5aa0187a8b
+eth-rlp==0.3.0 \
+    --hash=sha256:e88e949a533def85c69fa94224618bbbd6de00061f4cff645c44621dab11cf33 \
+    --hash=sha256:f3263b548df718855d9a8dbd754473f383c0efc82914b0b849572ce3e06e71a6
     # via eth-account
-eth-typing==2.3.0 \
-    --hash=sha256:39cce97f401f082739b19258dfa3355101c64390914c73fe2b90012f443e0dc7 \
-    --hash=sha256:b7fa58635c1cb0cbf538b2f5f1e66139575ea4853eac1d6000f0961a4b277422
+eth-typing==3.0.0 \
+    --hash=sha256:079e4c41e98cf2635d3830a99f3cbd7b1d73d2368464d4493c002bece545184a \
+    --hash=sha256:fb96f5eaa844b8be7727d590a54a952a42e5021426f98074b06b23ae43de5867
     # via
     #   eth-abi
     #   eth-keys
     #   eth-utils
     #   web3
-eth-utils==1.10.0 \
-    --hash=sha256:74240a8c6f652d085ed3c85f5f1654203d2f10ff9062f83b3bad0a12ff321c7a \
-    --hash=sha256:bf82762a46978714190b0370265a7148c954d3f0adaa31c6f085ea375e4c61af
+eth-utils==2.0.0 \
+    --hash=sha256:209dc12255398f2a88f12de78f338b974861f9aefa981af5b68a5d102c9b2043 \
+    --hash=sha256:32f50edb14c5be0c4f0e8c2e6117286ccc5dfda21d170f358add554a048398e3
     # via
     #   eth-abi
     #   eth-account
@@ -433,9 +431,9 @@ requests==2.27.1 \
     # via
     #   ipfshttpclient
     #   web3
-rlp==2.0.1 \
-    --hash=sha256:52a57c9f53f03c88b189283734b397314288250cc4a3c4113e9e36e2ac6bdd16 \
-    --hash=sha256:665e8312750b3fc5f7002e656d05b9dcb6e93b6063df40d95c49ad90c19d1f0e
+rlp==3.0.0 \
+    --hash=sha256:63b0465d2948cd9f01de449d7adfb92d207c1aef3982f20310f8009be4a507e8 \
+    --hash=sha256:d2a963225b3f26795c5b52310e0871df9824af56823d739511583ef459895a7d
     # via
     #   eth-account
     #   eth-rlp
@@ -466,8 +464,8 @@ urllib3==1.26.9 \
 varint==1.0.2 \
     --hash=sha256:a6ecc02377ac5ee9d65a6a8ad45c9ff1dac8ccee19400a5950fb51d594214ca5
     # via multiaddr
-web3 @ https://github.com/ethereum/web3.py/archive/ed305e381b9cc0646ae45d33786a707c10a57c03.zip \
-    --hash=sha256:a72d08a80a5e312dc66160c1e94edff41de264b585ca74b66a42e86c6a944fc1
+web3 @ https://github.com/bitcartcc/web3.py/archive/asyncify-contract.zip \
+    --hash=sha256:65e2cffc524d0583a22937349d731c235f5db0608a6dbdcfbc62f12c1be9ffd4
     # via -r requirements/daemons/eth.txt
 websockets==10.2 \
     --hash=sha256:038afef2a05893578d10dadbdbb5f112bd115c46347e1efe99f6a356ff062138 \
