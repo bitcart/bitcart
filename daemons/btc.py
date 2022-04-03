@@ -182,10 +182,11 @@ class BTCDaemon(BaseDaemon):
     def is_still_syncing(self, wallet=None):
         server_height = self.network.get_server_height()
         server_lag = self.network.get_local_height() - server_height
+        # if wallet has unverified_tx, it means that SPV hasn't finished yet
         return (
             self.network.is_connecting()
             or self.network.is_connected()
-            and (server_height == 0 or server_lag > 1 or (wallet and not wallet.is_up_to_date()))
+            and (server_height == 0 or server_lag > 1 or (wallet and (not wallet.is_up_to_date() or wallet.unverified_tx)))
         )
 
     async def load_wallet(self, xpub, config):
