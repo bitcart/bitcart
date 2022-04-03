@@ -476,6 +476,12 @@ class BTCDaemon(BaseDaemon):
     def get_tokens(self, wallet=None):  # fallback
         return {}
 
+    @rpc
+    async def getinfo(self, wallet=None):
+        data = await self.create_commands(config=self.electrum_config).getinfo()
+        data["synchronized"] = not self.is_still_syncing()
+        return data
+
 
 if __name__ == "__main__":
     daemon = BTCDaemon()

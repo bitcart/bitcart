@@ -2,6 +2,7 @@ import os
 import tempfile
 
 import aiofiles
+from bitcart.errors import BaseError as BitcartBaseError
 from fastapi import APIRouter, File, HTTPException, Security, UploadFile
 
 from api import constants, models, schemes, settings, utils
@@ -175,3 +176,16 @@ async def restore_backup(
             await f.write(await backup.read())
         return utils.host.run_host_output(f"./restore.sh --delete-backup {path}", "Successfully started restore process!")
     return {"status": "error", "message": "Not running in docker"}
+
+
+@router.get("/syncinfo")
+async def get_syncinfo(user: models.User = Security(utils.authorization.AuthDependency(), scopes=["server_management"])):
+    infos = []
+    for coin in settings.settings.cryptos:
+        info = {"running": True, "currency": settings.settings.cryptos[coin].coin_name}
+        try:
+            info.update(await settings.settings.cryptos[coin].server.getinfo())
+        except BitcartBaseError:
+            info["running"] = False
+        infos.append(info)
+    return infos

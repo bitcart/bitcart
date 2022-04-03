@@ -103,6 +103,24 @@ class BCHDaemon(BTCDaemon):
         self.wallets[wallet]["wallet"].remove_transaction(txid)
         self.wallets[wallet]["wallet"].save_transactions()
 
+    @rpc
+    def getinfo(self, wallet=None):  # TODO: add to electron cash
+        net_params = self.network.get_parameters()
+        response = {
+            "path": self.network.config.path,
+            "server": net_params[0],
+            "blockchain_height": self.network.get_local_height(),
+            "server_height": self.network.get_server_height(),
+            "spv_nodes": len(self.network.get_interfaces()),
+            "connected": self.network.is_connected(),
+            "auto_connect": net_params[4],
+            "version": self.electrum.version.PACKAGE_VERSION,
+            "default_wallet": self.electrum_config.get_wallet_path(),
+            "fee_per_kb": self.electrum_config.fee_per_kb(),
+            "synchronized": not self.is_still_syncing(),
+        }
+        return response
+
 
 if __name__ == "__main__":
     daemon = BCHDaemon()

@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 from bitcart import BTC, LTC
+from bitcart.errors import BaseError as BitcartBaseError
 from parametrization import Parametrization
 
 from api import invoices, models, schemes, settings, templates, utils
@@ -1287,3 +1288,34 @@ async def test_get_tokens_btc(client: TestClient):
     resp = await client.get("/cryptos/tokens/btc")
     assert resp.status_code == 200
     assert resp.json() == {"count": 0, "result": [], "previous": None, "next": None}
+
+
+class NotRunningBTC:
+    coin_name = "BTC"
+
+    class server:
+        @staticmethod
+        def getinfo():
+            raise BitcartBaseError("Not running")
+
+
+async def test_syncinfo(client: TestClient, token, mocker):
+    def find_element(elements, name):
+        for element in elements:
+            if element["currency"] == name:
+                return element
+
+    assert (await client.get("/manage/syncinfo")).status_code == 401
+    resp = await client.get("/manage/syncinfo", headers={"Authorization": f"Bearer {token}"})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert isinstance(data, list)
+    assert len(data) > 0
+    item = find_element(data, "BTC")
+    assert item["running"] is True
+    assert item["synchronized"] is True
+    assert item["blockchain_height"] > 0
+    mocker.patch("api.settings.settings.cryptos", {"btc": NotRunningBTC()})
+    data = (await client.get("/manage/syncinfo", headers={"Authorization": f"Bearer {token}"})).json()
+    item = find_element(data, "BTC")
+    assert item["running"] is False

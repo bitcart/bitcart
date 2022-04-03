@@ -898,8 +898,9 @@ class ETHDaemon(BaseDaemon):
 
     @rpc
     async def getinfo(self, wallet=None):
+        path = self.get_datadir()
         if not await self.web3.isConnected():
-            return {"connected": False, "path": "", "version": self.VERSION}
+            return {"connected": False, "path": path, "version": self.VERSION}
         try:
             nodes = len(await self.web3.geth.admin.peers())
         except Exception:
@@ -909,10 +910,11 @@ class ETHDaemon(BaseDaemon):
             "blockchain_height": numblocks,
             "connected": await self.web3.isConnected(),
             "gas_price": await self.web3.eth.gas_price,
+            "path": path,
             "server": self.SERVER,
             "server_height": numblocks,
             "spv_nodes": nodes,
-            "synchronized": not await self.web3.eth.syncing,
+            "synchronized": not await self.web3.eth.syncing and self.synchronized,
             "version": self.VERSION,
         }
 
