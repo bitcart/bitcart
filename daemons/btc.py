@@ -186,7 +186,16 @@ class BTCDaemon(BaseDaemon):
         return (
             self.network.is_connecting()
             or self.network.is_connected()
-            and (server_height == 0 or server_lag > 1 or (wallet and (not wallet.is_up_to_date() or wallet.unverified_tx)))
+            and (
+                server_height == 0
+                or server_lag > 1
+                or (
+                    wallet
+                    and not (
+                        wallet.is_up_to_date() and wallet.synchronizer.is_up_to_date() and wallet.verifier.is_up_to_date()
+                    )
+                )
+            )
         )
 
     async def load_wallet(self, xpub, config):
