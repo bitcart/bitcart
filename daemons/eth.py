@@ -30,6 +30,7 @@ from web3.eth import AsyncEth
 from web3.exceptions import ABIFunctionNotFound
 from web3.exceptions import ValidationError as Web3ValidationError
 from web3.geth import AsyncGethAdmin, Geth
+from web3.middleware.geth_poa import async_geth_poa_middleware
 from web3.providers.rpc import get_default_http_endpoint
 
 Account.enable_unaudited_hdwallet_features()
@@ -40,12 +41,9 @@ ONE_ADDRESS_MESSAGE = "We only support one address per wallet as it is common in
 GET_PROOF_MESSAGE = "Geth doesn't support get_proof correctly for now"
 NO_MASTER_KEYS_MESSAGE = "As we use only one address per wallet, address keys are used, but not the xprv/xpub"
 
-DEFAULT_CURRENCY = "ETH"
-
 CHUNK_SIZE = 30
 AMOUNTGEN_LIMIT = 10**9
 
-MAX_SYNC_BLOCKS = 300  # (60/12)=5*60 (a block every 12 seconds, max normal expiry time 60 minutes)
 TX_DEFAULT_GAS = 21000
 
 # statuses of payment requests
@@ -97,15 +95,6 @@ class WalletDB(StorageWalletDB):
 
 class ConfigDB(StorageConfigDB):
     STORAGE_VERSION = 1
-
-
-def user_dir():
-    if os.name == "posix":
-        return os.path.join(os.environ["HOME"], ".bitcart-eth")
-    elif "APPDATA" in os.environ:
-        return os.path.join(os.environ["APPDATA"], "Bitcart-ETH")
-    elif "LOCALAPPDATA" in os.environ:
-        return os.path.join(os.environ["LOCALAPPDATA"], "Bitcart-ETH")
 
 
 def str_to_bool(s):
@@ -268,13 +257,15 @@ class Wallet:
     used_amounts: dict = field(default_factory=dict)
     receive_requests: dict = field(default_factory=dict)
     contract: str = None
-    symbol: str = DEFAULT_CURRENCY
+    symbol: str = None
     divisibility: int = 18
     _token_fetched = False
 
     latest_height = StoredDBProperty("latest_height", -1)
 
     def __post_init__(self):
+        if self.symbol is None:
+            self.symbol = daemon.name
         self.keystore = KeyStore.load(self.db.get("keystore"))
         self.receive_requests = self.db.get_dict("payment_requests")
         self.used_amounts = self.db.get_dict("used_amounts")
@@ -309,7 +300,7 @@ class Wallet:
                 self.contract,
                 self.divisibility,
                 from_block=self.latest_height + 1,
-                to_block=min(self.latest_height + MAX_SYNC_BLOCKS, current_height),
+                to_block=min(self.latest_height + daemon.MAX_SYNC_BLOCKS, current_height),
             )
         self.latest_height = current_height
         for req in self.get_sorted_requests():
@@ -510,7 +501,7 @@ async def check_contract_logs(contract, divisibility, from_block=None, to_block=
 
 
 class ETHDaemon(BaseDaemon):
-    name = DEFAULT_CURRENCY
+    name = "ETH"
     BASE_SPEC_FILE = "daemons/spec/eth.json"
     DEFAULT_PORT = 5002
     ALIASES = {
@@ -530,6 +521,11 @@ class ETHDaemon(BaseDaemon):
     FX_FETCH_TIME = 150
     ABI = ERC20_ABI
     TOKENS = ERC20_TOKENS
+    # modern transactions with maxPriorityFeePerGas
+    EIP1559_SUPPORTED = True
+    MAX_SYNC_BLOCKS = 300  # (60/12)=5*60 (a block every 12 seconds, max normal expiry time 60 minutes)
+    # from coingecko API
+    FIAT_NAME = "ethereum"
 
     latest_height = StoredProperty("latest_height", -1)
 
@@ -537,7 +533,7 @@ class ETHDaemon(BaseDaemon):
         super().__init__()
         self.exchange_rates = defaultdict(dict)
         self.contracts = {}
-        self.latest_blocks = deque(maxlen=MAX_SYNC_BLOCKS)
+        self.latest_blocks = deque(maxlen=self.MAX_SYNC_BLOCKS)
         self.config_path = os.path.join(self.get_datadir(), "config")
         self.config = ConfigDB(self.config_path)
         self.web3 = Web3(
@@ -548,6 +544,7 @@ class ETHDaemon(BaseDaemon):
             },
             middlewares=[],
         )
+        self.web3.middleware_onion.inject(async_geth_poa_middleware, layer=0)
         # initialize wallet storages
         self.wallets = {}
         self.addresses = defaultdict(set)
@@ -571,16 +568,18 @@ class ETHDaemon(BaseDaemon):
 
     async def get_rates(self, contract=None):
         url = (
-            "https://api.coingecko.com/api/v3/coins/ethereum?localization=false&sparkline=false"
+            f"https://api.coingecko.com/api/v3/coins/{self.FIAT_NAME}?localization=false&sparkline=false"
             if not contract
-            else f"https://api.coingecko.com/api/v3/coins/ethereum/contract/{contract}"
+            else f"https://api.coingecko.com/api/v3/coins/{self.FIAT_NAME}/contract/{contract}"
         )
         async with self.client_session.get(url) as response:
             got = await response.json()
         prices = got["market_data"]["current_price"]
         return {price[0].upper(): Decimal(price[1]) for price in prices.items()}
 
-    async def fetch_exchange_rates(self, currency=DEFAULT_CURRENCY, contract=None):
+    async def fetch_exchange_rates(self, currency=None, contract=None):
+        if currency is None:
+            currency = self.name
         while self.running:
             try:
                 self.exchange_rates[currency] = await self.get_rates(contract)
@@ -619,7 +618,7 @@ class ETHDaemon(BaseDaemon):
                 tasks = []
                 # process at max 300 blocks since last processed block, fetched by chunks
                 for block_number in range(
-                    self.latest_height + 1, min(self.latest_height + MAX_SYNC_BLOCKS, current_height) + 1, CHUNK_SIZE
+                    self.latest_height + 1, min(self.latest_height + self.MAX_SYNC_BLOCKS, current_height) + 1, CHUNK_SIZE
                 ):
                     tasks.append(self.process_block(block_number, min(block_number + CHUNK_SIZE - 1, current_height)))
                 results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -683,8 +682,16 @@ class ETHDaemon(BaseDaemon):
     def get_exception_message(self, e):
         return get_exception_message(e)
 
+    def user_dir(self):
+        if os.name == "posix":
+            return os.path.join(os.environ["HOME"], f".bitcart-{self.name.lower()}")
+        elif "APPDATA" in os.environ:
+            return os.path.join(os.environ["APPDATA"], f"Bitcart-{self.name.upper()}")
+        elif "LOCALAPPDATA" in os.environ:
+            return os.path.join(os.environ["LOCALAPPDATA"], f"Bitcart-{self.name.upper()}")
+
     def get_datadir(self):
-        base_dir = self.DATA_PATH or user_dir()
+        base_dir = self.DATA_PATH or self.user_dir()
         datadir = os.path.join(base_dir, self.NET)
         os.makedirs(datadir, exist_ok=True)
         return datadir
@@ -723,7 +730,7 @@ class ETHDaemon(BaseDaemon):
     async def _get_wallet(self, id, req_method, xpub, contract):
         wallet = error = None
         try:
-            should_skip = not self.supported_methods[req_method].requires_network
+            should_skip = req_method not in self.supported_methods or not self.supported_methods[req_method].requires_network
             while not should_skip and not self.synchronized:  # wait for initial sync to fetch blocks
                 await asyncio.sleep(0.1)
             wallet = await self.load_wallet(xpub, contract)
@@ -835,9 +842,9 @@ class ETHDaemon(BaseDaemon):
 
     @rpc
     def exchange_rate(self, currency=None, wallet=None):
-        origin_currency = self.wallets[wallet].symbol if wallet else DEFAULT_CURRENCY
+        origin_currency = self.wallets[wallet].symbol if wallet else self.name
         if not currency:
-            currency = self.DEFAULT_CURRENCY
+            currency = self.name
         return str(self.exchange_rates[origin_currency].get(currency, Decimal("NaN")))
 
     @rpc(requires_network=True)
@@ -986,7 +993,7 @@ class ETHDaemon(BaseDaemon):
 
     @rpc
     def list_currencies(self, wallet=None):
-        origin_currency = self.wallets[wallet].symbol if wallet else DEFAULT_CURRENCY
+        origin_currency = self.wallets[wallet].symbol if wallet else self.name
         return list(self.exchange_rates[origin_currency].keys())
 
     @rpc(requires_network=True)
@@ -1045,11 +1052,12 @@ class ETHDaemon(BaseDaemon):
     async def payto(self, destination, amount, fee=None, feerate=None, gas=None, unsigned=False, wallet=None, *args, **kwargs):
         address = self.wallets[wallet].address
         tx_dict = {
-            "type": "0x2",
             "to": destination,
             "value": Web3.toWei(amount, "ether"),
             **(await self.get_common_payto_params(address)),
         }
+        if self.EIP1559_SUPPORTED:
+            tx_dict["type"] = "0x2"
         if fee:
             tx_dict["maxFeePerGas"] = Web3.toWei(fee, "ether")
         if feerate:
