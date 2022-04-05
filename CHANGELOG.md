@@ -2,6 +2,10 @@
 
 ## Latest changes
 
+## 0.6.5.1
+
+Fix BNB support
+
 ## 0.6.5.0
 
 Added Binance Smart Chain (BNB) coin support and BEP20 tokens support
