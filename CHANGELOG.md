@@ -2,6 +2,14 @@
 
 ## Latest changes
 
+## 0.6.5.0
+
+Added Binance Smart Chain (BNB) coin support and BEP20 tokens support
+
+Added warnings about node sync status
+
+Fixed token list not working sometimes
+
 ## 0.6.4.1
 
 Fix UI issues and faster commands execution
