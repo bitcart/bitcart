@@ -278,7 +278,7 @@ class Wallet:
             self.db.write(self.storage)
 
     async def fetch_token_info(self):
-        self.symbol = await daemon.readcontract(self.contract, "symbol")
+        self.symbol = (await daemon.readcontract(self.contract, "symbol")).upper()
         self.divisibility = await daemon.readcontract(self.contract, "decimals")
         self._token_fetched = True
 
@@ -1074,10 +1074,13 @@ class ETHDaemon(BaseDaemon):
         return self._sign_transaction(tx_dict, self.wallets[wallet].keystore.private_key)
 
     async def get_fee_params(self):
-        block = await self.web3.eth.get_block("latest")
-        max_priority_fee = await self.web3.eth.max_priority_fee
-        max_fee = block.baseFeePerGas * 2 + max_priority_fee
-        return {"maxFeePerGas": max_fee, "maxPriorityFeePerGas": max_priority_fee}
+        if self.EIP1559_SUPPORTED:
+            block = await self.web3.eth.get_block("latest")
+            max_priority_fee = await self.web3.eth.max_priority_fee
+            max_fee = block.baseFeePerGas * 2 + max_priority_fee
+            return {"maxFeePerGas": max_fee, "maxPriorityFeePerGas": max_priority_fee}
+        gas_price = await self.web3.eth.gas_price
+        return {"gasPrice": gas_price}
 
     def load_contract_exec_function(self, address, function, *args, **kwargs):
         kwargs.pop("wallet", None)

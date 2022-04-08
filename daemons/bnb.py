@@ -20,10 +20,6 @@ class BNBDaemon(eth.ETHDaemon):
     ABI = BEP20_ABI
     TOKENS = BEP20_TOKENS
 
-    async def get_fee_params(self):
-        gas_price = await self.web3.eth.gas_price
-        return {"gasPrice": gas_price}
-
 
 if __name__ == "__main__":
     eth.daemon = BNBDaemon()
