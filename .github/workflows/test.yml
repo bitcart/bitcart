@@ -33,10 +33,9 @@ jobs:
           pip install -U -r requirements.txt
           pip install -U -r requirements/daemons/btc.txt
           pip install -U -r requirements/test.txt
-      - run:
-          name: prepare daemon
-          command: |
-            make testnet &
+      - name: prepare daemon
+        run: |
+          make testnet &
       - name: Test
         run: |
           make test
