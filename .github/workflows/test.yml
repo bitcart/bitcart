@@ -43,7 +43,7 @@ jobs:
       fail-fast: false
     services:
       postgres:
-        image: postgres:12-alpine-ram
+        image: circleci/postgres:12-alpine-ram
         env:
           POSTGRES_DB: bitcart_test
           POSTGRES_HOST_AUTH_METHOD: trust
@@ -51,7 +51,7 @@ jobs:
           - 5432:5432
 
       redis:
-        image: redis:alpine
+        image: circleci/redis:alpine
         ports:
           - 6379:6379
 
@@ -61,13 +61,15 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.python-version }}
-          cache: "pip"
-          cache-dependency-path: |
-            requirements/web.txt
-            requirements/test.txt
-            requirements/daemons/btc.txt
+      - uses: actions/cache@v2
+        with:
+          path: ~/venv
+          key: v1-${{ runner.os }}-dependencies-${{ hashFiles('requirements/web.txt') }}-${{ hashFiles('requirements/test.txt') }}-${{ hashFiles('requirements/daemons/btc.txt') }}
       - name: Install Dependencies
         run: |
+          virtualenv ~/venv
+          echo ". ~/venv/bin/activate" >> $GITHUB_ENV
+          source $GITHUB_ENV
           sudo apt update
           sudo apt install libsecp256k1-dev
           pip install -U -r requirements.txt
