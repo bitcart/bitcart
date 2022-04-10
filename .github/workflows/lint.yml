@@ -1,0 +1,35 @@
+name: Lint
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Inject slug/short variables
+        uses: rlespinasse/github-slug-action@v4
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: "3.7"
+          cache: "pip"
+          cache-dependency-path: |
+            requirements/dev.txt
+            requirements/lint.txt
+      - uses: actions/cache@v2
+        with:
+          path: ~/.cache/pre-commit
+          key: v1-lint-${{ env.GITHUB_REF_SLUG_URL }}-pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
+      - name: Install Dependencies
+        run: |
+          pip install -U -r requirements/dev.txt
+          pip install -U -r requirements/lint.txt
+      - name: Lint
+        run: pre-commit run --all-files
