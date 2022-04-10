@@ -28,9 +28,6 @@ jobs:
       - name: Install Dependencies
         if: steps.cache.outputs.cache-hit != 'true'
         run: |
-          virtualenv ~/venv
-          echo ". ~/venv/bin/activate" >> $BASH_ENV
-          source $BASH_ENV
           pip install -U -r requirements/dev.txt
           pip install -U -r requirements/lint.txt
       - name: Lint
