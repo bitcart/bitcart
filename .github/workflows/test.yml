@@ -1,6 +1,6 @@
 name: Test and deploy
 
-on: [push, pull_request]
+on: push
 
 env:
   TEST_ARGS: "-o junit_family=xunit1 --junitxml test-results/pytest/coverage.xml --cov-report html:coverage"
