@@ -9,7 +9,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     needs: lint
-    environment:
+    env:
       PYTHON: ${{ matrix.python-version }}
     strategy:
       matrix:
