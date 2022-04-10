@@ -1039,6 +1039,10 @@ class ETHDaemon(BaseDaemon):
     def make_seed(self, nbits=128, language="english", wallet=None):
         return Mnemonic(language).generate(nbits)
 
+    @rpc
+    def normalizeaddress(self, address, wallet=None):
+        return Web3.toChecksumAddress(address)
+
     async def get_common_payto_params(self, address):
         nonce = await self.web3.eth.get_transaction_count(address)
         return {

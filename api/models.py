@@ -210,6 +210,7 @@ class Wallet(BaseModel):
                 try:
                     if not await coin.server.validatecontract(kwargs["contract"]):
                         raise HTTPException(422, "Contract invalid")
+                    kwargs["contract"] = await coin.server.normalizeaddress(kwargs["contract"])
                 except BitcartBaseError as e:
                     logger.error(f"Failed to validate contract for currency {currency}:\n{get_exception_message(e)}")
                     raise HTTPException(422, "Invalid contract")

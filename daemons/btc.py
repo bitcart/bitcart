@@ -487,6 +487,10 @@ class BTCDaemon(BaseDaemon):
         return {}
 
     @rpc
+    def normalizeaddress(self, address, wallet=None):  # fallback
+        return address
+
+    @rpc
     async def getinfo(self, wallet=None):
         data = await self.create_commands(config=self.electrum_config).getinfo()
         data["synchronized"] = not self.is_still_syncing()
