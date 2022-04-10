@@ -25,6 +25,12 @@ jobs:
         with:
           path: ${{ env.pythonLocation }}
           key: ${{ runner.os }}-python-${{ env.pythonLocation }}-${{ hashFiles('requirements.txt') }}-test
+      - uses: actions/cache@v2
+        with:
+          path: ~/.cache/pre-commit
+          key: v1-lint-pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
+          restore-keys: |
+            v1-lint-pre-commit-
       - name: Install Dependencies
         if: steps.cache.outputs.cache-hit != 'true'
         run: |
