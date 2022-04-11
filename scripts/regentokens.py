@@ -7,7 +7,7 @@ from bs4 import BeautifulSoup
 
 NAMES = {
     "erc20": {"main_filters": {"slug": "ethereum"}},
-    "bep20": {"main_filters": {"slug": "bnb"}, "contract_filters": {"contractPlatform": "BNB Smart Chain (BEP20)"}},
+    "bep20": {"main_filters": {}, "contract_filters": {"contractPlatform": "BNB Smart Chain (BEP20)"}},
 }
 API_URL = "https://coinmarketcap.com/tokens/views/all"
 
