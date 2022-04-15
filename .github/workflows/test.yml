@@ -67,7 +67,8 @@ jobs:
           key: v1-${{ runner.os }}-dependencies-${{ hashFiles('requirements/web.txt') }}-${{ hashFiles('requirements/test.txt') }}-${{ hashFiles('requirements/daemons/btc.txt') }}
       - name: Install Dependencies
         run: |
-          python3 -m venv ~/venv
+          pip install virtualenv
+          virtualenv ~/venv
           echo ". ~/venv/bin/activate" >> $GITHUB_ENV
           source $GITHUB_ENV
           sudo apt update
