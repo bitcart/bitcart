@@ -34,7 +34,6 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
-    container: cimg/python:${{ matrix.python-version }}
     needs: lint
     env:
       PYTHON: ${{ matrix.python-version }}
@@ -58,13 +57,17 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
       - uses: actions/cache@v2
         with:
           path: ~/venv
           key: v1-${{ runner.os }}-dependencies-${{ hashFiles('requirements/web.txt') }}-${{ hashFiles('requirements/test.txt') }}-${{ hashFiles('requirements/daemons/btc.txt') }}
       - name: Install Dependencies
         run: |
-          virtualenv ~/venv
+          python3 -m venv ~/venv
           echo ". ~/venv/bin/activate" >> $GITHUB_ENV
           source $GITHUB_ENV
           sudo apt update
