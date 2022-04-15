@@ -63,14 +63,11 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - uses: actions/cache@v2
         with:
-          path: ~/venv
+          path: ${{ env.pythonLocation }}
           key: v1-${{ runner.os }}-dependencies-${{ hashFiles('requirements/web.txt') }}-${{ hashFiles('requirements/test.txt') }}-${{ hashFiles('requirements/daemons/btc.txt') }}
       - name: Install Dependencies
         run: |
-          pip install -U pip virtualenv wheel
-          virtualenv ~/venv
-          echo "source ~/venv/bin/activate" >> ~/.bashrc
-          source ~/.bashrc
+          pip install -U pip wheel
           sudo apt update
           sudo apt install libsecp256k1-dev
           pip install -U -r requirements.txt
