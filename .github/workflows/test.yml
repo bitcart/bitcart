@@ -67,7 +67,7 @@ jobs:
           key: v1-${{ runner.os }}-dependencies-${{ hashFiles('requirements/web.txt') }}-${{ hashFiles('requirements/test.txt') }}-${{ hashFiles('requirements/daemons/btc.txt') }}
       - name: Install Dependencies
         run: |
-          pip install virtualenv
+          pip install -U pip virtualenv wheel
           virtualenv ~/venv
           echo "source ~/venv/bin/activate" >> ~/.bashrc
           source ~/.bashrc
@@ -78,7 +78,7 @@ jobs:
           pip install -U -r requirements/test.txt
       - name: prepare daemon
         run: |
-          make testnet &
+          nohup make testnet &
       - name: Test
         run: |
           make test
