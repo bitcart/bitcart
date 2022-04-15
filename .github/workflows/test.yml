@@ -69,8 +69,8 @@ jobs:
         run: |
           pip install virtualenv
           virtualenv ~/venv
-          echo "source ~/venv/bin/activate" >> $GITHUB_ENV
-          source $GITHUB_ENV
+          echo "source ~/venv/bin/activate" >> ~/.bashrc
+          source
           sudo apt update
           sudo apt install libsecp256k1-dev
           pip install -U -r requirements.txt
