@@ -43,7 +43,7 @@ jobs:
       fail-fast: false
     services:
       postgres:
-        image: circleci/postgres:12-alpine-ram
+        image: postgres:12-alpine
         env:
           POSTGRES_DB: bitcart_test
           POSTGRES_HOST_AUTH_METHOD: trust
@@ -51,7 +51,7 @@ jobs:
           - 5432:5432
 
       redis:
-        image: circleci/redis:alpine
+        image: redis:alpine
         ports:
           - 6379:6379
 
