@@ -75,7 +75,7 @@ jobs:
           pip install -U -r requirements/test.txt
       - name: prepare daemon
         run: |
-          nohup make testnet &
+          RUNNER_TRACKING_ID="" && (nohup make testnet &)
       - name: Test
         run: |
           make test
