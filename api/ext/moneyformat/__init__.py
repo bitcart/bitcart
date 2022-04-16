@@ -1,14 +1,22 @@
 import json
-from decimal import ROUND_UP, Decimal
+from decimal import Decimal
+
+MIN_VALUE = Decimal("0.001")
 
 
 def set_v(data, key, default):
     data[key] = data.get(key, default)
 
 
-def round_up(value, precision):
-    q = Decimal(10) ** -precision
-    return value.quantize(q, rounding=ROUND_UP)
+def truncate(value, precision):
+    if value != 0:
+        while True:
+            rounded = round(value, precision)
+            if (abs(rounded - value) / value) < MIN_VALUE:
+                value = rounded
+                break
+            precision += 1
+    return value
 
 
 # Thanks to example from python docs
@@ -80,7 +88,7 @@ class CurrencyTable:
         return result
 
     def normalize(self, currency, value):
-        return round_up(value, self.get_currency_data(currency)["divisibility"])
+        return truncate(value, self.get_currency_data(currency)["divisibility"])
 
     def format_currency(self, currency, value, fancy=None, divisibility=None):
         if value is None or currency is None:

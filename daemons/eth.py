@@ -575,7 +575,7 @@ class ETHDaemon(BaseDaemon):
         async with self.client_session.get(url) as response:
             got = await response.json()
         prices = got["market_data"]["current_price"]
-        return {price[0].upper(): Decimal(price[1]) for price in prices.items()}
+        return {price[0].upper(): Decimal(str(price[1])) for price in prices.items()}
 
     async def fetch_exchange_rates(self, currency=None, contract=None):
         if currency is None:
@@ -844,7 +844,7 @@ class ETHDaemon(BaseDaemon):
     def exchange_rate(self, currency=None, wallet=None):
         origin_currency = self.wallets[wallet].symbol if wallet else self.name
         if not currency:
-            currency = self.name
+            currency = self.DEFAULT_CURRENCY
         return str(self.exchange_rates[origin_currency].get(currency, Decimal("NaN")))
 
     @rpc(requires_network=True)
