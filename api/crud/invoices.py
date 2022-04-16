@@ -8,7 +8,7 @@ from sqlalchemy import select
 from starlette.datastructures import CommaSeparatedStrings
 
 from api import events, invoices, models, schemes, settings, utils
-from api.ext.moneyformat import currency_table, round_up
+from api.ext.moneyformat import currency_table, truncate
 from api.logger import get_exception_message, get_logger
 from api.utils.database import safe_db_write
 
@@ -59,7 +59,6 @@ async def _create_payment_method(invoice, wallet, product, store, discounts, pro
     divisibility = currency_table.get_currency_data(wallet.currency)["divisibility"]
     if wallet.contract:  # pragma: no cover
         divisibility = await coin.server.readcontract(wallet.contract, "decimals")
-    # TODO: check if it's correct in all cases
     rate = currency_table.normalize(
         invoice.currency, await utils.wallets.get_rate(wallet, invoice.currency, store.default_currency)
     )
@@ -93,7 +92,7 @@ async def _create_payment_method(invoice, wallet, product, store, discounts, pro
         await coin.server.recommended_fee(store.checkout_settings.recommended_fee_target_blocks) if not lightning else 0
     )
     recommended_fee = 0 if recommended_fee is None else recommended_fee  # if no rate available, disable it
-    recommended_fee = round_up(Decimal(recommended_fee) / 1024, 2)  # convert to sat/byte, two decimal places
+    recommended_fee = truncate(Decimal(recommended_fee) / 1024, 2)  # convert to sat/byte, two decimal places
     data_got = await method(request_price, description=product.name if product else "", expire=invoice.expiration)
     address = data_got["address"] if not lightning else data_got["invoice"]
     url = data_got["URI"] if not lightning else data_got["invoice"]
