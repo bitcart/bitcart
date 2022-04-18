@@ -310,5 +310,10 @@
         "name": "Binance Coin",
         "divisibility": 18,
         "crypto": true
+    },
+    "SBCH": {
+        "name": "Smart Bitcoin Cash",
+        "divisibility": 18,
+        "crypto": true
     }
 }

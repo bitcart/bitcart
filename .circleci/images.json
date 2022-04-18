@@ -49,6 +49,15 @@
             "requirements/daemons/bnb.txt"
         ]
     },
+    "bitcart-sbch": {
+        "dockerfile": "sbch.Dockerfile",
+        "files": [
+            "daemons/base.py",
+            "daemons/sbch.py",
+            "requirements/base.txt",
+            "requirements/daemons/sbch.txt"
+        ]
+    },
     "bitcart-xrg": {
         "dockerfile": "xrg.Dockerfile",
         "files": [

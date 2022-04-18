@@ -1,0 +1,3 @@
+aiohttp<4.0
+https://github.com/bitcartcc/web3.py/archive/asyncify-contract.zip # we use it temporarily
+mnemonic
