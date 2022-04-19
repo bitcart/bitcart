@@ -2,6 +2,24 @@
 
 ## Latest changes
 
+## 0.6.6.0
+
+Normalize contract addresses: no matter where you've got contract address from, it should correctly detect payments now.
+
+Upgrade is recommended for everyone accepting contract payment as before that fix payment processing maybe didn't work for you.
+
+Please re-save all existing wallets with contracts for them to be normalized.
+
+Added more bep20 tokens to pre-defined list
+
+Better exchange rate normalization: it should now correctly work for coins with low exchange rates and in some edge cases
+
+SmartBCH support
+
+Fix BCH payment processing
+
+Better handling for long currency names in checkout page
+
 ## 0.6.5.1
 
 Fix BNB support
