@@ -1,6 +1,4 @@
-from typing import List
-
-from fastapi import APIRouter, Response, Security
+from fastapi import APIRouter, HTTPException, Response, Security
 from fastapi.responses import StreamingResponse
 
 from api import crud, models, schemes, utils
@@ -23,18 +21,22 @@ async def get_invoice_by_order_id(order_id: str):
     return item
 
 
-@router.get("/export", response_model=List[schemes.DisplayInvoice])
+@router.get("/export")
 async def export_invoices(
     response: Response,
     export_format: str = "json",
+    add_payments: bool = False,
+    all_users: bool = False,
     user: models.User = Security(utils.authorization.AuthDependency(), scopes=["invoice_management"]),
 ):
-    data = (
-        await models.Invoice.query.where(models.User.id == user.id)
-        .where(models.Invoice.status == InvoiceStatus.COMPLETE)
-        .gino.all()
-    )
+    if all_users and not user.is_superuser:
+        raise HTTPException(403, "Not enough permissions")
+    query = models.Invoice.query.where(models.Invoice.status == InvoiceStatus.COMPLETE)
+    if not all_users:
+        query = query.where(models.Invoice.user_id == user.id)
+    data = await query.gino.all()
     await utils.database.postprocess_func(data)
+    data = list(export_ext.db_to_json(data, add_payments))
     now = utils.time.now()
     filename = now.strftime(f"bitcartcc-export-%Y%m%d-%H%M%S.{export_format}")
     headers = {"Content-Disposition": f"attachment; filename={filename}"}
@@ -43,7 +45,7 @@ async def export_invoices(
         return data
     else:
         return StreamingResponse(
-            iter([export_ext.json_to_csv(export_ext.db_to_json(data)).getvalue()]),
+            iter([export_ext.json_to_csv(data).getvalue()]),
             media_type="application/csv",
             headers=headers,
         )

@@ -25,4 +25,4 @@ def test_json_to_csv():
     converted = json_to_csv([{"test": 1, "list": [1, 2, 3], "obj": {"obj2": {"field": 4}}}])
     assert isinstance(converted, io.StringIO)
     value = converted.getvalue()
-    assert value.strip() == "list,list_1,list_2,obj_obj2_field,test\r\n1,2,3,4,1"
+    assert value.strip() == 'list,obj_obj2_field,test\r\n"[1,2,3]",4,1'

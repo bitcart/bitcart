@@ -545,11 +545,23 @@ async def test_services(client: TestClient, token: str):
     assert resp2.json() == await tor_ext.get_data("services_dict", {}, json_decode=True)
 
 
-async def test_export_invoices(client: TestClient, token: str):
+async def test_export_invoices(client: TestClient, token: str, limited_user):
+    limited_token = (await create_token(client, limited_user))["access_token"]
+    invoice = await create_invoice(client, limited_user["id"], limited_token)
+    await client.post(
+        "/invoices/batch",
+        json={"ids": [invoice["id"]], "command": "mark_complete"},
+        headers={"Authorization": f"Bearer {limited_token}"},
+    )
     assert (await client.get("/invoices/export")).status_code == 401
+    assert (
+        await client.get("/invoices/export?all_users=true", headers={"Authorization": f"Bearer {limited_token}"})
+    ).status_code == 403
+    assert len((await client.get("/invoices/export", headers={"Authorization": f"Bearer {limited_token}"})).json()) > 0
     json_resp = await client.get("/invoices/export", headers={"Authorization": f"Bearer {token}"})
     assert json_resp.status_code == 200
     assert isinstance(json_resp.json(), list)
+    assert len(json_resp.json()) == 0
     assert "bitcartcc-export" in json_resp.headers["content-disposition"]
     resp2 = await client.get("/invoices/export?export_format=json", headers={"Authorization": f"Bearer {token}"})
     assert resp2.json() == json_resp.json()
@@ -557,6 +569,17 @@ async def test_export_invoices(client: TestClient, token: str):
     assert csv_resp.status_code == 200
     assert "bitcartcc-export" in csv_resp.headers["content-disposition"]
     assert csv_resp.text.endswith("\r\n")
+    json_resp = await client.get("/invoices/export?all_users=true", headers={"Authorization": f"Bearer {token}"})
+    data = json_resp.json()
+    assert len(data) == 1
+    assert data[0]["id"] == invoice["id"]
+    assert "payments" not in data[0]
+    assert (
+        "payments"
+        in (
+            await client.get("/invoices/export?all_users=true&add_payments=true", headers={"Authorization": f"Bearer {token}"})
+        ).json()[0]
+    )
 
 
 async def test_batch_commands(client: TestClient, token: str, store):
