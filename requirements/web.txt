@@ -3,7 +3,7 @@ aiofiles
 aioredis
 alembic
 bitcart
-email-validator
+email-validator<1.2.0
 fastapi
 gino
 hiredis
