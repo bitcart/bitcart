@@ -2,7 +2,7 @@ import asyncio
 
 from sqlalchemy import or_, select
 
-from api import constants, models, settings, utils
+from api import constants, events, models, settings, utils
 from api.ext.moneyformat import currency_table
 from api.logger import get_logger
 from api.utils.logging import log_errors
@@ -41,6 +41,8 @@ STATUS_MAPPING = {
 }
 
 DEFAULT_PENDING_STATUSES = [InvoiceStatus.PENDING, InvoiceStatus.PAID]
+PAID_STATUSES = [InvoiceStatus.PAID, InvoiceStatus.CONFIRMED, InvoiceStatus.COMPLETE]
+FAILED_STATUSES = [InvoiceStatus.EXPIRED, InvoiceStatus.INVALID]
 
 
 def convert_status(status):
@@ -217,6 +219,7 @@ async def update_status(invoice, status, method=None):
             log_text += f" with payment method {full_method_name}"
         logger.info(f"{log_text} to {status}")
         await invoice.update(status=status).apply()
+        await events.event_handler.publish("invoice_status", {"id": invoice.id, "status": status})
         await utils.redis.publish_message(f"invoice:{invoice.id}", {"status": status})
         await invoice_notification(invoice, status)
         return True

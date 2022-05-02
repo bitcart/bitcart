@@ -3,6 +3,7 @@ from bitcart.errors import BaseError as BitcartBaseError
 from api import invoices, models, settings, utils
 from api.events import event_handler
 from api.ext.configurator import deploy_task
+from api.ext.shopify import shopify_invoice_update
 from api.logger import get_exception_message, get_logger
 
 logger = get_logger(__name__)
@@ -35,3 +36,4 @@ async def sync_wallet(event, event_data):
 
 
 event_handler.add_handler("deploy_task", deploy_task)
+event_handler.add_handler("invoice_status", shopify_invoice_update)

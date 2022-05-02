@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Security
 
 from api import crud, models, schemes, utils
+from api.views.stores.integrations import router as integrations_router
 
 router = APIRouter()
 
@@ -44,6 +45,17 @@ async def set_store_theme_settings(
     return model
 
 
+@router.patch("/{model_id}/plugin_settings", response_model=schemes.Store)
+async def set_store_plugin_settings(
+    model_id: str,
+    settings: schemes.StorePluginSettings,
+    user: models.User = Security(utils.authorization.AuthDependency(), scopes=["store_management"]),
+):
+    model = await utils.database.get_object(models.Store, model_id, user)
+    await model.set_json_key("plugin_settings", settings)
+    return model
+
+
 utils.routing.ModelView.register(
     router,
     "/",
@@ -58,3 +70,6 @@ utils.routing.ModelView.register(
     get_one_auth=False,
     scopes=["store_management"],
 )
+
+
+router.include_router(integrations_router, prefix="/{store_id}/integrations")
