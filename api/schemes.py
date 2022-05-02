@@ -165,6 +165,16 @@ class StoreThemeSettings(BaseModel):
     admin_theme_url: str = ""
 
 
+class StoreShopifySettings(BaseModel):
+    shop_name: str = ""
+    api_key: str = ""
+    api_secret: str = ""
+
+
+class StorePluginSettings(BaseModel):
+    shopify: StoreShopifySettings = StoreShopifySettings()
+
+
 class BaseStore(CreatedMixin):
     name: str
     default_currency: str = "USD"
@@ -191,6 +201,7 @@ class CreateStore(BaseStore):
     wallets: List[str]
     notifications: Optional[List[str]] = []
     templates: Optional[Dict[str, str]] = {}
+    plugin_settings: StorePluginSettings = StorePluginSettings()
 
     @validator("notifications", pre=True, always=True)
     def set_notifications(cls, v):

@@ -81,5 +81,9 @@ event_handler = EventHandler(
             "params": {"id"},
             "handlers": [],
         },
+        "invoice_status": {
+            "params": {"id", "status"},
+            "handlers": [],
+        },
     }
 )
