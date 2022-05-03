@@ -1,7 +1,7 @@
-from fastapi import APIRouter, HTTPException, Response, Security
+from fastapi import APIRouter, Depends, HTTPException, Response, Security
 from fastapi.responses import StreamingResponse
 
-from api import crud, models, schemes, utils
+from api import crud, models, pagination, schemes, utils
 from api.ext import export as export_ext
 from api.invoices import InvoiceStatus
 
@@ -24,6 +24,7 @@ async def get_invoice_by_order_id(order_id: str):
 @router.get("/export")
 async def export_invoices(
     response: Response,
+    pagination: pagination.Pagination = Depends(),
     export_format: str = "json",
     add_payments: bool = False,
     all_users: bool = False,
@@ -31,10 +32,13 @@ async def export_invoices(
 ):
     if all_users and not user.is_superuser:
         raise HTTPException(403, "Not enough permissions")
-    query = models.Invoice.query.where(models.Invoice.status == InvoiceStatus.COMPLETE)
+    # always full list for export
+    pagination.limit = -1
+    pagination.offset = 0
+    query = pagination.get_base_query(models.Invoice).where(models.Invoice.status == InvoiceStatus.COMPLETE)
     if not all_users:
         query = query.where(models.Invoice.user_id == user.id)
-    data = await query.gino.all()
+    data = await pagination.get_list(query)
     await utils.database.postprocess_func(data)
     data = list(export_ext.db_to_json(data, add_payments))
     now = utils.time.now()
