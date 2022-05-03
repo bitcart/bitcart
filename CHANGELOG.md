@@ -2,6 +2,22 @@
 
 ## Latest changes
 
+## 0.6.7.0
+
+### Shopify integration
+
+It is now possible to connect BitcartCC to your shopify stores! Check the shopify integration icon on stores page and our docs for more details
+
+### Better invoice export
+
+For better accounting, invoice export process have been improved.
+
+The export button now has a dialog which allows to customize more options! By default it no longer includes payments as they were quite useless and added lots of unneccesary fields
+
+There is a new "All users" option to export all complete invoices by all users (available only to server admins, this is useful for instances taking fee percent from transactions without interferring into payment flow)
+
+Use current query allows you to apply some filters using the search bar (and sorting by columns), and then export that data
+
 ## 0.6.6.0
 
 Normalize contract addresses: no matter where you've got contract address from, it should correctly detect payments now.
