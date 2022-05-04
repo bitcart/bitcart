@@ -377,10 +377,10 @@ class Wallet:
 
     async def get_request_url(self, req):
         chain_id = await self.web3.eth.chain_id
+        amount_wei = to_wei(req.amount, self.divisibility)
         if self.contract:
-            amount_wei = to_wei(req.amount, self.divisibility)
             return f"ethereum:{self.contract.address}@{chain_id}/transfer?address={req.address}&uint256={amount_wei}"
-        return f"ethereum:{req.address}@{chain_id}?value={decimal_to_string(req.amount,self.divisibility)}"
+        return f"ethereum:{req.address}@{chain_id}?value={amount_wei}"
 
     async def export_request(self, req):
         d = {

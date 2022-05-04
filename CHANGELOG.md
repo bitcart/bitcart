@@ -2,6 +2,14 @@
 
 ## Latest changes
 
+## 0.6.7.1
+
+Fix eth payment methods onchain qrcodes (put amount in wei)
+
+There is also a message displayed telling customers to pay exact the needed amount
+
+Also you can now customize the checkout hint for any wallet (payment method) you need
+
 ## 0.6.7.0
 
 ### Shopify integration

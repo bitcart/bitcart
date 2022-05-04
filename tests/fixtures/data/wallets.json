@@ -2,7 +2,8 @@
     "create": {
         "name": "test",
         "xpub": "tpubDC9zYPoSZUk5W8Rfaex3k324fi1hDLHapbSjPd4gbr7AE8MLSGEy76fNp5m6sVLBy9p2iTjRkiguVyb8iEHCdUBC7SXnhHdHMpXwFcrVMyA",
-        "label": "customlabel"
+        "label": "customlabel",
+        "hint": "test"
     },
     "patch": {
         "name": "test1",
@@ -14,6 +15,7 @@
         "currency": "btc",
         "balance": "0.00000000",
         "label": "customlabel",
+        "hint": "test",
         "lightning_enabled": false
     },
     "count": 1

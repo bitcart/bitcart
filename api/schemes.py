@@ -98,6 +98,7 @@ class CreateWallet(CreatedMixin):
     currency: str = "btc"
     lightning_enabled: bool = False
     label: str = ""
+    hint: str = ""
     contract: str = ""
 
     class Config:
@@ -113,6 +114,10 @@ class CreateWallet(CreatedMixin):
 
     @validator("label", pre=True)
     def set_label(cls, val):
+        return val or ""
+
+    @validator("hint", pre=True)
+    def set_hint(cls, val):
         return val or ""
 
 

@@ -188,6 +188,7 @@ class Wallet(BaseModel):
     created = Column(DateTime(True), nullable=False)
     lightning_enabled = Column(Boolean(), default=False)
     label = Column(Text)
+    hint = Column(Text)
     contract = Column(Text)
 
     async def add_fields(self):
@@ -422,6 +423,7 @@ class PaymentMethod(BaseModel):
     divisibility = Column(Integer)
     node_id = Column(Text)
     label = Column(Text)
+    hint = Column(Text)
     created = Column(DateTime(True), nullable=False)
 
     async def to_dict(self, index: int = None):

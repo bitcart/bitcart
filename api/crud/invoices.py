@@ -116,6 +116,7 @@ async def _create_payment_method(invoice, wallet, product, store, discounts, pro
         recommended_fee=recommended_fee,
         confirmations=0,
         label=wallet.label,
+        hint=wallet.hint,
         created=utils.time.now(),
         contract=wallet.contract,
         symbol=symbol,
