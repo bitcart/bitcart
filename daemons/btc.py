@@ -487,6 +487,10 @@ class BTCDaemon(BaseDaemon):
         return {}
 
     @rpc
+    def getabi(self, wallet=None):  # fallback
+        return []
+
+    @rpc
     def normalizeaddress(self, address, wallet=None):  # fallback
         return address
 
