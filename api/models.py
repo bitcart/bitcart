@@ -436,7 +436,22 @@ class PaymentMethod(BaseModel):
         data["rate"] = currency_table.format_decimal(invoice.currency, self.rate)
         data["rate_str"] = currency_table.format_currency(invoice.currency, self.rate)
         data["name"] = self.get_name(index)
+        if data["payment_url"].startswith("ethereum:"):
+            data["chain_id"] = self.parse_chain_id(data["payment_url"])
         return data
+
+    @classmethod
+    def parse_chain_id(self, url):
+        k = url.find("@")
+        if k == -1:
+            return None
+        part = url[k + 1 :]
+        chain_id = ""
+        for i in range(len(part)):
+            if not part[i].isdigit():
+                break
+            chain_id += part[i]
+        return int(chain_id)
 
     def get_name(self, index: int = None):
         if self.label:

@@ -60,3 +60,8 @@ async def get_fiatlist(query: Optional[str] = None):
 async def get_tokens(currency: str):
     tokens = await settings.settings.get_coin(currency).server.get_tokens()
     return prepare_compliant_response(list(tokens.keys()))
+
+
+@router.get("/tokens/{currency}/abi")
+async def get_tokens_abi(currency: str):
+    return await settings.settings.get_coin(currency).server.getabi()

@@ -877,6 +877,10 @@ class ETHDaemon(BaseDaemon):
         self.wallets_updates[wallet] = []
         return updates
 
+    @rpc
+    def getabi(self, wallet=None):
+        return self.ABI
+
     @rpc(requires_wallet=True)
     def getaddress(self, wallet):
         return self.wallets[wallet].address
