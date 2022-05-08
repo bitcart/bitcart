@@ -2,6 +2,10 @@
 
 ## Latest changes
 
+## 0.6.7.2
+
+Better checkout on eth-based payment methods on desktop: added pay via metamask button
+
 ## 0.6.7.1
 
 Fix eth payment methods onchain qrcodes (put amount in wei)
