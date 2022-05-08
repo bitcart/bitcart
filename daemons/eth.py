@@ -343,6 +343,8 @@ class Wallet:
 
     async def make_payment_request(self, address, amount, message, expiration):
         amount = amount or Decimal()
+        if amount < 0:
+            raise Exception("Out of bounds amount")
         timestamp = int(time.time())
         expiration = expiration or 0
         return Invoice(

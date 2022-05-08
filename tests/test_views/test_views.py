@@ -1311,6 +1311,9 @@ async def test_get_tokens_btc(client: TestClient):
     resp = await client.get("/cryptos/tokens/btc")
     assert resp.status_code == 200
     assert resp.json() == {"count": 0, "result": [], "previous": None, "next": None}
+    resp = await client.get("/cryptos/tokens/btc/abi")
+    assert resp.status_code == 200
+    assert resp.json() == []
 
 
 class NotRunningBTC:
