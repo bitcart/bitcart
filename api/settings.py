@@ -40,6 +40,7 @@ class Settings(BaseSettings):
     db_host: str = Field("127.0.0.1", env="DB_HOST")
     db_port: int = Field(5432, env="DB_PORT")
     datadir: str = Field("data", env="BITCART_DATADIR")
+    backups_dir: str = Field("data/backups", env="BITCART_BACKUPS_DIR")
     log_file: str = None
     log_file_name: str = Field(None, env="LOG_FILE")
     log_file_regex: re.Pattern = None
@@ -99,6 +100,12 @@ class Settings(BaseSettings):
 
     @validator("datadir", pre=True, always=True)
     def set_datadir(cls, path):
+        path = os.path.abspath(path)
+        ensure_exists(path)
+        return path
+
+    @validator("backups_dir", pre=True, always=True)
+    def set_backups_dir(cls, path):
         path = os.path.abspath(path)
         ensure_exists(path)
         return path

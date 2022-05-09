@@ -4,6 +4,7 @@ import tempfile
 import aiofiles
 from bitcart.errors import BaseError as BitcartBaseError
 from fastapi import APIRouter, File, HTTPException, Security, UploadFile
+from fastapi.responses import FileResponse
 
 from api import constants, models, schemes, settings, utils
 from api.ext import backups as backups_ext
@@ -161,8 +162,34 @@ async def get_backup_frequencies():
 @router.post("/backups/backup")
 async def perform_backup(user: models.User = Security(utils.authorization.AuthDependency(), scopes=["server_management"])):
     if settings.settings.docker_env:  # pragma: no cover
-        return await backups_ext.manager.perform_backup()
+        output = await backups_ext.manager.perform_backup()
+        message = output["message"]
+        if output["status"] == "success":
+            output["message"] = "Successfully performed backup!"
+            lines = message.splitlines()
+            for line in lines:
+                if line.startswith("Backed up to"):
+                    filename = line.split()[-1]
+                    file_id = utils.common.unique_id()
+                    async with utils.redis.wait_for_redis():
+                        await settings.settings.redis_pool.set(f"backups:{file_id}", filename)
+                    return {"status": "success", "message": output["message"], "file_id": file_id}
+        return output
     return {"status": "error", "message": "Not running in docker"}
+
+
+@router.get("/backups/download/{file_id}")
+async def download_backup(
+    file_id: str, user: models.User = Security(utils.authorization.AuthDependency(), scopes=["server_management"])
+):
+    if settings.settings.docker_env:  # pragma: no cover
+        async with utils.redis.wait_for_redis():
+            filename = await settings.settings.redis_pool.execute_command("GETDEL", f"backups:{file_id}")
+        if filename:
+            headers = {"Content-Disposition": f"attachment; filename={os.path.basename(filename)}"}
+            return FileResponse(os.path.join(settings.settings.backups_dir, filename), headers=headers)
+        raise HTTPException(404, "This backup doesn't exist")
+    raise HTTPException(400, "Not running in docker")
 
 
 @router.post("/backups/restore")

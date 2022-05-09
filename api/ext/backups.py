@@ -80,7 +80,8 @@ class BackupsManager:
         self.logger.info(backup_policy)
         exec_command = "./backup.sh"
         self.logger.debug(f"Running {exec_command} with env {env_vars}")
-        output = utils.host.run_host_output(exec_command, "Successfully performed backup!", env=env_vars)
+        ok, output = utils.host.run_host(exec_command, env=env_vars, disown=False)
+        output = {"status": "success" if ok else "error", "message": output}
         if output["status"] == "error":
             self.logger.error(output)
         else:
