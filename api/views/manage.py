@@ -169,7 +169,7 @@ async def perform_backup(user: models.User = Security(utils.authorization.AuthDe
             lines = message.splitlines()
             for line in lines:
                 if line.startswith("Backed up to"):
-                    filename = line.split()[-1]
+                    filename = os.path.basename(line.split()[-1])
                     file_id = utils.common.unique_id()
                     async with utils.redis.wait_for_redis():
                         await settings.settings.redis_pool.set(f"backups:{file_id}", filename)
