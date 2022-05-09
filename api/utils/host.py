@@ -15,11 +15,9 @@ def run_host(command, env={}, disown=True):
         output = execute_ssh_command(
             client,
             f'. {settings.settings.ssh_settings.bash_profile_script}; cd "$BITCART_BASE_DIRECTORY"; {env_vars} nohup {command}'
-            + (" & disown" if disown else ""),
+            + (" > /dev/null 2>&1 & disown" if disown else ""),
         )
-        if disown:
-            return True, None
-        else:  # pragma: no cover
+        if not disown:  # pragma: no cover
             final_out = output[1].read().decode() + "\n" + output[2].read().decode()
             final_out = final_out.strip()
             exitcode = output[1].channel.recv_exit_status()
@@ -31,6 +29,7 @@ def run_host(command, env={}, disown=True):
         return False, f"Command execution problem: {e}"
     finally:
         client.close()
+    return True, None
 
 
 def run_host_output(command, ok_output, env={}):
