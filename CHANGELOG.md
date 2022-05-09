@@ -2,6 +2,10 @@
 
 ## Latest changes
 
+## 0.6.7.3
+
+The create backup button now automatically downloads newly created backup, so you no longer need to access your server to get it saved locally!
+
 ## 0.6.7.2
 
 Better checkout on eth-based payment methods on desktop: added pay via metamask button
