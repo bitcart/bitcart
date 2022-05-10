@@ -2,6 +2,12 @@
 
 ## Latest changes
 
+## 0.6.7.4
+
+Fixed metamask icon loading
+
+Fixed a rare bug in token payment processing
+
 ## 0.6.7.3
 
 The create backup button now automatically downloads newly created backup, so you no longer need to access your server to get it saved locally!

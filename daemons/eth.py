@@ -538,6 +538,7 @@ class ETHDaemon(BaseDaemon):
         self.latest_blocks = deque(maxlen=self.MAX_SYNC_BLOCKS)
         self.config_path = os.path.join(self.get_datadir(), "config")
         self.config = ConfigDB(self.config_path)
+        self.contract_heights = self.config.get_dict("contract_heights")
         self.web3 = Web3(
             Web3.AsyncHTTPProvider(self.SERVER),
             modules={
@@ -643,6 +644,8 @@ class ETHDaemon(BaseDaemon):
         if contract in self.contracts:
             self.wallets[wallet].contract = self.contracts[contract]
             return
+        if contract not in self.contract_heights:
+            self.contract_heights[contract] = await self.web3.eth.block_number
         self.contracts[contract] = await self.start_contract_listening(contract)
         self.wallets[wallet].contract = self.contracts[contract]
         await self.wallets[wallet].fetch_token_info()
@@ -662,7 +665,12 @@ class ETHDaemon(BaseDaemon):
 
     async def check_contracts(self, contract, divisibility):
         while self.running:
-            await check_contract_logs(contract, divisibility)
+            to_block = await self.web3.eth.block_number
+            if to_block > self.contract_heights[contract.address]:
+                await check_contract_logs(
+                    contract, divisibility, from_block=self.contract_heights[contract.address] + 1, to_block=to_block
+                )
+                self.contract_heights[contract.address] = to_block
             await asyncio.sleep(self.BLOCK_TIME)
 
     async def trigger_event(self, data, wallet):
