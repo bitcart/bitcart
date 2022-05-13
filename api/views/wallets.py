@@ -41,9 +41,11 @@ async def get_wallet_balance(
     model_id: str, user: models.User = Security(utils.authorization.AuthDependency(), scopes=["wallet_management"])
 ):
     wallet = await utils.database.get_object(models.Wallet, model_id, user)
-    response = (await utils.wallets.get_wallet_balance(wallet))[1]
+    got = await utils.wallets.get_wallet_balance(wallet)
+    response = got[2]
+    divisibility = got[1]
     for key in response:
-        response[key] = currency_table.format_decimal(wallet.currency, response[key])
+        response[key] = currency_table.format_decimal(wallet.currency, response[key], divisibility=divisibility)
     return response
 
 

@@ -219,8 +219,9 @@ async def test_no_exchange_rates_available(mocker, caplog, wallet):
 @pytest.mark.anyio
 async def test_broken_coin(mocker, caplog, wallet):
     mocker.patch("bitcart.BTC.balance", side_effect=BitcartBaseError("Coin broken"))
-    success, balance = await utils.wallets.get_confirmed_wallet_balance(schemes.Wallet(**wallet))
+    success, divisibility, balance = await utils.wallets.get_confirmed_wallet_balance(schemes.Wallet(**wallet))
     assert not success
+    assert divisibility == 8
     assert balance == Decimal(0)
     assert "Error getting wallet balance" in caplog.text
 

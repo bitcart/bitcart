@@ -76,7 +76,6 @@ async def shopify_invoice_update(event, event_data):
     client = get_shopify_client(store)
     if not await client.order_exists(order_id):
         return
-    print("UPD", invoice.status)
     if invoice.status in invoices.FAILED_STATUSES or invoice.status in invoices.PAID_STATUSES:
         success = invoice.status in invoices.PAID_STATUSES
         await update_shopify_status(client, order_id, invoice.id, invoice.currency, invoice.price, success)

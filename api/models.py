@@ -195,8 +195,14 @@ class Wallet(BaseModel):
         await super().add_fields()
         from api import utils
 
-        success, self.balance = await utils.wallets.get_confirmed_wallet_balance(self)
+        success, self.divisibility, self.balance = await utils.wallets.get_confirmed_wallet_balance(self)
         self.error = not success
+
+    @classmethod
+    def process_kwargs(cls, kwargs):
+        kwargs = super().process_kwargs(kwargs)
+        kwargs.pop("divisibility", None)
+        return kwargs
 
     async def validate(self, kwargs):
         await super().validate(kwargs)

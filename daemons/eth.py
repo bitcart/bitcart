@@ -335,7 +335,9 @@ class Wallet:
         return self.keystore.address
 
     async def balance(self):
-        return to_dict(await get_balance(self.web3, self.address))
+        if self.contract:
+            return from_wei(await daemon.readcontract(self.contract, "balanceOf", self.address), self.divisibility)
+        return await get_balance(self.web3, self.address)
 
     def stop(self, block_number):
         self.running = False
@@ -905,7 +907,7 @@ class ETHDaemon(BaseDaemon):
 
     @rpc(requires_wallet=True, requires_network=True)
     async def getbalance(self, wallet):
-        return {"confirmed": await self.wallets[wallet].balance()}
+        return {"confirmed": decimal_to_string(await self.wallets[wallet].balance(), self.wallets[wallet].divisibility)}
 
     @rpc
     def getconfig(self, key, wallet=None):

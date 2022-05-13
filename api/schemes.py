@@ -130,7 +130,9 @@ class Wallet(CreateWallet):
     @root_validator(pre=True)
     def set_balance(cls, values):
         if "balance" in values:
-            values["balance"] = currency_table.format_decimal(values.get("currency"), values["balance"])
+            values["balance"] = currency_table.format_decimal(
+                values.get("currency"), values["balance"], divisibility=values.get("divisibility")
+            )
         return values
 
 

@@ -42,17 +42,18 @@ async def get_wallet_history(model, response):
 async def get_wallet_balance(wallet) -> Union[bool, Decimal]:
     try:
         coin = settings.settings.get_coin(wallet.currency, {"xpub": wallet.xpub, "contract": wallet.contract})
-        return True, await coin.balance()
+        divisibility = None if not wallet.contract else await coin.server.readcontract(wallet.contract, "decimals")
+        return True, divisibility, await coin.balance()
     except (BitcartBaseError, HTTPException) as e:
         logger.error(
             f"Error getting wallet balance for wallet {wallet.id} with currency {wallet.currency}:\n{get_exception_message(e)}"
         )
-        return False, {attr: Decimal(0) for attr in BTC.BALANCE_ATTRS}
+        return False, 8, {attr: Decimal(0) for attr in BTC.BALANCE_ATTRS}
 
 
 async def get_confirmed_wallet_balance(wallet) -> Union[bool, Decimal]:
-    success, balance = await get_wallet_balance(wallet)
-    return success, balance["confirmed"]
+    success, divisibility, balance = await get_wallet_balance(wallet)
+    return success, divisibility, balance["confirmed"]
 
 
 async def get_wallet_balances(user):
@@ -61,10 +62,11 @@ async def get_wallet_balances(user):
     rates = {}
     async with utils.database.iterate_helper():
         async for wallet in models.Wallet.query.where(models.Wallet.user_id == user.id).gino.iterate():
-            _, crypto_balance = await get_confirmed_wallet_balance(wallet)
-            if wallet.currency in rates:  # pragma: no cover
-                rate = rates[wallet.currency]
+            _, _, crypto_balance = await get_confirmed_wallet_balance(wallet)
+            cache_key = (wallet.currency, wallet.contract)
+            if cache_key in rates:  # pragma: no cover
+                rate = rates[cache_key]
             else:
-                rate = rates[wallet.currency] = await get_rate(wallet, show_currency)
+                rate = rates[cache_key] = await get_rate(wallet, show_currency)
             balances += crypto_balance * rate
     return currency_table.format_decimal(show_currency, currency_table.normalize(show_currency, balances))
