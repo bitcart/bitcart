@@ -1,2 +1,3 @@
 https://github.com/pooler/electrum-ltc/archive/193400057a47f3953ab4ca4bd17034ce5933d527.zip#egg=electrum-ltc[crypto]
+protobuf<4
 scrypt>=0.6.0

@@ -288,7 +288,9 @@ protobuf==3.19.4 \
     --hash=sha256:cdc076c03381f5c1d9bb1abdcc5503d9ca8b53cf0a9d31a9f6754ec9e6c8af0f \
     --hash=sha256:f358aa33e03b7a84e0d91270a4d4d8f5df6921abe99a377828839e8ed0c04e07 \
     --hash=sha256:f51d5a9f137f7a2cec2d326a74b6e3fc79d635d69ffe1b036d39fc7d75430d37
-    # via electron-cash
+    # via
+    #   -r requirements/daemons/bch.txt
+    #   electron-cash
 pyaes==1.6.1 \
     --hash=sha256:02c1b1405c38d3c370b085fb952dd8bea3fadcee6411ad99f312cc129c536d8f
     # via electron-cash
