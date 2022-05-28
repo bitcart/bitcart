@@ -2,6 +2,14 @@
 
 ## Latest changes
 
+## 0.6.7.5
+
+Better UI for final statuses on invoice page
+
+Simplified payment process via metamask: just one button state (pay via metamask) instead of separate connect/pay flows.
+
+Smart contracts balances are now properly displayed in the admin panel
+
 ## 0.6.7.4
 
 Fixed metamask icon loading
