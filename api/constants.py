@@ -2,7 +2,7 @@ import string
 
 from bitcart import COINS as _COINS
 
-VERSION = "0.6.7.5"  # Version, used for openapi schemas and update checks
+VERSION = "0.6.7.6"  # Version, used for openapi schemas and update checks
 WEBSITE = "https://bitcartcc.com"  # BitcartCC official site
 GIT_REPO_URL = "https://github.com/bitcartcc/bitcart"  # BitcartCC github repository
 DOCKER_REPO_URL = "https://github.com/bitcartcc/bitcart-docker"  # BitcartCC Docker Packaging repository
@@ -28,3 +28,5 @@ STR_TO_BOOL_MAPPING = {
     "no": False,
     "0": False,
 }  # common str -> bool conversions
+# due to many exchanges lacking more than 8 digits, we limit eth-based divisibility for invoices to 8
+MAX_CONTRACT_DIVISIBILITY = 8

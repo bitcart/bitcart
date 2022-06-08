@@ -2,6 +2,14 @@
 
 ## Latest changes
 
+## 0.6.7.6
+
+Added ability to configure number of hours eth-based daemons can be left down (default: 1 hour). Configurable via `COIN_MAX_SYNC_HOURS` env variable.
+
+For ETH, BNB and all the contracts the maximum number of decimal digits is artificially decreased to 8 decimals. That's because most exchanges and software doesn't support more than 8 decimals (noone's following the specs except for us), so to make it possible to send from i.e. binance this change was made.
+
+Daemon is almost unmodified - it stores and returns balances in original 18 decimals precision, just that invoice amounts generation algorithm will use at max 8 decimals. As for the merchants API, the output formatting decimals were indeed changed to 8 (from 18), so checkout page now has 8 decimals, which is more readable.
+
 ## 0.6.7.5
 
 Better UI for final statuses on invoice page

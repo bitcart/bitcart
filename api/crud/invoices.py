@@ -8,6 +8,7 @@ from sqlalchemy import select
 from starlette.datastructures import CommaSeparatedStrings
 
 from api import events, invoices, models, schemes, settings, utils
+from api.constants import MAX_CONTRACT_DIVISIBILITY
 from api.ext.moneyformat import currency_table, truncate
 from api.logger import get_exception_message, get_logger
 from api.utils.database import safe_db_write
@@ -58,7 +59,7 @@ async def _create_payment_method(invoice, wallet, product, store, discounts, pro
     symbol = await coin.server.readcontract(wallet.contract, "symbol") if wallet.contract else wallet.currency
     divisibility = currency_table.get_currency_data(wallet.currency)["divisibility"]
     if wallet.contract:  # pragma: no cover
-        divisibility = await coin.server.readcontract(wallet.contract, "decimals")
+        divisibility = min(MAX_CONTRACT_DIVISIBILITY, await coin.server.readcontract(wallet.contract, "decimals"))
     rate = currency_table.normalize(
         invoice.currency, await utils.wallets.get_rate(wallet, invoice.currency, store.default_currency)
     )

@@ -303,17 +303,17 @@
     },
     "ETH": {
         "name": "Ethereum",
-        "divisibility": 18,
+        "divisibility": 8,
         "crypto": true
     },
     "BNB": {
         "name": "Binance Coin",
-        "divisibility": 18,
+        "divisibility": 8,
         "crypto": true
     },
     "SBCH": {
         "name": "Smart Bitcoin Cash",
-        "divisibility": 18,
+        "divisibility": 8,
         "crypto": true
     }
 }

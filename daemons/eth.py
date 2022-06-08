@@ -364,7 +364,8 @@ class Wallet:
         add_low = 1
         add_high = 2
         cur_amount = amount
-        AMOUNTGEN_PRECISION = Decimal(10) ** (-self.divisibility)
+        divisibility = min(self.divisibility, daemon.AMOUNTGEN_DIVISIBILITY)
+        AMOUNTGEN_PRECISION = Decimal(10) ** (-divisibility)
         while cur_amount in self.used_amounts:
             cur_amount = amount + random.randint(add_low, add_high) * AMOUNTGEN_PRECISION
             if add_high < AMOUNTGEN_LIMIT:
@@ -527,9 +528,11 @@ class ETHDaemon(BaseDaemon):
     TOKENS = ERC20_TOKENS
     # modern transactions with maxPriorityFeePerGas
     EIP1559_SUPPORTED = True
-    MAX_SYNC_BLOCKS = 300  # (60/12)=5*60 (a block every 12 seconds, max normal expiry time 60 minutes)
+    DEFAULT_MAX_SYNC_BLOCKS = 300  # (60/12)=5*60 (a block every 12 seconds, max normal expiry time 60 minutes)
     # from coingecko API
     FIAT_NAME = "ethereum"
+    # Max number of decimal places to use for amounts generation
+    AMOUNTGEN_DIVISIBILITY = 8
 
     latest_height = StoredProperty("latest_height", -1)
 
@@ -562,6 +565,8 @@ class ETHDaemon(BaseDaemon):
     def load_env(self):
         super().load_env()
         self.SERVER = self.env("SERVER", default=get_default_http_endpoint())
+        max_sync_hours = self.env("MAX_SYNC_HOURS", cast=int, default=1)
+        self.MAX_SYNC_BLOCKS = max_sync_hours * self.DEFAULT_MAX_SYNC_BLOCKS
 
     async def on_startup(self, app):
         await super().on_startup(app)
