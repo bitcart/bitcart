@@ -138,6 +138,7 @@ class ManyToManyUpdateRequest(UpdateRequest):
         for key in self.KEYS:
             if key in kwargs:
                 setattr(self._instance, key, kwargs.pop(key))
+        self.empty = not kwargs
         return super().update(**kwargs)
 
     async def apply(self):
@@ -150,7 +151,8 @@ class ManyToManyUpdateRequest(UpdateRequest):
                 await delete_relations(self._instance.id, key_info)
             await create_relations(self._instance.id, data, key_info)
             setattr(self._instance, key, data)
-        return await super().apply()
+        if not self.empty:
+            return await super().apply()
 
 
 class User(BaseModel):

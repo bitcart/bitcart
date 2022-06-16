@@ -2,6 +2,14 @@
 
 ## Latest changes
 
+## 0.6.7.7
+
+Proper params casting + transfer function now accepts amount in ETH, not wei (and it does proper casting to needed divisibility by itself!)
+
+No more server error on PATCH when you only pass i.e. `wallets`
+
+New daemon method for eth-based coins: `get_default_gas` - it gets the gas value needed to execute a transaction. Before it was named `get_default_fee`. Now the `get_default_fee` method behaves like it did in other coins: it returns amount needed to pay the fees
+
 ## 0.6.7.6
 
 Added ability to configure number of hours eth-based daemons can be left down (default: 1 hour). Configurable via `COIN_MAX_SYNC_HOURS` env variable.

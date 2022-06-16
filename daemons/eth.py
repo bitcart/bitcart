@@ -22,7 +22,7 @@ from storage import JSONEncoder as StorageJSONEncoder
 from storage import Storage, StoredDBProperty, StoredObject, StoredProperty
 from storage import WalletDB as StorageWalletDB
 from storage import decimal_to_string
-from utils import CastingDataclass, JsonResponse, get_exception_message, hide_logging_errors, load_json_dict, rpc
+from utils import CastingDataclass, JsonResponse, get_exception_message, hide_logging_errors, load_json_dict, rpc, try_cast_num
 from web3 import Web3
 from web3.contract import AsyncContract
 from web3.datastructures import AttributeDict
@@ -40,6 +40,8 @@ WRITE_DOWN_SEED_MESSAGE = "Please keep your seed in a safe place; if you lose it
 ONE_ADDRESS_MESSAGE = "We only support one address per wallet as it is common in ethereum ecosystem"
 GET_PROOF_MESSAGE = "Geth doesn't support get_proof correctly for now"
 NO_MASTER_KEYS_MESSAGE = "As we use only one address per wallet, address keys are used, but not the xprv/xpub"
+
+EIP1559_PARAMS = ("maxFeePerGas", "maxPriorityFeePerGas")
 
 CHUNK_SIZE = 30
 AMOUNTGEN_LIMIT = 10**9
@@ -865,10 +867,28 @@ class ETHDaemon(BaseDaemon):
         return str(self.exchange_rates[origin_currency].get(currency, Decimal("NaN")))
 
     @rpc(requires_network=True)
-    async def get_default_fee(self, tx, wallet=None):
+    async def get_default_gas(self, tx, wallet=None):
         tx_dict = load_json_dict(tx, "Invalid transaction").copy()
         tx_dict.pop("chainId", None)
         return await self.web3.eth.estimate_gas(tx_dict)
+
+    @rpc(requires_network=True)
+    async def get_default_fee(self, tx, wallet=None):
+        tx_dict = load_json_dict(tx, "Invalid transaction")
+        has_modern_params = any(v in tx_dict for v in EIP1559_PARAMS)
+        has_legacy_params = "gasPrice" in tx_dict
+        if (
+            (has_modern_params and has_legacy_params)
+            or (has_modern_params and not self.EIP1559_SUPPORTED)
+            or "gas" not in tx_dict
+        ):
+            raise Exception("Invalid mix of transaction fee params")
+        if has_modern_params:
+            base_fee = (await self.web3.eth.get_block("latest")).baseFeePerGas
+            fee = (from_wei(tx_dict["maxPriorityFeePerGas"]) + from_wei(base_fee)) * tx_dict["gas"]
+        else:
+            fee = from_wei(tx_dict["gasPrice"]) * tx_dict["gas"]
+        return to_dict(fee)
 
     @rpc
     def get_tokens(self, wallet=None):
@@ -1087,7 +1107,7 @@ class ETHDaemon(BaseDaemon):
             tx_dict["maxFeePerGas"] = Web3.toWei(fee, "ether")
         if feerate:
             tx_dict["maxPriorityFeePerGas"] = Web3.toWei(feerate, "gwei")
-        tx_dict["gas"] = int(gas) if gas else await self.get_default_fee(tx_dict)
+        tx_dict["gas"] = int(gas) if gas else await self.get_default_gas(tx_dict)
         if unsigned:
             return tx_dict
         if self.wallets[wallet].is_watching_only():
@@ -1114,8 +1134,8 @@ class ETHDaemon(BaseDaemon):
                 raise Exception("Invalid address") from e
             contract = self.create_web3_contract(address)
         # try converting args to int if possible
-        args = [int(x) if x.isdigit() else x for x in args]
-        kwargs = {k: int(v) if v.isdigit() else v for k, v in kwargs.items()}
+        args = [try_cast_num(x) for x in args]
+        kwargs = {k: try_cast_num(v) for k, v in kwargs.items()}
         try:
             exec_function = getattr(contract.functions, function)
         except ABIFunctionNotFound as e:
@@ -1178,13 +1198,13 @@ class ETHDaemon(BaseDaemon):
         return to_dict(Account.sign_message(encode_defunct(text=message), private_key=self.wallets[wallet].key).signature)
 
     def _sign_transaction(self, tx, private_key):
+        if private_key is None:
+            raise Exception("This is a watching-only wallet")
         tx_dict = load_json_dict(tx, "Invalid transaction")
         return to_dict(Account.sign_transaction(tx_dict, private_key=private_key).rawTransaction)
 
     @rpc(requires_wallet=True)
     def signtransaction(self, tx, wallet=None):
-        if self.wallets[wallet].is_watching_only():
-            raise Exception("This is a watching-only wallet")
         return self._sign_transaction(tx, self.wallets[wallet].keystore.private_key)
 
     @rpc
@@ -1192,8 +1212,13 @@ class ETHDaemon(BaseDaemon):
         return self._sign_transaction(tx, privkey)
 
     @rpc(requires_wallet=True, requires_network=True)
-    async def transfer(self, address, to, value, gas=None, wallet=None):
-        return await self.writecontract(address, "transfer", to, value, gas=gas, wallet=wallet)
+    async def transfer(self, address, to, value, gas=None, unsigned=False, wallet=None):
+        try:
+            divisibility = await self.readcontract(address, "decimals")
+            value = to_wei(Decimal(value), divisibility)
+        except Exception:
+            raise Exception("Invalid arguments for transfer function")
+        return await self.writecontract(address, "transfer", to, value, gas=gas, unsigned=unsigned, wallet=wallet)
 
     @rpc
     def validateaddress(self, address, wallet=None):
@@ -1228,13 +1253,16 @@ class ETHDaemon(BaseDaemon):
     @rpc(requires_wallet=True, requires_network=True)
     async def writecontract(self, address, function, *args, **kwargs):
         wallet = kwargs.pop("wallet")
+        unsigned = kwargs.pop("unsigned", False)
         gas = kwargs.pop("gas", None)
         exec_function = self.load_contract_exec_function(address, function, *args, **kwargs)
         # pass gas here to avoid calling estimate_gas on an incomplete tx
         tx = await exec_function.build_transaction(
             {**await self.get_common_payto_params(self.wallets[wallet].address), "gas": TX_DEFAULT_GAS}
         )
-        tx["gas"] = int(gas) if gas else await self.get_default_fee(tx)
+        tx["gas"] = int(gas) if gas else await self.get_default_gas(tx)
+        if unsigned:
+            return tx
         signed = self._sign_transaction(tx, self.wallets[wallet].keystore.private_key)
         return await self.broadcast(signed)
 

@@ -15,7 +15,8 @@
         "Invalid transaction": -32008,
         "Invalid contract address or non-ERC20 token": -32009,
         "Contract ABI is missing": -32010,
-        "Invalid arguments for": -32011
+        "Invalid arguments for": -32011,
+        "Invalid mix of transaction fee params": -32012
     },
     "exceptions": {
         "-32601": {
@@ -73,6 +74,10 @@
         "-32011": {
             "exc_name": "InvalidContractArgumentsError",
             "docstring": "Invalid arguments for this contract function"
+        },
+        "-32012": {
+            "exc_name": "InvalidFeeParametersError",
+            "docstring": "Invalid mix of transaction fee params"
         }
     }
 }
