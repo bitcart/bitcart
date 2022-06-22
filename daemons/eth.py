@@ -42,6 +42,7 @@ GET_PROOF_MESSAGE = "Geth doesn't support get_proof correctly for now"
 NO_MASTER_KEYS_MESSAGE = "As we use only one address per wallet, address keys are used, but not the xprv/xpub"
 
 EIP1559_PARAMS = ("maxFeePerGas", "maxPriorityFeePerGas")
+FEE_PARAMS = EIP1559_PARAMS + ("gasPrice", "gas")
 
 CHUNK_SIZE = 30
 AMOUNTGEN_LIMIT = 10**9
@@ -870,6 +871,8 @@ class ETHDaemon(BaseDaemon):
     async def get_default_gas(self, tx, wallet=None):
         tx_dict = load_json_dict(tx, "Invalid transaction").copy()
         tx_dict.pop("chainId", None)
+        for param in FEE_PARAMS:
+            tx_dict.pop(param, None)
         return await self.web3.eth.estimate_gas(tx_dict)
 
     @rpc(requires_network=True)
