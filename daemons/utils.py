@@ -179,3 +179,26 @@ def try_cast_num(v):
     if is_int(v):
         return int(v)
     return v
+
+
+def exception_retry_middleware(
+    make_request,
+    errors,
+    verbose,
+    retries=5,
+):
+    async def middleware(*args, **kwargs):
+        for i in range(retries):
+            try:
+                return await make_request(*args, **kwargs)
+            except errors:
+                if i < retries - 1:
+                    if verbose:
+                        print(f"Retrying {make_request} {args} {kwargs}, attempt {i + 1}")
+                    continue
+                else:
+                    if verbose:
+                        print(f"Failed after {retries} retries: {make_request} {args} {kwargs}")
+                    raise
+
+    return middleware

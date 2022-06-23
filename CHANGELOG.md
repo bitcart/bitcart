@@ -2,6 +2,14 @@
 
 ## Latest changes
 
+## 0.6.7.8
+
+Fixes gas estimation to work 100% of the time
+
+Now contract payments don't get stuck on first error but will always get detected
+
+Added retry mechanism to eth daemons - no temporary issues should ever interrupt payment processing!
+
 ## 0.6.7.7
 
 Proper params casting + transfer function now accepts amount in ETH, not wei (and it does proper casting to needed divisibility by itself!)

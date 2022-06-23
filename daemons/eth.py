@@ -11,6 +11,7 @@ from collections import defaultdict, deque
 from dataclasses import dataclass, field
 from decimal import Decimal
 
+from aiohttp import ClientError as AsyncClientError
 from base import BaseDaemon
 from eth_account import Account
 from eth_account.messages import encode_defunct
@@ -22,12 +23,21 @@ from storage import JSONEncoder as StorageJSONEncoder
 from storage import Storage, StoredDBProperty, StoredObject, StoredProperty
 from storage import WalletDB as StorageWalletDB
 from storage import decimal_to_string
-from utils import CastingDataclass, JsonResponse, get_exception_message, hide_logging_errors, load_json_dict, rpc, try_cast_num
+from utils import (
+    CastingDataclass,
+    JsonResponse,
+    exception_retry_middleware,
+    get_exception_message,
+    hide_logging_errors,
+    load_json_dict,
+    rpc,
+    try_cast_num,
+)
 from web3 import Web3
 from web3.contract import AsyncContract
 from web3.datastructures import AttributeDict
 from web3.eth import AsyncEth
-from web3.exceptions import ABIFunctionNotFound
+from web3.exceptions import ABIFunctionNotFound, BlockNotFound
 from web3.exceptions import ValidationError as Web3ValidationError
 from web3.geth import AsyncGethAdmin, Geth
 from web3.middleware.geth_poa import async_geth_poa_middleware
@@ -148,6 +158,10 @@ def to_wei(value: Decimal, precision=18) -> int:
     if value == Decimal(0):
         return 0
     return int(value * Decimal(10**precision))
+
+
+async def async_http_retry_request_middleware(make_request, w3):
+    return exception_retry_middleware(make_request, (AsyncClientError, TimeoutError, asyncio.TimeoutError), daemon.VERBOSE)
 
 
 @dataclass
@@ -548,7 +562,7 @@ class ETHDaemon(BaseDaemon):
         self.config = ConfigDB(self.config_path)
         self.contract_heights = self.config.get_dict("contract_heights")
         self.web3 = Web3(
-            Web3.AsyncHTTPProvider(self.SERVER),
+            Web3.AsyncHTTPProvider(self.SERVER, request_kwargs={"timeout": 5 * 60}),
             modules={
                 "eth": (AsyncEth,),
                 "geth": (Geth, {"admin": (AsyncGethAdmin,)}),
@@ -556,6 +570,8 @@ class ETHDaemon(BaseDaemon):
             middlewares=[],
         )
         self.web3.middleware_onion.inject(async_geth_poa_middleware, layer=0)
+        self.web3.middleware_onion.inject(async_http_retry_request_middleware, layer=0)
+        self.get_block_safe = exception_retry_middleware(self.web3.eth.get_block, (BlockNotFound,), self.VERBOSE)
         # initialize wallet storages
         self.wallets = {}
         self.addresses = defaultdict(set)
@@ -602,12 +618,11 @@ class ETHDaemon(BaseDaemon):
                     print(traceback.format_exc())
             await asyncio.sleep(self.FX_FETCH_TIME)
 
-    # TODO: retry mechanism?
     async def process_block(self, start_height, end_height):
         for block_number in range(start_height, end_height + 1):
             try:
                 await self.trigger_event({"event": "new_block", "height": block_number}, None)
-                block = (await self.web3.eth.get_block(block_number, full_transactions=True))["transactions"]
+                block = (await self.get_block_safe(block_number, full_transactions=True))["transactions"]
                 transactions = []
                 for tx_data in block:
                     try:
@@ -675,12 +690,20 @@ class ETHDaemon(BaseDaemon):
 
     async def check_contracts(self, contract, divisibility):
         while self.running:
-            to_block = await self.web3.eth.block_number
-            if to_block > self.contract_heights[contract.address]:
-                await check_contract_logs(
-                    contract, divisibility, from_block=self.contract_heights[contract.address] + 1, to_block=to_block
-                )
-                self.contract_heights[contract.address] = to_block
+            try:
+                current_height = await self.web3.eth.block_number
+                if current_height > self.contract_heights[contract.address]:
+                    await check_contract_logs(
+                        contract,
+                        divisibility,
+                        from_block=self.contract_heights[contract.address] + 1,
+                        to_block=min(self.contract_heights[contract.address] + daemon.MAX_SYNC_BLOCKS, current_height),
+                    )
+                    self.contract_heights[contract.address] = current_height
+            except Exception:
+                if self.VERBOSE:
+                    print("Error processing contract logs:")
+                    print(traceback.format_exc())
             await asyncio.sleep(self.BLOCK_TIME)
 
     async def trigger_event(self, data, wallet):
