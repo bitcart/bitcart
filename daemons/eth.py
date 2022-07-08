@@ -556,6 +556,8 @@ class ETHDaemon(BaseDaemon):
 
     def __init__(self):
         super().__init__()
+        if not hasattr(self, "CONTRACT_FIAT_NAME"):
+            self.CONTRACT_FIAT_NAME = self.FIAT_NAME
         self.exchange_rates = defaultdict(dict)
         self.contracts = {}
         self.latest_blocks = deque(maxlen=self.MAX_SYNC_BLOCKS)
@@ -600,7 +602,7 @@ class ETHDaemon(BaseDaemon):
         url = (
             f"https://api.coingecko.com/api/v3/coins/{self.FIAT_NAME}?localization=false&sparkline=false"
             if not contract
-            else f"https://api.coingecko.com/api/v3/coins/{self.FIAT_NAME}/contract/{contract}"
+            else f"https://api.coingecko.com/api/v3/coins/{self.CONTRACT_FIAT_NAME}/contract/{contract.lower()}"
         )
         async with self.client_session.get(url) as response:
             got = await response.json()
