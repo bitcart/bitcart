@@ -499,7 +499,8 @@ async def process_transaction(tx, contract=None, divisibility=18):
     if to not in daemon.addresses:
         return
     for wallet in daemon.addresses[to]:
-        if contract and (not daemon.wallets[wallet].contract or contract != daemon.wallets[wallet].contract.address):
+        wallet_contract = daemon.wallets[wallet].contract.address if daemon.wallets[wallet].contract else None
+        if contract != wallet_contract:
             continue
         await daemon.trigger_event({"event": "new_transaction", "tx": tx.hash}, wallet)
         if amount in daemon.wallets[wallet].used_amounts:
