@@ -109,6 +109,12 @@ func main() {
 			EnvVars:  []string{"BITCART_WALLET"},
 		},
 		&cli.StringFlag{
+			Name:     "contract",
+			Usage:    "specify contract",
+			Required: false,
+			EnvVars:  []string{"BITCART_CONTRACT"},
+		},
+		&cli.StringFlag{
 			Name:    "coin",
 			Aliases: []string{"c"},
 			Usage:   "specify coin to use",
@@ -148,6 +154,7 @@ func main() {
 		if args.Len() >= 1 {
 			// load flags
 			wallet := c.String("wallet")
+			contract := c.String("contract")
 			user := c.String("user")
 			password := c.String("password")
 			coin := c.String("coin")
@@ -170,7 +177,7 @@ func main() {
 			for i := range sl {
 				params[i] = sl[i]
 			}
-			params = append(params, map[string]interface{}{"xpub": wallet})
+			params = append(params, map[string]map[string]interface{}{"xpub": {"xpub": wallet, "contract": contract}})
 			// call RPC method
 			result, err := rpcClient.Call(args.Get(0), params)
 			checkErr(err)
