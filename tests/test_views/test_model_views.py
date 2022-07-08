@@ -139,12 +139,10 @@ class ViewTestMixin:
                     patch_resp[key] = value
         assert resp.json() == patch_resp
         assert (
-            await (
-                client.patch(
-                    f"/{self.name}/{object_id}",
-                    **self.prepare_data(self.create_data(state)),
-                    headers={"Authorization": f"Bearer {token}"},
-                )
+            await client.patch(
+                f"/{self.name}/{object_id}",
+                **self.prepare_data(self.create_data(state)),
+                headers={"Authorization": f"Bearer {token}"},
             )
         ).status_code == 200
 

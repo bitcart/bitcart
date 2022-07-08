@@ -147,7 +147,6 @@ class JsonDB:
 
 
 class StoredObject:
-
     db = None
 
     def __setattr__(self, key, value):
