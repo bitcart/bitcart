@@ -9,7 +9,7 @@ from typing import Union
 from urllib.parse import urlparse
 
 from base import BaseDaemon
-from utils import JsonResponse, cached, format_satoshis, get_exception_message, hide_logging_errors, rpc
+from utils import JsonResponse, async_partial, cached, format_satoshis, get_exception_message, hide_logging_errors, rpc
 
 
 class BTCDaemon(BaseDaemon):
@@ -133,10 +133,12 @@ class BTCDaemon(BaseDaemon):
         self.electrum.logging.configure_logging(electrum_config)
 
     def create_daemon(self):
+        self.electrum.util._asyncio_event_loop = self.loop
         return self.electrum.daemon.Daemon(self.electrum_config, listen_jsonrpc=False)
 
     def register_callbacks(self, callback_function):
-        self.electrum.util.register_callback(callback_function, self.available_events)
+        for event in self.available_events:
+            self.electrum.util.register_callback(async_partial(callback_function, event), [event])
 
     async def on_startup(self, app):
         await super().on_startup(app)
@@ -186,16 +188,7 @@ class BTCDaemon(BaseDaemon):
         return (
             self.network.is_connecting()
             or self.network.is_connected()
-            and (
-                server_height == 0
-                or server_lag > 1
-                or (
-                    wallet
-                    and not (
-                        wallet.is_up_to_date() and wallet.synchronizer.is_up_to_date() and wallet.verifier.is_up_to_date()
-                    )
-                )
-            )
+            and (server_height == 0 or server_lag > 1 or (wallet and not wallet.is_up_to_date()))
         )
 
     async def load_wallet(self, xpub, config):

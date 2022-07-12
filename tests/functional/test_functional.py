@@ -102,7 +102,7 @@ async def prepare_ln_channels(regtest_wallet, regtest_lnnode):
     utils.run_shell(["newblocks", "3"])
     await wait_for_channel_opening(regtest_wallet, channel_point)
     # transfer some amount to the other node to be able to receive
-    invoice = (await regtest_lnnode.add_invoice(LNPAY_AMOUNT))["invoice"]
+    invoice = (await regtest_lnnode.add_invoice(LNPAY_AMOUNT))["lightning_invoice"]
     await regtest_wallet.lnpay(invoice)
     yield
     await regtest_wallet.close_channel(channel_point)
