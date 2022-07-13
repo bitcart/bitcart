@@ -411,7 +411,7 @@ class Wallet:
             f"amount_{self.symbol}": decimal_to_string(req.amount, self.divisibility),
             "message": req.message,
             "timestamp": req.time,
-            "expiration": req.exp,
+            "expiration": req.time + req.exp if req.exp else 0,
             "status": req.status,
             "status_str": req.status_str,
         }
