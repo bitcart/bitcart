@@ -115,7 +115,7 @@ Manage any merge conflicts, commit them, and then commit them to your fork.
 You'll need the following tools to develop BitcartCC locally:
 
 - [Git](https://git-scm.com)
-- [Python](https://www.python.org/downloads) at least version 3.7 (version 2 is **_not_** supported)
+- [Python](https://www.python.org/downloads) at least version 3.8 (version 2 is **_not_** supported)
 - [Pip](https://pip.readthedocs.io/en/stable/installing/), with setuptools and wheel installed
 - [VirtualEnv](https://virtualenv.pypa.io/en/latest/installation/), not required, but recommended for development
 
