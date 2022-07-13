@@ -1,2 +1,2 @@
-https://github.com/spesmilo/electrum/archive/a3e1d2e25e78231b30ff1103345095827a909d88.zip#egg=electrum[crypto]
+https://github.com/spesmilo/electrum/archive/28fe345b0bcf708c06abce8382d00de30d210b75.zip#egg=electrum[crypto]
 protobuf<4

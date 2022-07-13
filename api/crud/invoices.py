@@ -95,8 +95,8 @@ async def _create_payment_method(invoice, wallet, product, store, discounts, pro
     recommended_fee = 0 if recommended_fee is None else recommended_fee  # if no rate available, disable it
     recommended_fee = truncate(Decimal(recommended_fee) / 1024, 2)  # convert to sat/byte, two decimal places
     data_got = await method(request_price, description=product.name if product else "", expire=invoice.expiration)
-    address = data_got["address"] if not lightning else data_got["invoice"]
-    url = data_got["URI"] if not lightning else data_got["invoice"]
+    address = data_got["address"] if not lightning else data_got["lightning_invoice"]
+    url = data_got["URI"] if not lightning else data_got["lightning_invoice"]
     node_id = await coin.node_id if lightning else None
     rhash = data_got["rhash"] if lightning else None
     # amount_wei is a way to identify eth-based chains

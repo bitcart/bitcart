@@ -202,3 +202,10 @@ def exception_retry_middleware(
                     raise
 
     return middleware
+
+
+def async_partial(async_fn, *wrap_args):
+    async def wrapped(*args, **kwargs):
+        return await async_fn(*wrap_args, *args, **kwargs)
+
+    return wrapped
