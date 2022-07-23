@@ -2,6 +2,29 @@
 
 ## Latest changes
 
+## 0.6.8.0
+
+### docker-compose v2
+
+BitcartCC now uses docker-compose v2. It's faster and more secure. BitcartCC should try to update docker-compose automatically. All container names are now separated by `-` and not `_`. Example: if before you would use `compose_backend_1`, now it's `compose-backend-1`
+
+### Secure images
+
+All BitcartCC images are now built in a way that non-root user runs processes inside a container, helping avoid some docker vulnerabilities and making whole BitcartCC stack more secure. This also means less workarounds our side.
+
+### Electrums upgrade
+
+All electrums were upgraded to 4.3.0+. Minimum required version to run BitcartCC is now python 3.8+, base image version is now 3.9
+
+### Other changes
+
+- Onchain payment of same amount no longer can trigger contract payment confirmation
+- BitcartCC should now properly install itself on Mac os, even M1 arch.
+- Fixed a bug on binancecoin where exchange rates weren't fetched
+- Added ability to pass `--contract` flag to `bitcart-cli` to load a wallet with a specific contract
+- Fixed domain-less usage of BitcartCC via tor
+- Fixed a bug where worker wouldn't start after deploy without a restart
+
 ## 0.6.7.8
 
 Fixes gas estimation to work 100% of the time

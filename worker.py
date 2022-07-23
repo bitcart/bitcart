@@ -1,8 +1,13 @@
 import asyncio
 import signal
 import sys
+import time
 from multiprocessing import Process
 
+import sqlalchemy
+
+from alembic import config, script
+from alembic.runtime import migration
 from api import events, invoices
 from api import settings as settings_module
 from api import tasks
@@ -14,6 +19,21 @@ from api.logserver import main as start_logserver
 from api.logserver import wait_for_port
 from api.settings import Settings
 from api.utils.common import run_repeated
+
+
+def check_db():
+    try:
+        settings = settings_module.settings_ctx.get()
+        engine = sqlalchemy.create_engine(settings.connection_str)
+        alembic_cfg = config.Config("alembic.ini")
+        script_ = script.ScriptDirectory.from_config(alembic_cfg)
+        with engine.begin() as conn:
+            context = migration.MigrationContext.configure(conn)
+            if context.get_current_revision() != script_.get_current_head():
+                return False
+        return True
+    except Exception:
+        return False
 
 
 async def main():
@@ -47,6 +67,12 @@ if __name__ == "__main__":
         process.start()
         wait_for_port()
         signal.signal(signal.SIGINT, handler)
+        # wait for db
+        while True:
+            if check_db():
+                break
+            print("Database not available/not migrated, waiting...")
+            time.sleep(1)
         asyncio.run(main())
     finally:
         settings_module.settings_ctx.reset(token)
