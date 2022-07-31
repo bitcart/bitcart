@@ -24,6 +24,8 @@ from api.utils.common import run_repeated
 def check_db():
     try:
         settings = settings_module.settings_ctx.get()
+        if settings.test:
+            return True
         engine = sqlalchemy.create_engine(settings.connection_str)
         alembic_cfg = config.Config("alembic.ini")
         script_ = script.ScriptDirectory.from_config(alembic_cfg)

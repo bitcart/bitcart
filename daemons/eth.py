@@ -767,7 +767,7 @@ class ETHDaemon(BaseDaemon):
         self.wallets_updates[wallet_key] = []
         self.addresses[wallet.address].add(wallet_key)
         await self.add_contract(contract, wallet_key)
-        await wallet.start(self.latest_blocks)
+        await wallet.start(self.latest_blocks.copy())
         return wallet
 
     async def is_still_syncing(self, wallet=None):
