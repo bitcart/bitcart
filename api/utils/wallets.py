@@ -16,6 +16,9 @@ logger = get_logger(__name__)
 async def get_rate(wallet, currency, fallback_currency=None):
     try:
         coin = settings.settings.get_coin(wallet.currency, {"xpub": wallet.xpub, "contract": wallet.contract})
+        symbol = await coin.server.readcontract(wallet.contract, "symbol") if wallet.contract else wallet.currency
+        if symbol.lower() == currency.lower():
+            return Decimal(1)
         rate = await coin.rate(currency)
         if math.isnan(rate) and fallback_currency:
             rate = await coin.rate(fallback_currency)
