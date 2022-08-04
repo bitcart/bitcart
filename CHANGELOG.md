@@ -2,6 +2,14 @@
 
 ## Latest changes
 
+## 0.6.8.1
+
+Hotfix release: if you ssh to your server as root user, it could have been broken by 0.6.8.0 release. This is fixed now.
+
+Please run `chown root /root/.ssh/authorized_keys` if it got broken.
+
+Also added ability to customize API title and openapi file
+
 ## 0.6.8.0
 
 ### docker-compose v2

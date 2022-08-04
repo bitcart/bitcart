@@ -48,6 +48,7 @@ class Settings(BaseSettings):
     update_url: str = Field(None, env="UPDATE_URL")
     torrc_file: str = Field(None, env="TORRC_FILE")
     openapi_path: str = Field(None, env="OPENAPI_PATH")
+    api_title: str = Field("BitcartCC", env="API_TITLE")
     cryptos: Dict[str, Coin] = None
     crypto_settings: dict = None
     manager: APIManager = None

@@ -37,7 +37,7 @@ class RawContextMiddleware:
 
 def get_app():
     settings = Settings()
-    app = FastAPI(title="BitcartCC", version=VERSION, docs_url="/", redoc_url="/redoc", root_path=settings.root_path)
+    app = FastAPI(title=settings.api_title, version=VERSION, docs_url="/", redoc_url="/redoc", root_path=settings.root_path)
     app.settings = settings
     app.mount("/images", StaticFiles(directory=settings.images_dir), name="images")
     app.include_router(router)
