@@ -5,13 +5,16 @@ from fastapi import HTTPException
 from sqlalchemy import distinct
 
 from api import db, models
+from api.logger import get_exception_message, get_logger
+
+logger = get_logger(__name__)
 
 
 @contextmanager
 def safe_db_write():
     try:
         yield
-    except asyncpg.exceptions.IntegrityConstraintViolationError as e:
+    except asyncpg.exceptions.IntegrityConstraintViolationError as e:  # pragma: no cover
         raise HTTPException(422, str(e))
 
 
@@ -47,16 +50,21 @@ async def modify_object(model, data, **additional_kwargs):
     kwargs = model.prepare_edit(kwargs)
     await model.validate(kwargs)
     with safe_db_write():
-        await model.update(**kwargs).apply()
+        try:
+            await model.update(**kwargs).apply()
+        except asyncpg.exceptions.PostgresSyntaxError as e:  # pragma: no cover
+            logger.error(get_exception_message(e))
 
 
-async def get_object(model, model_id=None, user=None, custom_query=None, raise_exception=True, load_data=True):
+async def get_object(model, model_id=None, user=None, custom_query=None, raise_exception=True, load_data=True, user_id=None):
+    if user_id is None and user is not None:
+        user_id = user.id
     if custom_query is not None:
         query = custom_query
     else:
         query = model.query.where(model.id == model_id)
-        if model != models.User and user:
-            query = query.where(model.user_id == user.id)
+        if model != models.User and user_id:
+            query = query.where(model.user_id == user_id)
     item = await query.gino.first()
     if not item:
         if raise_exception:

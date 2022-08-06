@@ -1,4 +1,6 @@
+import inspect
 import secrets
+import sys
 from datetime import timedelta
 
 from bitcart.errors import BaseError as BitcartBaseError
@@ -88,6 +90,17 @@ class BaseModel(db.Model):
     async def validate(self, kwargs):
         from api import utils
 
+        fkey_columns = (col for col in self.__table__.columns if col.foreign_keys)
+        exc = HTTPException(403, "Access denied: attempt to use objects not owned by current user")
+        for col in fkey_columns:
+            if col.name in kwargs:
+                # we assume i.e. user_id -> User
+                table_name = col.name.replace("_id", "").capitalize()
+                if not await utils.database.get_object(
+                    all_tables[table_name], kwargs[col.name], user_id=self.user_id, raise_exception=False
+                ):
+                    raise exc
+
         for key in self.M2M_KEYS:
             if key in kwargs:
                 key_info = self.M2M_KEYS[key]
@@ -100,7 +113,7 @@ class BaseModel(db.Model):
                     key_info["related_table"].id,
                 )
                 if count != len(related_ids):
-                    raise HTTPException(403, "Access denied: attempt to use objects not owned by current user")
+                    raise exc
 
     @classmethod
     def process_kwargs(cls, kwargs):
@@ -114,6 +127,7 @@ class BaseModel(db.Model):
         return kwargs
 
     def prepare_edit(self, kwargs):
+        kwargs.pop("user_id", None)  # don't allow changing ownership of objects
         return kwargs
 
     def get_json_key(self, key, scheme):
@@ -577,3 +591,10 @@ class Token(BaseModel):
         kwargs = super().prepare_create(kwargs)
         kwargs["id"] = secrets.token_urlsafe()
         return kwargs
+
+
+all_tables = {
+    name: table
+    for (name, table) in inspect.getmembers(sys.modules[__name__], inspect.isclass)
+    if issubclass(table, BaseModel) and table is not BaseModel
+}

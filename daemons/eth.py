@@ -1114,7 +1114,7 @@ class ETHDaemon(BaseDaemon):
         return Web3.toChecksumAddress(address)
 
     async def get_common_payto_params(self, address):
-        nonce = await self.web3.eth.get_transaction_count(address)
+        nonce = await self.web3.eth.get_transaction_count(address, block_identifier="pending")
         return {
             "nonce": nonce,
             "chainId": await self.web3.eth.chain_id,

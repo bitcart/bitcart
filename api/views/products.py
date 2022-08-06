@@ -15,7 +15,10 @@ OptionalProductScheme = utils.schemes.to_optional(schemes.Product)
 
 
 def parse_data(data, scheme):
-    data = json.loads(data)
+    try:
+        data = json.loads(data)
+    except json.JSONDecodeError:
+        raise HTTPException(422, "Invalid JSON")
     try:
         data = scheme(**data)
     except ValidationError as e:

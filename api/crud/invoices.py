@@ -155,11 +155,12 @@ async def batch_invoice_action(query, settings: schemes.BatchSettings, user: sch
                 await select([models.Invoice, models.PaymentMethod])
                 .where(models.PaymentMethod.invoice_id == models.Invoice.id)
                 .where(models.Invoice.id == invoice_id)
+                .where(models.Invoice.user_id == user.id)
                 .order_by(models.PaymentMethod.created)
                 .gino.load((models.Invoice, models.PaymentMethod))
                 .first()
             )
-            if not data:  # pragma: no cover
+            if not data:
                 continue
             invoice, method = data
             await invoice.load_data()

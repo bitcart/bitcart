@@ -9,7 +9,7 @@ from parametrization import Parametrization
 
 from api.constants import BACKUP_FREQUENCIES, BACKUP_PROVIDERS, FEE_ETA_TARGETS, MAX_CONFIRMATION_WATCH
 from tests.fixtures.static_data import TEST_XPUB
-from tests.helper import create_store
+from tests.helper import create_invoice, create_product, create_store, create_token, create_user
 
 if TYPE_CHECKING:
     from httpx import AsyncClient as TestClient
@@ -119,14 +119,14 @@ async def test_invalid_fk_constaint(client: TestClient, token):
     assert (
         await client.post("/invoices", json={"price": 5, "store_id": 999}, headers={"Authorization": f"Bearer {token}"})
     ).status_code == 404
-    # For others, the database should verify fk integrity
+    # For o2m keys it should do the same
     resp = await client.post(
         "/products",
         data={"data": json.dumps({"name": "test", "price": 1, "quantity": 1, "store_id": 999})},
         headers={"Authorization": f"Bearer {token}"},
     )
-    assert resp.status_code == 422
-    assert "violates foreign key constraint" in resp.json()["detail"]
+    assert resp.status_code == 403
+    assert resp.json()["detail"] == "Access denied: attempt to use objects not owned by current user"
 
 
 async def test_product_patch_validation_works(client: TestClient, token, product):
@@ -215,3 +215,56 @@ async def test_create_wallet_validate_xpub_broken(client: TestClient, mocker, to
         )
     ).status_code == 422
     assert "Failed to validate xpub for currency btc" in caplog.text
+
+
+async def test_access_control_strict(client: TestClient):
+    user1 = await create_user(client)
+    user2 = await create_user(client)
+    token1 = (await create_token(client, user1))["id"]
+    token2 = (await create_token(client, user2))["id"]
+    # Step1: user2 can't use objects of user1 in o2m fields (i.e. store_id)
+    store1 = await create_store(client, user1, token1)
+    product1 = await create_product(client, user1, token1, store_id=store1["id"])
+    assert product1 is not None
+    resp = await client.post(
+        "/products",
+        data={"data": json.dumps({"name": "test", "price": 1, "quantity": 1, "store_id": store1["id"]})},
+        headers={"Authorization": f"Bearer {token2}"},
+    )
+    assert resp.status_code == 403
+    assert resp.json()["detail"] == "Access denied: attempt to use objects not owned by current user"
+    # Step2: can't modify user_id of objects
+    resp = await client.patch(
+        f"/products/{product1['id']}",
+        data={"data": json.dumps({"user_id": user2["id"]})},
+        headers={"Authorization": f"Bearer {token1}"},
+    )
+    assert resp.json()["user_id"] == user1["id"]
+    # Step3: can't use other users' objects in m2m relations
+    wallet_id = store1["wallets"][0]
+    resp = await client.post(
+        "/stores",
+        json={"name": "test", "wallets": [wallet_id]},
+        headers={"Authorization": f"Bearer {token2}"},
+    )
+    assert resp.status_code == 403
+    assert resp.json()["detail"] == "Access denied: attempt to use objects not owned by current user"
+    # Step4: can't mark_complete invoices of another user
+    invoice = await create_invoice(client, user1, token1)
+    assert invoice is not None
+    resp = await client.post(
+        "/invoices/batch",
+        json={"ids": [invoice["id"]], "command": "mark_complete"},
+        headers={"Authorization": f"Bearer {token2}"},
+    )
+    assert (await client.get(f"/invoices/{invoice['id']}")).json()["status"] == "pending"
+
+
+async def test_products_invalid_json(client: TestClient, token):
+    resp = await client.post(
+        "/products",
+        data={"data": "invalid"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 422
+    assert resp.json()["detail"] == "Invalid JSON"
