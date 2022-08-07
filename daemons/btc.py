@@ -493,6 +493,14 @@ class BTCDaemon(BaseDaemon):
         data["synchronized"] = not self.is_still_syncing()
         return data
 
+    @rpc(requires_wallet=True, requires_network=True)
+    async def get_used_fee(self, tx_hash, wallet):
+        tx = self.wallets[wallet]["wallet"].db.get_transaction(tx_hash)
+        if tx is None:
+            raise Exception("No such blockchain transaction")
+        delta = self.wallets[wallet]["wallet"].get_wallet_delta(tx)
+        return format_satoshis(delta.fee)
+
 
 if __name__ == "__main__":
     daemon = BTCDaemon()

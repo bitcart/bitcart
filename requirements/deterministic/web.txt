@@ -156,9 +156,9 @@ bcrypt==3.2.0 \
     # via
     #   paramiko
     #   passlib
-bitcart==1.10.0.0 \
-    --hash=sha256:9aa36fb168cc6359fa2d9e3f42a068522fa57d271b416ac7158e3523ba863e64 \
-    --hash=sha256:c81a889f78c5eb601b52fea0cbe3e874584c9eee635e721da4f9c0c13e59555f
+bitcart==1.10.1.0 \
+    --hash=sha256:a2f03af2f6bcf11f9fa2a2b54ab1b9555c10a4d863d254fe84aa22b1f3052424 \
+    --hash=sha256:faafa40427e2b6fe023813b0597f6ca835f81ee9601f0a994cd68b27a02d8e9b
     # via -r requirements/web.txt
 certifi==2021.10.8 \
     --hash=sha256:78884e7c1d4b00ce3cea67b44566851c4343c120abd683433ce934a68ea58872 \

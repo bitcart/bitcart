@@ -1,5 +1,5 @@
 {
-    "version": "4.1.5",
+    "version": "4.3.0",
     "electrum_map": {
         "wallet not loaded": -32000,
         "error loading wallet": -32000,

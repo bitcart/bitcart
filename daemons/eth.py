@@ -539,7 +539,7 @@ class ETHDaemon(BaseDaemon):
     }
     SKIP_NETWORK = ["getinfo", "exchange_rate", "list_currencies"]
 
-    VERSION = "4.1.5"  # version of electrum API with which we are "compatible"
+    VERSION = "4.3.0"  # version of electrum API with which we are "compatible"
     BLOCK_TIME = 5
     FX_FETCH_TIME = 150
     ABI = ERC20_ABI
@@ -943,6 +943,11 @@ class ETHDaemon(BaseDaemon):
         self.wallets_updates[wallet] = []
         return updates
 
+    @rpc(requires_network=True)
+    async def get_used_fee(self, tx_hash, wallet=None):
+        tx_stats = await self.get_tx_status(tx_hash)
+        return to_dict(tx_stats["gasUsed"] * from_wei(tx_stats["effectiveGasPrice"]))
+
     @rpc
     def getabi(self, wallet=None):
         return self.ABI
@@ -984,7 +989,7 @@ class ETHDaemon(BaseDaemon):
             nodes = 0
         numblocks = await self.web3.eth.block_number
         return {
-            "blockchain_height": numblocks,
+            "blockchain_height": self.latest_height,
             "connected": await self.web3.isConnected(),
             "gas_price": await self.web3.eth.gas_price,
             "path": path,

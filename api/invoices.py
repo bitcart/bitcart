@@ -3,6 +3,7 @@ import asyncio
 from sqlalchemy import or_, select
 
 from api import constants, events, models, settings, utils
+from api.ext import payouts as payout_ext
 from api.ext.moneyformat import currency_table
 from api.logger import get_logger
 from api.utils.logging import log_errors
@@ -153,6 +154,7 @@ async def get_confirmations(method, xpub):
 
 async def new_block_handler(instance, event, height):
     coros = []
+    coros.append(payout_ext.process_new_block(instance.coin_name.lower()))
     async for method, invoice, xpub in iterate_pending_invoices(
         instance.coin_name.lower(), statuses=[InvoiceStatus.CONFIRMED]
     ):
@@ -235,6 +237,7 @@ async def create_expired_tasks():
 
 async def check_pending(currency):
     coros = []
+    coros.append(payout_ext.process_new_block(currency.lower()))
     async for method, invoice, xpub in iterate_pending_invoices(currency):
         with log_errors():  # issues processing one item
             if invoice.status == InvoiceStatus.EXPIRED:

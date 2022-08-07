@@ -11,8 +11,9 @@ from api import settings as settings_module
 from api import utils
 from api.constants import VERSION
 from api.ext import tor as tor_ext
-from api.logger import get_exception_message, get_logger
+from api.logger import get_logger
 from api.settings import Settings
+from api.utils.logging import log_errors
 from api.views import router
 
 logger = get_logger(__name__)
@@ -78,11 +79,9 @@ def get_app():
     app.add_middleware(RawContextMiddleware)
 
     if settings.openapi_path:
-        try:
+        with log_errors():
             with open(settings.openapi_path) as f:
                 app.openapi_schema = json.loads(f.read())
-        except Exception as e:
-            logger.error(get_exception_message(e))
     return app
 
 

@@ -593,6 +593,24 @@ class Token(BaseModel):
         return kwargs
 
 
+class Payout(BaseModel):
+    __tablename__ = "payouts"
+
+    id = Column(Text, primary_key=True, index=True)
+    amount = Column(Numeric(36, 18), nullable=False)
+    destination = Column(Text)
+    currency = Column(Text)
+    status = Column(Text, nullable=False)
+    notification_url = Column(Text)
+    store_id = Column(Text, ForeignKey("stores.id", deferrable=True, initially="DEFERRED", ondelete="SET NULL"), index=True)
+    wallet_id = Column(Text, ForeignKey("wallets.id", deferrable=True, initially="DEFERRED", ondelete="SET NULL"), index=True)
+    max_fee = Column(Numeric(36, 18))
+    tx_hash = Column(Text)
+    used_fee = Column(Numeric(36, 18))
+    user_id = Column(Text, ForeignKey(User.id, ondelete="SET NULL"))
+    created = Column(DateTime(True), nullable=False)
+
+
 all_tables = {
     name: table
     for (name, table) in inspect.getmembers(sys.modules[__name__], inspect.isclass)
