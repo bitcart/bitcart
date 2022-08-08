@@ -16,4 +16,5 @@ psycopg2-binary
 python-dateutil
 python-dotenv
 python-multipart
+sqlalchemy<1.4
 uvicorn[standard]
