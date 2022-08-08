@@ -143,7 +143,7 @@ Now, install python dependencies:
 
 ```
 pip3 install -r requirements.txt
-pip3 install -r requirements.dev.txt
+pip3 install -r requirements/dev.txt
 ```
 
 To use BitcartCC you'll need to run at least one BitcartCC daemon. For each daemon you want to run, install it's requirements like so:
