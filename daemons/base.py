@@ -73,24 +73,26 @@ class BaseDaemon:
 
     def parse_xpub(self, xpub):
         if xpub is None or isinstance(xpub, str):
-            return xpub, None
+            return xpub, None, {}
         if isinstance(xpub, dict):
-            return xpub.get("xpub", None), xpub.get("contract", None)
+            return xpub.pop("xpub", None), xpub.pop("contract", None), xpub
 
     async def get_handle_request_params(self, request):
         data = await (request.json() if LEGACY_AIOHTTP else request.json(content_type=None))
         method, id, params = data.get("method"), data.get("id", None), data.get("params", [])
         error = None if method else JsonResponse(code=-32601, error="Procedure not found", id=id)
         args, kwargs = parse_params(params)
-        xpub, contract = self.parse_xpub(kwargs.pop("xpub", None))
-        return id, method, xpub, contract, args, kwargs, error
+        xpub, contract, extra_params = self.parse_xpub(kwargs.pop("xpub", None))
+        return id, method, xpub, contract, extra_params, args, kwargs, error
 
     @authenticate
     async def handle_request(self, request):
-        id, req_method, xpub, contract, req_args, req_kwargs, error = await self.get_handle_request_params(request)
+        id, req_method, xpub, contract, extra_params, req_args, req_kwargs, error = await self.get_handle_request_params(
+            request
+        )
         if error:
             return error.send()
-        return await self.execute_method(id, req_method, xpub, contract, req_args, req_kwargs)
+        return await self.execute_method(id, req_method, xpub, contract, extra_params, req_args, req_kwargs)
 
     @authenticate
     async def handle_websocket(self, request):
@@ -171,7 +173,7 @@ class BaseDaemon:
         """
         await self.client_session.close()
 
-    async def execute_method(self, id, req_method, xpub, contract, req_args, req_kwargs):
+    async def execute_method(self, id, req_method, xpub, contract, extra_params, req_args, req_kwargs):
         """Main entrypoint for executing methods your daemon provides
 
         Return JsonResponse(...).send() there to avoid building message manually
@@ -181,6 +183,7 @@ class BaseDaemon:
             req_method (str): method to execute
             xpub (str): xpub of the wallet
             contract (str): smart contract address
+            extra_params (dict): extra daemon-level params
             req_args (list): list of positional arguments to pass
             req_kwargs (dict): list of named arguments to pass
 

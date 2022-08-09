@@ -114,6 +114,13 @@ func main() {
 			Required: false,
 			EnvVars:  []string{"BITCART_CONTRACT"},
 		},
+		&cli.BoolFlag{
+			Name:    "diskless",
+			Aliases: []string{"d"},
+			Usage:   "Load wallet in memory only",
+			Value:   false,
+			EnvVars: []string{"BITCART_DISKLESS"},
+		},
 		&cli.StringFlag{
 			Name:    "coin",
 			Aliases: []string{"c"},
@@ -155,6 +162,7 @@ func main() {
 			// load flags
 			wallet := c.String("wallet")
 			contract := c.String("contract")
+			diskless := c.Bool("diskless")
 			user := c.String("user")
 			password := c.String("password")
 			coin := c.String("coin")
@@ -177,7 +185,7 @@ func main() {
 			for i := range sl {
 				params[i] = sl[i]
 			}
-			params = append(params, map[string]map[string]interface{}{"xpub": {"xpub": wallet, "contract": contract}})
+			params = append(params, map[string]map[string]interface{}{"xpub": {"xpub": wallet, "contract": contract, "diskless": diskless}})
 			// call RPC method
 			result, err := rpcClient.Call(args.Get(0), params)
 			checkErr(err)

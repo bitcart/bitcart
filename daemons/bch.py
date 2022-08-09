@@ -48,16 +48,14 @@ class BCHDaemon(BTCDaemon):
     def create_commands(self, config):
         return self.electrum.commands.Commands(config=config, network=self.network, wallet=None)
 
-    async def restore_wallet(self, command_runner, xpub, config, wallet_path):
-        command_runner.restore(xpub, wallet_path=wallet_path)
-
     def create_wallet(self, storage, config):
-        wallet = self.electrum.wallet.Wallet(storage)
-        wallet.start_threads(self.network)
-        return wallet
+        return self.electrum.wallet.Wallet(storage)
 
-    def load_cmd_wallet(self, cmd, wallet, wallet_path):
-        super().load_cmd_wallet(cmd, wallet, wallet_path)
+    def init_wallet(self, wallet):
+        wallet.start_threads(self.network)
+
+    def load_cmd_wallet(self, cmd, wallet):
+        super().load_cmd_wallet(cmd, wallet)
         cmd.wallet = wallet
 
     def process_new_transaction(self, args):

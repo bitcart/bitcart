@@ -13,7 +13,9 @@ class DBFileException(Exception):
 
 
 def standardize_path(path):
-    return os.path.normcase(os.path.realpath(os.path.abspath(os.path.expanduser(path))))
+    if path is not None:
+        path = os.path.normcase(os.path.realpath(os.path.abspath(os.path.expanduser(path))))
+    return path
 
 
 class JSONEncoder(json.JSONEncoder):
@@ -26,10 +28,11 @@ class JSONEncoder(json.JSONEncoder):
 
 
 class Storage:
-    def __init__(self, path):
+    def __init__(self, path, in_memory_only=False):
         self.path = standardize_path(path)
-        self._file_exists = bool(self.path and os.path.exists(self.path))
-        if self.file_exists():
+        self._file_exists = in_memory_only or bool(self.path and os.path.exists(self.path))
+        self._in_memory_only = in_memory_only
+        if self.file_exists() and not self._in_memory_only:
             with open(self.path, encoding="utf-8") as f:
                 self.raw = f.read()
         else:
@@ -39,6 +42,8 @@ class Storage:
         return self.raw
 
     def write(self, data: str) -> None:
+        if self._in_memory_only:
+            return
         # write in temporary first to not corrupt the main file
         s = data
         temp_path = f"{self.path}.tmp.{os.getpid()}"
