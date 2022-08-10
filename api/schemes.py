@@ -139,7 +139,7 @@ class Wallet(CreateWallet):
 class StoreCheckoutSettings(BaseModel):
     expiration: int = 15
     transaction_speed: int = 0
-    underpaid_percentage: Decimal = 0
+    underpaid_percentage: int = 0
     custom_logo_link: str = ""
     recommended_fee_target_blocks: int = 1
     show_recommended_fee: bool = True
