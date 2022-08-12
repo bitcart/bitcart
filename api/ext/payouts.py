@@ -31,12 +31,14 @@ async def update_status(payout, status):
     await utils.notifications.send_ipn(payout, status)
 
 
-async def send_payout(payout):
+async def send_payout(payout, private_key=None):
     wallet = await utils.database.get_object(models.Wallet, payout.wallet_id, raise_exception=False)
     store = await utils.database.get_object(models.Store, payout.store_id, raise_exception=False)
     if not wallet or not store or payout.status in SENT_STATUSES:
         return
-    coin = settings.settings.get_coin(wallet.currency, {"xpub": wallet.xpub, "contract": wallet.contract})
+    coin = settings.settings.get_coin(
+        wallet.currency, {"xpub": private_key or wallet.xpub, "contract": wallet.contract, "diskless": True}
+    )
     divisibility = await utils.wallets.get_divisibility(wallet, coin)
     rate = await utils.wallets.get_rate(wallet, payout.currency)
     request_amount = currency_table.normalize(wallet.currency, payout.amount / rate, divisibility=divisibility)

@@ -16,12 +16,13 @@ async def create_payout(payout: schemes.CreatePayout, user: schemes.User):
 
 async def batch_payout_action(query, settings: schemes.BatchSettings, user: schemes.User):
     if settings.command == "send":
+        wallets = settings.options.get("wallets", {})
         for payout_id in settings.ids:
             payout = await utils.database.get_object(models.Payout, payout_id, user, raise_exception=False)
             if not payout:
                 continue
             try:
-                await payouts_ext.send_payout(payout)
+                await payouts_ext.send_payout(payout, private_key=wallets.get(payout.wallet_id))
             except Exception as e:
                 logger.error(get_exception_message(e))
                 await payouts_ext.update_status(payout, payouts_ext.PayoutStatus.FAILED)
