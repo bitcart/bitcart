@@ -7,6 +7,7 @@ import async_timeout
 import pytest
 from aiohttp import web
 from bitcart import BTC
+from bitcart.utils import bitcoins
 
 from api.constants import MAX_CONFIRMATION_WATCH
 from tests.functional import utils
@@ -311,7 +312,14 @@ async def test_payouts(client, regtest_wallet, regtest_api_wallet, regtest_api_s
     payout = (
         await client.post(
             "/payouts",
-            json={"destination": address, "amount": 5, "store_id": store_id, "wallet_id": wallet_id, "max_fee": 0},
+            json={
+                "destination": address,
+                "amount": "0.1",
+                "store_id": store_id,
+                "wallet_id": wallet_id,
+                "max_fee": str(bitcoins(1)),
+                "currency": "BTC",
+            },
             headers={"Authorization": f"Bearer {token}"},
         )
     ).json()
