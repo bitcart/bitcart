@@ -178,6 +178,8 @@ jobs:
     docker:
       - image: cimg/go:1.18
 
+    resource_class: large
+
     working_directory: ~/repo
 
     steps:
