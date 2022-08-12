@@ -448,7 +448,7 @@ class BackupState(BaseModel):
 class BatchSettings(BaseModel):
     ids: List[str]
     command: str
-    options: dict
+    options: Optional[dict] = {}
 
 
 class OpenChannelScheme(BaseModel):
