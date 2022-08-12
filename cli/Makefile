@@ -6,8 +6,8 @@ build:
 	go build ${ARGS} bitcart-cli.go
 
 dist:
-	go get github.com/mitchellh/gox
-	gox -osarch '!darwin/386' -output "dist/bitcart-cli-{{.OS}}-{{.Arch}}" ${ARGS}
+	go install github.com/mitchellh/gox@latest
+	gox -output "dist/bitcart-cli-{{.OS}}-{{.Arch}}" ${ARGS}
 
 release: clean dist
 
