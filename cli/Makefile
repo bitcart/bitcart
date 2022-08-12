@@ -6,7 +6,7 @@ build:
 	go build ${ARGS} bitcart-cli.go
 
 dist:
-	go install github.com/mitchellh/gox@latest
+	go install github.com/mitchellh/gox@master
 	gox -output "dist/bitcart-cli-{{.OS}}-{{.Arch}}" ${ARGS}
 
 release: clean dist
