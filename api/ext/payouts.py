@@ -37,8 +37,9 @@ async def send_payout(payout):
     if not wallet or not store or payout.status in SENT_STATUSES:
         return
     coin = settings.settings.get_coin(wallet.currency, {"xpub": wallet.xpub, "contract": wallet.contract})
+    divisibility = await utils.wallets.get_divisibility(wallet, coin)
     rate = await utils.wallets.get_rate(wallet, payout.currency)
-    request_amount = currency_table.normalize(wallet.currency, payout.amount / rate)
+    request_amount = currency_table.normalize(wallet.currency, payout.amount / rate, divisibility=divisibility)
     if not coin.is_eth_based:
         raw_tx = await coin.pay_to(payout.destination, request_amount, broadcast=False)
     else:
@@ -48,7 +49,7 @@ async def send_payout(payout):
             raw_tx = await coin.server.payto(payout.destination, request_amount, unsigned=True)
     predicted_fee = Decimal(await coin.server.get_default_fee(raw_tx))
     if payout.max_fee:
-        max_fee_amount = currency_table.normalize(wallet.currency, payout.max_fee / rate)
+        max_fee_amount = currency_table.normalize(wallet.currency, payout.max_fee / rate, divisibility=divisibility)
         if predicted_fee > max_fee_amount:
             return
     if coin.is_eth_based:

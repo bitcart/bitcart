@@ -7,6 +7,7 @@ from bitcart.errors import BaseError as BitcartBaseError
 from fastapi import HTTPException
 
 from api import models, settings, utils
+from api.constants import MAX_CONTRACT_DIVISIBILITY
 from api.ext.moneyformat import currency_table
 from api.logger import get_exception_message, get_logger
 
@@ -32,7 +33,7 @@ async def get_rate(wallet, currency, fallback_currency=None):
             f"{get_exception_message(e)}"
         )
         rate = Decimal(1)
-    return rate
+    return currency_table.normalize(currency, rate)
 
 
 async def get_wallet_history(model, response):
@@ -73,3 +74,10 @@ async def get_wallet_balances(user):
                 rate = rates[cache_key] = await get_rate(wallet, show_currency)
             balances += crypto_balance * rate
     return currency_table.format_decimal(show_currency, currency_table.normalize(show_currency, balances))
+
+
+async def get_divisibility(wallet, coin):
+    divisibility = currency_table.get_currency_data(wallet.currency)["divisibility"]
+    if wallet.contract:  # pragma: no cover
+        divisibility = min(MAX_CONTRACT_DIVISIBILITY, await coin.server.readcontract(wallet.contract, "decimals"))
+    return divisibility

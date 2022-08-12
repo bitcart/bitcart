@@ -892,7 +892,7 @@ class ETHDaemon(BaseDaemon):
 
     @rpc
     def exchange_rate(self, currency=None, wallet=None):
-        origin_currency = self.wallets[wallet].symbol if wallet else self.name
+        origin_currency = self.wallets[wallet].symbol if wallet and wallet in self.wallets else self.name
         if not currency:
             currency = self.DEFAULT_CURRENCY
         return str(self.exchange_rates[origin_currency].get(currency, Decimal("NaN")))

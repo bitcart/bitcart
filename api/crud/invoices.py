@@ -8,7 +8,6 @@ from sqlalchemy import select
 from starlette.datastructures import CommaSeparatedStrings
 
 from api import events, invoices, models, schemes, settings, utils
-from api.constants import MAX_CONTRACT_DIVISIBILITY
 from api.ext.moneyformat import currency_table, truncate
 from api.logger import get_exception_message, get_logger
 from api.utils.database import safe_db_write
@@ -57,12 +56,8 @@ async def _create_payment_method(invoice, wallet, product, store, discounts, pro
     coin = settings.settings.get_coin(wallet.currency, {"xpub": wallet.xpub, "contract": wallet.contract})
     discount_id = None
     symbol = await coin.server.readcontract(wallet.contract, "symbol") if wallet.contract else wallet.currency
-    divisibility = currency_table.get_currency_data(wallet.currency)["divisibility"]
-    if wallet.contract:  # pragma: no cover
-        divisibility = min(MAX_CONTRACT_DIVISIBILITY, await coin.server.readcontract(wallet.contract, "decimals"))
-    rate = currency_table.normalize(
-        invoice.currency, await utils.wallets.get_rate(wallet, invoice.currency, store.default_currency)
-    )
+    divisibility = await utils.wallets.get_divisibility(wallet, coin)
+    rate = await utils.wallets.get_rate(wallet, invoice.currency, store.default_currency)
     price = invoice.price
     if discounts:
         try:
@@ -80,8 +75,7 @@ async def _create_payment_method(invoice, wallet, product, store, discounts, pro
         except ValueError:  # no matched discounts
             pass
     request_price = price * (1 - (Decimal(store.checkout_settings.underpaid_percentage) / 100))
-    request_price = currency_table.normalize(wallet.currency, request_price / rate)
-    price = currency_table.normalize(wallet.currency, price / rate)
+    request_price = currency_table.normalize(wallet.currency, request_price / rate, divisibility=divisibility)
     method = coin.add_request
     if lightning:  # pragma: no cover
         try:

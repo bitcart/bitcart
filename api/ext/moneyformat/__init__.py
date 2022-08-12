@@ -1,7 +1,5 @@
 import json
-from decimal import Decimal
-
-MIN_VALUE = Decimal("0.001")
+from decimal import ROUND_HALF_EVEN, Decimal
 
 
 def set_v(data, key, default):
@@ -9,14 +7,8 @@ def set_v(data, key, default):
 
 
 def truncate(value, precision):
-    if value != 0:
-        while True:
-            rounded = round(value, precision)
-            if (abs(rounded - value) / value) < MIN_VALUE:
-                value = rounded
-                break
-            precision += 1
-    return value
+    q = Decimal(10) ** -precision
+    return value.quantize(q, rounding=ROUND_HALF_EVEN)
 
 
 # Thanks to example from python docs
@@ -87,8 +79,8 @@ class CurrencyTable:
             }
         return result
 
-    def normalize(self, currency, value):
-        return truncate(value, self.get_currency_data(currency)["divisibility"])
+    def normalize(self, currency, value, divisibility=None):
+        return truncate(value, divisibility or self.get_currency_data(currency)["divisibility"])
 
     def format_currency(self, currency, value, fancy=None, divisibility=None):
         if value is None or currency is None:
