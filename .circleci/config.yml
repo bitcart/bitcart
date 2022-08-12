@@ -192,7 +192,7 @@ jobs:
             export VERSION="${CIRCLE_TAG#cli-}"
             make build # ensure it works
             make release ARGS="-ldflags '-X main.Version=$VERSION' -parallel=4"
-            go get github.com/tcnksm/ghr
+            go install github.com/tcnksm/ghr@latest
             ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -replace $CIRCLE_TAG dist/
 
       - store_artifacts:
