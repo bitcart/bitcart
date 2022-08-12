@@ -2,6 +2,44 @@
 
 ## Latest changes
 
+## 0.6.9.0
+
+### Payouts support
+
+Yes, now it is possible to send payouts right from BitcartCC's admin panel!
+
+For clarity, BitcartCC core supported this from day one due to our modular stucture, and now it is available at the highest level in BitcartCC: the UI.
+
+A new tab was added to dashboard. Why is it useful? Because managing and opening wallets for many currencies is not convenient when you can do this from BitcartCC's unified UI. Send payouts, see tx hashes of sent transactions, limit fee usage by transaction, review payouts and see used fee stats!
+
+If a wallet is a hot wallet, payouts are signed automatically. But most wallets in BitcartCC are watch-only.
+
+You will be able to enter a private key for signing operations. It won't be saved anywhere on disk or shown in any commands output.
+
+This is possible due to new mode in the daemon: diskless (in-memory) mode. Read below for details
+
+### Diskless mode
+
+For some operations, like signing, sometimes you have to use a private key. But it is not good when a wallet is cached to disk, together with all keys and wallet history. That's why we added a new mode to the daemon.
+
+When from SDK, send diskless: True param as part of xpub's dict, i.e. `{"xpub": "seed here", "diskless": True}`
+
+You can use such a mode from CLI like so:
+
+```bash
+bitcart-cli --diskless -w "seed here" signtransaction txdata
+```
+
+### Fixes to rounding of amounts
+
+Now final, the way BitcartCC rounds amounts is stable. Now amount you see in the UI match the exchange rate displayed, and a bug where you could send exact amount and it still wouldn't be detected is fixed now
+
+### Misc changes
+
+- Fixed deployment's ssh key generation to a newer algorithm
+- Cloudflare tunnel support
+- Boxbilling plugin
+
 ## 0.6.8.1
 
 Hotfix release: if you ssh to your server as root user, it could have been broken by 0.6.8.0 release. This is fixed now.
