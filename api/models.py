@@ -7,6 +7,7 @@ from bitcart.errors import BaseError as BitcartBaseError
 from fastapi import HTTPException
 from fastapi.encoders import jsonable_encoder
 from gino.crud import UpdateRequest
+from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import ARRAY
 
 from api import schemes, settings
@@ -609,6 +610,14 @@ class Payout(BaseModel):
     used_fee = Column(Numeric(36, 18))
     user_id = Column(Text, ForeignKey(User.id, ondelete="SET NULL"))
     created = Column(DateTime(True), nullable=False)
+
+    async def validate(self, kwargs):
+        await super().validate(kwargs)
+        if "destination" in kwargs:
+            wallet_currency = await select([Wallet.currency]).where(Wallet.id == self.wallet_id).gino.scalar()
+            coin = settings.settings.get_coin(wallet_currency)
+            if not await coin.server.validateaddress(kwargs["destination"]):
+                raise HTTPException(422, "Invalid destination address")
 
 
 all_tables = {

@@ -77,7 +77,7 @@ async def process_new_block(currency):
         with log_errors():
             coin = settings.settings.get_coin(currency, {"xpub": wallet.xpub, "contract": wallet.contract})
             try:
-                confirmations = (await coin.server.get_tx_status(payout.tx_hash))["confirmations"]
+                confirmations = (await coin.get_tx(payout.tx_hash))["confirmations"]
             except bitcart.errors.TxNotFoundError:
                 continue
             if confirmations >= 1:

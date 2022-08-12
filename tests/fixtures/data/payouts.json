@@ -1,0 +1,21 @@
+{
+    "create": {
+        "destination": "tb1qz28nh6ukmyumqdvysnd726f2yw77yt5ch39aga",
+        "amount": 5
+    },
+    "patch": {
+        "max_fee": 1,
+        "tx_hash": "test"
+    },
+    "response": {
+        "amount": "5.00",
+        "currency": "USD",
+        "destination": "tb1qz28nh6ukmyumqdvysnd726f2yw77yt5ch39aga",
+        "max_fee": null,
+        "notification_url": "",
+        "status": "pending",
+        "tx_hash": null,
+        "used_fee": null
+    },
+    "count": 1
+}
