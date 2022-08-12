@@ -1,3 +1,3 @@
 aiohttp<4.0
-https://github.com/Electron-Cash/Electron-Cash/archive/81ad15c9f03bd40a5f903b86d4aa0fa1e1b43392.zip
+https://github.com/bitcartcc/Electron-Cash/archive/f99c0e6a8f91cb11734d75735b9c1a67cd317072.zip # TODO: merge upstream
 protobuf<4

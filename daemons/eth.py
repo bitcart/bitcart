@@ -54,6 +54,8 @@ NO_MASTER_KEYS_MESSAGE = "As we use only one address per wallet, address keys ar
 EIP1559_PARAMS = ("maxFeePerGas", "maxPriorityFeePerGas")
 FEE_PARAMS = EIP1559_PARAMS + ("gasPrice", "gas")
 
+NOOP_PATH = object()
+
 CHUNK_SIZE = 30
 AMOUNTGEN_LIMIT = 10**9
 
@@ -539,7 +541,7 @@ class ETHDaemon(BaseDaemon):
     }
     SKIP_NETWORK = ["getinfo", "exchange_rate", "list_currencies"]
 
-    VERSION = "4.1.5"  # version of electrum API with which we are "compatible"
+    VERSION = "4.3.0"  # version of electrum API with which we are "compatible"
     BLOCK_TIME = 5
     FX_FETCH_TIME = 150
     ABI = ERC20_ABI
@@ -747,7 +749,7 @@ class ETHDaemon(BaseDaemon):
         os.makedirs(path, exist_ok=True)
         return path
 
-    async def load_wallet(self, xpub, contract):
+    async def load_wallet(self, xpub, contract, diskless=False):
         wallet_key = get_wallet_key(xpub, contract)
         if wallet_key in self.wallets:
             await self.add_contract(contract, wallet_key)
@@ -755,14 +757,16 @@ class ETHDaemon(BaseDaemon):
         if not xpub:
             return None
 
-        # get wallet on disk
-        wallet_dir = self.get_wallet_path()
-        wallet_path = os.path.join(wallet_dir, wallet_key)
-        if not os.path.exists(wallet_path):
-            self.restore(xpub, wallet_path=wallet_path, contract=contract)
-        storage = Storage(wallet_path)
-        db = WalletDB(storage.read())
-        wallet = Wallet(self.web3, db, storage)
+        if diskless:
+            wallet = self.restore_wallet_from_text(xpub, contract, path=NOOP_PATH)
+        else:
+            wallet_dir = self.get_wallet_path()
+            wallet_path = os.path.join(wallet_dir, wallet_key)
+            if not os.path.exists(wallet_path):
+                self.restore(xpub, wallet_path=wallet_path, contract=contract)
+            storage = Storage(wallet_path)
+            db = WalletDB(storage.read())
+            wallet = Wallet(self.web3, db, storage)
         self.wallets[wallet_key] = wallet
         self.wallets_updates[wallet_key] = []
         self.addresses[wallet.address].add(wallet_key)
@@ -773,13 +777,13 @@ class ETHDaemon(BaseDaemon):
     async def is_still_syncing(self, wallet=None):
         return not await self.web3.isConnected() or await self.web3.eth.syncing or (wallet and not wallet.is_synchronized())
 
-    async def _get_wallet(self, id, req_method, xpub, contract):
+    async def _get_wallet(self, id, req_method, xpub, contract, diskless=False):
         wallet = error = None
         try:
             should_skip = req_method not in self.supported_methods or not self.supported_methods[req_method].requires_network
             while not should_skip and not self.synchronized:  # wait for initial sync to fetch blocks
                 await asyncio.sleep(0.1)
-            wallet = await self.load_wallet(xpub, contract)
+            wallet = await self.load_wallet(xpub, contract, diskless=diskless)
             if should_skip:
                 return wallet, error
             while await self.is_still_syncing(wallet):
@@ -811,8 +815,8 @@ class ETHDaemon(BaseDaemon):
             result = exec_method(*req_args, **req_kwargs)
             return await result if inspect.isawaitable(result) else result
 
-    async def execute_method(self, id, req_method, xpub, contract, req_args, req_kwargs):
-        wallet, error = await self._get_wallet(id, req_method, xpub, contract)
+    async def execute_method(self, id, req_method, xpub, contract, extra_params, req_args, req_kwargs):
+        wallet, error = await self._get_wallet(id, req_method, xpub, contract, diskless=extra_params.get("diskless", False))
         if error:
             return error.send()
         exec_method, error = await self.get_exec_method(id, req_method)
@@ -888,7 +892,7 @@ class ETHDaemon(BaseDaemon):
 
     @rpc
     def exchange_rate(self, currency=None, wallet=None):
-        origin_currency = self.wallets[wallet].symbol if wallet else self.name
+        origin_currency = self.wallets[wallet].symbol if wallet and wallet in self.wallets else self.name
         if not currency:
             currency = self.DEFAULT_CURRENCY
         return str(self.exchange_rates[origin_currency].get(currency, Decimal("NaN")))
@@ -943,6 +947,11 @@ class ETHDaemon(BaseDaemon):
         self.wallets_updates[wallet] = []
         return updates
 
+    @rpc(requires_network=True)
+    async def get_used_fee(self, tx_hash, wallet=None):
+        tx_stats = await self.get_tx_status(tx_hash)
+        return to_dict(tx_stats["gasUsed"] * from_wei(tx_stats["effectiveGasPrice"]))
+
     @rpc
     def getabi(self, wallet=None):
         return self.ABI
@@ -984,7 +993,7 @@ class ETHDaemon(BaseDaemon):
             nodes = 0
         numblocks = await self.web3.eth.block_number
         return {
-            "blockchain_height": numblocks,
+            "blockchain_height": self.latest_height,
             "connected": await self.web3.isConnected(),
             "gas_price": await self.web3.eth.gas_price,
             "path": path,
@@ -1090,6 +1099,7 @@ class ETHDaemon(BaseDaemon):
         return [
             {"path": wallet_obj.storage.path, "synchronized": wallet_obj.is_synchronized()}
             for wallet_obj in self.wallets.values()
+            if wallet_obj.storage.path is not None
         ]
 
     @rpc(requires_wallet=True)
@@ -1188,23 +1198,27 @@ class ETHDaemon(BaseDaemon):
     def removelocaltx(self, *args, **kwargs):
         raise NotImplementedError(NO_HISTORY_MESSAGE)
 
-    @rpc
-    def restore(self, text, wallet=None, wallet_path=None, contract=None):
-        if not wallet_path:
-            wallet_path = os.path.join(self.get_wallet_path(), text)
+    def restore_wallet_from_text(self, text, contract=None, path=None):
+        if not path:
+            path = os.path.join(self.get_wallet_path(), get_wallet_key(text, contract))
         try:
             keystore = KeyStore(text, contract=contract)
         except Exception as e:
             raise Exception("Invalid key provided") from e
-        storage = Storage(wallet_path)
-        if storage.file_exists():
+        storage = Storage(path if path is not NOOP_PATH else None, in_memory_only=path is NOOP_PATH)
+        if path is not NOOP_PATH and storage.file_exists():
             raise Exception("Remove the existing wallet first!")
         db = WalletDB("")
         db.put("keystore", keystore.dump())
         wallet_obj = Wallet(self.web3, db, storage)
         wallet_obj.save_db()
+        return wallet_obj
+
+    @rpc
+    def restore(self, text, wallet=None, wallet_path=None, contract=None):
+        wallet = self.restore_wallet_from_text(text, contract, wallet_path)
         return {
-            "path": wallet_obj.storage.path,
+            "path": wallet.storage.path,
             "msg": "",
         }
 

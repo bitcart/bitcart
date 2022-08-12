@@ -448,6 +448,7 @@ class BackupState(BaseModel):
 class BatchSettings(BaseModel):
     ids: List[str]
     command: str
+    options: Optional[dict] = {}
 
 
 class OpenChannelScheme(BaseModel):
@@ -527,3 +528,42 @@ class SSHSettings(BaseModel):
             kwargs.update(password=self.password)
         client.connect(**kwargs)
         return client
+
+
+class CreatePayout(CreatedMixin):
+    amount: Decimal
+    destination: str
+    store_id: str
+    wallet_id: str
+    currency: str = ""
+    notification_url: Optional[str] = ""
+    max_fee: Optional[Decimal] = None
+    status: str = None
+
+    @validator("status", pre=True, always=True)
+    def set_status(cls, v):
+        from api.ext.payouts import PayoutStatus
+
+        return v or PayoutStatus.PENDING
+
+    @validator("max_fee", pre=True, always=True)
+    def set_max_fee(cls, v):
+        return v or None
+
+    class Config:
+        orm_mode = True
+
+
+class Payout(CreatePayout):
+    id: Optional[str]
+    user_id: str
+    currency: str = "USD"
+    tx_hash: Optional[str] = None
+    used_fee: Optional[Decimal] = None
+    amount: Money
+
+    @root_validator(pre=True)
+    def set_amount(cls, values):
+        if "amount" in values:
+            values["amount"] = currency_table.format_decimal(values.get("currency"), values["amount"])
+        return values

@@ -7,6 +7,7 @@ import async_timeout
 import pytest
 from aiohttp import web
 from bitcart import BTC
+from bitcart.utils import bitcoins
 
 from api.constants import MAX_CONFIRMATION_WATCH
 from tests.functional import utils
@@ -28,8 +29,10 @@ def worker():
     process.wait()
 
 
-async def get_status(client, invoice_id):
-    resp = await client.get(f"/invoices/{invoice_id}")
+async def get_status(client, obj_id, token):
+    resp1 = await client.get(f"/invoices/{obj_id}")
+    resp2 = await client.get(f"/payouts/{obj_id}", headers={"Authorization": f"Bearer {token}"})
+    resp = resp1 if resp1.status_code == 200 else resp2
     assert resp.status_code == 200
     return resp.json()["status"]
 
@@ -52,6 +55,19 @@ async def wait_for_balance(address, expected_balance):
         await asyncio.sleep(1)
         if balance >= expected_balance:
             break
+    await asyncio.sleep(3)
+
+
+async def wait_for_local_tx(wallet, tx_hash):
+    async with async_timeout.timeout(30):
+        while True:
+            try:
+                confirmations = (await wallet.server.get_tx_status(tx_hash))["confirmations"]
+                if confirmations >= 1:
+                    break
+                await asyncio.sleep(1)
+            except Exception:
+                await asyncio.sleep(1)
     await asyncio.sleep(3)
 
 
@@ -114,14 +130,14 @@ def queue():
 
 
 @pytest.fixture
-async def ipn_server(queue, client):
+async def ipn_server(queue, client, token):
     host = "0.0.0.0"
     port = 8080
 
     async def handle_post(request):
         data = await request.json()
         # to ensure status during IPN matches the one sent
-        status = await get_status(client, data["id"])
+        status = await get_status(client, data["id"], token=token)
         queue.put((data, status))
         return web.json_response({})
 
@@ -208,3 +224,104 @@ async def test_lightning_pay_flow(
     await check_invoice_status(ws_client, invoice_id, "complete")
     assert queue.qsize() == 1
     check_status(queue, {"id": invoice["id"], "status": "complete"})
+
+
+async def apply_batch_payout_action(client, token, command, ids, options={}):
+    resp = await client.post(
+        "/payouts/batch",
+        json={"command": command, "ids": ids, "options": options},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 200
+    assert resp.json() is True
+
+
+async def check_payout_status(client, token, obj_id, expected_status):
+    resp = await client.get(f"/payouts/{obj_id}", headers={"Authorization": f"Bearer {token}"})
+    assert resp.status_code == 200
+    assert resp.json()["status"] == expected_status
+
+
+async def test_payouts(client, regtest_wallet, regtest_api_wallet, regtest_api_store, user, token, worker, queue, ipn_server):
+    wallet_id = regtest_api_wallet["id"]
+    store_id = regtest_api_store["id"]
+    address = (await regtest_wallet.add_request())["address"]
+    payout = (
+        await client.post(
+            "/payouts",
+            json={
+                "destination": address,
+                "amount": 5,
+                "store_id": store_id,
+                "wallet_id": wallet_id,
+                "notification_url": ipn_server,
+            },
+            headers={"Authorization": f"Bearer {token}"},
+        )
+    ).json()
+    assert payout["status"] == "pending"
+    # test batch actions first, note that we don't restrict user much
+    await apply_batch_payout_action(client, token, "approve", [payout["id"]])
+    await check_payout_status(client, token, payout["id"], "approved")
+    await apply_batch_payout_action(client, token, "cancel", [payout["id"]])
+    await check_payout_status(client, token, payout["id"], "cancelled")
+    await apply_batch_payout_action(client, token, "approve", [payout["id"]])
+    # but approve works on pending statuses only
+    await check_payout_status(client, token, payout["id"], "cancelled")
+    # Execute the actual payout
+    await apply_batch_payout_action(client, token, "send", [payout["id"]])
+    payout = (await client.get(f"/payouts/{payout['id']}", headers={"Authorization": f"Bearer {token}"})).json()
+    assert payout["status"] == "sent"
+    assert payout["tx_hash"] is not None
+    tx_data = await regtest_wallet.get_tx(payout["tx_hash"])
+    assert tx_data["confirmations"] == 0
+    utils.run_shell(["newblocks", "1"])
+    await wait_for_local_tx(regtest_wallet, payout["tx_hash"])
+    payout = (await client.get(f"/payouts/{payout['id']}", headers={"Authorization": f"Bearer {token}"})).json()
+    assert payout["status"] == "complete"
+    assert payout["used_fee"] > 0
+    tx_data = await regtest_wallet.get_tx(payout["tx_hash"])
+    assert tx_data["confirmations"] == 1
+    # Now it's immutable
+    old_tx_hash = payout["tx_hash"]
+    await apply_batch_payout_action(client, token, "send", [payout["id"]])
+    payout = (await client.get(f"/payouts/{payout['id']}", headers={"Authorization": f"Bearer {token}"})).json()
+    assert payout["tx_hash"] == old_tx_hash
+    # Check that IPN worked too
+    assert queue.qsize() == 2
+    check_status(queue, {"id": payout["id"], "status": "sent"})
+    check_status(queue, {"id": payout["id"], "status": "complete"})
+    # Check signing on watch-only wallet
+    xpub = await regtest_wallet.server.getmpk()
+    watchonly_wallet = await create_wallet(client, user["id"], token, xpub=xpub)
+    payout = (
+        await client.post(
+            "/payouts",
+            json={"destination": address, "amount": 5, "store_id": store_id, "wallet_id": watchonly_wallet["id"]},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+    ).json()
+    await apply_batch_payout_action(client, token, "send", [payout["id"]])
+    await check_payout_status(client, token, payout["id"], "failed")  # no private key available
+    # now try sending key
+    await apply_batch_payout_action(
+        client, token, "send", [payout["id"]], options={"wallets": {watchonly_wallet["id"]: REGTEST_XPUB}}
+    )
+    await check_payout_status(client, token, payout["id"], "sent")
+    # test max fee
+    payout = (
+        await client.post(
+            "/payouts",
+            json={
+                "destination": address,
+                "amount": "0.1",
+                "store_id": store_id,
+                "wallet_id": wallet_id,
+                "max_fee": str(bitcoins(1)),
+                "currency": "BTC",
+            },
+            headers={"Authorization": f"Bearer {token}"},
+        )
+    ).json()
+    await apply_batch_payout_action(client, token, "send", [payout["id"]])
+    await check_payout_status(client, token, payout["id"], "pending")  # when fee exceeds the limit, we don't change status

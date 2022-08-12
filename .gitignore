@@ -6,13 +6,13 @@
 .mypy_cache
 .pytest_cache/
 .vscode/
+/data/
 __pycache__/
 backup/
 backups/
 bitcart-cli
 bitcart-cli-*
 bitcart-docker
-data/
 env/
 htmlcov/
 venv

@@ -7,6 +7,7 @@ from bitcart.errors import BaseError as BitcartBaseError
 from fastapi import HTTPException
 from fastapi.encoders import jsonable_encoder
 from gino.crud import UpdateRequest
+from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import ARRAY
 
 from api import schemes, settings
@@ -591,6 +592,32 @@ class Token(BaseModel):
         kwargs = super().prepare_create(kwargs)
         kwargs["id"] = secrets.token_urlsafe()
         return kwargs
+
+
+class Payout(BaseModel):
+    __tablename__ = "payouts"
+
+    id = Column(Text, primary_key=True, index=True)
+    amount = Column(Numeric(36, 18), nullable=False)
+    destination = Column(Text)
+    currency = Column(Text)
+    status = Column(Text, nullable=False)
+    notification_url = Column(Text)
+    store_id = Column(Text, ForeignKey("stores.id", deferrable=True, initially="DEFERRED", ondelete="SET NULL"), index=True)
+    wallet_id = Column(Text, ForeignKey("wallets.id", deferrable=True, initially="DEFERRED", ondelete="SET NULL"), index=True)
+    max_fee = Column(Numeric(36, 18))
+    tx_hash = Column(Text)
+    used_fee = Column(Numeric(36, 18))
+    user_id = Column(Text, ForeignKey(User.id, ondelete="SET NULL"))
+    created = Column(DateTime(True), nullable=False)
+
+    async def validate(self, kwargs):
+        await super().validate(kwargs)
+        if "destination" in kwargs:
+            wallet_currency = await select([Wallet.currency]).where(Wallet.id == self.wallet_id).gino.scalar()
+            coin = settings.settings.get_coin(wallet_currency)
+            if not await coin.server.validateaddress(kwargs["destination"]):
+                raise HTTPException(422, "Invalid destination address")
 
 
 all_tables = {

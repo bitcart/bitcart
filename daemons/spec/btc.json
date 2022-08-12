@@ -1,11 +1,12 @@
 {
-    "version": "4.1.5",
+    "version": "4.3.0",
     "electrum_map": {
         "wallet not loaded": -32000,
         "should be a transaction hash": -32001,
         "No such mempool or blockchain transaction. Use gettransaction for wallet transactions.": -32002,
         "No such mempool transaction.": -32002,
         "missing transaction": -32002,
+        "No such blockchain transaction": -32002,
         "Request not found": -32003,
         "Invalid Bitcoin address or alias": -32004,
         "Invalid bitcoin address:": -32004,

@@ -196,8 +196,8 @@ dnspython==2.2.0 \
     --hash=sha256:081649da27ced5e75709a1ee542136eaba9842a0fe4c03da4fb0a3d3ed1f3c44 \
     --hash=sha256:e79351e032d0b606b98d38a4b0e6e2275b31a5b85c873e587cc11b73aca026d6
     # via electrum-bsty
-electrum-bsty @ https://github.com/GlobalBoost/electrum/archive/2908d8deef45fda2745ffd0c8aa0fffd68b41fc0.zip \
-    --hash=sha256:9a70c900a3bd72644d07291eefd47a6498deaca0d489040ed6785eab979fa841
+electrum-bsty @ https://github.com/GlobalBoost/electrum/archive/85b4aec31c71d6abad1d026ede8d7e1e7890e4bc.zip \
+    --hash=sha256:be27541bb9b369fa3d3094ac385a142c25a079d914ddf455d3bd494ab79a1fc4
     # via -r requirements/daemons/bsty.txt
 frozenlist==1.3.0 \
     --hash=sha256:006d3595e7d4108a12025ddf415ae0f6c9e736e726a5db0183326fd191b14c5e \

@@ -40,6 +40,7 @@ oauth2_scheme = OAuth2PasswordBearer(
         "discount_management": "Create, list or edit discounts",
         "product_management": "Create, list or edit products",
         "invoice_management": "Create, list or edit invoices",
+        "payout_management": "Create, list or edit payouts",
         "notification_management": "Create, list or edit notification providers",
         "template_management": "Create, list or edit templates",
         "full_control": "Full control over what current user has",

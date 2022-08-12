@@ -160,22 +160,24 @@ class BTCDaemon(BaseDaemon):
     def create_commands(self, config):
         return self.electrum.commands.Commands(config=config, network=self.network, daemon=self.daemon)
 
-    async def restore_wallet(self, command_runner, xpub, config, wallet_path):
-        await command_runner.restore(xpub, wallet_path=wallet_path)
+    async def restore_wallet(self, command_runner, xpub, config, wallet_path=None):
+        return self.electrum.wallet.restore_wallet_from_text(xpub, path=wallet_path, config=config)
 
-    def load_cmd_wallet(self, cmd, wallet, wallet_path):
-        self.daemon.add_wallet(wallet)
+    def load_cmd_wallet(self, cmd, wallet):
+        if wallet.storage is not None:
+            self.daemon.add_wallet(wallet)
 
     def create_wallet(self, storage, config):
         db = self.electrum.wallet_db.WalletDB(storage.read(), manual_upgrades=False)
-        wallet = self.electrum.wallet.Wallet(db=db, storage=storage, config=config)
+        return self.electrum.wallet.Wallet(db=db, storage=storage, config=config)
+
+    def init_wallet(self, wallet):
         if self.LIGHTNING:
             try:
                 wallet.init_lightning(password=None)
             except AssertionError:
                 pass
         wallet.start_network(self.network)
-        return wallet
 
     def copy_config_settings(self, config):
         config.set_key("currency", self.DEFAULT_CURRENCY)
@@ -191,7 +193,7 @@ class BTCDaemon(BaseDaemon):
             and (server_height == 0 or server_lag > 1 or (wallet and not wallet.is_up_to_date()))
         )
 
-    async def load_wallet(self, xpub, config):
+    async def load_wallet(self, xpub, config, diskless=False):
         if xpub in self.wallets:
             wallet_data = self.wallets[xpub]
             return wallet_data["wallet"], wallet_data["cmd"]
@@ -199,14 +201,17 @@ class BTCDaemon(BaseDaemon):
         if not xpub:
             return None, command_runner
 
-        # get wallet on disk
-        wallet_dir = os.path.dirname(config.get_wallet_path())
-        wallet_path = os.path.join(wallet_dir, xpub)
-        if not os.path.exists(wallet_path):
-            await self.restore_wallet(command_runner, xpub, config, wallet_path=wallet_path)
-        storage = self.electrum.storage.WalletStorage(wallet_path)
-        wallet = self.create_wallet(storage, config)
-        self.load_cmd_wallet(command_runner, wallet, wallet_path)
+        if diskless:
+            wallet = (await self.restore_wallet(command_runner, xpub, config))["wallet"]
+        else:
+            wallet_dir = os.path.dirname(config.get_wallet_path())
+            wallet_path = os.path.join(wallet_dir, xpub)
+            if not os.path.exists(wallet_path):
+                await self.restore_wallet(command_runner, xpub, config, wallet_path=wallet_path)
+            storage = self.electrum.storage.WalletStorage(wallet_path)
+            wallet = self.create_wallet(storage, config)
+        self.init_wallet(wallet)
+        self.load_cmd_wallet(command_runner, wallet)
         self.wallets[xpub] = {"wallet": wallet, "cmd": command_runner}
         self.wallets_updates[xpub] = []
         return wallet, command_runner
@@ -214,11 +219,7 @@ class BTCDaemon(BaseDaemon):
     def add_wallet_to_command(self, wallet, req_method, exec_method, **kwargs):
         method_data = self.get_method_data(req_method, custom=False)
         if method_data.requires_wallet:
-            config = kwargs.get("config")
-            cmd_name = method_data.name
-            need_path = cmd_name in ["create", "restore"]
-            path = wallet.storage.path if wallet else (config.get_wallet_path() if need_path else None)
-            exec_method = functools.partial(exec_method, wallet=path)
+            exec_method = functools.partial(exec_method, wallet=wallet)
         return exec_method
 
     def get_method_data(self, method, custom):
@@ -227,10 +228,10 @@ class BTCDaemon(BaseDaemon):
         else:
             return self.electrum.commands.known_commands[method]
 
-    async def _get_wallet(self, id, req_method, xpub):
+    async def _get_wallet(self, id, req_method, xpub, diskless=False):
         wallet = cmd = error = None
         try:
-            wallet, cmd = await self.load_wallet(xpub, config=self.electrum_config)
+            wallet, cmd = await self.load_wallet(xpub, config=self.electrum_config, diskless=diskless)
             while self.is_still_syncing(wallet):
                 await asyncio.sleep(0.1)
         except Exception as e:
@@ -275,8 +276,8 @@ class BTCDaemon(BaseDaemon):
             return get_exception_message(e.original_exception)
         return get_exception_message(e)
 
-    async def execute_method(self, id, req_method, xpub, contract, req_args, req_kwargs):
-        wallet, cmd, error = await self._get_wallet(id, req_method, xpub)
+    async def execute_method(self, id, req_method, xpub, contract, extra_params, req_args, req_kwargs):
+        wallet, cmd, error = await self._get_wallet(id, req_method, xpub, diskless=extra_params.get("diskless", False))
         if error:
             return error.send()
         exec_method, custom, error = await self.get_exec_method(cmd, id, req_method)
@@ -492,6 +493,14 @@ class BTCDaemon(BaseDaemon):
         data = await self.create_commands(config=self.electrum_config).getinfo()
         data["synchronized"] = not self.is_still_syncing()
         return data
+
+    @rpc(requires_wallet=True, requires_network=True)
+    async def get_used_fee(self, tx_hash, wallet):
+        tx = self.wallets[wallet]["wallet"].db.get_transaction(tx_hash)
+        if tx is None:
+            raise Exception("No such blockchain transaction")
+        delta = self.wallets[wallet]["wallet"].get_wallet_delta(tx)
+        return format_satoshis(delta.fee)
 
 
 if __name__ == "__main__":

@@ -268,3 +268,13 @@ async def test_products_invalid_json(client: TestClient, token):
     )
     assert resp.status_code == 422
     assert resp.json()["detail"] == "Invalid JSON"
+
+
+async def test_payouts_invalid_destination(client: TestClient, store, wallet, token):
+    resp = await client.post(
+        "/payouts",
+        json={"store_id": store["id"], "wallet_id": wallet["id"], "destination": "invalid", "amount": 1},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 422
+    assert resp.json()["detail"] == "Invalid destination address"

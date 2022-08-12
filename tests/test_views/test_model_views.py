@@ -329,3 +329,30 @@ class TestInvoices(ViewTestMixin):
             ("rate_str", str),
         ):
             self._check_key(method, key, check_type)
+
+
+class TestPayouts(ViewTestMixin):
+    name = "payouts"
+    tests = json_module.loads(open("tests/fixtures/data/payouts.json").read())
+
+    @pytest.fixture(autouse=True)
+    async def setup(self, state, user, store, wallet, client, token, anyio_backend):
+        state["user"] = user
+        state["store"] = store
+        state["wallet"] = wallet
+        state["data"] = await self.create_object(client, token, state)
+
+    def _add_related(self, data, state):
+        data["store_id"] = state["store"]["id"]
+        data["wallet_id"] = state["wallet"]["id"]
+
+    def create_data(self, state):
+        data = super().create_data(state)
+        self._add_related(data, state)
+        return data
+
+    def expected_resp(self, state):
+        data = super().expected_resp(state)
+        self._add_related(data, state)
+        data["user_id"] = state["user"]["id"]
+        return data
