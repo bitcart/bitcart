@@ -14,7 +14,9 @@ async def create_payout(payout: schemes.CreatePayout, user: schemes.User):
     return obj
 
 
-async def batch_payout_action(query, settings: schemes.BatchSettings, user: schemes.User):
+async def batch_payout_action(
+    query, settings: schemes.BatchSettings, user: schemes.User
+):  # pragma: no cover: tested in regtest
     if settings.command == "send":
         wallets = settings.options.get("wallets", {})
         for payout_id in settings.ids:
@@ -30,15 +32,15 @@ async def batch_payout_action(query, settings: schemes.BatchSettings, user: sche
     return True
 
 
-def approve_payouts(orm_model):
+def approve_payouts(orm_model):  # pragma: no cover: tested in regtest
     return orm_model.update.where(orm_model.status == payouts_ext.PayoutStatus.PENDING).values(
         {"status": payouts_ext.PayoutStatus.APPROVED}
     )
 
 
-def cancel_payouts(orm_model):
+def cancel_payouts(orm_model):  # pragma: no cover: tested in regtest
     return orm_model.update.values({"status": payouts_ext.PayoutStatus.CANCELLED})
 
 
-def send_payouts(orm_model):
+def send_payouts(orm_model):  # pragma: no cover: tested in regtest
     return orm_model.query
