@@ -307,3 +307,13 @@ async def test_payouts(client, regtest_wallet, regtest_api_wallet, regtest_api_s
         client, token, "send", [payout["id"]], options={"wallets": {watchonly_wallet["id"]: REGTEST_XPUB}}
     )
     await check_payout_status(client, token, payout["id"], "sent")
+    # test max fee
+    payout = (
+        await client.post(
+            "/payouts",
+            json={"destination": address, "amount": 5, "store_id": store_id, "wallet_id": wallet_id, "max_fee": 0},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+    ).json()
+    await apply_batch_payout_action(client, token, "send", [payout["id"]])
+    await check_payout_status(client, token, payout["id"], "pending")  # when fee exceeds the limit, we don't change status

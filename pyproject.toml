@@ -37,6 +37,7 @@ omit = [
     "api/ext/configurator.py",
     "api/ext/backups.py",
     "api/ext/shopify.py",
+    "api/ext/payouts.py",
     "api/views/stores/integrations/shopify.py",
     "api/logger.py",
     "api/logserver.py",

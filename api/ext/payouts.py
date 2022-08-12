@@ -50,7 +50,7 @@ async def send_payout(payout, private_key=None):
         else:
             raw_tx = await coin.server.payto(payout.destination, request_amount, unsigned=True)
     predicted_fee = Decimal(await coin.server.get_default_fee(raw_tx))
-    if payout.max_fee:
+    if payout.max_fee is not None:
         max_fee_amount = currency_table.normalize(wallet.currency, payout.max_fee / rate, divisibility=divisibility)
         if predicted_fee > max_fee_amount:
             return
