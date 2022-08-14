@@ -507,6 +507,12 @@ class BTCDaemon(BaseDaemon):
         delta = self.wallets[wallet]["wallet"].get_wallet_delta(tx)
         return format_satoshis(delta.fee)
 
+    @rpc
+    async def help(self, wallet=None):
+        data = await self.create_commands(config=self.electrum_config).help()
+        data.extend(list(self.supported_methods.keys()))
+        return data
+
 
 if __name__ == "__main__":
     daemon = BTCDaemon()
