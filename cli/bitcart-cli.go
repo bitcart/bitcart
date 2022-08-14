@@ -88,7 +88,7 @@ func getDefaultURL(coin string) string {
 	return "http://" + host + ":" + port
 }
 
-func runCommand(c *cli.Context) (*jsonrpc.RPCResponse, map[string]interface{}) {
+func runCommand(c *cli.Context) (*jsonrpc.RPCResponse, map[string]interface{}, error) {
 	args := c.Args()
 	wallet := c.String("wallet")
 	contract := c.String("contract")
@@ -118,12 +118,14 @@ func runCommand(c *cli.Context) (*jsonrpc.RPCResponse, map[string]interface{}) {
 	params = append(params, map[string]map[string]interface{}{"xpub": {"xpub": wallet, "contract": contract, "diskless": diskless}})
 	// call RPC method
 	result, err := rpcClient.Call(args.Get(0), params)
-	checkErr(err)
+	if err != nil {
+		return nil, nil, err
+	}
 	spec := map[string]interface{}{}
 	if !noSpec {
 		spec = getSpec(httpClient, url, user, password)
 	}
-	return result, spec
+	return result, spec, nil
 }
 
 func main() {
@@ -202,7 +204,10 @@ func main() {
 		}
 		set := flag.NewFlagSet("app", 0)
 		set.Parse([]string{"help"})
-		output, _ := runCommand(cli.NewContext(app, set, c))
+		output, _, err := runCommand(cli.NewContext(app, set, c))
+		if err != nil || output.Error != nil {
+			return
+		}
 		for _, v := range output.Result.([]interface{}) {
 			fmt.Println(v)
 		}
@@ -210,7 +215,8 @@ func main() {
 	app.Action = func(c *cli.Context) error {
 		args := c.Args()
 		if args.Len() >= 1 {
-			result, spec := runCommand(c)
+			result, spec, err := runCommand(c)
+			checkErr(err)
 			// Print either error if found or result
 			if result.Error != nil {
 				if len(spec) != 0 {
