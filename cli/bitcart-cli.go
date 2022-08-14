@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -87,6 +88,44 @@ func getDefaultURL(coin string) string {
 	return "http://" + host + ":" + port
 }
 
+func runCommand(c *cli.Context) (*jsonrpc.RPCResponse, map[string]interface{}) {
+	args := c.Args()
+	wallet := c.String("wallet")
+	contract := c.String("contract")
+	diskless := c.Bool("diskless")
+	user := c.String("user")
+	password := c.String("password")
+	coin := c.String("coin")
+	url := c.String("url")
+	noSpec := c.Bool("no-spec")
+	if url == "" {
+		url = getDefaultURL(coin)
+	}
+	httpClient := &http.Client{}
+	// initialize rpc client
+	rpcClient := jsonrpc.NewClientWithOpts(url, &jsonrpc.RPCClientOpts{
+		HTTPClient: httpClient,
+		CustomHeaders: map[string]string{
+			"Authorization": "Basic " + base64.StdEncoding.EncodeToString([]byte(user+":"+password)),
+		},
+	})
+	// some magic to make array with the last element being a dictionary with xpub in it
+	sl := args.Slice()[1:]
+	params := make([]interface{}, len(sl))
+	for i := range sl {
+		params[i] = sl[i]
+	}
+	params = append(params, map[string]map[string]interface{}{"xpub": {"xpub": wallet, "contract": contract, "diskless": diskless}})
+	// call RPC method
+	result, err := rpcClient.Call(args.Get(0), params)
+	checkErr(err)
+	spec := map[string]interface{}{}
+	if !noSpec {
+		spec = getSpec(httpClient, url, user, password)
+	}
+	return result, spec
+}
+
 func main() {
 
 	app := cli.NewApp()
@@ -95,6 +134,7 @@ func main() {
 	app.HideHelp = true
 	app.Usage = "Call RPC methods from console"
 	app.UsageText = "bitcart-cli method [args]"
+	app.EnableBashCompletion = true
 	app.Flags = []cli.Flag{
 		&cli.BoolFlag{
 			Name:    "help",
@@ -156,43 +196,24 @@ func main() {
 			EnvVars: []string{"BITCART_NO_SPEC"},
 		},
 	}
+	app.BashComplete = func(c *cli.Context) {
+		if c.NArg() > 0 {
+			return
+		}
+		set := flag.NewFlagSet("app", 0)
+		set.Parse([]string{"help"})
+		output, _ := runCommand(cli.NewContext(app, set, c))
+		for _, v := range output.Result.([]interface{}) {
+			fmt.Println(v)
+		}
+	}
 	app.Action = func(c *cli.Context) error {
 		args := c.Args()
 		if args.Len() >= 1 {
-			// load flags
-			wallet := c.String("wallet")
-			contract := c.String("contract")
-			diskless := c.Bool("diskless")
-			user := c.String("user")
-			password := c.String("password")
-			coin := c.String("coin")
-			url := c.String("url")
-			noSpec := c.Bool("no-spec")
-			if url == "" {
-				url = getDefaultURL(coin)
-			}
-			httpClient := &http.Client{}
-			// initialize rpc client
-			rpcClient := jsonrpc.NewClientWithOpts(url, &jsonrpc.RPCClientOpts{
-				HTTPClient: httpClient,
-				CustomHeaders: map[string]string{
-					"Authorization": "Basic " + base64.StdEncoding.EncodeToString([]byte(user+":"+password)),
-				},
-			})
-			// some magic to make array with the last element being a dictionary with xpub in it
-			sl := args.Slice()[1:]
-			params := make([]interface{}, len(sl))
-			for i := range sl {
-				params[i] = sl[i]
-			}
-			params = append(params, map[string]map[string]interface{}{"xpub": {"xpub": wallet, "contract": contract, "diskless": diskless}})
-			// call RPC method
-			result, err := rpcClient.Call(args.Get(0), params)
-			checkErr(err)
+			result, spec := runCommand(c)
 			// Print either error if found or result
 			if result.Error != nil {
-				if !noSpec {
-					spec := getSpec(httpClient, url, user, password)
+				if len(spec) != 0 {
 					if spec["error"] != nil {
 						exitErr(jsonEncode(spec["error"]))
 					}
