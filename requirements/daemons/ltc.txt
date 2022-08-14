@@ -1,3 +1,3 @@
-https://github.com/bitcartcc/Electron-Cash/archive/b1eee7640778c7ce5e2b04e0a1d3a684d27793cf.zip#egg=electrum-ltc[crypto] # TODO: re-pin with upstream
+https://github.com/pooler/electrum-ltc/archive/73ba00d7dd87af5e63ab2a30617fae1b8d36d0c4.zip#egg=electrum-ltc[crypto]
 protobuf<4
 scrypt>=0.6.0

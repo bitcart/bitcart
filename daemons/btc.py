@@ -343,6 +343,10 @@ class BTCDaemon(BaseDaemon):
     def get_status_str(self, status):
         return self.electrum.invoices.pr_tooltips[status]
 
+    def get_tx_hashes_for_invoice(self, wallet, address):
+        invoice = wallet.get_request(address)
+        return wallet._is_onchain_invoice_paid(invoice)[2]
+
     def process_events(self, event, *args):
         """Override in your subclass if needed"""
         wallet = None
@@ -360,6 +364,7 @@ class BTCDaemon(BaseDaemon):
                 "address": str(address),
                 "status": status,
                 "status_str": self.get_status_str(status),
+                "tx_hashes": self.get_tx_hashes_for_invoice(wallet, address),
             }
         elif event == "verified_tx":
             data, wallet = self.process_verified_tx(args)
