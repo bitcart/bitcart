@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"reflect"
 	"strings"
 
 	"github.com/joho/godotenv"
@@ -145,7 +146,6 @@ func runCommand(c *cli.Context) (*jsonrpc.RPCResponse, map[string]interface{}, e
 }
 
 func main() {
-
 	app := cli.NewApp()
 	app.Name = "Bitcart CLI"
 	app.Version = Version
@@ -215,7 +215,7 @@ func main() {
 		},
 	}
 	app.BashComplete = func(c *cli.Context) {
-		if c.NArg() > 0 {
+		if c.NArg() > 0 && !reflect.DeepEqual(c.Args().Slice(), []string{"help"}) {
 			return
 		}
 		set := flag.NewFlagSet("app", 0)
