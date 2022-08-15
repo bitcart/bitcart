@@ -2,6 +2,31 @@
 
 ## Latest changes
 
+## 0.6.9.1
+
+### CLI improvements
+
+Our `bitcart-cli` have been improved greatly! You can now pass keyword arguments, i.e.
+
+```bash
+bitcart-cli payto address amount --feerate
+```
+
+Also, better output was added in some cases.
+
+Autocompletion is now available! Just press tab as usual, and you will be hinted the list of CLI commands supported
+
+Also, you can get full help on any command like so now:
+
+```bash
+bitcart-cli help payto
+```
+
+### Misc changes
+
+- Fixes for tor support in onedomain mode
+- Added new settings for admin and store to allow integration to Citadel: `BITCART_ADMIN_ONION_API_URL` and `BITCART_ADMIN_ONION_HOST`. This allows skipping reading the hostname file and using env var as a source of tor hostname
+
 ## 0.6.9.0
 
 ### Payouts support
