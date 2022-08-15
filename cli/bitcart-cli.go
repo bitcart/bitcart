@@ -111,11 +111,27 @@ func runCommand(c *cli.Context) (*jsonrpc.RPCResponse, map[string]interface{}, e
 	})
 	// some magic to make array with the last element being a dictionary with xpub in it
 	sl := args.Slice()[1:]
-	params := make([]interface{}, len(sl))
-	for i := range sl {
-		params[i] = sl[i]
+	var params []interface{}
+	keyParams := map[string]interface{}{"xpub": map[string]interface{}{"xpub": wallet, "contract": contract, "diskless": diskless}}
+	acceptFlags := true
+	i := 0
+	for i < len(sl) {
+		if sl[i] == "--" {
+			acceptFlags = false
+			i += 1
+		}
+		if strings.HasPrefix(sl[i], "--") && acceptFlags {
+			if i+1 >= len(sl) {
+				exitErr("Error: missing value for flag " + sl[i])
+			}
+			keyParams[sl[i][2:]] = sl[i+1]
+			i += 1
+		} else {
+			params = append(params, sl[i])
+		}
+		i += 1
 	}
-	params = append(params, map[string]map[string]interface{}{"xpub": {"xpub": wallet, "contract": contract, "diskless": diskless}})
+	params = append(params, keyParams)
 	// call RPC method
 	result, err := rpcClient.Call(args.Get(0), params)
 	if err != nil {
@@ -232,7 +248,12 @@ func main() {
 				}
 				exitErr(jsonEncode(result.Error))
 			} else {
-				smartPrint(jsonEncode(result.Result))
+				var v, ok = result.Result.(string)
+				if ok {
+					smartPrint(v)
+				} else {
+					smartPrint(jsonEncode(result.Result))
+				}
 				return nil
 			}
 		} else {

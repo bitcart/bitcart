@@ -1,6 +1,7 @@
 {
     "version": "4.3.0",
     "electrum_map": {
+        "Procedure not found": -32601,
         "wallet not loaded": -32000,
         "error loading wallet": -32000,
         "NotImplementedError": -32602,

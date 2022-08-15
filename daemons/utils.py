@@ -1,5 +1,6 @@
 import asyncio
 import dataclasses
+import inspect
 import json
 import logging
 import sys
@@ -209,3 +210,21 @@ def async_partial(async_fn, *wrap_args):
         return await async_fn(*wrap_args, *args, **kwargs)
 
     return wrapped
+
+
+def get_function_header(func, func_obj):
+    signature = inspect.signature(func_obj)
+    vals = list(signature.parameters.values())
+    found_idx = None
+    for idx, val in enumerate(vals):
+        if val.name == "wallet":
+            found_idx = idx
+            break
+    if found_idx is not None:
+        vals.pop(found_idx)
+    signature = inspect.Signature(parameters=vals, return_annotation=signature.return_annotation)
+    doc = inspect.getdoc(func_obj)
+    s = f"{func}{signature}"
+    if doc is not None:
+        s += f"\n\n{doc}"
+    return s

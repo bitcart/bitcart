@@ -1,3 +1,4 @@
+import argparse
 import asyncio
 import functools
 import inspect
@@ -9,7 +10,16 @@ from typing import Union
 from urllib.parse import urlparse
 
 from base import BaseDaemon
-from utils import JsonResponse, async_partial, cached, format_satoshis, get_exception_message, hide_logging_errors, rpc
+from utils import (
+    JsonResponse,
+    async_partial,
+    cached,
+    format_satoshis,
+    get_exception_message,
+    get_function_header,
+    hide_logging_errors,
+    rpc,
+)
 
 
 class BTCDaemon(BaseDaemon):
@@ -508,10 +518,44 @@ class BTCDaemon(BaseDaemon):
         return format_satoshis(delta.fee)
 
     @rpc
-    async def help(self, wallet=None):
-        data = await self.create_commands(config=self.electrum_config).help()
-        data.extend(list(self.supported_methods.keys()))
-        return data
+    async def help(self, func=None, wallet=None):
+        commands = self.create_commands(config=self.electrum_config)
+        if func is None:
+            data = await commands.help()
+            data.extend(list(self.supported_methods.keys()))
+            return data
+        if func in self.supported_methods:
+            return get_function_header(func, self.supported_methods[func])
+        elif hasattr(commands, func):
+            # WARNING: dark magic of introspection
+            parser = self.electrum.commands.get_parser()
+            all_actions = parser._actions
+            sub_action = None
+            for action in all_actions:
+                if isinstance(action, argparse._SubParsersAction):
+                    sub_action = action
+                    break
+            command_parser = sub_action.choices[func]
+            group_global = command_parser._action_groups.pop()
+            require_path = func in ["restore", "create"]
+            command_parser._actions = list(
+                filter(
+                    lambda x: x not in group_global._group_actions
+                    and x.dest not in ["forget_config", "help"]
+                    and (x.dest != "wallet_path" or require_path),
+                    command_parser._actions,
+                )
+            )
+            command_parser._action_groups[1]._group_actions = list(
+                filter(
+                    lambda x: x.dest not in ["forget_config", "help"] and (x.dest != "wallet_path" or require_path),
+                    command_parser._action_groups[1]._group_actions,
+                )
+            )
+            command_parser.prog = f"bitcart-cli {func}"
+            return command_parser.format_help()
+        else:
+            raise Exception("Procedure not found")
 
 
 if __name__ == "__main__":
