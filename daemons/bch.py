@@ -122,11 +122,8 @@ class BCHDaemon(BTCDaemon):
         }
         return response
 
-    @rpc
-    async def help(self, wallet=None):
-        data = self.create_commands(config=self.electrum_config).help()
-        data.extend(list(self.supported_methods.keys()))
-        return data
+    async def get_commands_list(self, commands):
+        return commands.help()
 
 
 if __name__ == "__main__":

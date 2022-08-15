@@ -517,11 +517,14 @@ class BTCDaemon(BaseDaemon):
         delta = self.wallets[wallet]["wallet"].get_wallet_delta(tx)
         return format_satoshis(delta.fee)
 
+    async def get_commands_list(self, commands):
+        return await commands.help()
+
     @rpc
     async def help(self, func=None, wallet=None):
         commands = self.create_commands(config=self.electrum_config)
         if func is None:
-            data = await commands.help()
+            data = await self.get_commands_list(commands)
             data.extend(list(self.supported_methods.keys()))
             return data
         if func in self.supported_methods:
