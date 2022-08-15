@@ -73,11 +73,12 @@ async def create_wallet(client, user_id: str, token: str, **custom_attrs) -> dic
 async def create_store(
     client, user_id: str, token: str, custom_store_attrs: dict = {}, custom_wallet_attrs: dict = {}
 ) -> dict:
-    wallet = await create_wallet(client, user_id, token, **custom_wallet_attrs)
+    if "wallets" not in custom_store_attrs:
+        wallet = await create_wallet(client, user_id, token, **custom_wallet_attrs)
     name = f"dummy_store_{utils.common.unique_id()}"
     default_attrs = {
         "name": name,
-        "wallets": [wallet["id"]],
+        "wallets": [wallet["id"]] if "wallets" not in custom_store_attrs else [],
         "user_id": user_id,
     }
     return await create_model_obj(client, "stores", default_attrs, custom_store_attrs, token=token)

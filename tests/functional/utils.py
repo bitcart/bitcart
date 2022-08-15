@@ -12,4 +12,5 @@ def run_shell(args=[], timeout=30):
 def start_worker():
     env = os.environ.copy()
     env["TEST"] = "true"
+    env["BITCART_CRYPTOS"] = "bch"
     return subprocess.Popen(["python3", "worker.py"], env=env)

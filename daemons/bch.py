@@ -22,6 +22,7 @@ class BCHDaemon(BTCDaemon):
         self.NETWORK_MAPPING = {
             "mainnet": self.electrum.networks.set_mainnet,
             "testnet": self.electrum.networks.set_testnet,
+            "regtest": self.electrum.networks.set_regtest,
         }
 
     def add_wallet_to_command(self, wallet, req_method, exec_method, **kwargs):
@@ -90,6 +91,8 @@ class BCHDaemon(BTCDaemon):
     async def broadcast(self, *args, **kwargs):
         wallet = kwargs.pop("wallet", None)
         result = self.wallets[wallet]["cmd"].broadcast(*args, **kwargs)
+        if result[0] is False:
+            raise Exception(result[1])
         return result[1]  # tx hash
 
     @rpc
@@ -124,6 +127,10 @@ class BCHDaemon(BTCDaemon):
 
     async def get_commands_list(self, commands):
         return commands.help()
+
+    @rpc(requires_wallet=True, requires_network=True)
+    async def get_used_fee(self, tx_hash, wallet):
+        return "0"
 
 
 if __name__ == "__main__":

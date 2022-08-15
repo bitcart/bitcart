@@ -465,8 +465,8 @@ class BTCDaemon(BaseDaemon):
         return self.electrum.transaction.Transaction(raw_tx).txid()
 
     @rpc
-    def get_default_fee(self, tx: Union[str, int], wallet=None) -> float:
-        return format_satoshis(self.electrum_config.estimate_fee(self.get_tx_size(tx) if isinstance(tx, str) else tx))
+    def get_default_fee(self, tx: Union[str, dict, int], wallet=None) -> float:
+        return format_satoshis(self.electrum_config.estimate_fee(self.get_tx_size(tx) if isinstance(tx, (str, dict)) else tx))
 
     @rpc
     def recommended_fee(self, target, wallet=None) -> float:

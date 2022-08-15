@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -eu
 
-bitcoin_cli="bitcoin-cli -rpcuser=doggman -rpcpassword=donkey -rpcport=18554 -regtest"
+bitcoin_cli="/opt/bitcoin-cash-node/bin/bitcoin-cli -rpcwallet=test_wallet -rpcuser=doggman -rpcpassword=donkey -rpcport=18554 -regtest"
 
 function new_blocks()
 {

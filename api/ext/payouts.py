@@ -57,7 +57,7 @@ async def send_payout(payout, private_key=None):
     if coin.is_eth_based:
         raw_tx = await coin.server.signtransaction(raw_tx)
     else:
-        await coin.server.addtransaction(raw_tx)
+        pass  # await coin.server.addtransaction(raw_tx)
     tx_hash = await coin.server.broadcast(raw_tx)
     await payout.update(tx_hash=tx_hash).apply()
     await update_status(payout, PayoutStatus.SENT)

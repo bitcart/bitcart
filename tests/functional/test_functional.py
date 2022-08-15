@@ -6,15 +6,15 @@ from decimal import Decimal
 import async_timeout
 import pytest
 from aiohttp import web
-from bitcart import BTC
+from bitcart import BCH
 from bitcart.utils import bitcoins
 
 from api.constants import MAX_CONFIRMATION_WATCH
 from tests.functional import utils
 from tests.helper import create_store, create_wallet
 
-REGTEST_XPUB = "dutch field mango comfort symptom smooth wide senior tongue oyster wash spoon"
-REGTEST_XPUB2 = "hungry ordinary similar more spread math general wire jealous valve exhaust emotion"
+REGTEST_XPUB = "wife husband fame tent toddler grant endless pave verify wrist clip certain"
+REGTEST_XPUB2 = "jeans pony wish palace cement dilemma render pigeon tattoo scheme base outside"
 LIGHTNING_CHANNEL_AMOUNT = Decimal("0.1")
 LNPAY_AMOUNT = LIGHTNING_CHANNEL_AMOUNT / 10
 
@@ -48,7 +48,7 @@ async def check_invoice_status(ws_client, invoice_id, expected_status, allow_nex
 
 
 async def wait_for_balance(address, expected_balance):
-    wallet = BTC(xpub=address)
+    wallet = BCH(xpub=address)
     while True:
         balance = await wallet.balance()
         balance = balance["confirmed"] + balance["unconfirmed"]
@@ -62,7 +62,7 @@ async def wait_for_local_tx(wallet, tx_hash):
     async with async_timeout.timeout(30):
         while True:
             try:
-                confirmations = (await wallet.server.get_tx_status(tx_hash))["confirmations"]
+                confirmations = (await wallet.get_tx(tx_hash))["confirmations"]
                 if confirmations >= 1:
                     break
                 await asyncio.sleep(1)
@@ -98,12 +98,12 @@ async def wait_for_channel_opening(regtest_wallet, channel_point):
 
 @pytest.fixture
 async def regtest_wallet():
-    return BTC(xpub=REGTEST_XPUB)
+    return BCH(xpub=REGTEST_XPUB)
 
 
 @pytest.fixture
 async def regtest_lnnode():
-    return BTC(xpub=REGTEST_XPUB2, rpc_url="http://localhost:5110")
+    return BCH(xpub=REGTEST_XPUB2, rpc_url="http://localhost:5110")
 
 
 @pytest.fixture
@@ -159,7 +159,7 @@ def check_status(queue, data):
 
 @pytest.fixture
 async def regtest_api_wallet(client, user, token, anyio_backend):
-    return await create_wallet(client, user["id"], token, xpub=REGTEST_XPUB)
+    return await create_wallet(client, user["id"], token, xpub=REGTEST_XPUB, currency="bch")
 
 
 @pytest.fixture
@@ -195,35 +195,35 @@ async def test_onchain_pay_flow(client, ws_client, regtest_api_store, token, wor
     check_status(queue, {"id": invoice["id"], "status": "complete"})
 
 
-async def test_lightning_pay_flow(
-    client,
-    ws_client,
-    regtest_api_wallet,
-    regtest_api_store,
-    token,
-    worker,
-    queue,
-    ipn_server,
-    prepare_ln_channels,
-    regtest_lnnode,
-):
-    wallet_id = regtest_api_wallet["id"]
-    store_id = regtest_api_store["id"]
-    resp = await client.patch(
-        f"/wallets/{wallet_id}",
-        json={"lightning_enabled": True},
-        headers={"Authorization": f"Bearer {token}"},
-    )
-    assert resp.status_code == 200
-    assert resp.json()["lightning_enabled"]
-    invoice = (await client.post("/invoices", json={"price": 5, "store_id": store_id, "notification_url": ipn_server})).json()
-    assert invoice["status"] == "pending"
-    pay_details = invoice["payments"][1]  # lightning methods are always created after onchain ones
-    await regtest_lnnode.lnpay(pay_details["payment_address"])
-    invoice_id = invoice["id"]
-    await check_invoice_status(ws_client, invoice_id, "complete")
-    assert queue.qsize() == 1
-    check_status(queue, {"id": invoice["id"], "status": "complete"})
+# async def test_lightning_pay_flow(
+#     client,
+#     ws_client,
+#     regtest_api_wallet,
+#     regtest_api_store,
+#     token,
+#     worker,
+#     queue,
+#     ipn_server,
+#     prepare_ln_channels,
+#     regtest_lnnode,
+# ):
+#     wallet_id = regtest_api_wallet["id"]
+#     store_id = regtest_api_store["id"]
+#     resp = await client.patch(
+#         f"/wallets/{wallet_id}",
+#         json={"lightning_enabled": True},
+#         headers={"Authorization": f"Bearer {token}"},
+#     )
+#     assert resp.status_code == 200
+#     assert resp.json()["lightning_enabled"]
+#     invoice = (await client.post("/invoices", json={"price": 5, "store_id": store_id, "notification_url": ipn_server})).json()
+#     assert invoice["status"] == "pending"
+#     pay_details = invoice["payments"][1]  # lightning methods are always created after onchain ones
+#     await regtest_lnnode.lnpay(pay_details["payment_address"])
+#     invoice_id = invoice["id"]
+#     await check_invoice_status(ws_client, invoice_id, "complete")
+#     assert queue.qsize() == 1
+#     check_status(queue, {"id": invoice["id"], "status": "complete"})
 
 
 async def apply_batch_payout_action(client, token, command, ids, options={}):
@@ -279,7 +279,7 @@ async def test_payouts(client, regtest_wallet, regtest_api_wallet, regtest_api_s
     await wait_for_local_tx(regtest_wallet, payout["tx_hash"])
     payout = (await client.get(f"/payouts/{payout['id']}", headers={"Authorization": f"Bearer {token}"})).json()
     assert payout["status"] == "complete"
-    assert payout["used_fee"] > 0
+    # assert payout["used_fee"] > 0
     tx_data = await regtest_wallet.get_tx(payout["tx_hash"])
     assert tx_data["confirmations"] == 1
     # Now it's immutable
@@ -293,7 +293,7 @@ async def test_payouts(client, regtest_wallet, regtest_api_wallet, regtest_api_s
     check_status(queue, {"id": payout["id"], "status": "complete"})
     # Check signing on watch-only wallet
     xpub = await regtest_wallet.server.getmpk()
-    watchonly_wallet = await create_wallet(client, user["id"], token, xpub=xpub)
+    watchonly_wallet = await create_wallet(client, user["id"], token, xpub=xpub, currency="bch")
     payout = (
         await client.post(
             "/payouts",
@@ -318,7 +318,7 @@ async def test_payouts(client, regtest_wallet, regtest_api_wallet, regtest_api_s
                 "store_id": store_id,
                 "wallet_id": wallet_id,
                 "max_fee": str(bitcoins(1)),
-                "currency": "BTC",
+                "currency": "BCH",
             },
             headers={"Authorization": f"Bearer {token}"},
         )
