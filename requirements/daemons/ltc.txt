@@ -1,3 +1,3 @@
-https://github.com/pooler/electrum-ltc/archive/73ba00d7dd87af5e63ab2a30617fae1b8d36d0c4.zip#egg=electrum-ltc[crypto]
+https://github.com/pooler/electrum-ltc/archive/bd27ad9215ba1e98bc2974894e7dc33c2dee8e2b.zip#egg=electrum-ltc[crypto]
 protobuf<4
 scrypt>=0.6.0

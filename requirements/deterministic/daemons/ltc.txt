@@ -79,15 +79,15 @@ aiohttp==3.8.1 \
     --hash=sha256:fc5471e1a54de15ef71c1bc6ebe80d4dc681ea600e68bfd1cbce40427f0b7578
     # via
     #   aiohttp-socks
-    #   electrum
+    #   electrum-ltc
 aiohttp-socks==0.7.1 \
     --hash=sha256:2215cac4891ef3fa14b7d600ed343ed0f0a670c23b10e4142aa862b3db20341a \
     --hash=sha256:94bcff5ef73611c6c6231c2ffc1be4af1599abec90dbd2fdbbd63233ec2fb0ff
-    # via electrum
+    # via electrum-ltc
 aiorpcx==0.22.1 \
     --hash=sha256:6026f7bed3432e206589c94dcf599be8cd85b5736b118c7275845c1bd922a553 \
     --hash=sha256:e74f9fbed3fd21598e71fe05066618fc2c06feec504fe29490ddda05fdbdde62
-    # via electrum
+    # via electrum-ltc
 aiosignal==1.2.0 \
     --hash=sha256:26e62109036cd181df6e6ad646f91f0dcfd05fe16d0cb924138ff2ab75d64e3a \
     --hash=sha256:78ed67db6c7b7ced4f98e495e572106d5c432a93e1ddd1bf475e1dc05f5b7df2
@@ -104,16 +104,16 @@ attrs==21.4.0 \
     # via
     #   aiohttp
     #   aiohttp-socks
-    #   electrum
+    #   electrum-ltc
 bitstring==3.1.9 \
     --hash=sha256:0de167daa6a00c9386255a7cac931b45e6e24e0ad7ea64f1f92a64ac23ad4578 \
     --hash=sha256:a5848a3f63111785224dca8bb4c0a75b62ecdef56a042c8d6be74b16f7e860e7 \
     --hash=sha256:e3e340e58900a948787a05e8c08772f1ccbe133f6f41fe3f0fa19a18a22bbf4f
-    # via electrum
+    # via electrum-ltc
 certifi==2021.10.8 \
     --hash=sha256:78884e7c1d4b00ce3cea67b44566851c4343c120abd683433ce934a68ea58872 \
     --hash=sha256:d62a0163eb4c2344ac042ab2bdf75399a71a2d8c7d47eac2e2ee91b9d6339569
-    # via electrum
+    # via electrum-ltc
 cffi==1.15.0 \
     --hash=sha256:00c878c90cb53ccfaae6b8bc18ad05d2036553e6d9d1d9dbcf323bbe83854ca3 \
     --hash=sha256:0104fb5ae2391d46a4cb082abdd5c69ea4eab79d8d44eaaf79f1b1fd806ee4c2 \
@@ -191,13 +191,13 @@ cryptography==36.0.1 \
     --hash=sha256:e0344c14c9cb89e76eb6a060e67980c9e35b3f36691e15e1b7a9e58a0a6c6dc3 \
     --hash=sha256:ebc15b1c22e55c4d5566e3ca4db8689470a0ca2babef8e3a9ee057a8b82ce4b1 \
     --hash=sha256:ec63da4e7e4a5f924b90af42eddf20b698a70e58d86a72d943857c4c6045b3ee
-    # via electrum
+    # via electrum-ltc
 dnspython==2.2.0 \
     --hash=sha256:081649da27ced5e75709a1ee542136eaba9842a0fe4c03da4fb0a3d3ed1f3c44 \
     --hash=sha256:e79351e032d0b606b98d38a4b0e6e2275b31a5b85c873e587cc11b73aca026d6
-    # via electrum
-electrum @ https://github.com/pooler/electrum-ltc/archive/73ba00d7dd87af5e63ab2a30617fae1b8d36d0c4.zip \
-    --hash=sha256:0109bd4f4b4c7d97e2424641dd84c7d670ff80361cbf47b9f745c504ff387cf8
+    # via electrum-ltc
+electrum-ltc @ https://github.com/pooler/electrum-ltc/archive/bd27ad9215ba1e98bc2974894e7dc33c2dee8e2b.zip \
+    --hash=sha256:59e1761031c68f8febb2e49f52d77c68c24c8d3117b2b75cdf312fcd95ccd360
     # via -r requirements/daemons/ltc.txt
 frozenlist==1.3.0 \
     --hash=sha256:006d3595e7d4108a12025ddf415ae0f6c9e736e726a5db0183326fd191b14c5e \
@@ -362,7 +362,7 @@ protobuf==3.19.4 \
     --hash=sha256:f51d5a9f137f7a2cec2d326a74b6e3fc79d635d69ffe1b036d39fc7d75430d37
     # via
     #   -r requirements/daemons/ltc.txt
-    #   electrum
+    #   electrum-ltc
 pycparser==2.21 \
     --hash=sha256:8ee45429555515e1f6b185e78100aea234072576aa43ab53aefcae078162fca9 \
     --hash=sha256:e644fdec12f7872f86c58ff790da456218b10f863970249516d60a5eaca77206
@@ -378,10 +378,10 @@ python-socks[asyncio]==2.0.3 \
 qdarkstyle==3.0.3 \
     --hash=sha256:936d2d35b552f429803a985dbc17fc879a2f966faa9fbf8983896ccfa33e68f6 \
     --hash=sha256:ebccb129275dba637a112f0b7fa1040ea51e95938eb332a9f653d963c63aa915
-    # via electrum
+    # via electrum-ltc
 qrcode==7.3.1 \
     --hash=sha256:375a6ff240ca9bd41adc070428b5dfc1dcfbb0f2507f1ac848f6cded38956578
-    # via electrum
+    # via electrum-ltc
 qtpy==2.0.1 \
     --hash=sha256:adfd073ffbd2de81dc7aaa0b983499ef5c59c96adcfdcc9dea60d42ca885eb8f \
     --hash=sha256:d93f2c98e97387fcc9d623d509772af5b6c15ab9d8f9f4c5dfbad9a73ad34812
