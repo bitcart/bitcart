@@ -74,6 +74,9 @@ class BCHDaemon(BTCDaemon):
     def get_status_str(self, status):
         return self.electrum.paymentrequest.pr_tooltips[status]
 
+    def get_tx_hashes_for_invoice(self, wallet, address):
+        return wallet.get_payment_status(address, wallet.get_payment_request(address, self.electrum_config)["amount"])[2]
+
     def get_exception_message(self, e):
         return get_exception_message(e)
 
@@ -118,6 +121,9 @@ class BCHDaemon(BTCDaemon):
             "synchronized": not self.is_still_syncing(),
         }
         return response
+
+    async def get_commands_list(self, commands):
+        return commands.help()
 
 
 if __name__ == "__main__":

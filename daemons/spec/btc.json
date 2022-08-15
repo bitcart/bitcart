@@ -1,6 +1,7 @@
 {
     "version": "4.3.0",
     "electrum_map": {
+        "Procedure not found": -32601,
         "wallet not loaded": -32000,
         "should be a transaction hash": -32001,
         "No such mempool or blockchain transaction. Use gettransaction for wallet transactions.": -32002,

@@ -28,6 +28,7 @@ from utils import (
     JsonResponse,
     exception_retry_middleware,
     get_exception_message,
+    get_function_header,
     hide_logging_errors,
     load_json_dict,
     rpc,
@@ -485,6 +486,7 @@ class Wallet:
                     "address": req.id,
                     "status": req.status,
                     "status_str": req.status_str,
+                    "tx_hashes": [tx_hash],
                     "contract": contract,
                 },
                 wallet,
@@ -1050,8 +1052,13 @@ class ETHDaemon(BaseDaemon):
         return data
 
     @rpc
-    def help(self, wallet=None):
-        return list(self.supported_methods.keys())
+    def help(self, func=None, wallet=None):
+        if func is None:
+            return list(self.supported_methods.keys())
+        if func in self.supported_methods:
+            return get_function_header(func, self.supported_methods[func])
+        else:
+            raise Exception("Procedure not found")
 
     @rpc
     async def history(self, *args, **kwargs):
