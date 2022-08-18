@@ -20,14 +20,15 @@ import (
 var Version = "dev"
 var envFile = "../conf/.env"
 var COINS = map[string]string{
-	"btc":  "5000",
-	"ltc":  "5001",
-	"eth":  "5002",
-	"bsty": "5003",
-	"bch":  "5004",
-	"xrg":  "5005",
-	"bnb":  "5006",
-	"sbch": "5007",
+	"btc":   "5000",
+	"ltc":   "5001",
+	"eth":   "5002",
+	"bsty":  "5003",
+	"bch":   "5004",
+	"xrg":   "5005",
+	"bnb":   "5006",
+	"sbch":  "5007",
+	"matic": "5008",
 }
 
 func getSpec(client *http.Client, endpoint string, user string, password string) map[string]interface{} {

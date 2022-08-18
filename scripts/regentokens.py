@@ -6,9 +6,10 @@ import requests
 from bs4 import BeautifulSoup
 
 NAMES = {
-    "erc20": {"main_filters": {"slug": "ethereum"}},
+    "erc20": {"main_filters": {"platform.slug": "ethereum"}},
     "bep20": {"main_filters": {}, "contract_filters": {"contractPlatform": "BNB Smart Chain (BEP20)"}},
     "sep20": {},
+    "erc20matic": {"main_filters": {}, "contract_filters": {"contractPlatform": "Polygon"}},
 }
 API_URL = "https://coinmarketcap.com/tokens/views/all"
 SMARTBCH_URL = "https://www.marketcap.cash"
@@ -28,10 +29,10 @@ def get_next_data(resp):
 
 def get_token_address(slug, data, filters):
     if not filters:
-        return data["token_address"]
-    platforms = get_next_data(requests.get(f"https://coinmarketcap.com/currencies/{slug}"))["props"]["initialProps"][
-        "pageProps"
-    ]["info"]["platforms"]
+        return data["platform.token_address"]
+    platforms = get_next_data(requests.get(f"https://coinmarketcap.com/currencies/{slug}"))["props"]["pageProps"]["info"][
+        "platforms"
+    ]
     for platform in platforms:
         if platform.items() >= filters.items():
             return platform["contractAddress"]
@@ -40,11 +41,14 @@ def get_token_address(slug, data, filters):
 def fetch_popular_tokens(filters):
     page = requests.get(API_URL)
     data = get_next_data(page)
-    tokens = data["props"]["initialState"]["cryptocurrency"]["listingLatest"]["data"]
+    tokens = json.loads(data["props"]["initialState"])["cryptocurrency"]["listingLatest"]["data"]
+    keys = tokens[0]["keysArr"]
+    for idx in range(1, len(tokens)):
+        tokens[idx] = {key: tokens[idx][key_idx] for key_idx, key in enumerate(keys)}
     return {
-        token["symbol"]: get_token_address(token["slug"], token["platform"], filters.get("contract_filters", {}))
+        token["symbol"]: get_token_address(token["slug"], token, filters.get("contract_filters", {}))
         for token in tokens
-        if "platform" in token and token["platform"].items() >= filters["main_filters"].items()
+        if "keysArr" not in token and token.items() >= filters["main_filters"].items()
     }
 
 
@@ -55,7 +59,7 @@ def fetch_top50_smartbch():
     initial_tokens = data["props"]["pageProps"]["coins"]
     tokens = sorted(initial_tokens.items(), key=lambda x: x[1]["market_cap"], reverse=True)
     tokens = tokens[1 : SMARTBCH_NUMBER_TOKENS + 1]  # exclude BCH itself
-    return {token[0]: tokens_meta[token[0]]["address"] for token in tokens}
+    return {token[0]: tokens_meta[token[0]]["address"] for token in tokens if token[0] in tokens_meta}
 
 
 if len(sys.argv) != 2:

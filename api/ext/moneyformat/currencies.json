@@ -315,5 +315,10 @@
         "name": "Smart Bitcoin Cash",
         "divisibility": 8,
         "crypto": true
+    },
+    "MATIC": {
+        "name": "Polygon",
+        "divisibility": 8,
+        "crypto": true
     }
 }

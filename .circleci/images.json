@@ -58,6 +58,15 @@
             "requirements/daemons/sbch.txt"
         ]
     },
+    "bitcart-matic": {
+        "dockerfile": "matic.Dockerfile",
+        "files": [
+            "daemons/base.py",
+            "daemons/matic.py",
+            "requirements/base.txt",
+            "requirements/daemons/matic.txt"
+        ]
+    },
     "bitcart-xrg": {
         "dockerfile": "xrg.Dockerfile",
         "files": [
