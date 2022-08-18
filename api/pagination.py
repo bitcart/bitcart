@@ -10,6 +10,13 @@ from api import models, utils
 from api.db import db
 
 
+def get_all_columns_filter(model, text):
+    return [
+        getattr(model, m.key).cast(Text).op("~*")(text)  # NOTE: not cross-db, postgres case-insensitive regex
+        for m in model.__table__.columns
+    ]
+
+
 class Pagination:
     default_offset = 0
     default_limit = 5
@@ -77,16 +84,10 @@ class Pagination:
             column = getattr(self.model, search_filter, None)
             if column is not None:
                 queries.append(column.in_(value))
-        queries.append(
-            or_(
-                *(
-                    getattr(self.model, m.key)
-                    .cast(Text)
-                    .op("~*")(f"{self.query.text}")  # NOTE: not cross-db, postgres case-insensitive regex
-                    for m in self.model.__table__.columns
-                )
-            )
-        )
+        full_filters = get_all_columns_filter(self.model, self.query.text)
+        if self.model == models.Invoice:
+            full_filters.extend(get_all_columns_filter(models.PaymentMethod, self.query.text))
+        queries.append(or_(*full_filters))
         return and_(*queries)
 
     async def paginate(
@@ -122,6 +123,8 @@ class Pagination:
     def get_base_query(self, model):
         self.model = model
         query = model.query
+        if model == models.Invoice:
+            query = query.select_from(models.Invoice.join(models.PaymentMethod))
         queries = self.search()
         query = query.where(queries) if queries != [] else query  # sqlalchemy core requires explicit checks
         return query
