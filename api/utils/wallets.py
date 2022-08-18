@@ -17,7 +17,7 @@ logger = get_logger(__name__)
 async def get_rate(wallet, currency, fallback_currency=None):
     try:
         coin = settings.settings.get_coin(wallet.currency, {"xpub": wallet.xpub, "contract": wallet.contract})
-        symbol = await coin.server.readcontract(wallet.contract, "symbol") if wallet.contract else wallet.currency
+        symbol = await get_wallet_symbol(wallet, coin)
         if symbol.lower() == currency.lower():
             return Decimal(1)
         rate = await coin.rate(currency)
@@ -81,3 +81,8 @@ async def get_divisibility(wallet, coin):
     if wallet.contract:  # pragma: no cover
         divisibility = min(MAX_CONTRACT_DIVISIBILITY, await coin.server.readcontract(wallet.contract, "decimals"))
     return divisibility
+
+
+async def get_wallet_symbol(wallet, coin=None):
+    coin = coin or settings.settings.get_coin(wallet.currency, {"xpub": wallet.xpub, "contract": wallet.contract})
+    return await coin.server.readcontract(wallet.contract, "symbol") if wallet.contract else wallet.currency

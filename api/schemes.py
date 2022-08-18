@@ -147,6 +147,7 @@ class StoreCheckoutSettings(BaseModel):
     use_html_templates: bool = False
     email_required: bool = True
     ask_address: bool = False
+    randomize_wallet_selection: bool = False
 
     @validator("recommended_fee_target_blocks")
     def validate_recommended_fee_target_blocks(cls, v):

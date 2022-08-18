@@ -1,3 +1,4 @@
+import secrets
 from collections import defaultdict
 from decimal import Decimal
 from operator import attrgetter
@@ -55,7 +56,7 @@ async def create_invoice(invoice: schemes.CreateInvoice, user: schemes.User):
 async def _create_payment_method(invoice, wallet, product, store, discounts, promocode, lightning=False):
     coin = settings.settings.get_coin(wallet.currency, {"xpub": wallet.xpub, "contract": wallet.contract})
     discount_id = None
-    symbol = await coin.server.readcontract(wallet.contract, "symbol") if wallet.contract else wallet.currency
+    symbol = await utils.wallets.get_wallet_symbol(wallet, coin)
     divisibility = await utils.wallets.get_divisibility(wallet, coin)
     rate = await utils.wallets.get_rate(wallet, invoice.currency, store.default_currency)
     price = invoice.price
@@ -127,16 +128,32 @@ async def create_payment_method(invoice, wallet, product, store, discounts, prom
     return method
 
 
-async def update_invoice_payments(invoice, wallets, discounts, store, product, promocode):
+async def create_method_for_wallet(invoice, wallet, discounts, store, product, promocode):
+    try:
+        await create_payment_method(invoice, wallet, product, store, discounts, promocode)
+    except Exception as e:
+        logger.error(
+            f"Invoice {invoice.id}: failed creating payment method {wallet.currency.upper()}:\n{get_exception_message(e)}"
+        )
+
+
+async def update_invoice_payments(invoice, wallets_ids, discounts, store, product, promocode):
     logger.info(f"Started adding invoice payments for invoice {invoice.id}")
-    for wallet_id in wallets:
-        wallet = await models.Wallet.get(wallet_id)
-        try:
-            await create_payment_method(invoice, wallet, product, store, discounts, promocode)
-        except Exception as e:
-            logger.error(
-                f"Invoice {invoice.id}: failed creating payment method {wallet.currency.upper()}:\n{get_exception_message(e)}"
-            )
+    wallets = await models.Wallet.query.where(models.Wallet.id.in_(wallets_ids)).gino.all()
+    randomize_selection = store.checkout_settings.randomize_wallet_selection
+    if randomize_selection:
+        symbols = defaultdict(list)
+        for wallet in wallets:
+            if wallet.label:
+                continue
+            symbol = await utils.wallets.get_wallet_symbol(wallet)
+            symbols[symbol].append(wallet)
+        for symbol in symbols:
+            wallet = secrets.choice(symbols[symbol])
+            await create_method_for_wallet(invoice, wallet, discounts, store, product, promocode)
+    else:
+        for wallet in wallets:
+            await create_method_for_wallet(invoice, wallet, discounts, store, product, promocode)
     await invoice.load_data()  # add payment methods with correct names and other related objects
     logger.info(f"Successfully added {len(invoice.payments)} payment methods to invoice {invoice.id}")
     await events.event_handler.publish("expired_task", {"id": invoice.id})
