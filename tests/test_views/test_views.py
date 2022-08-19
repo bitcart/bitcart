@@ -4,6 +4,7 @@ import asyncio
 import json as json_module
 import os
 import sys
+from collections import defaultdict
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
@@ -17,7 +18,7 @@ from api.constants import BACKUP_FREQUENCIES, BACKUP_PROVIDERS, DOCKER_REPO_URL,
 from api.ext import tor as tor_ext
 from api.invoices import InvoiceStatus
 from tests.fixtures import static_data
-from tests.helper import create_invoice, create_product, create_token, create_user, create_wallet, enabled_logs
+from tests.helper import create_invoice, create_product, create_store, create_token, create_user, create_wallet, enabled_logs
 
 if TYPE_CHECKING:
     from httpx import AsyncClient as TestClient
@@ -1346,3 +1347,32 @@ async def test_syncinfo(client: TestClient, token, mocker):
     data = (await client.get("/manage/syncinfo", headers={"Authorization": f"Bearer {token}"})).json()
     item = find_element(data, "BTC")
     assert item["running"] is False
+
+
+async def test_create_invoice_randomize_wallets(client: TestClient, token, user):
+    wallets = [await create_wallet(client, user["id"], token, xpub=xpub) for xpub in static_data.RANDOMIZE_TEST_XPUBS]
+    store = await create_store(
+        client, user["id"], token, custom_store_attrs={"wallets": list(map(lambda x: x["id"], wallets))}
+    )
+    invoice = await create_invoice(client, user["id"], token, store_id=store["id"])
+    payments = invoice["payments"]
+    idx = 1
+    for payment in payments:
+        assert payment["name"] == f"BTC ({idx})"
+        idx += 1
+    await client.patch(
+        f"/stores/{store['id']}/checkout_settings",
+        json={"randomize_wallet_selection": True},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    invoice = await create_invoice(client, user["id"], token, store_id=store["id"])
+    assert len(invoice["payments"]) == 1
+    assert invoice["payments"][0]["name"] == "BTC"
+    is_mine_ok = defaultdict(bool)
+    while True:
+        invoice = await create_invoice(client, user["id"], token, store_id=store["id"])
+        address = invoice["payments"][0]["payment_address"]
+        for wallet, xpub in enumerate(static_data.RANDOMIZE_TEST_XPUBS):
+            is_mine_ok[wallet] |= await BTC(xpub=xpub).server.ismine(address)
+        if all(is_mine_ok.values()):
+            break

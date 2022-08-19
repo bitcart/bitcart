@@ -144,8 +144,6 @@ async def update_invoice_payments(invoice, wallets_ids, discounts, store, produc
     if randomize_selection:
         symbols = defaultdict(list)
         for wallet in wallets:
-            if wallet.label:
-                continue
             symbol = await utils.wallets.get_wallet_symbol(wallet)
             symbols[symbol].append(wallet)
         for symbol in symbols:
