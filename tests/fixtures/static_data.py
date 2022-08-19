@@ -32,3 +32,8 @@ FALLBACK_SERVER_SETTINGS = {
     },
 }
 FILE_UPLOAD_ENDPOINTS = ["products"]
+RANDOMIZE_TEST_XPUBS = [
+    "vpub5UTue2Xx7vCNGkzLFxxyNLhH7obqaxRTE2jTUeBVN9jWsP5yz7S2yJj8t3gYK8XwGeG3sdzX2fmujuHDczzVYYw6HQB9vb6DhRfHyZke2fh",
+    "vpub5URyd4soCW3dhKAPvmb6FEh8m44Q62KnzFe3UHCge6iZVrZ67aDb7JQ8QXcR9vP9qaCkXsQNfHzzqA2S2xvKfzyKSfioVtNQChfxjuPdxAt",
+    "vpub5ULfj4W1KaBeQvQ3eRkhbxjcaiXnsinuqTnGfpFbb5RBc7gtUHhmYwojWMUwEuhAECGcrR75eqMWdB6jmh3HZGqBkFPgiT4KnCHiF9w3CE8",
+]
