@@ -557,6 +557,8 @@ class CreatePayout(CreatedMixin):
 
 class Payout(CreatePayout):
     id: Optional[str]
+    store_id: Optional[str]
+    wallet_id: Optional[str]
     user_id: str
     currency: str = "USD"
     tx_hash: Optional[str] = None
