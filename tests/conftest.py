@@ -23,6 +23,7 @@ def anyio_backend():
 
 @pytest.fixture
 def app():
+    os.environ["BITCART_CRYPTOS"] = "btc"  # to avoid mixing environments
     app = get_app()
     token = settings.settings_ctx.set(app.settings)
     yield app

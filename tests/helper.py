@@ -107,6 +107,19 @@ async def create_notification(client, user_id: str, token: str, **custom_attrs) 
     return await create_model_obj(client, "notifications", default_attrs, custom_attrs, token=token)
 
 
+async def create_payout(
+    client, user_id: str, token: str, custom_payout_attrs: dict = {}, custom_store_attrs: dict = {}
+) -> dict:
+    store = await create_store(client, user_id, token, **custom_store_attrs)
+    default_attrs = {
+        "amount": 5,
+        "destination": static_data.PAYOUT_DESTINATION,
+        "store_id": store["id"],
+        "wallet_id": store["wallets"][0],
+    }
+    return await create_model_obj(client, "payouts", default_attrs, custom_payout_attrs, token=token)
+
+
 async def create_model_obj(client, endpoint, default_attrs, custom_attrs={}, token: str = None):
     attrs = {**default_attrs, **custom_attrs}
     headers = {"Authorization": f"Bearer {token}"} if token else {}

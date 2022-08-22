@@ -11,6 +11,7 @@ utils.routing.ModelView.register(
     models.Payout,
     schemes.Payout,
     schemes.CreatePayout,
+    schemes.DisplayPayout,
     custom_methods={
         "post": crud.payouts.create_payout,
         "batch_action": crud.payouts.batch_payout_action,

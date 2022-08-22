@@ -390,6 +390,9 @@ async def test_policies(client: TestClient, token: str):
         "disable_registration": False,
         "discourage_index": False,
         "check_updates": True,
+        "explorer_urls": {
+            "btc": static_data.DEFAULT_EXPLORER,
+        },
     }
     assert (await client.post("/manage/policies")).status_code == 401
     resp = await client.post(
@@ -403,6 +406,9 @@ async def test_policies(client: TestClient, token: str):
         "disable_registration": True,
         "discourage_index": False,
         "check_updates": True,
+        "explorer_urls": {
+            "btc": static_data.DEFAULT_EXPLORER,
+        },
     }
     assert (await client.post("/users", json=static_data.POLICY_USER)).status_code == 422  # registration is off
     # Test for loading data from db instead of loading scheme's defaults
@@ -411,6 +417,9 @@ async def test_policies(client: TestClient, token: str):
         "disable_registration": True,
         "discourage_index": False,
         "check_updates": True,
+        "explorer_urls": {
+            "btc": static_data.DEFAULT_EXPLORER,
+        },
     }
     resp = await client.post(
         "/manage/policies",
@@ -423,6 +432,9 @@ async def test_policies(client: TestClient, token: str):
         "disable_registration": False,
         "discourage_index": False,
         "check_updates": True,
+        "explorer_urls": {
+            "btc": static_data.DEFAULT_EXPLORER,
+        },
     }
     assert (await client.post("/users", json=static_data.POLICY_USER)).status_code == 200  # registration is on again
     resp = await client.get("/manage/stores")
@@ -1376,3 +1388,11 @@ async def test_create_invoice_randomize_wallets(client: TestClient, token, user)
             is_mine_ok[wallet] |= await BTC(xpub=xpub).server.ismine(address)
         if all(is_mine_ok.values()):
             break
+
+
+async def test_get_default_explorer(client: TestClient):
+    assert (await client.get("/cryptos/explorer/test")).status_code == 422
+    resp = await client.get("/cryptos/explorer/btc")
+    assert resp.status_code == 200
+    assert resp.json() == static_data.DEFAULT_EXPLORER
+    assert (await client.get("/cryptos/explorer/BTC")).json() == resp.json()

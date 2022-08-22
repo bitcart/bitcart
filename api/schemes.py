@@ -417,6 +417,18 @@ class Policy(BaseModel):
     discourage_index: bool = False
     check_updates: bool = True
     allow_anonymous_configurator: bool = True
+    explorer_urls: Dict[str, str] = {}
+
+    @validator("explorer_urls", pre=True, always=True)
+    def set_explorer_urls(cls, v):
+        from api import settings
+
+        if not v:
+            v = {}
+        for key in settings.settings.cryptos:
+            if v.get(key) is None:
+                v[key] = settings.settings.get_default_explorer(key)
+        return v
 
 
 class GlobalStorePolicy(BaseModel):
@@ -570,3 +582,7 @@ class Payout(CreatePayout):
         if "amount" in values:
             values["amount"] = currency_table.format_decimal(values.get("currency"), values["amount"])
         return values
+
+
+class DisplayPayout(Payout):
+    wallet_currency: Optional[str]

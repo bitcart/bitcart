@@ -9,7 +9,7 @@ from parametrization import Parametrization
 
 from api.constants import BACKUP_FREQUENCIES, BACKUP_PROVIDERS, FEE_ETA_TARGETS, MAX_CONFIRMATION_WATCH
 from tests.fixtures.static_data import TEST_XPUB
-from tests.helper import create_invoice, create_product, create_store, create_token, create_user
+from tests.helper import create_invoice, create_payout, create_product, create_store, create_token, create_user
 
 if TYPE_CHECKING:
     from httpx import AsyncClient as TestClient
@@ -278,3 +278,12 @@ async def test_payouts_invalid_destination(client: TestClient, store, wallet, to
     )
     assert resp.status_code == 422
     assert resp.json()["detail"] == "Invalid destination address"
+
+
+async def test_payouts_wallet_deleted(client: TestClient, user, token):
+    payout = await create_payout(client, user["id"], token)
+    assert payout["wallet_currency"] == "btc"
+    wallet_id = payout["wallet_id"]
+    await client.delete(f"/wallets/{wallet_id}", headers={"Authorization": f"Bearer {token}"})
+    resp = await client.get(f"/payouts/{payout['id']}", headers={"Authorization": f"Bearer {token}"})
+    assert resp.json()["wallet_currency"] is None

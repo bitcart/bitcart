@@ -613,11 +613,23 @@ class Payout(BaseModel):
 
     async def validate(self, kwargs):
         await super().validate(kwargs)
-        if "destination" in kwargs:
-            wallet_currency = await select([Wallet.currency]).where(Wallet.id == self.wallet_id).gino.scalar()
+        if "destination" in kwargs or "wallet_id" in kwargs:
+            wallet_currency = (
+                await select([Wallet.currency]).where(Wallet.id == kwargs.get("wallet_id", self.wallet_id)).gino.scalar()
+            )
             coin = settings.settings.get_coin(wallet_currency)
-            if not await coin.server.validateaddress(kwargs["destination"]):
+            if not await coin.server.validateaddress(kwargs.get("destination", self.destination)):
                 raise HTTPException(422, "Invalid destination address")
+
+    async def add_related(self):
+        from api import utils
+
+        await super().add_related()
+        try:
+            wallet = await utils.database.get_object(Wallet, self.wallet_id)
+            self.wallet_currency = wallet.currency
+        except HTTPException:
+            self.wallet_currency = None
 
 
 all_tables = {

@@ -37,3 +37,5 @@ RANDOMIZE_TEST_XPUBS = [
     "vpub5URyd4soCW3dhKAPvmb6FEh8m44Q62KnzFe3UHCge6iZVrZ67aDb7JQ8QXcR9vP9qaCkXsQNfHzzqA2S2xvKfzyKSfioVtNQChfxjuPdxAt",
     "vpub5ULfj4W1KaBeQvQ3eRkhbxjcaiXnsinuqTnGfpFbb5RBc7gtUHhmYwojWMUwEuhAECGcrR75eqMWdB6jmh3HZGqBkFPgiT4KnCHiF9w3CE8",
 ]
+PAYOUT_DESTINATION = "tb1qz28nh6ukmyumqdvysnd726f2yw77yt5ch39aga"
+DEFAULT_EXPLORER = "https://blockstream.info/testnet/tx/{}"

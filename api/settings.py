@@ -21,6 +21,7 @@ from starlette.datastructures import CommaSeparatedStrings
 
 from api import db
 from api.constants import GIT_REPO_URL, VERSION, WEBSITE
+from api.ext.blockexplorer import EXPLORERS
 from api.ext.notifiers import parse_notifier_schema
 from api.ext.ssh import load_ssh_settings
 from api.logger import configure_logserver, get_exception_message, get_logger
@@ -176,6 +177,12 @@ class Settings(BaseSettings):
         if not xpub:
             return self.cryptos[coin]
         return COINS[coin.upper()](xpub=xpub, **self.crypto_settings[coin]["credentials"])
+
+    def get_default_explorer(self, coin):
+        coin = coin.lower()
+        if coin not in self.cryptos:
+            raise HTTPException(422, "Unsupported currency")
+        return EXPLORERS.get(coin, {}).get(self.crypto_settings[coin]["network"], "")
 
     async def create_db_engine(self):
         return await db.db.set_bind(self.connection_str, min_size=1, loop=asyncio.get_running_loop())

@@ -65,3 +65,8 @@ async def get_tokens(currency: str):
 @router.get("/tokens/{currency}/abi")
 async def get_tokens_abi(currency: str):
     return await settings.settings.get_coin(currency).server.getabi()
+
+
+@router.get("/explorer/{currency}")
+async def get_default_exporer(currency: str):
+    return settings.settings.get_default_explorer(currency)
