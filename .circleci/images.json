@@ -29,7 +29,9 @@
             "daemons/bch.py",
             "requirements/base.txt",
             "requirements/daemons/bch.txt"
-        ]
+        ],
+        "bases": "bch",
+        "name": "electron-cash"
     },
     "bitcart-eth": {
         "dockerfile": "eth.Dockerfile",
@@ -38,7 +40,8 @@
             "daemons/eth.py",
             "requirements/base.txt",
             "requirements/daemons/eth.txt"
-        ]
+        ],
+        "bases": "eth"
     },
     "bitcart-bnb": {
         "dockerfile": "bnb.Dockerfile",
@@ -47,7 +50,8 @@
             "daemons/bnb.py",
             "requirements/base.txt",
             "requirements/daemons/bnb.txt"
-        ]
+        ],
+        "bases": "eth"
     },
     "bitcart-sbch": {
         "dockerfile": "sbch.Dockerfile",
@@ -56,7 +60,8 @@
             "daemons/sbch.py",
             "requirements/base.txt",
             "requirements/daemons/sbch.txt"
-        ]
+        ],
+        "bases": "eth"
     },
     "bitcart-matic": {
         "dockerfile": "matic.Dockerfile",
@@ -65,7 +70,8 @@
             "daemons/matic.py",
             "requirements/base.txt",
             "requirements/daemons/matic.txt"
-        ]
+        ],
+        "bases": "eth"
     },
     "bitcart-xrg": {
         "dockerfile": "xrg.Dockerfile",
@@ -74,7 +80,9 @@
             "daemons/xrg.py",
             "requirements/base.txt",
             "requirements/daemons/xrg.txt"
-        ]
+        ],
+        "bases": "bch",
+        "name": "oregano"
     },
     "bitcart-ltc": {
         "dockerfile": "ltc.Dockerfile",
