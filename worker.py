@@ -71,7 +71,8 @@ if __name__ == "__main__":
         process = Process(target=start_logserver)
         process.start()
         wait_for_port()
-        signal.signal(signal.SIGINT, handler)
+        for signal_name in (signal.SIGINT, signal.SIGTERM):
+            signal.signal(signal_name, handler)
         # wait for db
         while True:
             if check_db():
