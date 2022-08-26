@@ -20,7 +20,6 @@ async def get_stats(user: models.User = Security(utils.authorization.AuthDepende
     result = await db.db.first(select(queries))
     response = {key: result[ind] for key, ind in output_formats}
     response.pop("users", None)
-    response["balance"] = await utils.wallets.get_wallet_balances(user)
     return response
 
 
@@ -29,7 +28,7 @@ async def get_me(user: models.User = Security(utils.authorization.AuthDependency
     return user
 
 
-@router.patch("/me/settings", response_model=schemes.User)
+@router.post("/me/settings", response_model=schemes.User)
 async def set_settings(
     settings: schemes.UserPreferences,
     user: models.User = Security(utils.authorization.AuthDependency(), scopes=["full_control"]),

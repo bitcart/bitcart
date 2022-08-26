@@ -209,7 +209,6 @@ async def test_user_stats(client, user, token, store):
             "wallets": 1,
         }.items()
     )
-    assert Decimal(data["balance"]) > 1
 
 
 @Parametrization.autodetect_parameters()
@@ -1184,8 +1183,8 @@ async def get_wallet_balances(client, token):
 
 async def test_users_display_balance(client: TestClient, token: str, wallet):
     assert Decimal(await get_wallet_balances(client, token)) > 1
-    assert (await client.patch("/users/me/settings")).status_code == 401
-    resp = await client.patch(
+    assert (await client.post("/users/me/settings")).status_code == 401
+    resp = await client.post(
         "/users/me/settings", json={"balance_currency": "BTC"}, headers={"Authorization": f"Bearer {token}"}
     )
     assert resp.status_code == 200
@@ -1193,7 +1192,7 @@ async def test_users_display_balance(client: TestClient, token: str, wallet):
     default_values = schemes.UserPreferences().dict()
     assert resp.json()["settings"] == {**default_values, "balance_currency": "BTC"}
     assert float(await get_wallet_balances(client, token)) == 0.01
-    resp = await client.patch(
+    resp = await client.post(
         "/users/me/settings",
         json={"balance_currency": "USD"},
         headers={"Authorization": f"Bearer {token}"},

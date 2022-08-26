@@ -11,7 +11,8 @@
         "email": "test@example.com",
         "is_superuser": false,
         "settings": {
-            "balance_currency": "USD"
+            "balance_currency": "USD",
+            "fetch_balance": true
         }
     },
     "count": 2

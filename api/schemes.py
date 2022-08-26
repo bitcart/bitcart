@@ -35,6 +35,7 @@ class CreatedMixin(BaseModel):
 
 class UserPreferences(BaseModel):
     balance_currency: str = "USD"
+    fetch_balance: bool = True
 
 
 class BaseUser(CreatedMixin):

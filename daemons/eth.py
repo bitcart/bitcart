@@ -593,6 +593,7 @@ class ETHDaemon(BaseDaemon):
         self.SERVER = self.env("SERVER", default=get_default_http_endpoint())
         max_sync_hours = self.env("MAX_SYNC_HOURS", cast=int, default=1)
         self.MAX_SYNC_BLOCKS = max_sync_hours * self.DEFAULT_MAX_SYNC_BLOCKS
+        self.NO_SYNC_WAIT = self.env("EXPERIMENTAL_NOSYNC", cast=bool, default=False)
 
     async def on_startup(self, app):
         await super().on_startup(app)
@@ -783,13 +784,15 @@ class ETHDaemon(BaseDaemon):
         wallet = error = None
         try:
             should_skip = req_method not in self.supported_methods or not self.supported_methods[req_method].requires_network
-            while not should_skip and not self.synchronized:  # wait for initial sync to fetch blocks
-                await asyncio.sleep(0.1)
+            if not self.NO_SYNC_WAIT:
+                while not should_skip and not self.synchronized:  # wait for initial sync to fetch blocks
+                    await asyncio.sleep(0.1)
             wallet = await self.load_wallet(xpub, contract, diskless=diskless)
             if should_skip:
                 return wallet, error
-            while await self.is_still_syncing(wallet):
-                await asyncio.sleep(0.1)
+            if not self.NO_SYNC_WAIT:
+                while await self.is_still_syncing(wallet):
+                    await asyncio.sleep(0.1)
         except Exception as e:
             if self.VERBOSE:
                 print(traceback.format_exc())

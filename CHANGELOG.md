@@ -2,6 +2,34 @@
 
 ## Latest changes
 
+## 0.6.10.0
+
+### Block explorer support
+
+You can now instantly view tx hashes of your payouts (and invoices in the future, too) via block explorers.
+
+BitcartCC provides a list of sane defaults, but you can easily customize for your own
+
+### Randomize wallets used setting
+
+For better privacy, UX and funds distribution, if you have multiple wallets of same currency connected, you can now enable a setting, and in invoices only one random wallet will be picked, not each of them
+
+### Allow searching by payment methods
+
+Ever needed to search by address of your invoice? It is now possible!
+
+### Polygon (MATIC) support
+
+Polygon is now supported
+
+### CRITICAL: fixed exchange rate issue
+
+Exchange rate issue introduced in 0.6.8.0 release series is finally fixed. Thanks to everyone who helped to coordinate a fix!
+
+### Drop arm32 support
+
+We no longer build arm32 images. You can build them from source if you still use arm32
+
 ## 0.6.9.1
 
 ### CLI improvements
