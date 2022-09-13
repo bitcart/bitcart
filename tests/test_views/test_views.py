@@ -392,6 +392,7 @@ async def test_policies(client: TestClient, token: str):
         "explorer_urls": {
             "btc": static_data.DEFAULT_EXPLORER,
         },
+        "rpc_urls": {},
     }
     assert (await client.post("/manage/policies")).status_code == 401
     resp = await client.post(
@@ -408,6 +409,7 @@ async def test_policies(client: TestClient, token: str):
         "explorer_urls": {
             "btc": static_data.DEFAULT_EXPLORER,
         },
+        "rpc_urls": {},
     }
     assert (await client.post("/users", json=static_data.POLICY_USER)).status_code == 422  # registration is off
     # Test for loading data from db instead of loading scheme's defaults
@@ -419,6 +421,7 @@ async def test_policies(client: TestClient, token: str):
         "explorer_urls": {
             "btc": static_data.DEFAULT_EXPLORER,
         },
+        "rpc_urls": {},
     }
     resp = await client.post(
         "/manage/policies",
@@ -434,6 +437,7 @@ async def test_policies(client: TestClient, token: str):
         "explorer_urls": {
             "btc": static_data.DEFAULT_EXPLORER,
         },
+        "rpc_urls": {},
     }
     assert (await client.post("/users", json=static_data.POLICY_USER)).status_code == 200  # registration is on again
     resp = await client.get("/manage/stores")
@@ -1395,3 +1399,11 @@ async def test_get_default_explorer(client: TestClient):
     assert resp.status_code == 200
     assert resp.json() == static_data.DEFAULT_EXPLORER
     assert (await client.get("/cryptos/explorer/BTC")).json() == resp.json()
+
+
+async def test_get_default_rpc(client: TestClient):
+    assert (await client.get("/cryptos/rpc/test")).status_code == 422
+    resp = await client.get("/cryptos/rpc/btc")
+    assert resp.status_code == 200
+    assert resp.json() == ""
+    assert (await client.get("/cryptos/rpc/BTC")).json() == resp.json()

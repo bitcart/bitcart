@@ -1,0 +1,21 @@
+{
+    "eth": {
+        "mainnet": "https://mainnet.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161",
+        "kovan": "https://kovan.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161",
+        "goerli": "https://goerli.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161",
+        "rinkeby": "https://rinkeby.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161",
+        "ropsten": "https://ropsten.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161",
+        "sepolia": "https://sepolia.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161"
+    },
+    "bnb": {
+        "mainnet": "https://bsc-dataseed.binance.org",
+        "testnet": "https://data-seed-prebsc-1-s1.binance.org:8545"
+    },
+    "sbch": {
+        "mainnet": "https://smartbch.fountainhead.cash/mainnet"
+    },
+    "matic": {
+        "mainnet": "https://polygon-rpc.com",
+        "testnet": "https://matic-mumbai.chainstacklabs.com"
+    }
+}

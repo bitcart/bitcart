@@ -419,6 +419,7 @@ class Policy(BaseModel):
     check_updates: bool = True
     allow_anonymous_configurator: bool = True
     explorer_urls: Dict[str, str] = {}
+    rpc_urls: Dict[str, str] = {}
 
     @validator("explorer_urls", pre=True, always=True)
     def set_explorer_urls(cls, v):
@@ -429,6 +430,19 @@ class Policy(BaseModel):
         for key in settings.settings.cryptos:
             if v.get(key) is None:
                 v[key] = settings.settings.get_default_explorer(key)
+        return v
+
+    @validator("rpc_urls", pre=True, always=True)  # pragma: no cover
+    def set_rpc_urls(cls, v):
+        from api import settings
+
+        if not v:
+            v = {}
+        for key in settings.settings.cryptos:
+            if not settings.settings.cryptos[key].is_eth_based:
+                continue
+            if v.get(key) is None:
+                v[key] = settings.settings.get_default_rpc(key)
         return v
 
 

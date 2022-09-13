@@ -70,3 +70,8 @@ async def get_tokens_abi(currency: str):
 @router.get("/explorer/{currency}")
 async def get_default_exporer(currency: str):
     return settings.settings.get_default_explorer(currency)
+
+
+@router.get("/rpc/{currency}")
+async def get_default_rpc(currency: str):
+    return settings.settings.get_default_rpc(currency)

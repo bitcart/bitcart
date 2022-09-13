@@ -23,6 +23,7 @@ from api import db
 from api.constants import GIT_REPO_URL, VERSION, WEBSITE
 from api.ext.blockexplorer import EXPLORERS
 from api.ext.notifiers import parse_notifier_schema
+from api.ext.rpc import RPC
 from api.ext.ssh import load_ssh_settings
 from api.logger import configure_logserver, get_exception_message, get_logger
 from api.schemes import SSHSettings
@@ -183,6 +184,14 @@ class Settings(BaseSettings):
         if coin not in self.cryptos:
             raise HTTPException(422, "Unsupported currency")
         return EXPLORERS.get(coin, {}).get(self.crypto_settings[coin]["network"], "")
+
+    def get_default_rpc(self, coin):
+        coin = coin.lower()
+        if coin not in self.cryptos:
+            raise HTTPException(422, "Unsupported currency")
+        if not self.cryptos[coin].is_eth_based:
+            return ""
+        return RPC.get(coin, {}).get(self.crypto_settings[coin]["network"], "")
 
     async def create_db_engine(self):
         return await db.db.set_bind(self.connection_str, min_size=1, loop=asyncio.get_running_loop())
