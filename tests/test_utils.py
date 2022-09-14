@@ -8,9 +8,9 @@ from datetime import timedelta
 from decimal import Decimal
 
 import pytest
-from aioredis.client import PubSub
 from bitcart.errors import BaseError as BitcartBaseError
 from notifiers.exceptions import BadArguments
+from redis.asyncio.client import PubSub
 
 from api import exceptions, models, schemes, settings, utils
 from tests.helper import create_notification, create_store

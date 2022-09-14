@@ -1,6 +1,5 @@
 -r base.txt
 aiofiles
-aioredis
 alembic
 bitcart
 email-validator<1.2.0
@@ -16,4 +15,5 @@ psycopg2-binary
 python-dateutil
 python-dotenv
 python-multipart
+redis
 uvicorn[standard]

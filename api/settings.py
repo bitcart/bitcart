@@ -10,12 +10,12 @@ from contextlib import asynccontextmanager
 from contextvars import ContextVar
 from typing import Dict
 
-import aioredis
 from bitcart import COINS, APIManager
 from bitcart.coin import Coin
 from fastapi import HTTPException
 from notifiers import all_providers, get_notifier
 from pydantic import BaseSettings, Field, validator
+from redis import asyncio as aioredis
 from starlette.config import Config
 from starlette.datastructures import CommaSeparatedStrings
 
