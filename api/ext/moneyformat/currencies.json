@@ -320,5 +320,10 @@
         "name": "Polygon",
         "divisibility": 8,
         "crypto": true
+    },
+    "TRX": {
+        "name": "Tron",
+        "divisibility": 6,
+        "crypto": true
     }
 }

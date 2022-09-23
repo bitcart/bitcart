@@ -1,0 +1,11 @@
+{
+    "electrum_map": {
+        "java.lang.NullPointerException": -32013
+    },
+    "exceptions": {
+        "-32013": {
+            "exc_name": "UnexpectedFormatError",
+            "docstring": "Unexpected params passed"
+        }
+    }
+}

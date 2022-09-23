@@ -10,6 +10,7 @@ NAMES = {
     "bep20": {"main_filters": {}, "contract_filters": {"contractPlatform": "BNB Smart Chain (BEP20)"}},
     "sep20": {},
     "erc20matic": {"main_filters": {}, "contract_filters": {"contractPlatform": "Polygon"}},
+    "trc20": {"main_filters": {}, "contract_filters": {"contractPlatform": "Tron20"}},
 }
 API_URL = "https://coinmarketcap.com/tokens/views/all"
 SMARTBCH_URL = "https://www.marketcap.cash"

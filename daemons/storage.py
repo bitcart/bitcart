@@ -19,9 +19,13 @@ def standardize_path(path):
 
 
 class JSONEncoder(json.JSONEncoder):
+    def __init__(self, precision=18, **kwargs):
+        super().__init__(**kwargs)
+        self.precision = precision
+
     def default(self, obj):
         if isinstance(obj, Decimal):
-            return decimal_to_string(obj)
+            return decimal_to_string(obj, precision=self.precision)
         if hasattr(obj, "to_json") and callable(obj.to_json):
             return obj.to_json()
         return super().default(obj)

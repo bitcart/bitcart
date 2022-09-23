@@ -29,6 +29,7 @@ var COINS = map[string]string{
 	"bnb":   "5006",
 	"sbch":  "5007",
 	"matic": "5008",
+	"trx":   "5009",
 }
 
 func getSpec(client *http.Client, endpoint string, user string, password string) map[string]interface{} {
