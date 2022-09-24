@@ -26,6 +26,7 @@ from storage import decimal_to_string
 from utils import (
     CastingDataclass,
     JsonResponse,
+    async_partial,
     exception_retry_middleware,
     get_exception_message,
     get_function_header,
@@ -66,6 +67,109 @@ TX_DEFAULT_GAS = 21000
 PR_UNPAID = 0  # invoice amt not reached by txs in mempool+chain.
 PR_EXPIRED = 1  # invoice is unpaid and expiry time reached
 PR_PAID = 3  # paid and mined (1 conf).
+
+
+def get_block_number(self):
+    return self.web3.eth.block_number
+
+
+def is_connected(self):
+    return self.web3.isConnected()
+
+
+def get_gas_price(self):
+    return self.web3.eth.gas_price
+
+
+def eth_syncing(self):
+    return self.web3.eth.syncing
+
+
+def get_transaction(self, tx):
+    return self.web3.eth.get_transaction(tx)
+
+
+def get_tx_receipt(self, tx):
+    return self.web3.eth.get_transaction_receipt(tx)
+
+
+def eth_get_balance(web3, address):
+    return web3.eth.get_balance(address)
+
+
+def eth_get_block(self, block):
+    return self.web3.eth.get_block(block)
+
+
+async def eth_get_block_txes(self, block):
+    return (await self.get_block_safe(block, full_transactions=True))["transactions"]
+
+
+def eth_chain_id(self):
+    return self.web3.eth.chain_id
+
+
+def is_address(address):
+    return Web3.isAddress(address) or Web3.isChecksumAddress(address)
+
+
+def normalize_address(address):
+    return Web3.toChecksumAddress(address)
+
+
+def get_peer_list(self):
+    return self.web3.geth.admin.peers()
+
+
+async def get_payment_uri(self, req):
+    chain_id = await eth_chain_id(self)
+    amount_wei = to_wei(req.amount, self.divisibility)
+    if self.contract:
+        return f"ethereum:{self.contract.address}@{chain_id}/transfer?address={req.address}&uint256={amount_wei}"
+    return f"ethereum:{req.address}@{chain_id}?value={amount_wei}"
+
+
+def load_account_from_key(self):
+    self.account = None
+    try:
+        self.account = Account.from_mnemonic(self.key)
+        self.seed = self.key
+    except Exception:
+        try:
+            self.account = Account.from_key(self.key)
+        except Exception:
+            try:
+                self.public_key = PublicKey.from_compressed_bytes(Web3.toBytes(hexstr=self.key))
+                self.address = self.public_key.to_checksum_address()
+            except Exception:
+                if not is_address(self.key):
+                    raise Exception("Error loading wallet: invalid address")
+                self.address = normalize_address(self.key)
+    if self.account:
+        self.address = self.account.address
+        self.private_key = self.account.key.hex()
+        self.public_key = PublicKey.from_private(PrivateKey(Web3.toBytes(hexstr=self.private_key)))
+    if self.public_key:
+        self.public_key = Web3.toHex(self.public_key.to_compressed_bytes())
+
+
+def keystore_add_privkey(self, privkey):
+    try:
+        account = Account.from_key(privkey)
+    except Exception:
+        raise Exception("Invalid key provided")
+    if account.address != self.address:
+        raise Exception("Invalid private key imported: address mismatch")
+    self.private_key = privkey
+    self.account = account
+
+
+async def eth_process_tx_data(self, data):
+    return Transaction(str(data["hash"].hex()), data["to"], data["value"])
+
+
+def get_tx_hash(tx_data):
+    return tx_data["hash"].hex()
 
 
 pr_tooltips = {
@@ -123,10 +227,6 @@ def str_to_bool(s):
     return False
 
 
-def is_address(address):
-    return Web3.isAddress(address) or Web3.isChecksumAddress(address)
-
-
 class JSONEncoder(StorageJSONEncoder):
     def default(self, obj):
         if isinstance(obj, AttributeDict):
@@ -137,7 +237,7 @@ class JSONEncoder(StorageJSONEncoder):
 
 
 def to_dict(obj):
-    return json.loads(json.dumps(obj, cls=JSONEncoder))
+    return json.loads(JSONEncoder(precision=daemon.DIVISIBILITY).encode(obj))
 
 
 def get_exception_traceback(exc):
@@ -151,16 +251,20 @@ def get_wallet_key(xpub, contract=None):
     return key
 
 
-def from_wei(value: int, precision=18) -> Decimal:
+def from_wei(value: int, precision=None) -> Decimal:
+    if precision is None:
+        precision = daemon.DIVISIBILITY
     if value == 0:
         return Decimal(0)
     return Decimal(value) / Decimal(10**precision)
 
 
-def to_wei(value: Decimal, precision=18) -> int:
+def to_wei(value: Decimal, precision=None) -> int:
+    if precision is None:
+        precision = daemon.DIVISIBILITY
     if value == Decimal(0):
         return 0
-    return int(value * Decimal(10**precision))
+    return int(Decimal(value) * Decimal(10**precision))
 
 
 async def async_http_retry_request_middleware(make_request, w3):
@@ -172,6 +276,8 @@ class Transaction:
     hash: str
     to: str
     value: int
+    contract: str = None
+    divisibility: int = None
 
 
 @dataclass
@@ -191,43 +297,16 @@ class KeyStore:
         if not self.contract:
             return
         try:
-            self.contract = Web3.toChecksumAddress(self.contract)
+            self.contract = normalize_address(self.contract)
         except Exception:
             raise Exception("Error loading wallet: invalid address")
 
     def __post_init__(self):
         self.load_contract()
-        self.account = None
-        try:
-            self.account = Account.from_mnemonic(self.key)
-            self.seed = self.key
-        except Exception:
-            try:
-                self.account = Account.from_key(self.key)
-            except Exception:
-                try:
-                    self.public_key = PublicKey.from_compressed_bytes(Web3.toBytes(hexstr=self.key))
-                    self.address = self.public_key.to_checksum_address()
-                except Exception:
-                    if not is_address(self.key):
-                        raise Exception("Error loading wallet: invalid address")
-                    self.address = Web3.toChecksumAddress(self.key)
-        if self.account:
-            self.address = self.account.address
-            self.private_key = self.account.key.hex()
-            self.public_key = PublicKey.from_private(PrivateKey(Web3.toBytes(hexstr=self.private_key)))
-        if self.public_key:
-            self.public_key = Web3.toHex(self.public_key.to_compressed_bytes())
+        load_account_from_key(self)
 
     def add_privkey(self, privkey):
-        try:
-            account = Account.from_key(privkey)
-        except Exception:
-            raise Exception("Invalid key provided")
-        if account.address != self.address:
-            raise Exception("Invalid private key imported: address mismatch")
-        self.private_key = privkey
-        self.account = account
+        keystore_add_privkey(self, privkey)
 
     def has_seed(self):
         return bool(self.seed)
@@ -265,7 +344,7 @@ class Invoice(CastingDataclass, StoredObject):
 
 
 async def get_balance(web3, address):
-    return from_wei(await web3.eth.get_balance(address))
+    return from_wei(await eth_get_balance(web3, address))
 
 
 @dataclass
@@ -278,7 +357,7 @@ class Wallet:
     receive_requests: dict = field(default_factory=dict)
     contract: str = None
     symbol: str = None
-    divisibility: int = 18
+    divisibility: int = None
     _token_fetched = False
 
     latest_height = StoredDBProperty("latest_height", -1)
@@ -286,6 +365,8 @@ class Wallet:
     def __post_init__(self):
         if self.symbol is None:
             self.symbol = daemon.name
+        if self.divisibility is None:
+            self.divisibility = daemon.DIVISIBILITY
         self.keystore = KeyStore.load(self.db.get("keystore"))
         self.receive_requests = self.db.get_dict("payment_requests")
         self.used_amounts = self.db.get_dict("used_amounts")
@@ -304,7 +385,7 @@ class Wallet:
 
     async def start(self, blocks):
         if self.latest_height == -1:
-            self.latest_height = await self.web3.eth.block_number
+            self.latest_height = await get_block_number(self)
         if self.contract and not self._token_fetched:
             await self.fetch_token_info()
 
@@ -313,7 +394,7 @@ class Wallet:
         for block in blocks:
             for tx in block:
                 await process_transaction(tx)
-        current_height = await self.web3.eth.block_number
+        current_height = await get_block_number(self)
         if self.contract:
             # process token transactions
             await check_contract_logs(
@@ -377,7 +458,7 @@ class Wallet:
             amount=self.generate_unique_amount(amount),
             exp=expiration,
             id=secrets.token_urlsafe(),
-            height=await self.web3.eth.block_number,
+            height=await get_block_number(self),
         )
 
     def generate_unique_amount(self, amount: Decimal):
@@ -401,11 +482,7 @@ class Wallet:
         return req
 
     async def get_request_url(self, req):
-        chain_id = await self.web3.eth.chain_id
-        amount_wei = to_wei(req.amount, self.divisibility)
-        if self.contract:
-            return f"ethereum:{self.contract.address}@{chain_id}/transfer?address={req.address}&uint256={amount_wei}"
-        return f"ethereum:{req.address}@{chain_id}?value={amount_wei}"
+        return await get_payment_uri(self, req)
 
     async def export_request(self, req):
         d = {
@@ -421,11 +498,7 @@ class Wallet:
         if req.tx_hash:
             d["tx_hash"] = req.tx_hash
             d["contract"] = req.contract
-            d["confirmations"] = (
-                await self.web3.eth.block_number
-                - (await self.web3.eth.get_transaction_receipt(req.tx_hash))["blockNumber"]
-                + 1
-            )
+            d["confirmations"] = await get_block_number(self) - (await get_tx_receipt(self, req.tx_hash))["blockNumber"] + 1
         d["amount_wei"] = to_wei(req.amount, self.divisibility)
         d["address"] = req.address
         d["URI"] = await self.get_request_url(req)
@@ -497,26 +570,34 @@ class Wallet:
                 print(traceback.format_exc())
 
 
-async def process_transaction(tx, contract=None, divisibility=18):
+async def process_transaction(tx):
+    if tx.divisibility is None:
+        tx.divisibility = daemon.DIVISIBILITY
     to = tx.to
-    amount = from_wei(tx.value, divisibility)
+    amount = from_wei(tx.value, tx.divisibility)
     if to not in daemon.addresses:
         return
     for wallet in daemon.addresses[to]:
         wallet_contract = daemon.wallets[wallet].contract.address if daemon.wallets[wallet].contract else None
-        if contract != wallet_contract:
+        if tx.contract != wallet_contract:
             continue
         await daemon.trigger_event({"event": "new_transaction", "tx": tx.hash}, wallet)
         if amount in daemon.wallets[wallet].used_amounts:
-            daemon.loop.create_task(daemon.wallets[wallet].process_payment(wallet, amount, tx.hash, contract))
+            daemon.loop.create_task(daemon.wallets[wallet].process_payment(wallet, amount, tx.hash, tx.contract))
 
 
 async def check_contract_logs(contract, divisibility, from_block=None, to_block=None):
     try:
         for tx_data in await contract.events.Transfer.getLogs(fromBlock=from_block, toBlock=to_block):
             try:
-                tx = Transaction(str(tx_data["transactionHash"].hex()), tx_data["args"]["to"], tx_data["args"]["value"])
-                await process_transaction(tx, contract.address, divisibility)
+                tx = Transaction(
+                    str(tx_data["transactionHash"].hex()),
+                    tx_data["args"]["to"],
+                    tx_data["args"]["value"],
+                    contract.address,
+                    divisibility,
+                )
+                await process_transaction(tx)
             except Exception:
                 if daemon.VERBOSE:
                     print(f"Error processing transaction {tx_data['transactionHash'].hex()}:")
@@ -543,6 +624,7 @@ class ETHDaemon(BaseDaemon):
     }
     SKIP_NETWORK = ["getinfo", "exchange_rate", "list_currencies"]
 
+    DIVISIBILITY = 18
     VERSION = "4.3.0"  # version of electrum API with which we are "compatible"
     BLOCK_TIME = 5
     FX_FETCH_TIME = 150
@@ -556,6 +638,8 @@ class ETHDaemon(BaseDaemon):
     # Max number of decimal places to use for amounts generation
     AMOUNTGEN_DIVISIBILITY = 8
 
+    CONTRACT_TYPE = AsyncContract
+
     latest_height = StoredProperty("latest_height", -1)
 
     def __init__(self):
@@ -568,6 +652,18 @@ class ETHDaemon(BaseDaemon):
         self.config_path = os.path.join(self.get_datadir(), "config")
         self.config = ConfigDB(self.config_path)
         self.contract_heights = self.config.get_dict("contract_heights")
+        self.create_web3()
+        self.get_block_safe = exception_retry_middleware(async_partial(eth_get_block, self), (BlockNotFound,), self.VERBOSE)
+        # initialize wallet storages
+        self.wallets = {}
+        self.addresses = defaultdict(set)
+        self.wallets_updates = {}
+        # initialize not yet created network
+        self.running = True
+        self.loop = None
+        self.synchronized = False
+
+    def create_web3(self):
         self.web3 = Web3(
             Web3.AsyncHTTPProvider(self.SERVER, request_kwargs={"timeout": 5 * 60}),
             modules={
@@ -578,15 +674,6 @@ class ETHDaemon(BaseDaemon):
         )
         self.web3.middleware_onion.inject(async_geth_poa_middleware, layer=0)
         self.web3.middleware_onion.inject(async_http_retry_request_middleware, layer=0)
-        self.get_block_safe = exception_retry_middleware(self.web3.eth.get_block, (BlockNotFound,), self.VERBOSE)
-        # initialize wallet storages
-        self.wallets = {}
-        self.addresses = defaultdict(set)
-        self.wallets_updates = {}
-        # initialize not yet created network
-        self.running = True
-        self.loop = None
-        self.synchronized = False
 
     def load_env(self):
         super().load_env()
@@ -599,15 +686,18 @@ class ETHDaemon(BaseDaemon):
         await super().on_startup(app)
         self.loop = asyncio.get_event_loop()
         if self.latest_height == -1:
-            self.latest_height = await self.web3.eth.block_number
+            self.latest_height = await get_block_number(self)
         self.loop.create_task(self.process_pending())
         self.loop.create_task(self.fetch_exchange_rates())
+
+    def get_fx_contract(self, contract):
+        return contract.lower()
 
     async def get_rates(self, contract=None):
         url = (
             f"https://api.coingecko.com/api/v3/coins/{self.FIAT_NAME}?localization=false&sparkline=false"
             if not contract
-            else f"https://api.coingecko.com/api/v3/coins/{self.CONTRACT_FIAT_NAME}/contract/{contract.lower()}"
+            else f"https://api.coingecko.com/api/v3/coins/{self.CONTRACT_FIAT_NAME}/contract/{self.get_fx_contract(contract)}"
         )
         async with self.client_session.get(url) as response:
             got = await response.json()
@@ -630,16 +720,18 @@ class ETHDaemon(BaseDaemon):
         for block_number in range(start_height, end_height + 1):
             try:
                 await self.trigger_event({"event": "new_block", "height": block_number}, None)
-                block = (await self.get_block_safe(block_number, full_transactions=True))["transactions"]
+                block = await eth_get_block_txes(self, block_number)
                 transactions = []
                 for tx_data in block:
                     try:
-                        tx = Transaction(str(tx_data["hash"].hex()), tx_data["to"], tx_data["value"])
+                        tx = await eth_process_tx_data(self, tx_data)
+                        if tx is None:
+                            continue
                         transactions.append(tx)
                         await process_transaction(tx)
                     except Exception:
                         if self.VERBOSE:
-                            print(f"Error processing transaction {tx_data['hash'].hex()}:")
+                            print(f"Error processing transaction {get_tx_hash(tx_data)}:")
                             print(traceback.format_exc())
                 self.latest_blocks.append(transactions)
             except Exception:
@@ -650,7 +742,7 @@ class ETHDaemon(BaseDaemon):
     async def process_pending(self):
         while self.running:
             try:
-                current_height = await self.web3.eth.block_number
+                current_height = await get_block_number(self)
                 tasks = []
                 # process at max 300 blocks since last processed block, fetched by chunks
                 for block_number in range(
@@ -673,24 +765,24 @@ class ETHDaemon(BaseDaemon):
     async def add_contract(self, contract, wallet):
         if not contract:
             return
-        contract = Web3.toChecksumAddress(contract)
+        contract = normalize_address(contract)
         if contract in self.contracts:
             self.wallets[wallet].contract = self.contracts[contract]
             return
         if contract not in self.contract_heights:
-            self.contract_heights[contract] = await self.web3.eth.block_number
+            self.contract_heights[contract] = await get_block_number(self)
         self.contracts[contract] = await self.start_contract_listening(contract)
         self.wallets[wallet].contract = self.contracts[contract]
         await self.wallets[wallet].fetch_token_info()
         self.loop.create_task(self.fetch_exchange_rates(self.wallets[wallet].symbol, contract))
 
     async def start_contract_listening(self, contract):
-        contract_obj = self.create_web3_contract(contract)
+        contract_obj = await self.create_web3_contract(contract)
         divisibility = await self.readcontract(contract_obj, "decimals")
         self.loop.create_task(self.check_contracts(contract_obj, divisibility))
         return contract_obj
 
-    def create_web3_contract(self, contract):
+    async def create_web3_contract(self, contract):
         try:
             return self.web3.eth.contract(address=contract, abi=self.ABI)
         except Exception as e:
@@ -699,7 +791,7 @@ class ETHDaemon(BaseDaemon):
     async def check_contracts(self, contract, divisibility):
         while self.running:
             try:
-                current_height = await self.web3.eth.block_number
+                current_height = await get_block_number(self)
                 if current_height > self.contract_heights[contract.address]:
                     await check_contract_logs(
                         contract,
@@ -722,7 +814,7 @@ class ETHDaemon(BaseDaemon):
 
     async def on_shutdown(self, app):
         self.running = False
-        block_number = await self.web3.eth.block_number
+        block_number = await get_block_number(self)
         for wallet in self.wallets.values():
             wallet.stop(block_number)
         await super().on_shutdown(app)
@@ -778,7 +870,7 @@ class ETHDaemon(BaseDaemon):
         return wallet
 
     async def is_still_syncing(self, wallet=None):
-        return not await self.web3.isConnected() or await self.web3.eth.syncing or (wallet and not wallet.is_synchronized())
+        return not await is_connected(self) or await eth_syncing(self) or (wallet and not wallet.is_synchronized())
 
     async def _get_wallet(self, id, req_method, xpub, contract, diskless=False):
         wallet = error = None
@@ -865,7 +957,7 @@ class ETHDaemon(BaseDaemon):
 
     @rpc(requires_wallet=True, requires_network=True)
     async def close_wallet(self, wallet):
-        block_number = await self.web3.eth.block_number
+        block_number = await get_block_number(self)
         self.wallets[wallet].stop(block_number)
         del self.wallets_updates[wallet]
         del self.addresses[self.wallets[wallet].address]
@@ -922,7 +1014,7 @@ class ETHDaemon(BaseDaemon):
         ):
             raise Exception("Invalid mix of transaction fee params")
         if has_modern_params:
-            base_fee = (await self.web3.eth.get_block("latest")).baseFeePerGas
+            base_fee = (await eth_get_block(self, "latest")).baseFeePerGas
             fee = (from_wei(tx_dict["maxPriorityFeePerGas"]) + from_wei(base_fee)) * tx_dict["gas"]
         else:
             fee = from_wei(tx_dict["gasPrice"]) * tx_dict["gas"]
@@ -942,8 +1034,8 @@ class ETHDaemon(BaseDaemon):
 
     @rpc(requires_network=True)
     async def get_tx_status(self, tx, wallet=None):
-        data = to_dict(await self.web3.eth.get_transaction_receipt(tx))
-        data["confirmations"] = max(0, await self.web3.eth.block_number - data["blockNumber"] + 1)
+        data = to_dict(await get_tx_receipt(self, tx))
+        data["confirmations"] = max(0, await get_block_number(self) - data["blockNumber"] + 1)
         return data
 
     @rpc(requires_wallet=True, requires_network=True)
@@ -967,7 +1059,7 @@ class ETHDaemon(BaseDaemon):
 
     @rpc(requires_network=True)
     async def getaddressbalance(self, address, wallet=None):
-        return to_dict(await get_balance(self.web3, address))
+        return decimal_to_string(await get_balance(self.web3, address), self.DIVISIBILITY)
 
     @rpc
     def getaddresshistory(self, *args, **kwargs):
@@ -985,27 +1077,27 @@ class ETHDaemon(BaseDaemon):
 
     @rpc(requires_network=True)
     async def getfeerate(self, wallet=None):
-        return await self.web3.eth.gas_price
+        return await get_gas_price(self)
 
     @rpc
     async def getinfo(self, wallet=None):
         path = self.get_datadir()
-        if not await self.web3.isConnected():
+        if not await is_connected(self):
             return {"connected": False, "path": path, "version": self.VERSION}
         try:
-            nodes = len(await self.web3.geth.admin.peers())
+            nodes = len(await get_peer_list(self))
         except Exception:
             nodes = 0
-        numblocks = await self.web3.eth.block_number
+        numblocks = await get_block_number(self)
         return {
             "blockchain_height": self.latest_height,
-            "connected": await self.web3.isConnected(),
-            "gas_price": await self.web3.eth.gas_price,
+            "connected": await is_connected(self),
+            "gas_price": await get_gas_price(self),
             "path": path,
             "server": self.SERVER,
             "server_height": numblocks,
             "spv_nodes": nodes,
-            "synchronized": not await self.web3.eth.syncing and self.synchronized,
+            "synchronized": not await eth_syncing(self) and self.synchronized,
             "version": self.VERSION,
         }
 
@@ -1050,8 +1142,8 @@ class ETHDaemon(BaseDaemon):
 
     @rpc(requires_network=True)
     async def gettransaction(self, tx, wallet=None):
-        data = to_dict(await self.web3.eth.get_transaction(tx))
-        data["confirmations"] = max(0, await self.web3.eth.block_number - data["blockNumber"] + 1)
+        data = to_dict(await get_transaction(self, tx))
+        data["confirmations"] = max(0, await get_block_number(self) - data["blockNumber"] + 1)
         return data
 
     @rpc
@@ -1087,7 +1179,7 @@ class ETHDaemon(BaseDaemon):
 
     @rpc(requires_network=True)
     async def list_peers(self, wallet=None):
-        return to_dict(await self.web3.geth.admin.peers())
+        return to_dict(await get_peer_list(self))
 
     @rpc(requires_wallet=True, requires_network=True)
     async def list_requests(self, pending=False, expired=False, paid=False, wallet=None):
@@ -1131,13 +1223,13 @@ class ETHDaemon(BaseDaemon):
 
     @rpc
     def normalizeaddress(self, address, wallet=None):
-        return Web3.toChecksumAddress(address)
+        return normalize_address(address)
 
     async def get_common_payto_params(self, address):
         nonce = await self.web3.eth.get_transaction_count(address, block_identifier="pending")
         return {
             "nonce": nonce,
-            "chainId": await self.web3.eth.chain_id,
+            "chainId": await eth_chain_id(self),
             "from": address,
             **(await self.get_fee_params()),
         }
@@ -1165,29 +1257,29 @@ class ETHDaemon(BaseDaemon):
 
     async def get_fee_params(self):
         if self.EIP1559_SUPPORTED:
-            block = await self.web3.eth.get_block("latest")
+            block = await eth_get_block(self, "latest")
             max_priority_fee = await self.web3.eth.max_priority_fee
             max_fee = block.baseFeePerGas * 2 + max_priority_fee
             return {"maxFeePerGas": max_fee, "maxPriorityFeePerGas": max_priority_fee}
-        gas_price = await self.web3.eth.gas_price
+        gas_price = await get_gas_price(self)
         return {"gasPrice": gas_price}
 
-    def load_contract_exec_function(self, address, function, *args, **kwargs):
+    async def load_contract_exec_function(self, address, function, *args, **kwargs):
         kwargs.pop("wallet", None)
-        if isinstance(address, AsyncContract):
+        if isinstance(address, self.CONTRACT_TYPE):
             contract = address
         else:
             try:
-                address = Web3.toChecksumAddress(address)
+                address = normalize_address(address)
             except Exception as e:
                 raise Exception("Invalid address") from e
-            contract = self.create_web3_contract(address)
+            contract = await self.create_web3_contract(address)
         # try converting args to int if possible
         args = [try_cast_num(x) for x in args]
         kwargs = {k: try_cast_num(v) for k, v in kwargs.items()}
         try:
             exec_function = getattr(contract.functions, function)
-        except ABIFunctionNotFound as e:
+        except (ABIFunctionNotFound, AttributeError) as e:
             raise Exception(f"Contract ABI is missing {function} function") from e
         try:
             exec_function = exec_function(*args, **kwargs)
@@ -1197,7 +1289,7 @@ class ETHDaemon(BaseDaemon):
 
     @rpc(requires_network=True)
     async def readcontract(self, address, function, *args, **kwargs):
-        exec_function = self.load_contract_exec_function(address, function, *args, **kwargs)
+        exec_function = await self.load_contract_exec_function(address, function, *args, **kwargs)
         return await exec_function.call()
 
     @rpc
@@ -1280,7 +1372,7 @@ class ETHDaemon(BaseDaemon):
     @rpc
     def validatecontract(self, address, wallet=None):
         try:
-            self.create_web3_contract(Web3.toChecksumAddress(address))
+            self.create_web3_contract(normalize_address(address))
             return True
         except Exception:
             return False
@@ -1295,9 +1387,9 @@ class ETHDaemon(BaseDaemon):
 
     @rpc
     def verifymessage(self, address, signature, message, wallet=None):
-        return Web3.toChecksumAddress(
+        return normalize_address(
             Account.recover_message(encode_defunct(text=message), signature=signature)
-        ) == Web3.toChecksumAddress(address)
+        ) == normalize_address(address)
 
     @rpc
     def version(self, wallet=None):
@@ -1308,7 +1400,7 @@ class ETHDaemon(BaseDaemon):
         wallet = kwargs.pop("wallet")
         unsigned = kwargs.pop("unsigned", False)
         gas = kwargs.pop("gas", None)
-        exec_function = self.load_contract_exec_function(address, function, *args, **kwargs)
+        exec_function = await self.load_contract_exec_function(address, function, *args, **kwargs)
         # pass gas here to avoid calling estimate_gas on an incomplete tx
         tx = await exec_function.build_transaction(
             {**await self.get_common_payto_params(self.wallets[wallet].address), "gas": TX_DEFAULT_GAS}

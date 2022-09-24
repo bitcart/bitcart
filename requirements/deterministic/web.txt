@@ -152,9 +152,9 @@ bcrypt==3.2.0 \
     # via
     #   paramiko
     #   passlib
-bitcart==1.10.2.0 \
-    --hash=sha256:184ac1d8823d339077bb196cb8f81fe13e050c8a1406e9965414db748ca1ad93 \
-    --hash=sha256:d0e88bc0af4c248620fc792f7336129ca482be998faa4c72eabcf4e79d1a20b8
+bitcart==1.10.3.0 \
+    --hash=sha256:679c400fe55859e23b59614ab4f6283816f3b0b2a623d9b0cdc765d49b9eff44 \
+    --hash=sha256:b2e7398e93980da150ff08493aeb300d1febd68a79c8006cdadea69e1b51c158
     # via -r requirements/web.txt
 certifi==2021.10.8 \
     --hash=sha256:78884e7c1d4b00ce3cea67b44566851c4343c120abd683433ce934a68ea58872 \
@@ -843,6 +843,7 @@ sqlalchemy==1.3.24 \
     --hash=sha256:fc4cddb0b474b12ed7bdce6be1b9edc65352e8ce66bc10ff8cbbfb3d4047dbf4 \
     --hash=sha256:fcb251305fa24a490b6a9ee2180e5f8252915fb778d3dafc70f9cc3f863827b9
     # via
+    #   -r requirements/web.txt
     #   alembic
     #   gino
 starlette==0.17.1 \
