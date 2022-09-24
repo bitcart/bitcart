@@ -1,0 +1,5 @@
+aiohttp<4.0
+https://github.com/bitcartcc/tronpy/archive/e30ee55c5891d534de82cf9f1dc2a1da803d352d.zip
+https://github.com/bitcartcc/web3.py/archive/asyncify-contract.zip # we use it temporarily
+mnemonic
+trontxsize
