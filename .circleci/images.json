@@ -73,6 +73,16 @@
         ],
         "bases": "eth"
     },
+    "bitcart-trx": {
+        "dockerfile": "trx.Dockerfile",
+        "files": [
+            "daemons/base.py",
+            "daemons/trx.py",
+            "requirements/base.txt",
+            "requirements/daemons/trx.txt"
+        ],
+        "bases": "eth"
+    },
     "bitcart-xrg": {
         "dockerfile": "xrg.Dockerfile",
         "files": [
