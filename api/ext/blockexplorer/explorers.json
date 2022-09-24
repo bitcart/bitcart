@@ -36,5 +36,10 @@
     "matic": {
         "mainnet": "https://polygonscan.com/tx/{}",
         "testnet": "https://mumbai.polygonscan.com/tx/{}"
+    },
+    "trx": {
+        "mainnet": "https://tronscan.org/#/transaction/{}",
+        "nile": "https://nile.tronscan.org/#/transaction/{}",
+        "shasta": "https://shasta.tronscan.org/#/transaction/{}"
     }
 }

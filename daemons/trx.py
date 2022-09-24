@@ -106,7 +106,7 @@ def get_peer_list(self):
 
 
 async def get_payment_uri(self, req):
-    return req.address
+    return f"tron:{req.address}"
 
 
 async def check_contract_logs(contract, divisibility, from_block=None, to_block=None):
@@ -220,7 +220,7 @@ class TRXDaemon(eth.ETHDaemon):
     @rpc(requires_network=True)
     async def broadcast(self, tx, wallet=None):
         tx_dict = eth.load_json_dict(tx, "Invalid transaction")
-        return eth.to_dict(await self.web3.broadcast(AsyncTransaction(tx_dict)))
+        return (await self.web3.broadcast(AsyncTransaction(tx_dict)))["txid"]
 
     @rpc(requires_network=True)
     async def getabi(self, address=None, wallet=None):
@@ -288,7 +288,7 @@ class TRXDaemon(eth.ETHDaemon):
     @rpc(requires_network=True)
     async def get_used_fee(self, tx_hash, wallet=None):
         tx_stats = await self.get_tx_status(tx_hash)
-        return eth.to_dict(eth.from_wei(tx_stats["fee"]))
+        return eth.to_dict(eth.from_wei(tx_stats.get("fee", 0)))
 
     @rpc
     def get_tx_size(self, tx_data, wallet=None):
