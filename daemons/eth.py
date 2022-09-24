@@ -716,23 +716,32 @@ class ETHDaemon(BaseDaemon):
                     print(traceback.format_exc())
             await asyncio.sleep(self.FX_FETCH_TIME)
 
+    async def process_tx_task(self, tx_data, semaphore):
+        async with semaphore:
+            try:
+                tx = await eth_process_tx_data(self, tx_data)
+                if tx is not None:
+                    await process_transaction(tx)
+                return tx
+            except Exception:
+                if self.VERBOSE:
+                    print(f"Error processing transaction {get_tx_hash(tx_data)}:")
+                    print(traceback.format_exc())
+
     async def process_block(self, start_height, end_height):
         for block_number in range(start_height, end_height + 1):
             try:
                 await self.trigger_event({"event": "new_block", "height": block_number}, None)
                 block = await eth_get_block_txes(self, block_number)
                 transactions = []
+                tasks = []
+                semaphore = asyncio.Semaphore(20)
                 for tx_data in block:
-                    try:
-                        tx = await eth_process_tx_data(self, tx_data)
-                        if tx is None:
-                            continue
-                        transactions.append(tx)
-                        await process_transaction(tx)
-                    except Exception:
-                        if self.VERBOSE:
-                            print(f"Error processing transaction {get_tx_hash(tx_data)}:")
-                            print(traceback.format_exc())
+                    tasks.append(self.process_tx_task(tx_data, semaphore))
+                results = await asyncio.gather(*tasks)
+                for res in results:
+                    if res is not None:
+                        transactions.append(res)
                 self.latest_blocks.append(transactions)
             except Exception:
                 if self.VERBOSE:

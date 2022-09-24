@@ -58,35 +58,44 @@ async def eth_get_balance(web3, address):
         return 0
 
 
-def eth_get_block(self, block, *args, **kwargs):
+async def eth_get_block(self, block, *args, **kwargs):
     if block == "latest":
         block = None
-    return self.web3.provider.make_request("wallet/gettransactioninfobyblocknum", {"num": block})
+    return (await self.web3.provider.make_request("wallet/getblock", {"id_or_num": str(block), "detail": True})).get(
+        "transactions", []
+    )
 
 
 async def eth_get_block_txes(self, block):
     return await self.get_block_safe(block)
 
 
-async def eth_process_tx_data(self, data):
-    if "log" in data and len(data["log"]) > 0:
-        contract_address = normalize_address(data["contract_address"])
-        contract = await self.web3.get_contract(contract_address)
-        try:
-            divisibility = await contract.functions.decimals()
-        except AttributeError:
-            return
-        event_data = contract.events.Transfer.get_event_data(data["log"][0])
-        if event_data["event"] != "Transfer":
-            return
-        args = list(event_data["args"].values())
-        return eth.Transaction(data["id"], args[1], args[2], contract_address, divisibility)
-    full_data = await get_transaction(self, data["id"])
-    contract = full_data["raw_data"]["contract"]
-    if len(contract) == 0 or contract[0]["type"] != "TransferContract":
+CONTRACTS_CACHE = {}
+DECIMALS_CACHE = {}
+
+
+async def eth_process_tx_data(self, full_data):
+    if len(full_data["raw_data"]["contract"]) == 0:
         return
-    param = contract[0]["parameter"]["value"]
-    return eth.Transaction(full_data["txID"], param["to_address"], param["amount"])
+    contract = full_data["raw_data"]["contract"][0]
+    value = contract["parameter"]["value"]
+    if contract["type"] == "TriggerSmartContract":
+        contract_address = normalize_address(value["contract_address"])
+        try:
+            contract = await self.create_web3_contract(contract_address)
+        except Exception:
+            return
+        divisibility = self.DECIMALS_CACHE[contract_address]
+        data = bytes.fromhex(value["data"])
+        function = contract.get_function_by_selector(data[:4])
+        params = trx_abi.decode(["address", "uint256"], data[4:])
+        if function.name != "transfer":
+            return
+        return eth.Transaction(full_data["txID"], normalize_address(params[0]), params[1], contract_address, divisibility)
+
+    if contract["type"] != "TransferContract":
+        return
+    return eth.Transaction(full_data["txID"], normalize_address(value["to_address"]), value["amount"])
 
 
 async def eth_chain_id(self):
@@ -149,7 +158,7 @@ def keystore_add_privkey(self, privkey):
 
 
 def get_tx_hash(tx_data):
-    return tx_data["id"]
+    return tx_data["txID"]
 
 
 TRON_ALIASES = eth.ETHDaemon.ALIASES
@@ -176,16 +185,26 @@ class TRXDaemon(eth.ETHDaemon):
 
     ALIASES = TRON_ALIASES
 
+    def __init__(self):
+        super().__init__()
+        self.CONTRACTS_CACHE = {}
+        self.DECIMALS_CACHE = {}
+
     def create_web3(self):
         self.web3 = AsyncTron(AsyncHTTPProvider(self.SERVER))
 
     async def on_shutdown(self, app):
         await super().on_shutdown(app)
-        await self.web3.close()
 
     async def create_web3_contract(self, contract):
         try:
-            return await self.web3.get_contract(contract)
+            value = self.CONTRACTS_CACHE.get(contract)
+            if value is None:
+                value = await self.web3.get_contract(contract)
+                self.DECIMALS_CACHE[contract] = await value.functions.decimals()
+                self.CONTRACTS_CACHE[contract] = value
+
+            return value
         except Exception as e:
             raise Exception("Invalid contract address or non-TRC20 token") from e
 
