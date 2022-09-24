@@ -2,6 +2,22 @@
 
 ## Latest changes
 
+## 0.6.11.0
+
+### WalletConnect button
+
+While our current ETH support is great, many users may still get confused and send wrong amounts when not using metamask wallet.
+
+On checkout there is now a new button available: Pay via WalletConnect. Users can then scan a QR code to connect their wallet, BitcartCC will do the rest
+
+### Tron support
+
+The long-requested Tron (TRX) support is there! It is supported fully and in a similar way to how ETH works. Each method have been implemented and tested.
+
+BitcartCC might be even the only software which implemented the full transaction fee calculation algorithm except for full node itself. You can know the fee before sending via `get_default_fee` command.
+
+Note: the volume of transactions in Tron network is way higher than in ETH or even BNB, but we found a solution to make it work under high loads. The only downside is that you should not keep your node offline, ideally try to never let it be offline for more than few minutes.
+
 ## 0.6.10.0
 
 ### Block explorer support

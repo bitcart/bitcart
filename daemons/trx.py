@@ -88,7 +88,10 @@ async def eth_process_tx_data(self, full_data):
         divisibility = self.DECIMALS_CACHE[contract_address]
         data = bytes.fromhex(value["data"])
         function = contract.get_function_by_selector(data[:4])
-        params = trx_abi.decode(["address", "uint256"], data[4:])
+        try:
+            params = trx_abi.decode(["address", "uint256"], data[4:])
+        except Exception:
+            return
         if function.name != "transfer":
             return
         return eth.Transaction(full_data["txID"], normalize_address(params[0]), params[1], contract_address, divisibility)
