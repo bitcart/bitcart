@@ -1,9 +1,12 @@
 import json
+from decimal import Decimal
 
 import eth
+import trontxsize
 from eth_account import Account
 from mnemonic import Mnemonic
 from tronpy import AsyncTron, keys
+from tronpy.abi import trx_abi
 from tronpy.async_tron import AsyncContract, AsyncHTTPProvider, AsyncTransaction
 from tronpy.exceptions import AddressNotFound
 from utils import rpc
@@ -24,12 +27,16 @@ async def is_connected(self):
     return True
 
 
+def find_chain_param(params, key, default=None):
+    try:
+        return next(filter(lambda x: x["key"] == key, params))["value"]
+    except StopIteration:
+        return default
+
+
 async def get_gas_price(self):
     params = await self.web3.get_chain_parameters()
-    try:
-        return next(filter(lambda x: x["key"] == "getEnergyFee", params))["value"]
-    except StopIteration:
-        return 1
+    return find_chain_param(params, "getEnergyFee", 1)
 
 
 async def eth_syncing(self):
@@ -65,11 +72,15 @@ async def eth_process_tx_data(self, data):
     if "log" in data and len(data["log"]) > 0:
         contract_address = normalize_address(data["contract_address"])
         contract = await self.web3.get_contract(contract_address)
-        divisibility = await contract.functions.decimals()
+        try:
+            divisibility = await contract.functions.decimals()
+        except AttributeError:
+            return
         event_data = contract.events.Transfer.get_event_data(data["log"][0])
-        return eth.Transaction(
-            data["id"], event_data["args"]["to"], event_data["args"]["value"], contract_address, divisibility
-        )
+        if event_data["event"] != "Transfer":
+            return
+        args = list(event_data["args"].values())
+        return eth.Transaction(data["id"], args[1], args[2], contract_address, divisibility)
     full_data = await get_transaction(self, data["id"])
     contract = full_data["raw_data"]["contract"]
     if len(contract) == 0 or contract[0]["type"] != "TransferContract":
@@ -137,6 +148,18 @@ def keystore_add_privkey(self, privkey):
     self.private_key = privkey
 
 
+def get_tx_hash(tx_data):
+    return tx_data["id"]
+
+
+TRON_ALIASES = eth.ETHDaemon.ALIASES
+TRON_ALIASES.update(
+    {
+        "get_default_energy": "get_default_gas",
+    }
+)
+
+
 class TRXDaemon(eth.ETHDaemon):
     name = "TRX"
     DEFAULT_PORT = 5009
@@ -150,6 +173,8 @@ class TRXDaemon(eth.ETHDaemon):
     CONTRACT_TYPE = AsyncContract
 
     TOKENS = TRC20_TOKENS
+
+    ALIASES = TRON_ALIASES
 
     def create_web3(self):
         self.web3 = AsyncTron(AsyncHTTPProvider(self.SERVER))
@@ -267,7 +292,8 @@ class TRXDaemon(eth.ETHDaemon):
 
     @rpc
     def get_tx_size(self, tx_data, wallet=None):
-        raise NotImplementedError("It is too complex and error-prone to do in Tron")
+        tx_dict = eth.load_json_dict(tx_data, "Invalid transaction")
+        return trontxsize.get_tx_size(tx_dict)
 
     @rpc
     def get_tx_hash(self, tx_data, wallet=None):
@@ -281,6 +307,55 @@ class TRXDaemon(eth.ETHDaemon):
             return True
         except Exception:
             return False
+
+    @rpc(requires_network=True)
+    async def get_default_gas(self, tx, wallet=None):  # actually energy in our case
+        tx_dict = eth.load_json_dict(tx, "Invalid transaction").copy()
+        value = tx_dict["raw_data"]["contract"][0]["parameter"]["value"]
+        if "contract_address" not in value:
+            return 0
+        contract = await self.create_web3_contract(value["contract_address"])
+        data = bytes.fromhex(value["data"])
+        function = contract.get_function_by_selector(data[:4])
+        params = trx_abi.decode(["address", "uint256"], data[4:])
+        response = await self.web3.provider.make_request(
+            "wallet/triggerconstantcontract",
+            {
+                "owner_address": keys.to_base58check_address(value["owner_address"]),
+                "contract_address": keys.to_base58check_address(value["contract_address"]),
+                "function_selector": function.function_signature,
+                "parameter": function._prepare_parameter(*params),
+                "visible": True,
+            },
+        )
+        return response["energy_used"]
+
+    @rpc(requires_network=True)
+    async def get_default_fee(self, tx, wallet=None):
+        tx_dict = eth.load_json_dict(tx, "Invalid transaction")
+        energy = await self.get_default_gas(tx_dict)
+        bandwidth = self.get_tx_size(tx_dict)
+        value = tx_dict["raw_data"]["contract"][0]["parameter"]["value"]
+        address = value["owner_address"]
+        resources = await self.web3.get_account_resource(address)
+        chain_params = await self.web3.get_chain_parameters()
+        bandwidth_cost = find_chain_param(chain_params, "getTransactionFee", 1000)
+        energy_cost = find_chain_param(chain_params, "getEnergyFee", 1)
+        allowed_bandwidth = max(
+            resources.get("freeNetLimit", 0) - resources.get("freeNetUsed", 0),
+            resources.get("NetLimit", 0) - resources.get("NetUsed", 0),
+        )
+        fee = Decimal(0)
+        if allowed_bandwidth < bandwidth:
+            fee += bandwidth * eth.from_wei(bandwidth_cost, self.DIVISIBILITY)
+        if energy > 0:
+            user_energy = resources.get("EnergyLimit", 0) - resources.get("EnergyUsed", 0)
+            contract = await self.create_web3_contract(value["contract_address"])
+            needed_energy = Decimal(energy) * (Decimal(contract.user_resource_percent) / Decimal(100))
+            needed_energy -= min(user_energy, needed_energy)
+            if needed_energy > 0:
+                fee += needed_energy * eth.from_wei(energy_cost, self.DIVISIBILITY)
+        return eth.to_dict(fee)
 
 
 if __name__ == "__main__":
@@ -302,5 +377,6 @@ if __name__ == "__main__":
     eth.keystore_add_privkey = keystore_add_privkey
     eth.check_contract_logs = check_contract_logs
     eth.eth_process_tx_data = eth_process_tx_data
+    eth.get_tx_hash = get_tx_hash
     eth.daemon = TRXDaemon()
     eth.daemon.start()

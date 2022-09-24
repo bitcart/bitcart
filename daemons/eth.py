@@ -168,6 +168,10 @@ async def eth_process_tx_data(self, data):
     return Transaction(str(data["hash"].hex()), data["to"], data["value"])
 
 
+def get_tx_hash(tx_data):
+    return tx_data["hash"].hex()
+
+
 pr_tooltips = {
     PR_UNPAID: "Unpaid",
     PR_PAID: "Paid",
@@ -727,7 +731,7 @@ class ETHDaemon(BaseDaemon):
                         await process_transaction(tx)
                     except Exception:
                         if self.VERBOSE:
-                            print(f"Error processing transaction {tx_data['hash'].hex()}:")
+                            print(f"Error processing transaction {get_tx_hash(tx_data)}:")
                             print(traceback.format_exc())
                 self.latest_blocks.append(transactions)
             except Exception:
