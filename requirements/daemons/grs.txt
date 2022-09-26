@@ -1,0 +1,3 @@
+https://github.com/Groestlcoin/electrum-grs/archive/b6498745866f495172ddda780a744d7820e42894.zip#egg=electrum-grs[crypto]
+groestlcoin_hash>=1.0.3
+protobuf<4

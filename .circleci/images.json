@@ -111,5 +111,14 @@
             "requirements/base.txt",
             "requirements/daemons/bsty.txt"
         ]
+    },
+    "bitcart-grs": {
+        "dockerfile": "grs.Dockerfile",
+        "files": [
+            "daemons/base.py",
+            "daemons/grs.py",
+            "requirements/base.txt",
+            "requirements/daemons/grs.txt"
+        ]
     }
 }

@@ -41,5 +41,9 @@
         "mainnet": "https://tronscan.org/#/transaction/{}",
         "nile": "https://nile.tronscan.org/#/transaction/{}",
         "shasta": "https://shasta.tronscan.org/#/transaction/{}"
+    },
+    "grs": {
+        "mainnet": "https://esplora.groestlcoin.org/tx/{}",
+        "testnet": "https://esplora-test.groestlcoin.org/tx/{}"
     }
 }
