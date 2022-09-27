@@ -379,6 +379,17 @@ class TRXDaemon(eth.ETHDaemon):
                 fee += needed_energy * eth.from_wei(energy_cost, self.DIVISIBILITY)
         return eth.to_dict(fee)
 
+    @rpc(requires_network=True)
+    async def isactive(self, address, wallet=None):
+        if not self.validateaddress(address):
+            raise Exception("Invalid address")
+        success_balance = True
+        try:
+            await self.web3.get_account_balance(address)
+        except Exception:
+            success_balance = False
+        return success_balance
+
 
 if __name__ == "__main__":
     eth.get_block_number = get_block_number
