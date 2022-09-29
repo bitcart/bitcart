@@ -175,6 +175,15 @@
       "contributions": [
         "doc"
       ]
+    },
+    {
+      "login": "gruve-p",
+      "name": "gruve-p",
+      "avatar_url": "https://avatars.githubusercontent.com/u/11212268?v=4",
+      "profile": "https://www.groestlcoin.org/",
+      "contributions": [
+        "code"
+      ]
     }
   ],
   "contributorsPerLine": 7,
