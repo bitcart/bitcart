@@ -124,7 +124,7 @@ class Pagination:
         self.model = model
         query = model.query
         if model == models.Invoice:
-            query = query.select_from(models.Invoice.join(models.PaymentMethod))
+            query = query.select_from(models.Invoice.join(models.PaymentMethod, isouter=True))
         queries = self.search()
         query = query.where(queries) if queries != [] else query  # sqlalchemy core requires explicit checks
         return query
