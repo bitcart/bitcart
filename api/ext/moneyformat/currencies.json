@@ -325,5 +325,10 @@
         "name": "Tron",
         "divisibility": 6,
         "crypto": true
+    },
+    "GRS": {
+        "name": "Groestlcoin",
+        "divisibility": 8,
+        "crypto": true
     }
 }
