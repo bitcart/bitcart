@@ -373,7 +373,14 @@ class TRXDaemon(eth.ETHDaemon):
         if energy > 0:
             user_energy = resources.get("EnergyLimit", 0) - resources.get("EnergyUsed", 0)
             contract = await self.create_web3_contract(value["contract_address"])
+            contract_creator = contract.origin_address
+            creator_resources = await self.web3.get_account_resource(contract_creator)
+            creator_energy = creator_resources.get("EnergyLimit", 0) - creator_resources.get("EnergyUsed", 0)
             needed_energy = Decimal(energy) * (Decimal(contract.user_resource_percent) / Decimal(100))
+            creator_needed_energy = min(
+                creator_energy, Decimal(energy) * (Decimal(100 - contract.user_resource_percent) / Decimal(100))
+            )
+            needed_energy = energy - creator_needed_energy
             needed_energy -= min(user_energy, needed_energy)
             if needed_energy > 0:
                 fee += needed_energy * eth.from_wei(energy_cost, self.DIVISIBILITY)
