@@ -81,8 +81,11 @@ def get_gas_price(self):
     return self.web3.eth.gas_price
 
 
-def eth_syncing(self):
-    return self.web3.eth.syncing
+async def eth_syncing(self):
+    try:
+        return await self.web3.eth.syncing
+    except Exception:
+        return False
 
 
 def get_transaction(self, tx):
