@@ -65,7 +65,7 @@ async def eth_get_balance(web3, address):
 async def eth_get_block(self, block, *args, **kwargs):
     if block == "latest":
         block = None
-    return (await self.web3.provider.make_request("wallet/getblockbynum", {"id_or_num": str(block), "detail": True})).get(
+    return (await self.web3.provider.make_request("wallet/getblockbynum", {"num": block, "detail": True})).get(
         "transactions", []
     )
 
