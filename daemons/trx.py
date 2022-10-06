@@ -19,8 +19,12 @@ mnemonic = Mnemonic("english")
 TRX_ACCOUNT_PATH = "m/44'/195'/0'/0/0"
 
 
-def get_block_number(self):
-    return self.web3.get_latest_block_number()
+async def get_block_number(self):
+    try:
+        return await self.web3.get_latest_block_number()
+    except Exception:
+        block_data = await self.web3.get_latest_block()
+        return block_data["block_header"]["raw_data"]["number"]
 
 
 async def is_connected(self):
@@ -194,6 +198,8 @@ class TRXDaemon(eth.ETHDaemon):
         self.DECIMALS_CACHE = {}
 
     def create_web3(self):
+        if self.SERVER and not self.SERVER.endswith("/"):
+            self.SERVER += "/"
         self.web3 = AsyncTron(AsyncHTTPProvider(self.SERVER))
 
     async def on_shutdown(self, app):
