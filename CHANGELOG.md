@@ -2,6 +2,10 @@
 
 ## Latest changes
 
+## 0.6.11.1
+
+This update includes Groestlcoin (GRS) support, as well as fixes for Tron RPC and allows to use Ankr RPCs for ETH too.
+
 ## 0.6.11.0
 
 ### WalletConnect button
