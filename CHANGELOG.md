@@ -2,6 +2,12 @@
 
 ## Latest changes
 
+## 0.6.11.2
+
+Fix ETH-based daemons transaction processing
+
+Fix admin panel's dialogs UI
+
 ## 0.6.11.1
 
 This update includes Groestlcoin (GRS) support, as well as fixes for Tron RPC and allows to use Ankr RPCs for ETH too.

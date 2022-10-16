@@ -100,8 +100,8 @@ def eth_get_balance(web3, address):
     return web3.eth.get_balance(address)
 
 
-def eth_get_block(self, block):
-    return self.web3.eth.get_block(block)
+def eth_get_block(self, block, *args, **kwargs):
+    return self.web3.eth.get_block(block, *args, **kwargs)
 
 
 async def eth_get_block_txes(self, block):
