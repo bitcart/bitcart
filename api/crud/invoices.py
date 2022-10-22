@@ -144,8 +144,11 @@ async def update_invoice_payments(invoice, wallets_ids, discounts, store, produc
     if randomize_selection:
         symbols = defaultdict(list)
         for wallet in wallets:
-            symbol = await utils.wallets.get_wallet_symbol(wallet)
-            symbols[symbol].append(wallet)
+            try:
+                symbol = await utils.wallets.get_wallet_symbol(wallet)
+                symbols[symbol].append(wallet)
+            except Exception:  # pragma: no cover
+                pass
         for symbol in symbols:
             wallet = secrets.choice(symbols[symbol])
             await create_method_for_wallet(invoice, wallet, discounts, store, product, promocode)

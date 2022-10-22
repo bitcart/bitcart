@@ -39,7 +39,7 @@ from web3 import Web3
 from web3.contract import AsyncContract
 from web3.datastructures import AttributeDict
 from web3.eth import AsyncEth
-from web3.exceptions import ABIFunctionNotFound, BlockNotFound
+from web3.exceptions import ABIFunctionNotFound, BlockNotFound, TransactionNotFound
 from web3.exceptions import ValidationError as Web3ValidationError
 from web3.geth import AsyncGethAdmin, Geth
 from web3.middleware.geth_poa import async_geth_poa_middleware
@@ -501,7 +501,9 @@ class Wallet:
         if req.tx_hash:
             d["tx_hash"] = req.tx_hash
             d["contract"] = req.contract
-            d["confirmations"] = await get_block_number(self) - (await get_tx_receipt(self, req.tx_hash))["blockNumber"] + 1
+            d["confirmations"] = (
+                await get_block_number(self) - (await daemon.get_tx_receipt_safe(req.tx_hash))["blockNumber"] + 1
+            )
         d["amount_wei"] = to_wei(req.amount, self.divisibility)
         d["address"] = req.address
         d["URI"] = await self.get_request_url(req)
@@ -657,6 +659,9 @@ class ETHDaemon(BaseDaemon):
         self.contract_heights = self.config.get_dict("contract_heights")
         self.create_web3()
         self.get_block_safe = exception_retry_middleware(async_partial(eth_get_block, self), (BlockNotFound,), self.VERBOSE)
+        self.get_tx_receipt_safe = exception_retry_middleware(
+            async_partial(get_tx_receipt, self), (TransactionNotFound,), self.VERBOSE
+        )
         # initialize wallet storages
         self.wallets = {}
         self.addresses = defaultdict(set)
@@ -1046,7 +1051,7 @@ class ETHDaemon(BaseDaemon):
 
     @rpc(requires_network=True)
     async def get_tx_status(self, tx, wallet=None):
-        data = to_dict(await get_tx_receipt(self, tx))
+        data = to_dict(await self.get_tx_receipt_safe(tx))
         data["confirmations"] = max(0, await get_block_number(self) - data["blockNumber"] + 1)
         return data
 
@@ -1382,9 +1387,9 @@ class ETHDaemon(BaseDaemon):
         return is_address(address)
 
     @rpc
-    def validatecontract(self, address, wallet=None):
+    async def validatecontract(self, address, wallet=None):
         try:
-            self.create_web3_contract(normalize_address(address))
+            await self.create_web3_contract(normalize_address(address))
             return True
         except Exception:
             return False
