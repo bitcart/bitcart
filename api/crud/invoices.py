@@ -1,3 +1,4 @@
+import asyncio
 import secrets
 from collections import defaultdict
 from decimal import Decimal
@@ -5,10 +6,10 @@ from operator import attrgetter
 
 from bitcart.errors import errors
 from fastapi import HTTPException
-from sqlalchemy import select
+from sqlalchemy import select, text
 from starlette.datastructures import CommaSeparatedStrings
 
-from api import events, invoices, models, schemes, settings, utils
+from api import db, events, invoices, models, schemes, settings, utils
 from api.ext.moneyformat import currency_table, truncate
 from api.logger import get_exception_message, get_logger
 from api.utils.database import safe_db_write
@@ -96,7 +97,7 @@ async def _create_payment_method(invoice, wallet, product, store, discounts, pro
     rhash = data_got["rhash"] if lightning else None
     # amount_wei is a way to identify eth-based chains
     lookup_field = data_got["id"] if "amount_wei" in data_got else (rhash if lightning else address)
-    return await models.PaymentMethod.create(
+    return dict(
         id=utils.common.unique_id(),
         invoice_id=invoice.id,
         amount=data_got[coin.amount_field],
@@ -113,7 +114,6 @@ async def _create_payment_method(invoice, wallet, product, store, discounts, pro
         confirmations=0,
         label=wallet.label,
         hint=wallet.hint,
-        created=utils.time.now(),
         contract=wallet.contract,
         symbol=symbol,
         divisibility=divisibility,
@@ -121,16 +121,16 @@ async def _create_payment_method(invoice, wallet, product, store, discounts, pro
 
 
 async def create_payment_method(invoice, wallet, product, store, discounts, promocode):
-    method = await _create_payment_method(invoice, wallet, product, store, discounts, promocode)
+    results = [await _create_payment_method(invoice, wallet, product, store, discounts, promocode)]
     coin_settings = settings.settings.crypto_settings.get(wallet.currency.lower())
     if coin_settings and coin_settings["lightning"] and wallet.lightning_enabled:  # pragma: no cover
-        await _create_payment_method(invoice, wallet, product, store, discounts, promocode, lightning=True)
-    return method
+        results.append(await _create_payment_method(invoice, wallet, product, store, discounts, promocode, lightning=True))
+    return results
 
 
 async def create_method_for_wallet(invoice, wallet, discounts, store, product, promocode):
     try:
-        await create_payment_method(invoice, wallet, product, store, discounts, promocode)
+        return await create_payment_method(invoice, wallet, product, store, discounts, promocode)
     except Exception as e:
         logger.error(
             f"Invoice {invoice.id}: failed creating payment method {wallet.currency.upper()}:\n{get_exception_message(e)}"
@@ -139,7 +139,13 @@ async def create_method_for_wallet(invoice, wallet, discounts, store, product, p
 
 async def update_invoice_payments(invoice, wallets_ids, discounts, store, product, promocode):
     logger.info(f"Started adding invoice payments for invoice {invoice.id}")
-    wallets = await models.Wallet.query.where(models.Wallet.id.in_(wallets_ids)).gino.all()
+    query = text(
+        """SELECT wallets.*
+    FROM   wallets
+    JOIN   unnest((:wallets_ids)::varchar[]) WITH ORDINALITY t(id, ord) USING (id)
+    ORDER  BY t.ord;"""
+    )
+    wallets = await db.db.all(query, wallets_ids=wallets_ids)
     randomize_selection = store.checkout_settings.randomize_wallet_selection
     if randomize_selection:
         symbols = defaultdict(list)
@@ -149,12 +155,19 @@ async def update_invoice_payments(invoice, wallets_ids, discounts, store, produc
                 symbols[symbol].append(wallet)
             except Exception:  # pragma: no cover
                 pass
-        for symbol in symbols:
-            wallet = secrets.choice(symbols[symbol])
-            await create_method_for_wallet(invoice, wallet, discounts, store, product, promocode)
+        coros = [
+            create_method_for_wallet(invoice, secrets.choice(symbols[symbol]), discounts, store, product, promocode)
+            for symbol in symbols
+        ]
     else:
-        for wallet in wallets:
-            await create_method_for_wallet(invoice, wallet, discounts, store, product, promocode)
+        coros = [create_method_for_wallet(invoice, wallet, discounts, store, product, promocode) for wallet in wallets]
+    db_data = []
+    for result in await asyncio.gather(*coros):
+        if result is not None:
+            for method in result:
+                db_data.append({**method, "created": utils.time.now()})
+    if db_data:
+        await models.PaymentMethod.insert().gino.all(db_data)
     await invoice.load_data()  # add payment methods with correct names and other related objects
     logger.info(f"Successfully added {len(invoice.payments)} payment methods to invoice {invoice.id}")
     await events.event_handler.publish("expired_task", {"id": invoice.id})
@@ -197,7 +210,7 @@ def get_methods_inds(methods: list):
         if not item.label and not item.lightning:  # custom label not counted
             currencies[item.symbol] += 1
     for item in methods:
-        if not item.lightning:
+        if not item.label and not item.lightning:
             met[item.symbol] += 1
         index = met[item.symbol] if currencies[item.symbol] > 1 else None
         yield index, item

@@ -662,6 +662,7 @@ class ETHDaemon(BaseDaemon):
         self.get_tx_receipt_safe = exception_retry_middleware(
             async_partial(get_tx_receipt, self), (TransactionNotFound,), self.VERBOSE
         )
+        self.contract_cache = {"decimals": {}, "symbol": {}}
         # initialize wallet storages
         self.wallets = {}
         self.addresses = defaultdict(set)
@@ -887,7 +888,7 @@ class ETHDaemon(BaseDaemon):
         return wallet
 
     async def is_still_syncing(self, wallet=None):
-        return not await is_connected(self) or await eth_syncing(self) or (wallet and not wallet.is_synchronized())
+        return wallet and not wallet.is_synchronized()
 
     async def _get_wallet(self, id, req_method, xpub, contract, diskless=False):
         wallet = error = None
@@ -1306,8 +1307,14 @@ class ETHDaemon(BaseDaemon):
 
     @rpc(requires_network=True)
     async def readcontract(self, address, function, *args, **kwargs):
+        cacheable_function = function in ("decimals", "symbol")
+        if cacheable_function and (value := self.contract_cache[function].get(address)) is not None:
+            return value
         exec_function = await self.load_contract_exec_function(address, function, *args, **kwargs)
-        return await exec_function.call()
+        result = await exec_function.call()
+        if cacheable_function:
+            self.contract_cache[function][address] = result
+        return result
 
     @rpc
     async def recommended_fee(self, target=None, wallet=None):  # disable fee estimation as it's unclear what to show
