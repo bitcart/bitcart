@@ -2,7 +2,7 @@
 aiofiles
 alembic
 bitcart
-email-validator<1.2.0
+email-validator<1.3.1
 fastapi
 gino
 hiredis
@@ -16,5 +16,5 @@ python-dateutil
 python-dotenv
 python-multipart
 redis
-sqlalchemy<1.4
+sqlalchemy<1.5
 uvicorn[standard]

@@ -176,7 +176,7 @@ jobs:
 
   deploy-cli:
     docker:
-      - image: cimg/go:1.18
+      - image: cimg/go:1.19
 
     resource_class: large
 
