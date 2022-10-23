@@ -1,3 +1,4 @@
+import asyncio
 import os
 import tempfile
 
@@ -212,14 +213,16 @@ async def restore_backup(
     return {"status": "error", "message": "Not running in docker"}
 
 
+async def fetch_currency_info(coin):
+    info = {"running": True, "currency": settings.settings.cryptos[coin].coin_name}
+    try:
+        info.update(await settings.settings.cryptos[coin].server.getinfo())
+    except BitcartBaseError:
+        info["running"] = False
+    return info
+
+
 @router.get("/syncinfo")
 async def get_syncinfo(user: models.User = Security(utils.authorization.AuthDependency(), scopes=["server_management"])):
-    infos = []
-    for coin in settings.settings.cryptos:
-        info = {"running": True, "currency": settings.settings.cryptos[coin].coin_name}
-        try:
-            info.update(await settings.settings.cryptos[coin].server.getinfo())
-        except BitcartBaseError:
-            info["running"] = False
-        infos.append(info)
-    return infos
+    coros = [fetch_currency_info(coin) for coin in settings.settings.cryptos]
+    return await asyncio.gather(*coros)
