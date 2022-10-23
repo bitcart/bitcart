@@ -389,6 +389,8 @@ async def test_policies(client: TestClient, token: str):
         "disable_registration": False,
         "discourage_index": False,
         "check_updates": True,
+        "captcha_sitekey": "",
+        "enable_captcha": False,
         "explorer_urls": {
             "btc": static_data.DEFAULT_EXPLORER,
         },
@@ -406,6 +408,9 @@ async def test_policies(client: TestClient, token: str):
         "disable_registration": True,
         "discourage_index": False,
         "check_updates": True,
+        "captcha_sitekey": "",
+        "captcha_secretkey": "",
+        "enable_captcha": False,
         "explorer_urls": {
             "btc": static_data.DEFAULT_EXPLORER,
         },
@@ -418,6 +423,8 @@ async def test_policies(client: TestClient, token: str):
         "disable_registration": True,
         "discourage_index": False,
         "check_updates": True,
+        "captcha_sitekey": "",
+        "enable_captcha": False,
         "explorer_urls": {
             "btc": static_data.DEFAULT_EXPLORER,
         },
@@ -434,6 +441,9 @@ async def test_policies(client: TestClient, token: str):
         "disable_registration": False,
         "discourage_index": False,
         "check_updates": True,
+        "captcha_sitekey": "",
+        "captcha_secretkey": "",
+        "enable_captcha": False,
         "explorer_urls": {
             "btc": static_data.DEFAULT_EXPLORER,
         },

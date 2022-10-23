@@ -1,5 +1,6 @@
 from typing import List, Optional
 
+from aiohttp import ClientSession
 from fastapi import APIRouter, Depends, HTTPException, Query, Security
 from fastapi.security import SecurityScopes
 from starlette.requests import Request
@@ -70,11 +71,20 @@ async def delete_token(
     return item
 
 
-@router.post("")
-async def create_token(
-    request: Request,
-    token_data: Optional[schemes.HTTPCreateLoginToken] = schemes.HTTPCreateLoginToken(),
-):
+# TODO: add tests for captcha
+async def verify_captcha(code, secret):  # pragma: no cover
+    try:
+        async with ClientSession() as session:
+            async with session.post(
+                "https://hcaptcha.com/siteverify",
+                data={"response": code, "secret": secret},
+            ) as resp:
+                return (await resp.json())["success"]
+    except Exception:
+        return False
+
+
+async def validate_credentials(request, token_data):
     token = None
     try:
         user, token = await utils.authorization.AuthDependency()(request, SecurityScopes(), return_token=True)
@@ -82,6 +92,19 @@ async def create_token(
         user, status = await utils.authorization.authenticate_user(token_data.email, token_data.password)
         if not user:
             raise HTTPException(401, {"message": "Unauthorized", "status": status})
+    policies = await utils.policies.get_setting(schemes.Policy)
+    if policies.enable_captcha:
+        if not await verify_captcha(token_data.captcha_code, policies.captcha_secretkey):  # pragma: no cover
+            raise HTTPException(401, {"message": "Unauthorized", "status": 403})
+    return user, token
+
+
+@router.post("")
+async def create_token(
+    request: Request,
+    token_data: Optional[schemes.HTTPCreateLoginToken] = schemes.HTTPCreateLoginToken(),
+):
+    user, token = await validate_credentials(request, token_data)
     token_data = token_data.dict()
     strict = token_data.pop("strict")
     if "server_management" in token_data["permissions"] and not user.is_superuser:

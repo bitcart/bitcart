@@ -78,6 +78,7 @@ class HTTPCreateToken(CreatedMixin):
 class HTTPCreateLoginToken(HTTPCreateToken):
     email: str = ""
     password: str = ""
+    captcha_code: str = ""
     strict: bool = True
 
 
@@ -414,10 +415,15 @@ class BalanceResponse(BaseModel):
 
 
 class Policy(BaseModel):
+    _SECRET_FIELDS = {"captcha_secretkey"}
+
     disable_registration: bool = False
     discourage_index: bool = False
     check_updates: bool = True
     allow_anonymous_configurator: bool = True
+    captcha_sitekey: str = ""
+    captcha_secretkey: str = ""
+    enable_captcha: bool = False
     explorer_urls: Dict[str, str] = {}
     rpc_urls: Dict[str, str] = {}
 

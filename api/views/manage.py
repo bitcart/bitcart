@@ -3,8 +3,9 @@ import tempfile
 
 import aiofiles
 from bitcart.errors import BaseError as BitcartBaseError
-from fastapi import APIRouter, File, HTTPException, Security, UploadFile
+from fastapi import APIRouter, File, HTTPException, Request, Security, UploadFile
 from fastapi.responses import FileResponse
+from fastapi.security import SecurityScopes
 
 from api import constants, models, schemes, settings, utils
 from api.ext import backups as backups_ext
@@ -65,9 +66,15 @@ async def get_daemons(user: models.User = Security(utils.authorization.AuthDepen
     return settings.settings.crypto_settings
 
 
-@router.get("/policies", response_model=schemes.Policy)
-async def get_policies():
-    return await utils.policies.get_setting(schemes.Policy)
+@router.get("/policies")
+async def get_policies(request: Request):
+    data = await utils.policies.get_setting(schemes.Policy)
+    exclude = set()
+    try:
+        await utils.authorization.AuthDependency()(request, SecurityScopes(["server_management"]))
+    except HTTPException:
+        exclude = data._SECRET_FIELDS
+    return data.dict(exclude=exclude)
 
 
 @router.post("/policies", response_model=schemes.Policy)
