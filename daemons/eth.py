@@ -274,6 +274,7 @@ async def async_http_retry_request_middleware(make_request, w3):
         make_request,
         (AsyncClientError, TimeoutError, asyncio.TimeoutError, ValueError, BlockNotFound, TransactionNotFound),
         daemon.VERBOSE,
+        disallowed_methods=["admin_peers", "eth_syncing"],
     )
 
 
