@@ -26,6 +26,7 @@ from storage import decimal_to_string
 from utils import (
     CastingDataclass,
     JsonResponse,
+    async_partial,
     exception_retry_middleware,
     get_exception_message,
     get_function_header,
@@ -104,7 +105,7 @@ def eth_get_block(self, block, *args, **kwargs):
 
 
 async def eth_get_block_txes(self, block):
-    return (await eth_get_block(self, block, full_transactions=True))["transactions"]
+    return (await self.get_block_safe(block, full_transactions=True))["transactions"]
 
 
 def eth_chain_id(self):
@@ -269,12 +270,14 @@ def to_wei(value: Decimal, precision=None) -> int:
     return int(Decimal(value) * Decimal(10**precision))
 
 
+# NOTE: there are 2 types of retry middlewares installed
+# This middleware handles network error and unexpected RPC failures
+# For BlockNotFound and TransactionNotFound we create _safe variants where needed
 async def async_http_retry_request_middleware(make_request, w3):
     return exception_retry_middleware(
         make_request,
-        (AsyncClientError, TimeoutError, asyncio.TimeoutError, ValueError, BlockNotFound, TransactionNotFound),
+        (AsyncClientError, TimeoutError, asyncio.TimeoutError, ValueError),
         daemon.VERBOSE,
-        disallowed_methods=["admin_peers", "eth_syncing"],
     )
 
 
@@ -505,7 +508,9 @@ class Wallet:
         if req.tx_hash:
             d["tx_hash"] = req.tx_hash
             d["contract"] = req.contract
-            d["confirmations"] = await get_block_number(self) - (await get_tx_receipt(self, req.tx_hash))["blockNumber"] + 1
+            d["confirmations"] = (
+                await get_block_number(self) - (await daemon.get_tx_receipt_safe(req.tx_hash))["blockNumber"] + 1
+            )
         d["amount_wei"] = to_wei(req.amount, self.divisibility)
         d["address"] = req.address
         d["URI"] = await self.get_request_url(req)
@@ -660,6 +665,10 @@ class ETHDaemon(BaseDaemon):
         self.config = ConfigDB(self.config_path)
         self.contract_heights = self.config.get_dict("contract_heights")
         self.create_web3()
+        self.get_block_safe = exception_retry_middleware(async_partial(eth_get_block, self), (BlockNotFound,), self.VERBOSE)
+        self.get_tx_receipt_safe = exception_retry_middleware(
+            async_partial(get_tx_receipt, self), (TransactionNotFound,), self.VERBOSE
+        )
         self.contract_cache = {"decimals": {}, "symbol": {}}
         # initialize wallet storages
         self.wallets = {}
@@ -1030,7 +1039,7 @@ class ETHDaemon(BaseDaemon):
         ):
             raise Exception("Invalid mix of transaction fee params")
         if has_modern_params:
-            base_fee = (await eth_get_block(self, "latest")).baseFeePerGas
+            base_fee = (await self.get_block_safe("latest")).baseFeePerGas
             fee = (from_wei(tx_dict["maxPriorityFeePerGas"]) + from_wei(base_fee)) * tx_dict["gas"]
         else:
             fee = from_wei(tx_dict["gasPrice"]) * tx_dict["gas"]
@@ -1050,7 +1059,7 @@ class ETHDaemon(BaseDaemon):
 
     @rpc(requires_network=True)
     async def get_tx_status(self, tx, wallet=None):
-        data = to_dict(await get_tx_receipt(self, tx))
+        data = to_dict(await self.get_tx_receipt_safe(tx))
         data["confirmations"] = max(0, await get_block_number(self) - data["blockNumber"] + 1)
         return data
 
@@ -1273,7 +1282,7 @@ class ETHDaemon(BaseDaemon):
 
     async def get_fee_params(self):
         if self.EIP1559_SUPPORTED:
-            block = await eth_get_block(self, "latest")
+            block = await self.get_block_safe("latest")
             max_priority_fee = await self.web3.eth.max_priority_fee
             max_fee = block.baseFeePerGas * 2 + max_priority_fee
             return {"maxFeePerGas": max_fee, "maxPriorityFeePerGas": max_priority_fee}

@@ -71,7 +71,7 @@ async def eth_get_block(self, block, *args, **kwargs):
 
 
 async def eth_get_block_txes(self, block):
-    return await eth_get_block(self, block)
+    return await self.get_block_safe(block)
 
 
 CONTRACTS_CACHE = {}

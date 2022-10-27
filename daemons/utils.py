@@ -182,14 +182,12 @@ def try_cast_num(v):
     return v
 
 
-def exception_retry_middleware(make_request, errors, verbose, retries=5, disallowed_methods=[]):
+def exception_retry_middleware(make_request, errors, verbose, retries=5):
     async def middleware(*args, **kwargs):
-        if args and args[0] in disallowed_methods:
-            return await make_request(*args, **kwargs)
         for i in range(retries):
             try:
                 result = await make_request(*args, **kwargs)
-                if "error" in result:
+                if "error" in result and result["error"].get("code") == -32603:  # Internal error
                     raise ValueError(result["error"])
                 return result
             except errors:
