@@ -2,7 +2,7 @@
 aiofiles
 alembic
 bitcart
-email-validator<1.2.0
+email-validator
 fastapi
 gino
 hiredis
