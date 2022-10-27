@@ -191,15 +191,18 @@ def exception_retry_middleware(
     async def middleware(*args, **kwargs):
         for i in range(retries):
             try:
-                return await make_request(*args, **kwargs)
+                result = await make_request(*args, **kwargs)
+                if "error" in result:
+                    raise ValueError(result["error"])
+                return result
             except errors:
                 if i < retries - 1:
                     if verbose:
-                        print(f"Retrying {make_request} {args} {kwargs}, attempt {i + 1}")
+                        print(f"Retrying {make_request.__name__} {args} {kwargs}, attempt {i + 1}")
                     continue
                 else:
                     if verbose:
-                        print(f"Failed after {retries} retries: {make_request} {args} {kwargs}")
+                        print(f"Failed after {retries} retries: {make_request.__name__} {args} {kwargs}")
                     raise
 
     return middleware
