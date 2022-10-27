@@ -18,6 +18,7 @@ addopts = [
 filterwarnings = [
     "error::DeprecationWarning",
     "error::PendingDeprecationWarning",
+    "ignore:.*'cgi' is deprecated.*:DeprecationWarning:httpx", # TODO: remove when a new httpx release is out
 ]
 norecursedirs = ["tests/functional"]
 
