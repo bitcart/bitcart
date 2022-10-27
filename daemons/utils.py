@@ -194,6 +194,7 @@ def exception_retry_middleware(make_request, errors, verbose, retries=5):
                 if i < retries - 1:
                     if verbose:
                         print(f"Retrying {make_request.__name__} {args} {kwargs}, attempt {i + 1}")
+                    await asyncio.sleep(1)
                     continue
                 else:
                     if verbose:
