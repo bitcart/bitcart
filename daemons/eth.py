@@ -658,7 +658,9 @@ class ETHDaemon(BaseDaemon):
         self.config = ConfigDB(self.config_path)
         self.contract_heights = self.config.get_dict("contract_heights")
         self.create_web3()
-        self.get_block_safe = exception_retry_middleware(async_partial(eth_get_block, self), (BlockNotFound,), self.VERBOSE)
+        self.get_block_safe = exception_retry_middleware(
+            async_partial(eth_get_block, self), (BlockNotFound, ValueError), self.VERBOSE
+        )
         self.get_tx_receipt_safe = exception_retry_middleware(
             async_partial(get_tx_receipt, self), (TransactionNotFound,), self.VERBOSE
         )
