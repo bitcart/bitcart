@@ -34,6 +34,10 @@ class ViewTestMixin:
     @pytest.fixture(autouse=True)
     async def setup(self, state, client: TestClient, token: str, anyio_backend):
         state["data"] = await self.create_object(client, token, state)
+        if self.name == "users":
+            token = state["data"].pop("token", None)
+            assert token is not None
+            assert (await client.delete(f"/token/{token}", headers={"Authorization": f"Bearer {token}"})).status_code == 200
 
     @pytest.fixture
     def object_id(self, state):

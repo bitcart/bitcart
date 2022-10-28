@@ -49,6 +49,7 @@ class BaseUser(CreatedMixin):
 
 class CreateUser(BaseUser):
     password: str
+    captcha_code: str = ""
 
 
 class User(BaseUser):

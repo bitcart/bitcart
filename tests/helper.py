@@ -19,7 +19,10 @@ async def create_user(client: TestClient, **custom_attrs) -> dict:
         "password": static_data.USER_PWD,
         "is_superuser": True,
     }
-    return await create_model_obj(client, "users", default_attrs, custom_attrs)
+    user = await create_model_obj(client, "users", default_attrs, custom_attrs)
+    token = user.pop("token")
+    await client.delete(f"/token/{token}", headers={"Authorization": f"Bearer {token}"})
+    return user
 
 
 async def create_token(client, user: dict, **custom_attrs) -> dict:

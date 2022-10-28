@@ -1,12 +1,13 @@
 from typing import Optional
 
+from aiohttp import ClientSession
 from fastapi import HTTPException
 from fastapi.security import OAuth2PasswordBearer, SecurityScopes
 from passlib.context import CryptContext
 from starlette.requests import Request
 from starlette.status import HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN
 
-from api import models, utils
+from api import models, schemes, utils
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -96,3 +97,23 @@ class AuthDependency:
         if return_token:
             return user, token
         return user
+
+
+# TODO: add tests for captcha
+async def verify_captcha(code, secret):  # pragma: no cover
+    try:
+        async with ClientSession() as session:
+            async with session.post(
+                "https://hcaptcha.com/siteverify",
+                data={"response": code, "secret": secret},
+            ) as resp:
+                return (await resp.json())["success"]
+    except Exception:
+        return False
+
+
+async def captcha_flow(code):
+    policies = await utils.policies.get_setting(schemes.Policy)
+    if policies.enable_captcha:
+        if not await verify_captcha(code, policies.captcha_secretkey):  # pragma: no cover
+            raise HTTPException(401, {"message": "Unauthorized", "status": 403})

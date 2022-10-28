@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Security
+from fastapi import APIRouter, HTTPException, Request, Security
+from fastapi.security import SecurityScopes
 from sqlalchemy import distinct, func, select
 
 from api import crud, db, models, schemes, utils
@@ -37,6 +38,24 @@ async def set_settings(
     return user
 
 
+class CreateUserWithToken(schemes.DisplayUser):
+    token: str
+
+
+async def create_user(model: schemes.CreateUser, request: Request):
+    try:
+        auth_user = await utils.authorization.AuthDependency()(request, SecurityScopes([]))
+    except HTTPException:
+        auth_user = None
+    user = await crud.users.create_user(model, auth_user)
+    token = await utils.database.create_object(
+        models.Token, schemes.CreateDBToken(permissions=["full_control"], user_id=user.id)
+    )
+    data = schemes.DisplayUser.from_orm(user).dict()
+    data["token"] = token.id
+    return data
+
+
 utils.routing.ModelView.register(
     router,
     "/",
@@ -46,6 +65,8 @@ utils.routing.ModelView.register(
     display_model=schemes.DisplayUser,
     custom_methods={"post": crud.users.create_user},
     post_auth=False,
+    request_handlers={"post": create_user},
+    response_models={"post": CreateUserWithToken},
     scopes={
         "get_all": ["server_management"],
         "get_count": ["server_management"],

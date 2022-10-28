@@ -40,6 +40,7 @@ class ModelView:
     scopes: Union[List, Dict]
     custom_commands: Dict[str, Callable]
     using_router: bool
+    response_models: Dict[str, BaseModel]
 
     @classmethod
     def register(
@@ -61,6 +62,7 @@ class ModelView:
         scopes=None,
         custom_commands={},
         using_router=True,
+        response_models: Dict[str, BaseModel] = {},
     ):
         # add to crud_models
         if scopes is None:  # pragma: no cover
@@ -92,6 +94,7 @@ class ModelView:
             scopes=scopes,
             custom_commands=custom_commands,
             using_router=using_router,
+            response_models=response_models,
         ).register_routes()
 
     def register_routes(self):
@@ -105,7 +108,7 @@ class ModelView:
                 or getattr(self, method_name, None)
                 or getattr(self, f"_{method_name}")(),
                 methods=[method_name if method in HTTP_METHODS else CUSTOM_HTTP_METHODS.get(method_name, "get")],
-                response_model=response_models.get(method_name),
+                response_model=self.response_models.get(method_name, response_models.get(method_name)),
             )
 
     def get_paths(self) -> Dict[str, str]:

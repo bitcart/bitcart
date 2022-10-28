@@ -12,6 +12,7 @@ async def create_user(user: schemes.CreateUser, auth_user: schemes.User):
     register_off = (await utils.policies.get_setting(schemes.Policy)).disable_registration
     if register_off and (not auth_user or not auth_user.is_superuser):
         raise HTTPException(422, "Registration disabled")
+    await utils.authorization.captcha_flow(user.captcha_code)
     is_superuser = False
     if auth_user is None:
         count = await user_count()
@@ -20,4 +21,5 @@ async def create_user(user: schemes.CreateUser, auth_user: schemes.User):
         is_superuser = user.is_superuser
     d = user.dict()
     d["is_superuser"] = is_superuser
+    d.pop("captcha_code", None)
     return await utils.database.create_object(models.User, d)
