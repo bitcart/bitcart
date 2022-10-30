@@ -1,0 +1,6 @@
+{
+    "electrum_map": {
+        "Invalid tx hash": -32001,
+        "Transaction not found": -32002
+    }
+}
