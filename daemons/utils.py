@@ -182,6 +182,12 @@ def try_cast_num(v):
     return v
 
 
+def get_func_name(func):
+    if hasattr(func, "__wrapped__"):
+        func = func.__wrapped__
+    return func.__name__
+
+
 def exception_retry_middleware(make_request, errors, verbose, retries=5):
     async def middleware(*args, **kwargs):
         for i in range(retries):
@@ -193,12 +199,12 @@ def exception_retry_middleware(make_request, errors, verbose, retries=5):
             except errors:
                 if i < retries - 1:
                     if verbose:
-                        print(f"Retrying {make_request.__name__} {args} {kwargs}, attempt {i + 1}")
+                        print(f"Retrying {get_func_name(make_request)} {args} {kwargs}, attempt {i + 1}")
                     await asyncio.sleep(1)
                     continue
                 else:
                     if verbose:
-                        print(f"Failed after {retries} retries: {make_request.__name__} {args} {kwargs}")
+                        print(f"Failed after {retries} retries: {get_func_name(make_request)} {args} {kwargs}")
                     raise
 
     return middleware
@@ -208,6 +214,7 @@ def async_partial(async_fn, *wrap_args):
     async def wrapped(*args, **kwargs):
         return await async_fn(*wrap_args, *args, **kwargs)
 
+    wrapped.__wrapped__ = async_fn
     return wrapped
 
 
