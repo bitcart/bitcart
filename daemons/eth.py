@@ -620,6 +620,22 @@ async def check_contract_logs(contract, divisibility, from_block=None, to_block=
             print(traceback.format_exc())
 
 
+class NonceManager:
+    def __init__(self, web3):
+        self.web3 = web3
+        self.delta = {}
+
+    async def get_nonce(self, address, nonce=None):
+        result = await self.web3.eth.get_transaction_count(address, block_identifier="pending") + self.delta.get(address, 0)
+        if nonce is not None and nonce > result:
+            self.delta[address] = 0
+            result = nonce
+        return result
+
+    def increment_nonce(self, address):
+        self.delta[address] = self.delta.get(address, 0) + 1
+
+
 class ETHDaemon(BaseDaemon):
     name = "ETH"
     BASE_SPEC_FILE = "daemons/spec/eth.json"
@@ -668,6 +684,7 @@ class ETHDaemon(BaseDaemon):
         self.config = ConfigDB(self.config_path)
         self.contract_heights = self.config.get_dict("contract_heights")
         self.create_web3()
+        self.nonce_manager = NonceManager(self.web3)
         self.get_block_safe = exception_retry_middleware(async_partial(eth_get_block, self), (BlockNotFound,), self.VERBOSE)
         self.get_tx_receipt_safe = exception_retry_middleware(
             async_partial(get_tx_receipt, self), (TransactionNotFound,), self.VERBOSE
@@ -1284,7 +1301,9 @@ class ETHDaemon(BaseDaemon):
             return tx_dict
         if self.wallets[wallet].is_watching_only():
             raise Exception("This is a watching-only wallet")
-        return self._sign_transaction(tx_dict, self.wallets[wallet].keystore.private_key)
+        return await self._sign_transaction(
+            tx_dict, self.wallets[wallet].keystore.private_key, self.wallets[wallet].keystore.address
+        )
 
     async def get_fee_params(self):
         if self.EIP1559_SUPPORTED:
@@ -1378,19 +1397,24 @@ class ETHDaemon(BaseDaemon):
             message = address
         return to_dict(Account.sign_message(encode_defunct(text=message), private_key=self.wallets[wallet].key).signature)
 
-    def _sign_transaction(self, tx, private_key):
+    async def _sign_transaction(self, tx, private_key, address):
         if private_key is None:
             raise Exception("This is a watching-only wallet")
         tx_dict = load_json_dict(tx, "Invalid transaction")
+        tx_dict["nonce"] = await self.nonce_manager.get_nonce(address, tx_dict["nonce"])
+        self.nonce_manager.increment_nonce(address)
         return to_dict(Account.sign_transaction(tx_dict, private_key=private_key).rawTransaction)
 
     @rpc(requires_wallet=True)
-    def signtransaction(self, tx, wallet=None):
-        return self._sign_transaction(tx, self.wallets[wallet].keystore.private_key)
+    async def signtransaction(self, tx, wallet=None):
+        return await self._sign_transaction(
+            tx, self.wallets[wallet].keystore.private_key, self.wallets[wallet].keystore.address
+        )
 
     @rpc
-    def signtransaction_with_privkey(self, tx, privkey, wallet=None):
-        return self._sign_transaction(tx, privkey)
+    async def signtransaction_with_privkey(self, tx, privkey, wallet=None):
+        address = KeyStore(privkey).address
+        return await self._sign_transaction(tx, privkey, address)
 
     @rpc(requires_wallet=True, requires_network=True)
     async def transfer(self, address, to, value, gas=None, unsigned=False, wallet=None):
@@ -1444,7 +1468,9 @@ class ETHDaemon(BaseDaemon):
         tx["gas"] = int(gas) if gas else await self.get_default_gas(tx)
         if unsigned:
             return tx
-        signed = self._sign_transaction(tx, self.wallets[wallet].keystore.private_key)
+        signed = await self._sign_transaction(
+            tx, self.wallets[wallet].keystore.private_key, self.wallets[wallet].keystore.address
+        )
         return await self.broadcast(signed)
 
 
