@@ -18,12 +18,14 @@ logger = get_logger(__name__)
 
 
 async def create_invoice(invoice: schemes.CreateInvoice, user: schemes.User):
-    logger.info("Started creating invoice")
-    logger.debug(invoice)
     d = invoice.dict()
     store = await utils.database.get_object(models.Store, d["store_id"], user)
+    if not store.checkout_settings.allow_anonymous_invoice_creation and not user:
+        raise HTTPException(403, "Anonymous invoice creation is disabled")
     if not store.wallets:
         raise HTTPException(422, "No wallet linked")
+    logger.info("Started creating invoice")
+    logger.debug(invoice)
     d["currency"] = d["currency"] or store.default_currency or "USD"
     d["expiration"] = store.checkout_settings.expiration
     products = d.pop("products", {})

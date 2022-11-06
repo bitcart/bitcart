@@ -1417,3 +1417,15 @@ async def test_get_default_rpc(client: TestClient):
     assert resp.status_code == 200
     assert resp.json() == ""
     assert (await client.get("/cryptos/rpc/BTC")).json() == resp.json()
+
+
+async def test_invoices_authorized_access(client: TestClient, store, token):
+    assert (await client.post("/invoices", json={"price": 1, "store_id": store["id"]})).status_code == 200
+    assert (
+        await client.patch(
+            f"/stores/{store['id']}/checkout_settings",
+            json={"allow_anonymous_invoice_creation": False},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+    ).status_code == 200
+    assert (await client.post("/invoices", json={"price": 1, "store_id": store["id"]})).status_code == 403

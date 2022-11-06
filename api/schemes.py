@@ -151,6 +151,7 @@ class StoreCheckoutSettings(BaseModel):
     email_required: bool = True
     ask_address: bool = False
     randomize_wallet_selection: bool = False
+    allow_anonymous_invoice_creation: bool = True
 
     @validator("recommended_fee_target_blocks")
     def validate_recommended_fee_target_blocks(cls, v):
