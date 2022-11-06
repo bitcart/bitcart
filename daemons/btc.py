@@ -41,8 +41,15 @@ class BTCDaemon(BaseDaemon):
         "request_status": "new_payment",
         "verified": "verified_tx",
     }
+    ALIASES = {"getrequest": "get_request"}
     # override if your daemon has different networks than default electrum provides
     NETWORK_MAPPING: dict = {}
+
+    def register_aliases(self):
+        for alias, func in self.ALIASES.items():
+            self.supported_methods[alias] = (
+                self.supported_methods[func] if func in self.supported_methods else self.electrum.commands.known_commands[func]
+            )
 
     def load_electrum(self):
         import electrum

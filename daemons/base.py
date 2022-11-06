@@ -31,11 +31,14 @@ class BaseDaemon:
         self.supported_methods = {
             func.__name__: func for func in (getattr(self, name) for name in dir(self)) if getattr(func, "is_handler", False)
         }
-        for alias, func in self.ALIASES.items():
-            self.supported_methods[alias] = self.supported_methods[func]
+        self.register_aliases()
         self.supported_methods = dict(sorted(self.supported_methods.items()))
         self.app = web.Application()
         self.configure_app()
+
+    def register_aliases(self):
+        for alias, func in self.ALIASES.items():
+            self.supported_methods[alias] = self.supported_methods[func]
 
     def env(self, name, *, default, cast=noop_cast):
         return self.config_getter(f"{self.env_name}_{name}", default=default, cast=cast)

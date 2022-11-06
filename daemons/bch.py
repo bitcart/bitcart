@@ -14,6 +14,7 @@ class BCHDaemon(BTCDaemon):
         "payment_received": "new_payment",
         "verified2": "verified_tx",
     }
+    ALIASES = {"get_request": "getrequest"}
 
     def load_electrum(self):
         import electroncash

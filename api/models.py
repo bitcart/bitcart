@@ -528,6 +528,7 @@ class Invoice(BaseModel):
         ForeignKey("stores.id", deferrable=True, initially="DEFERRED", ondelete="SET NULL"),
         index=True,
     )
+    tx_hashes = Column(ARRAY(Text))
     order_id = Column(Text)
     user_id = Column(Text, ForeignKey(User.id, ondelete="SET NULL"))
     created = Column(DateTime(True), nullable=False)

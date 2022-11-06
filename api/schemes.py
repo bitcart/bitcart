@@ -346,6 +346,13 @@ class CreateInvoice(CreatedMixin):
     discount: Optional[str]
     status: str = None
     products: Optional[Union[List[str], Dict[str, int]]] = {}
+    tx_hashes: Optional[List[str]] = []
+
+    @validator("tx_hashes", pre=True, always=False)
+    def validate_tx_hashes(cls, val):
+        if val == "":
+            return []
+        return val
 
     @validator("status", pre=True, always=True)
     def set_status(cls, v):
