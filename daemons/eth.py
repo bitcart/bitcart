@@ -643,7 +643,8 @@ class ETHDaemon(BaseDaemon):
     ABI = ERC20_ABI
     TOKENS = ERC20_TOKENS
     # modern transactions with maxPriorityFeePerGas
-    EIP1559_SUPPORTED = True
+    # Disabled for now due to unpredictable gasPrice
+    EIP1559_SUPPORTED = False
     DEFAULT_MAX_SYNC_BLOCKS = 300  # (60/12)=5*60 (a block every 12 seconds, max normal expiry time 60 minutes)
     # from coingecko API
     FIAT_NAME = "ethereum"
@@ -832,7 +833,7 @@ class ETHDaemon(BaseDaemon):
             await asyncio.sleep(self.BLOCK_TIME)
 
     async def trigger_event(self, data, wallet):
-        for key in self.wallets:
+        for key in self.wallets.copy():
             if not wallet or wallet == key:
                 await self.notify_websockets(data, key)
                 self.wallets_updates[key].append(data)
@@ -840,7 +841,7 @@ class ETHDaemon(BaseDaemon):
     async def on_shutdown(self, app):
         self.running = False
         block_number = await get_block_number(self)
-        for wallet in self.wallets.values():
+        for wallet in list(self.wallets.values()):
             wallet.stop(block_number)
         await super().on_shutdown(app)
 
@@ -1225,7 +1226,7 @@ class ETHDaemon(BaseDaemon):
     def list_wallets(self, wallet=None):
         return [
             {"path": wallet_obj.storage.path, "synchronized": wallet_obj.is_synchronized()}
-            for wallet_obj in self.wallets.values()
+            for wallet_obj in list(self.wallets.values())
             if wallet_obj.storage.path is not None
         ]
 
