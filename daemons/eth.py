@@ -651,6 +651,8 @@ class ETHDaemon(BaseDaemon):
     # Max number of decimal places to use for amounts generation
     AMOUNTGEN_DIVISIBILITY = 8
 
+    SPEED_MULTIPLIERS = {"network": 1, "regular": 1.25, "fast": 1.5}
+
     CONTRACT_TYPE = AsyncContract
 
     latest_height = StoredProperty("latest_height", -1)
@@ -698,6 +700,9 @@ class ETHDaemon(BaseDaemon):
         max_sync_hours = self.env("MAX_SYNC_HOURS", cast=int, default=1)
         self.MAX_SYNC_BLOCKS = max_sync_hours * self.DEFAULT_MAX_SYNC_BLOCKS
         self.NO_SYNC_WAIT = self.env("EXPERIMENTAL_NOSYNC", cast=bool, default=False)
+        self.TX_SPEED = self.env("TX_SPEED", cast=str, default="network").lower()
+        if self.TX_SPEED not in self.SPEED_MULTIPLIERS:
+            raise ValueError(f"Invalid TX_SPEED: {self.TX_SPEED}. Valid values: {', '.join(self.SPEED_MULTIPLIERS.keys())}")
 
     async def on_startup(self, app):
         await super().on_startup(app)
@@ -1060,7 +1065,7 @@ class ETHDaemon(BaseDaemon):
 
     @rpc(requires_network=True)
     async def get_tx_status(self, tx, wallet=None):
-        data = to_dict(await self.get_tx_receipt_safe(tx))
+        data = to_dict(await get_tx_receipt(self, tx))
         data["confirmations"] = max(0, await get_block_number(self) - data["blockNumber"] + 1)
         return data
 
@@ -1103,7 +1108,7 @@ class ETHDaemon(BaseDaemon):
 
     @rpc(requires_network=True)
     async def getfeerate(self, wallet=None):
-        return await get_gas_price(self)
+        return int(await get_gas_price(self) * self.SPEED_MULTIPLIERS[self.TX_SPEED])
 
     @rpc
     async def getinfo(self, wallet=None):
@@ -1287,8 +1292,7 @@ class ETHDaemon(BaseDaemon):
             max_priority_fee = await self.web3.eth.max_priority_fee
             max_fee = block.baseFeePerGas * 2 + max_priority_fee
             return {"maxFeePerGas": max_fee, "maxPriorityFeePerGas": max_priority_fee}
-        gas_price = await get_gas_price(self)
-        return {"gasPrice": gas_price}
+        return {"gasPrice": await self.getfeerate()}
 
     async def load_contract_exec_function(self, address, function, *args, **kwargs):
         kwargs.pop("wallet", None)
