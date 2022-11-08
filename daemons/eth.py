@@ -623,17 +623,16 @@ async def check_contract_logs(contract, divisibility, from_block=None, to_block=
 class NonceManager:
     def __init__(self, web3):
         self.web3 = web3
-        self.delta = {}
+        self.nonces = {}
 
-    async def get_nonce(self, address, nonce=None):
-        result = await self.web3.eth.get_transaction_count(address, block_identifier="pending") + self.delta.get(address, 0)
-        if nonce is not None and nonce > result:
-            self.delta[address] = 0
-            result = nonce
-        return result
+    async def get_nonce(self, address):
+        pending_nonce = await self.web3.eth.get_transaction_count(address, block_identifier="pending")
+        if address not in self.nonces or pending_nonce > self.nonces[address]:
+            self.nonces[address] = pending_nonce
+        return self.nonces[address]
 
     def increment_nonce(self, address):
-        self.delta[address] = self.delta.get(address, 0) + 1
+        self.nonces[address] += 1
 
 
 class ETHDaemon(BaseDaemon):
@@ -1401,7 +1400,7 @@ class ETHDaemon(BaseDaemon):
         if private_key is None:
             raise Exception("This is a watching-only wallet")
         tx_dict = load_json_dict(tx, "Invalid transaction")
-        tx_dict["nonce"] = await self.nonce_manager.get_nonce(address, tx_dict["nonce"])
+        tx_dict["nonce"] = await self.nonce_manager.get_nonce(address)
         self.nonce_manager.increment_nonce(address)
         return to_dict(Account.sign_transaction(tx_dict, private_key=private_key).rawTransaction)
 
