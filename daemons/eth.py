@@ -838,8 +838,12 @@ class ETHDaemon(BaseDaemon):
             await asyncio.sleep(self.BLOCK_TIME)
 
     async def trigger_event(self, data, wallet):
+        if not wallet:
+            await self.notify_websockets(data, None, notify_all=True)
         for key in self.wallets.copy():
             if not wallet or wallet == key:
+                if wallet == key:
+                    await self.notify_websockets(data, key, notify_all=True)
                 await self.notify_websockets(data, key)
                 self.wallets_updates[key].append(data)
 

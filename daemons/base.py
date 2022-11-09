@@ -132,13 +132,14 @@ class BaseDaemon:
     def build_notification(self, data, xpub):
         return {"updates": [data], "wallet": xpub, "currency": self.name}
 
-    async def notify_websockets(self, data, xpub):
+    async def notify_websockets(self, data, xpub, notify_all=False):
+        notification = self.build_notification(data, xpub)
         coros = [
-            ws.send_json(self.build_notification(data, xpub))
+            ws.send_json(notification)
             for ws in self.app["websockets"]
-            if not ws.closed and not ws.config["xpub"] or ws.config["xpub"] == xpub
+            if not ws.closed and ((notify_all and not ws.config["xpub"]) or ws.config["xpub"] == xpub)
         ]
-        coros and await asyncio.gather(*coros)
+        await asyncio.gather(*coros)
         return True
 
     ### Overridable methods for completely custom coins ###

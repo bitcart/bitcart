@@ -320,8 +320,12 @@ class BTCDaemon(BaseDaemon):
         if data_got is None:
             return
         data.update(data_got)
+        if not wallet:
+            await self.notify_websockets(data, None, notify_all=True)
         for i in self.wallets:
             if not wallet or wallet == self.wallets[i]["wallet"]:
+                if wallet == self.wallets[i]["wallet"]:
+                    await self.notify_websockets(data, i, notify_all=True)
                 await self.notify_websockets(data, i)
                 self.wallets_updates[i].append(data)
 
