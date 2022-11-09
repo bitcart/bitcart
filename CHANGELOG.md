@@ -2,6 +2,31 @@
 
 ## Latest changes
 
+## 0.6.12.0
+
+### Extreme speed
+
+Due to the cutting-edge optimizations, invoice creation, balance fetching and other operations are up to 10x faster
+
+### Captcha support
+
+You can now protect login pages with hcaptcha. It is configurable in server policies. Login and registration pages will be protected and less spamm will be possible
+
+### Better stability
+
+ETH daemon implementation is applying proper retry logic in more places, allowing for no blocks skipped due to temporary network errors
+
+Fixed some crashes when processing a lot of wallets
+
+### Misc changes
+
+- Python 3.11 support
+- Fixes for random selection of wallets
+- Make it possible to make auth mandatory in invoice creation
+- Disable EIP1559 in eth for more predictable fees and add `COIN_TX_SPEED` to configure default gas price being used in transactions
+- Fix duplicate websocket notification sent from the daemon
+- Display store name in store POS page title
+
 ## 0.6.11.2
 
 Fix ETH-based daemons transaction processing
