@@ -10,7 +10,7 @@ Due to the cutting-edge optimizations, invoice creation, balance fetching and ot
 
 ### Captcha support
 
-You can now protect login pages with hcaptcha. It is configurable in server policies. Login and registration pages will be protected and less spamm will be possible
+You can now protect login pages with hcaptcha. It is configurable in server policies. Login and registration pages will be protected and less spam will be possible
 
 ### Better stability
 
