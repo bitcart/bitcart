@@ -98,11 +98,11 @@ class ETHFeatures(BlockchainFeatures):
     async def get_peer_list(self):
         return await self.web3.geth.admin.peers()
 
-    async def get_payment_uri(self, req):
-        chain_id = await self.chain_id(self)
-        amount_wei = to_wei(req.amount, self.divisibility)
-        if self.contract:
-            return f"ethereum:{self.contract.address}@{chain_id}/transfer?address={req.address}&uint256={amount_wei}"
+    async def get_payment_uri(self, req, divisibility, contract=None):
+        chain_id = await self.chain_id()
+        amount_wei = to_wei(req.amount, divisibility)
+        if contract:
+            return f"ethereum:{contract}@{chain_id}/transfer?address={req.address}&uint256={amount_wei}"
         return f"ethereum:{req.address}@{chain_id}?value={amount_wei}"
 
     async def process_tx_data(self, data):
@@ -215,7 +215,7 @@ class Wallet(BaseWallet):
             await self.fetch_token_info()
 
     async def _start_process_pending(self, blocks, current_height):
-        await super()._start_process_pending()
+        await super()._start_process_pending(blocks, current_height)
         if self.contract:
             # process token transactions
             await daemon_ctx.get().check_contract_logs(
@@ -228,7 +228,7 @@ class Wallet(BaseWallet):
     async def balance(self):
         if self.contract:
             return from_wei(await daemon_ctx.get().readcontract(self.contract, "balanceOf", self.address), self.divisibility)
-        return await self.coin.get_balance(self.web3, self.address)
+        return await self.coin.get_balance(self.address)
 
 
 class ETHDaemon(BlockProcessorDaemon):
@@ -249,11 +249,14 @@ class ETHDaemon(BlockProcessorDaemon):
     # from coingecko API
     FIAT_NAME = "ethereum"
 
+    KEYSTORE_CLASS = KeyStore
+
     CONTRACT_TYPE = AsyncContract
 
     def __init__(self):
         super().__init__()
         self.contracts = {}
+        self.contract_heights = self.config.get_dict("contract_heights")
         self.contract_cache = {"decimals": {}, "symbol": {}}
 
     async def check_contract_logs(self, contract, divisibility, from_block=None, to_block=None):

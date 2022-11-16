@@ -95,7 +95,7 @@ class BlockchainFeatures(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    async def get_payment_uri(self, req) -> str:
+    async def get_payment_uri(self, req, divisibility, contract=None) -> str:
         pass
 
     @abstractmethod
@@ -271,7 +271,7 @@ class Wallet:
             self.symbol = daemon_ctx.get().name
         if self.divisibility is None:
             self.divisibility = daemon_ctx.get().DIVISIBILITY
-        self.keystore = KeyStore.load(self.db.get("keystore"))
+        self.keystore = daemon_ctx.get().KEYSTORE_CLASS.load(self.db.get("keystore"))
         self.receive_requests = self.db.get_dict("payment_requests")
         self.used_amounts = self.db.get_dict("used_amounts")
         self.running = False
@@ -344,7 +344,7 @@ class Wallet:
             raise Exception("Out of bounds amount")
         timestamp = int(time.time())
         expiration = expiration or 0
-        await self.create_payment_request_object(address, amount, message, expiration, timestamp)
+        return await self.create_payment_request_object(address, amount, message, expiration, timestamp)
 
     async def create_payment_request_object(self, address, amount, message, expiration, timestamp):
         return Invoice(
@@ -394,7 +394,7 @@ class Wallet:
             d["confirmations"] = await self.coin.get_confirmations(req.tx_hash)
         d["amount_wei"] = to_wei(req.amount, self.divisibility)
         d["address"] = req.address
-        d["URI"] = await self.coin.get_request_url(req)
+        d["URI"] = await self.coin.get_payment_uri(req, self.divisibility, contract=getattr(self, "contract", None))
         return d
 
     def get_request(self, key):
@@ -490,6 +490,8 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
 
     VERSION = "4.3.0"  # version of electrum API with which we are "compatible"
 
+    KEYSTORE_CLASS = KeyStore
+
     coin: BlockchainFeatures  # set by create_coin()
 
     latest_height = StoredProperty("latest_height", -1)
@@ -498,7 +500,7 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
         super().__init__()
         daemon_ctx.set(self)
         if not hasattr(self, "CONTRACT_FIAT_NAME"):
-            self.v = self.FIAT_NAME
+            self.CONTRACT_FIAT_NAME = self.FIAT_NAME
         self.exchange_rates = defaultdict(dict)
         self.latest_blocks = deque(maxlen=self.MAX_SYNC_BLOCKS)
         self.config_path = os.path.join(self.get_datadir(), "config")
@@ -787,7 +789,7 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
         if storage.file_exists():
             raise Exception("Remove the existing wallet first!")
         db = WalletDB("")
-        keystore = KeyStore(seed)
+        keystore = daemon_ctx.get().KEYSTORE_CLASS(seed)
         db.put("keystore", keystore.dump())
         wallet_obj = Wallet(self.coin, db, storage)
         wallet_obj.save_db()
@@ -1020,7 +1022,7 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
         if not path:
             path = os.path.join(self.get_wallet_path(), self.coin.get_wallet_key(text, contract))
         try:
-            keystore = KeyStore(text, contract=contract)
+            keystore = daemon_ctx.get().KEYSTORE_CLASS(text, contract=contract)
         except Exception as e:
             raise Exception("Invalid key provided") from e
         storage = Storage(path if path is not NOOP_PATH else None, in_memory_only=path is NOOP_PATH)
@@ -1073,7 +1075,7 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
     @rpc
     def validatekey(self, key, wallet=None):
         try:
-            KeyStore(key)
+            daemon_ctx.get().KEYSTORE_CLASS(key)
             return True
         except Exception:
             return False
