@@ -83,11 +83,11 @@ class BlockchainFeatures(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def is_address(address) -> bool:
+    def is_address(self, address) -> bool:
         pass
 
     @abstractmethod
-    def normalize_address(address) -> str:
+    def normalize_address(self, address) -> str:
         pass
 
     @abstractmethod
@@ -103,7 +103,7 @@ class BlockchainFeatures(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def get_tx_hash(tx_data) -> str:
+    def get_tx_hash(self, tx_data) -> str:
         pass
 
     @abstractmethod
@@ -113,7 +113,7 @@ class BlockchainFeatures(metaclass=ABCMeta):
     def get_wallet_key(self, xpub, *args, **kwargs):
         return xpub
 
-    def to_dict(obj):
+    def to_dict(self, obj):
         return json.loads(StorageJSONEncoder(precision=daemon_ctx.get().DIVISIBILITY).encode(obj))
 
 
@@ -870,7 +870,7 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
     @rpc
     async def getinfo(self, wallet=None):
         path = self.get_datadir()
-        if not await self.coin.is_connected():
+        if not self.coin.is_connected():
             return {"connected": False, "path": path, "version": self.VERSION}
         try:
             nodes = len(await self.coin.get_peer_list())
@@ -879,7 +879,7 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
         numblocks = await self.coin.get_block_number()
         return {
             "blockchain_height": self.latest_height,
-            "connected": await self.coin.is_connected(),
+            "connected": self.coin.is_connected(),
             "gas_price": await self.coin.get_gas_price(),
             "path": path,
             "server": self.SERVER,

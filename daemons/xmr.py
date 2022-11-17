@@ -1,18 +1,24 @@
 import asyncio
+import binascii
 import json
 import os
+from dataclasses import dataclass
+from datetime import datetime
 
 from aiohttp import ClientError as AsyncClientError
 from eth_account import Account
 from eth_keys.datatypes import PrivateKey, PublicKey
 from genericprocessor import NOOP_PATH, BlockchainFeatures, BlockProcessorDaemon
 from genericprocessor import KeyStore as BaseKeyStore
-from genericprocessor import Transaction, Wallet, WalletDB, daemon_ctx, from_wei, str_to_bool, to_wei
+from genericprocessor import Transaction as BaseTransaction
+from genericprocessor import Wallet, WalletDB, daemon_ctx, from_wei, str_to_bool, to_wei
 from jsonrpc import RPCProvider
 from monero.numbers import from_atomic
 from monero.seed import Seed
+from monero.transaction import Transaction as MoneroTransaction
+from storage import JSONEncoder as StorageJSONEncoder
 from storage import Storage
-from utils import exception_retry_middleware, rpc
+from utils import exception_retry_middleware, load_json_dict, rpc
 from web3 import Web3
 
 MAX_FETCH_TXES = 100
@@ -24,6 +30,18 @@ def is_valid_hash(hexhash):
         return len(hexhash) == 64
     except ValueError:
         return
+
+
+class JSONEncoder(StorageJSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, MoneroTransaction):
+            return obj.__dict__
+        return super().default(obj)
+
+
+@dataclass
+class Transaction(BaseTransaction):
+    monero_tx: MoneroTransaction = None
 
 
 class MoneroRPC(RPCProvider):
@@ -49,11 +67,19 @@ class MoneroRPC(RPCProvider):
             raise Exception(resp["status"])
         txs = []
         for tx in resp.get("txs", []):
-            json_part = json.loads(tx.pop("as_json"))
-            tx.pop("as_hex")
-            fee = json_part.get("rct_signatures", {}).get("txnFee")
-            fee = from_atomic(fee) if fee else None
-            txs.append({**json_part, **tx, "fee": fee})
+            as_json = json.loads(tx["as_json"])
+            fee = as_json.get("rct_signatures", {}).get("txnFee")
+            txs.append(
+                MoneroTransaction(
+                    hash=tx["tx_hash"],
+                    fee=from_atomic(fee) if fee else None,
+                    height=None if tx["in_pool"] else tx["block_height"],
+                    timestamp=datetime.fromtimestamp(tx["block_timestamp"]) if "block_timestamp" in tx else None,
+                    output_indices=tx["output_indices"] if "output_indices" in tx else None,
+                    blob=binascii.unhexlify(tx["as_hex"]) or None,
+                    json=as_json,
+                )
+            )
         return txs
 
     async def get_block(self, height):
@@ -67,6 +93,12 @@ class MoneroRPC(RPCProvider):
             **block,
             "transactions": await self.get_transactions([block["miner_tx_hash"]] + json_part["tx_hashes"]),
         }
+
+    async def broadcast(self, tx):
+        resp = await self.raw_request("send_raw_transaction", tx_as_hex=tx)
+        if resp["status"] != "OK":
+            raise Exception(resp["status"])
+        return resp
 
 
 class XMRFeatures(BlockchainFeatures):
@@ -132,17 +164,26 @@ class XMRFeatures(BlockchainFeatures):
         return f"ethereum:{req.address}@{chain_id}?value={amount_wei}"
 
     async def process_tx_data(self, data):
-        return Transaction(str(data["hash"].hex()), data["to"], data["value"])
+        return Transaction(
+            data.hash,
+            None,
+            None,
+            monero_tx=data,
+        )
 
     def get_tx_hash(self, tx_data):
-        return tx_data["hash"].hex()
+        return tx_data.hash
 
     def get_wallet_key(self, xpub, *args, **kwargs):
         return xpub
 
     async def get_confirmations(self, tx_hash, data=None) -> int:
         data = data or await self.get_tx_receipt_safe(tx_hash)
-        return max(0, await self.get_block_number() - data["blockNumber"] + 1)
+        current_height = await self.get_block_number()
+        return max(0, current_height - data.get("block_height", current_height - 1) + 1)
+
+    def to_dict(self, obj):
+        return json.loads(JSONEncoder(precision=daemon_ctx.get().DIVISIBILITY).encode(obj))
 
 
 # NOTE: there are 2 types of retry middlewares installed
@@ -202,7 +243,7 @@ class KeyStore(BaseKeyStore):
 
 class XMRDaemon(BlockProcessorDaemon):
     name = "XMR"
-    BASE_SPEC_FILE = "daemons/spec/xmr.json"
+    BASE_SPEC_FILE = "daemons/spec/eth.json"
     DEFAULT_PORT = 5011
 
     DIVISIBILITY = 12
@@ -214,8 +255,12 @@ class XMRDaemon(BlockProcessorDaemon):
 
     KEYSTORE_CLASS = KeyStore
 
+    def __init__(self):
+        super().__init__()
+        self.synchronized = True  # TODO: remove
+
     def create_coin(self):
-        self.coin = XMRDaemon(MoneroRPC(self.SERVER))
+        self.coin = XMRFeatures(MoneroRPC(self.SERVER))
 
     def get_default_server_url(self):
         return ""
@@ -248,9 +293,9 @@ class XMRDaemon(BlockProcessorDaemon):
     async def add_peer(self, url, wallet=None):
         raise NotImplementedError("Not supported in monero")
 
-    # @rpc(requires_network=True)
-    # async def broadcast(self, tx, wallet=None):
-    #     return self.coin.to_dict(await self.coin.web3.eth.send_raw_transaction(tx))
+    @rpc(requires_network=True)
+    async def broadcast(self, tx, wallet=None):
+        return self.coin.to_dict(await self.coin.rpc.broadcast(tx))
 
     # @rpc(requires_network=True)
     # async def get_default_fee(self, tx, wallet=None):
@@ -270,24 +315,24 @@ class XMRDaemon(BlockProcessorDaemon):
     #         fee = from_wei(tx_dict["gasPrice"]) * tx_dict["gas"]
     #     return self.coin.to_dict(fee)
 
-    # @rpc
-    # def get_tx_hash(self, tx_data, wallet=None):
-    #     return self.coin.to_dict(Web3.keccak(hexstr=tx_data))
+    @rpc
+    def get_tx_hash(self, tx_data, wallet=None):
+        return load_json_dict(tx_data, "Invalid transaction")["tx_hash"]
 
-    # @rpc
-    # def get_tx_size(self, tx_data, wallet=None):
-    #     return len(Web3.toBytes(hexstr=tx_data))
+    @rpc
+    def get_tx_size(self, tx_data, wallet=None):
+        return len(Web3.toBytes(hexstr=tx_data))
 
-    # @rpc(requires_network=True)
-    # async def get_tx_status(self, tx, wallet=None):
-    #     data = self.coin.to_dict(await self.coin.get_tx_receipt_safe(tx))
-    #     data["confirmations"] = await self.coin.get_confirmations(tx, data)
-    #     return data
+    @rpc(requires_network=True)
+    async def get_tx_status(self, tx, wallet=None):
+        data = self.coin.to_dict(await self.coin.get_tx_receipt_safe(tx))
+        data["confirmations"] = await self.coin.get_confirmations(tx, data)
+        return data
 
-    # @rpc(requires_network=True)
-    # async def get_used_fee(self, tx_hash, wallet=None):
-    #     tx_stats = await self.get_tx_status(tx_hash)
-    #     return self.coin.to_dict(tx_stats["gasUsed"] * from_wei(tx_stats["effectiveGasPrice"]))
+    @rpc(requires_network=True)
+    async def get_used_fee(self, tx_hash, wallet=None):
+        tx_stats = await self.get_tx_status(tx_hash)
+        return self.coin.to_dict(tx_stats["gasUsed"] * from_wei(tx_stats["effectiveGasPrice"]))
 
     @rpc(requires_network=True)
     async def gettransaction(self, tx, wallet=None):
@@ -313,7 +358,7 @@ class XMRDaemon(BlockProcessorDaemon):
 
     # @rpc(requires_wallet=True, requires_network=True)
     # async def payto(self, destination, amount, fee=None, feerate=None, gas=None, unsigned=False, wallet=None, *args,
-    #  **kwargs):
+    # **kwargs):
     #     address = self.wallets[wallet].address
     #     tx_dict = {
     #         "to": destination,
