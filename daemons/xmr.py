@@ -100,6 +100,12 @@ class MoneroRPC(RPCProvider):
             raise Exception(resp["status"])
         return resp
 
+    async def get_fee_estimate(self):
+        resp = await self.jsonrpc_request("get_fee_estimate")
+        if resp["status"] != "OK":
+            raise Exception(resp["status"])
+        return resp["fee"]
+
 
 class XMRFeatures(BlockchainFeatures):
     rpc: MoneroRPC
@@ -120,8 +126,8 @@ class XMRFeatures(BlockchainFeatures):
     def is_connected(self):
         return True
 
-    async def get_gas_price(self):  # TODO: get_fee_estimate quantization mask?
-        return 0
+    async def get_gas_price(self):
+        return await self.rpc.get_fee_estimate()
 
     async def is_syncing(self):
         return False
