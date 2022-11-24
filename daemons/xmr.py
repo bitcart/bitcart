@@ -2,24 +2,33 @@ import asyncio
 import binascii
 import json
 import os
-from dataclasses import dataclass
+import secrets
+import traceback
+from dataclasses import dataclass, field
 from datetime import datetime
+from decimal import Decimal
 
 from aiohttp import ClientError as AsyncClientError
-from eth_account import Account
-from eth_keys.datatypes import PrivateKey, PublicKey
-from genericprocessor import NOOP_PATH, BlockchainFeatures, BlockProcessorDaemon
+from genericprocessor import NOOP_PATH, PR_UNPAID, BlockchainFeatures, BlockProcessorDaemon
+from genericprocessor import Invoice as BaseInvoice
 from genericprocessor import KeyStore as BaseKeyStore
 from genericprocessor import Transaction as BaseTransaction
-from genericprocessor import Wallet, WalletDB, daemon_ctx, from_wei, str_to_bool, to_wei
+from genericprocessor import Wallet as BaseWallet
+from genericprocessor import WalletDB, daemon_ctx, decimal_to_string, from_wei, str_to_bool
 from jsonrpc import RPCProvider
+from monero import const as monero_const
+from monero import ed25519
+from monero.address import address as address_func
+from monero.backends.offline import OfflineWallet
+from monero.keccak import keccak_256
 from monero.numbers import from_atomic
 from monero.seed import Seed
+from monero.transaction import ExtraParser
 from monero.transaction import Transaction as MoneroTransaction
+from monero.wallet import Wallet as MoneroWallet
 from storage import JSONEncoder as StorageJSONEncoder
 from storage import Storage
 from utils import exception_retry_middleware, load_json_dict, rpc
-from web3 import Web3
 
 MAX_FETCH_TXES = 100
 
@@ -138,11 +147,11 @@ class XMRFeatures(BlockchainFeatures):
             raise Exception("Transaction not found")
         return data[0]
 
-    async def get_tx_receipt(self, tx):
-        return await self.web3.eth.get_transaction_receipt(tx)
+    get_tx_receipt = get_transaction
 
     async def get_balance(self, address):
-        return from_wei(await self.web3.eth.get_balance(address))
+        # TODO: implement somehow
+        return Decimal(0)
 
     async def get_block(self, block, *args, **kwargs):
         return await self.rpc.get_block(block)
@@ -154,20 +163,20 @@ class XMRFeatures(BlockchainFeatures):
         return 1
 
     def is_address(self, address):
-        return Web3.isAddress(address) or Web3.isChecksumAddress(address)
+        try:
+            address_func(address)
+            return True
+        except ValueError:
+            return False
 
     def normalize_address(self, address):
-        return Web3.toChecksumAddress(address)
+        return address
 
     async def get_peer_list(self):
-        return await self.web3.geth.admin.peers()
+        return []
 
     async def get_payment_uri(self, req, divisibility, contract=None):
-        chain_id = await self.chain_id()
-        amount_wei = to_wei(req.amount, divisibility)
-        if contract:
-            return f"ethereum:{contract}@{chain_id}/transfer?address={req.address}&uint256={amount_wei}"
-        return f"ethereum:{req.address}@{chain_id}?value={amount_wei}"
+        return f"monero:{req.address}?tx_amount={decimal_to_string(req.amount, XMRDaemon.DIVISIBILITY)}"
 
     async def process_tx_data(self, data):
         return Transaction(
@@ -186,7 +195,7 @@ class XMRFeatures(BlockchainFeatures):
     async def get_confirmations(self, tx_hash, data=None) -> int:
         data = data or await self.get_tx_receipt_safe(tx_hash)
         current_height = await self.get_block_number()
-        return max(0, current_height - data.get("block_height", current_height - 1) + 1)
+        return max(0, current_height - data.height + 1)
 
     def to_dict(self, obj):
         return json.loads(JSONEncoder(precision=daemon_ctx.get().DIVISIBILITY).encode(obj))
@@ -207,37 +216,31 @@ class KeyStore(BaseKeyStore):
     address: str = None
 
     def load_account_from_key(self):
-        self.account = None
         try:
-            self.account = Account.from_mnemonic(self.key)
-            self.seed = self.key
+            self.add_privkey(self.key, check_address=False)
         except Exception:
-            try:
-                self.account = Account.from_key(self.key)
-            except Exception:
-                try:
-                    self.public_key = PublicKey.from_compressed_bytes(Web3.toBytes(hexstr=self.key))
-                    self.address = self.public_key.to_checksum_address()
-                except Exception:
-                    if not daemon_ctx.get().coin.is_address(self.key):
-                        raise Exception("Error loading wallet: invalid address")
-                    self.address = daemon_ctx.get().coin.normalize_address(self.key)
-        if self.account:
-            self.address = self.account.address
-            self.private_key = self.account.key.hex()
-            self.public_key = PublicKey.from_private(PrivateKey(Web3.toBytes(hexstr=self.private_key)))
-        if self.public_key:
-            self.public_key = Web3.toHex(self.public_key.to_compressed_bytes())
+            address = address_func(self.address)
+            if ed25519.public_from_secret_hex(self.key) == address.view_key():
+                self.public_key = self.key
+        if self.address is None:
+            raise Exception("Address not provided or can't be derived")
+        if self.public_key is None:
+            raise Exception("Missing secret viewkey required for payments detection")
 
-    def add_privkey(self, privkey):
+    def add_privkey(self, privkey, check_address=True):
         try:
-            account = Account.from_key(privkey)
+            seed = Seed(privkey)
+            private_key = seed.secret_spend_key()
+            public_key = seed.secret_view_key()
+            address = str(seed.public_address(net=daemon_ctx.get().network_const))
         except Exception:
-            raise Exception("Invalid key provided")
-        if account.address != self.address:
-            raise Exception("Invalid private key imported: address mismatch")
-        self.private_key = privkey
-        self.account = account
+            raise Exception("Invalid seed provided")
+        if check_address and address != self.address:
+            raise Exception("Invalid seed imported: address mismatch")
+        self.seed = privkey
+        self.private_key = private_key
+        self.public_key = public_key
+        self.address = address
 
     @classmethod
     def load(cls, db):
@@ -245,6 +248,74 @@ class KeyStore(BaseKeyStore):
 
     def dump(self):
         return {"key": self.key, "address": self.address}
+
+
+@dataclass
+class Invoice(BaseInvoice):
+    sent_amount: Decimal = Decimal(0)
+
+    def __post_init__(self):
+        super().__post_init__()
+        if isinstance(self.sent_amount, str):
+            self.sent_amount = Decimal(self.sent_amount)
+
+
+@dataclass
+class Wallet(BaseWallet):
+    request_addresses: dict = field(default_factory=dict)
+
+    def __post_init__(self):
+        self.request_addresses = self.db.get_dict("request_addresses")
+        super().__post_init__()
+
+    def clear_requests(self):
+        self.receive_requests.clear()
+        self.request_addresses.clear()
+        self.save_db()
+
+    def add_payment_request(self, req, save_db=True):
+        self.receive_requests[req.id] = req
+        self.request_addresses[req.address] = req.id
+        if save_db:
+            self.save_db()
+        return req
+
+    def get_request(self, key):
+        try:
+            key = self.request_addresses.get(key, key)
+        finally:
+            return self.receive_requests.get(key)
+
+    def remove_from_detection_dict(self, req):
+        self.request_addresses.pop(req.address, None)
+
+    async def create_payment_request_object(self, address, amount, message, expiration, timestamp):
+        invoice_id = secrets.token_hex(8)
+        return Invoice(
+            address=str(address_func(address).with_payment_id(invoice_id)),
+            message=message,
+            time=timestamp,
+            original_amount=amount,
+            amount=amount,
+            exp=expiration,
+            id=invoice_id,
+            height=await self.coin.get_block_number(),
+        )
+
+    async def export_request(self, req):
+        d = await super().export_request(req)
+        d["sent_amount"] = decimal_to_string(req.sent_amount, self.divisibility)
+        return d
+
+    async def process_new_payment(self, to_address, tx, payment, wallet):
+        req = self.get_request(to_address)
+        if req is None or req.status != PR_UNPAID:
+            return
+        req.sent_amount += payment.amount
+        if req.sent_amount >= req.amount:
+            await self.process_payment(wallet, req.id, tx_hash=tx.hash)
+        else:
+            self.save_db()
 
 
 class XMRDaemon(BlockProcessorDaemon):
@@ -260,10 +331,18 @@ class XMRDaemon(BlockProcessorDaemon):
     FIAT_NAME = "monero"
 
     KEYSTORE_CLASS = KeyStore
+    WALLET_CLASS = Wallet
+    INVOICE_CLASS = Invoice
+
+    NETWORK_MAPPING = {"mainnet": monero_const.NET_MAIN, "testnet": monero_const.NET_TEST, "stagenet": monero_const.NET_STAGE}
 
     def __init__(self):
         super().__init__()
-        self.synchronized = True  # TODO: remove
+        self.network_const = self.NETWORK_MAPPING.get(self.NET.lower())
+        if not self.network_const:
+            raise ValueError(
+                f"Invalid network passed: {self.NET}. Valid choices are {', '.join(self.NETWORK_MAPPING.keys())}."
+            )
 
     def create_coin(self):
         self.coin = XMRFeatures(MoneroRPC(self.SERVER))
@@ -294,6 +373,49 @@ class XMRDaemon(BlockProcessorDaemon):
         await wallet.start(self.latest_blocks.copy())
         return wallet
 
+    def get_final_tx_address(self, address, tx, wallet):
+        ep = ExtraParser(tx.monero_tx.json["extra"])
+        d = ep.parse()
+        svk = binascii.unhexlify(wallet.view_key())
+        encrypted_payment_id = d["nonces"][0][1:]
+        svk_2 = ed25519.scalar_add(svk, svk)
+        svk_4 = ed25519.scalar_add(svk_2, svk_2)
+        svk_8 = ed25519.scalar_add(svk_4, svk_4)
+        shared_secret = bytearray(ed25519.scalarmult(svk_8, tx.monero_tx.pubkeys[0]))
+        shared_secret.append(0x8D)
+        shared_secret = keccak_256(shared_secret).digest()
+        payment_id = bytearray(encrypted_payment_id)
+        for i in range(len(payment_id)):
+            payment_id[i] ^= shared_secret[i]
+        return address_func(address).with_payment_id(binascii.hexlify(payment_id).decode())
+
+    async def process_transaction(self, tx):  # noqa: C901
+        if tx.divisibility is None:
+            tx.divisibility = self.DIVISIBILITY
+        for address in self.addresses:
+            try:
+                first_wallet = self.wallets[next(iter(self.addresses[address]))]
+            except StopIteration:
+                continue
+            w = MoneroWallet(
+                OfflineWallet(
+                    address,
+                    view_key=first_wallet.keystore.public_key,
+                )
+            )
+            try:
+                for output in tx.monero_tx.outputs(wallet=w):
+                    if output.payment is not None:
+                        final_address = self.get_final_tx_address(address, tx, w)
+                        for wallet in self.addresses[address]:
+                            await self.trigger_event({"event": "new_transaction", "tx": tx.hash}, wallet)
+                            if final_address in self.wallets[wallet].request_addresses:
+                                await self.wallets[wallet].process_new_payment(final_address, tx, output.payment, wallet)
+            except Exception:
+                if self.VERBOSE:
+                    print(f"Error processing transaction {tx.hash}:")
+                    print(traceback.format_exc())
+
     ### Methods ###
     @rpc(requires_network=True)
     async def add_peer(self, url, wallet=None):
@@ -303,23 +425,9 @@ class XMRDaemon(BlockProcessorDaemon):
     async def broadcast(self, tx, wallet=None):
         return self.coin.to_dict(await self.coin.rpc.broadcast(tx))
 
-    # @rpc(requires_network=True)
-    # async def get_default_fee(self, tx, wallet=None):
-    #     tx_dict = load_json_dict(tx, "Invalid transaction")
-    #     has_modern_params = any(v in tx_dict for v in EIP1559_PARAMS)
-    #     has_legacy_params = "gasPrice" in tx_dict
-    #     if (
-    #         (has_modern_params and has_legacy_params)
-    #         or (has_modern_params and not self.EIP1559_SUPPORTED)
-    #         or "gas" not in tx_dict
-    #     ):
-    #         raise Exception("Invalid mix of transaction fee params")
-    #     if has_modern_params:
-    #         base_fee = (await self.coin.get_block_safe("latest")).baseFeePerGas
-    #         fee = (from_wei(tx_dict["maxPriorityFeePerGas"]) + from_wei(base_fee)) * tx_dict["gas"]
-    #     else:
-    #         fee = from_wei(tx_dict["gasPrice"]) * tx_dict["gas"]
-    #     return self.coin.to_dict(fee)
+    @rpc(requires_network=True)
+    async def get_default_fee(self, tx, wallet=None):
+        raise NotImplementedError("Currently not supported")
 
     @rpc
     def get_tx_hash(self, tx_data, wallet=None):
@@ -327,7 +435,7 @@ class XMRDaemon(BlockProcessorDaemon):
 
     @rpc
     def get_tx_size(self, tx_data, wallet=None):
-        return len(Web3.toBytes(hexstr=tx_data))
+        raise NotImplementedError("Currently not supported")
 
     @rpc(requires_network=True)
     async def get_tx_status(self, tx, wallet=None):
@@ -362,50 +470,20 @@ class XMRDaemon(BlockProcessorDaemon):
     def make_seed(self, nbits=128, language="english", wallet=None):
         return Seed().phrase
 
-    # @rpc(requires_wallet=True, requires_network=True)
-    # async def payto(self, destination, amount, fee=None, feerate=None, gas=None, unsigned=False, wallet=None, *args,
-    # **kwargs):
-    #     address = self.wallets[wallet].address
-    #     tx_dict = {
-    #         "to": destination,
-    #         "value": Web3.toWei(amount, "ether"),
-    #         **(await self.get_common_payto_params(address)),
-    #     }
-    #     if self.EIP1559_SUPPORTED:
-    #         tx_dict["type"] = "0x2"
-    #     if fee:
-    #         tx_dict["maxFeePerGas"] = Web3.toWei(fee, "ether")
-    #     if feerate:
-    #         tx_dict["maxPriorityFeePerGas"] = Web3.toWei(feerate, "gwei")
-    #     tx_dict["gas"] = int(gas) if gas else await self.get_default_gas(tx_dict)
-    #     if unsigned:
-    #         return tx_dict
-    #     if self.wallets[wallet].is_watching_only():
-    #         raise Exception("This is a watching-only wallet")
-    #     return self._sign_transaction(tx_dict, self.wallets[wallet].keystore.private_key)
+    @rpc(requires_wallet=True, requires_network=True)
+    async def payto(self, destination, amount, fee=None, feerate=None, gas=None, unsigned=False, wallet=None, *args, **kwargs):
+        raise NotImplementedError("Currently not supported")
 
-    # @rpc(requires_wallet=True)
-    # def signmessage(self, address=None, message=None, wallet=None):
-    #     # Mimic electrum API
-    #     if not address and not message:
-    #         raise ValueError("No message specified")
-    #     if not message:
-    #         message = address
-    #     return self.coin.to_dict(
-    #         Account.sign_message(encode_defunct(text=message), private_key=self.wallets[wallet].key).signature
-    #     )
+    @rpc(requires_wallet=True)
+    def signmessage(self, address=None, message=None, wallet=None):
+        raise NotImplementedError("Currently not supported")
 
-    # def _sign_transaction(self, tx, private_key):
-    #     if private_key is None:
-    #         raise Exception("This is a watching-only wallet")
-    #     tx_dict = load_json_dict(tx, "Invalid transaction")
-    #     return self.coin.to_dict(Account.sign_transaction(tx_dict, private_key=private_key).rawTransaction)
+    def _sign_transaction(self, tx, private_key):
+        raise NotImplementedError("Currently not supported")
 
-    # @rpc
-    # def verifymessage(self, address, signature, message, wallet=None):
-    #     return self.coin.normalize_address(
-    #         Account.recover_message(encode_defunct(text=message), signature=signature)
-    #     ) == self.coin.normalize_address(address)
+    @rpc
+    def verifymessage(self, address, signature, message, wallet=None):
+        raise NotImplementedError("Currently not supported")
 
 
 if __name__ == "__main__":

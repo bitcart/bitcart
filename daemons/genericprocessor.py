@@ -141,7 +141,7 @@ class WalletDB(StorageWalletDB):
 
     def _convert_dict(self, path, key, v):
         if key == "payment_requests":
-            v = {k: Invoice(**x) for k, x in v.items()}
+            v = {k: daemon_ctx.get().INVOICE_CLASS(**x) for k, x in v.items()}
         if key == "used_amounts":
             v = {Decimal(k): x for k, x in v.items()}
         return v
@@ -404,11 +404,14 @@ class Wallet:
         finally:
             return self.receive_requests.get(key)
 
+    def remove_from_detection_dict(self, req):
+        self.used_amounts.pop(req.amount, None)
+
     def remove_request(self, key):
         req = self.get_request(key)
         if not req:
             return False
-        self.used_amounts.pop(req.amount, None)
+        self.remove_from_detection_dict(req)
         self.receive_requests.pop(req.id, None)
         self.save_db()
         return True
@@ -430,7 +433,7 @@ class Wallet:
             setattr(req, kwarg, kwargs[kwarg])
         self.add_payment_request(req, save_db=False)
         if status != PR_UNPAID:
-            self.used_amounts.pop(req.amount, None)
+            self.remove_from_detection_dict(req)
         self.save_db()
         return req
 
@@ -491,6 +494,8 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
     VERSION = "4.3.0"  # version of electrum API with which we are "compatible"
 
     KEYSTORE_CLASS = KeyStore
+    WALLET_CLASS = Wallet
+    INVOICE_CLASS = Invoice
 
     coin: BlockchainFeatures  # set by create_coin()
 
@@ -791,7 +796,7 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
         db = WalletDB("")
         keystore = daemon_ctx.get().KEYSTORE_CLASS(seed)
         db.put("keystore", keystore.dump())
-        wallet_obj = Wallet(self.coin, db, storage)
+        wallet_obj = self.WALLET_CLASS(self.coin, db, storage)
         wallet_obj.save_db()
         return {
             "seed": seed,
@@ -1030,7 +1035,7 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
             raise Exception("Remove the existing wallet first!")
         db = WalletDB("")
         db.put("keystore", keystore.dump())
-        wallet_obj = Wallet(self.coin, db, storage)
+        wallet_obj = self.WALLET_CLASS(self.coin, db, storage)
         wallet_obj.save_db()
         return wallet_obj
 
