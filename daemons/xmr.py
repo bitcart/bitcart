@@ -395,6 +395,10 @@ class XMRDaemon(BlockProcessorDaemon):
     async def process_transaction(self, tx):  # noqa: C901
         if tx.divisibility is None:
             tx.divisibility = self.DIVISIBILITY
+        current_height = await self.coin.get_block_number()
+        # NOTE: do not process locked funds
+        if current_height <= tx.monero_tx.json["unlock_time"]:
+            return
         for address in self.addresses:
             try:
                 first_wallet = self.wallets[next(iter(self.addresses[address]))]
@@ -447,9 +451,15 @@ class XMRDaemon(BlockProcessorDaemon):
 
     @rpc(requires_network=True)
     async def gettransaction(self, tx, wallet=None):
-        data = self.coin.to_dict(await self.coin.get_transaction(tx))
-        data["confirmations"] = await self.coin.get_confirmations(tx, data)
-        return data
+        tx_obj = await self.coin.get_transaction(tx)
+        data = {
+            **tx_obj.json,
+            "fee": tx_obj.fee,
+            "tx_hash": tx_obj.hash,
+            "height": tx_obj.height,
+            "confirmations": await self.coin.get_confirmations(tx, tx_obj),
+        }
+        return self.coin.to_dict(data)
 
     @rpc(requires_wallet=True)
     async def listaddresses(self, unused=False, funded=False, balance=False, wallet=None):
