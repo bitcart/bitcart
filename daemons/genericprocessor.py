@@ -685,20 +685,20 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
         return path
 
     @abstractmethod
-    async def load_wallet(self, xpub, contract, diskless=False):
+    async def load_wallet(self, xpub, contract, diskless=False, extra_params={}):
         pass
 
     async def is_still_syncing(self, wallet=None):
         return wallet and not wallet.is_synchronized()
 
-    async def _get_wallet(self, id, req_method, xpub, contract, diskless=False):
+    async def _get_wallet(self, id, req_method, xpub, contract, diskless=False, extra_params={}):
         wallet = error = None
         try:
             should_skip = req_method not in self.supported_methods or not self.supported_methods[req_method].requires_network
             if not self.NO_SYNC_WAIT:
                 while not should_skip and not self.synchronized:  # wait for initial sync to fetch blocks
                     await asyncio.sleep(0.1)
-            wallet = await self.load_wallet(xpub, contract, diskless=diskless)
+            wallet = await self.load_wallet(xpub, contract, diskless=diskless, extra_params=extra_params)
             if should_skip:
                 return wallet, error
             if not self.NO_SYNC_WAIT:
@@ -732,7 +732,9 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
             return await result if inspect.isawaitable(result) else result
 
     async def execute_method(self, id, req_method, xpub, contract, extra_params, req_args, req_kwargs):
-        wallet, error = await self._get_wallet(id, req_method, xpub, contract, diskless=extra_params.get("diskless", False))
+        wallet, error = await self._get_wallet(
+            id, req_method, xpub, contract, diskless=extra_params.get("diskless", False), extra_params=extra_params
+        )
         if error:
             return error.send()
         exec_method, error = await self.get_exec_method(id, req_method)
@@ -1023,11 +1025,11 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
     def removelocaltx(self, *args, **kwargs):
         raise NotImplementedError(NO_HISTORY_MESSAGE)
 
-    def restore_wallet_from_text(self, text, contract=None, path=None):
+    def restore_wallet_from_text(self, text, contract=None, path=None, address=None):
         if not path:
             path = os.path.join(self.get_wallet_path(), self.coin.get_wallet_key(text, contract))
         try:
-            keystore = daemon_ctx.get().KEYSTORE_CLASS(text, contract=contract)
+            keystore = daemon_ctx.get().KEYSTORE_CLASS(text, contract=contract, address=address)
         except Exception as e:
             raise Exception("Invalid key provided") from e
         storage = Storage(path if path is not NOOP_PATH else None, in_memory_only=path is NOOP_PATH)
@@ -1040,8 +1042,8 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
         return wallet_obj
 
     @rpc
-    def restore(self, text, wallet=None, wallet_path=None, contract=None):
-        wallet = self.restore_wallet_from_text(text, contract, wallet_path)
+    def restore(self, text, wallet=None, wallet_path=None, contract=None, address=None):
+        wallet = self.restore_wallet_from_text(text, contract, wallet_path, address=address)
         return {
             "path": wallet.storage.path,
             "msg": "",

@@ -229,6 +229,8 @@ class KeyStore(BaseKeyStore):
 
     def add_privkey(self, privkey, check_address=True):
         try:
+            if len(privkey.split(" ")) == 1 and len(privkey) % 8 == 0:
+                raise Exception("Hexadecimal seed not supported")
             seed = Seed(privkey)
             private_key = seed.secret_spend_key()
             public_key = seed.secret_view_key()
@@ -350,7 +352,8 @@ class XMRDaemon(BlockProcessorDaemon):
     def get_default_server_url(self):
         return ""
 
-    async def load_wallet(self, xpub, contract, diskless=False):
+    async def load_wallet(self, xpub, contract, diskless=False, extra_params={}):
+        address = extra_params.get("address", None)
         wallet_key = self.coin.get_wallet_key(xpub)
         if wallet_key in self.wallets:
             return self.wallets[wallet_key]
@@ -358,12 +361,12 @@ class XMRDaemon(BlockProcessorDaemon):
             return None
 
         if diskless:
-            wallet = self.restore_wallet_from_text(xpub, path=NOOP_PATH)
+            wallet = self.restore_wallet_from_text(xpub, path=NOOP_PATH, address=address)
         else:
             wallet_dir = self.get_wallet_path()
             wallet_path = os.path.join(wallet_dir, wallet_key)
             if not os.path.exists(wallet_path):
-                self.restore(xpub, wallet_path=wallet_path)
+                self.restore(xpub, wallet_path=wallet_path, address=address)
             storage = Storage(wallet_path)
             db = WalletDB(storage.read())
             wallet = Wallet(self.coin, db, storage)

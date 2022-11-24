@@ -341,7 +341,7 @@ class ETHDaemon(BlockProcessorDaemon):
                     print(traceback.format_exc())
             await asyncio.sleep(self.BLOCK_TIME)
 
-    async def load_wallet(self, xpub, contract, diskless=False):
+    async def load_wallet(self, xpub, contract, diskless=False, extra_params={}):
         wallet_key = self.coin.get_wallet_key(xpub, contract)
         if wallet_key in self.wallets:
             await self.add_contract(contract, wallet_key)

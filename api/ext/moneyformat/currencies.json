@@ -330,5 +330,10 @@
         "name": "Groestlcoin",
         "divisibility": 8,
         "crypto": true
+    },
+    "XMR": {
+        "name": "Monero",
+        "divisibility": 8,
+        "crypto": true
     }
 }

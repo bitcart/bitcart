@@ -97,6 +97,7 @@ func runCommand(c *cli.Context) (*jsonrpc.RPCResponse, map[string]interface{}, e
 	args := c.Args()
 	wallet := c.String("wallet")
 	contract := c.String("contract")
+	address := c.String("address")
 	diskless := c.Bool("diskless")
 	user := c.String("user")
 	password := c.String("password")
@@ -117,7 +118,7 @@ func runCommand(c *cli.Context) (*jsonrpc.RPCResponse, map[string]interface{}, e
 	// some magic to make array with the last element being a dictionary with xpub in it
 	sl := args.Slice()[1:]
 	var params []interface{}
-	keyParams := map[string]interface{}{"xpub": map[string]interface{}{"xpub": wallet, "contract": contract, "diskless": diskless}}
+	keyParams := map[string]interface{}{"xpub": map[string]interface{}{"xpub": wallet, "contract": contract, "address": address, "diskless": diskless}}
 	acceptFlags := true
 	i := 0
 	for i < len(sl) {
@@ -175,6 +176,12 @@ func main() {
 			Usage:    "specify contract",
 			Required: false,
 			EnvVars:  []string{"BITCART_CONTRACT"},
+		},
+		&cli.StringFlag{
+			Name:     "address",
+			Usage:    "specify address (XMR-only)",
+			Required: false,
+			EnvVars:  []string{"BITCART_ADDRESS"},
 		},
 		&cli.BoolFlag{
 			Name:    "diskless",
