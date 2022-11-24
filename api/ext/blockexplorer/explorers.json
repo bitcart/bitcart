@@ -12,8 +12,8 @@
         "testnet": "https://www.blockchain.com/bch-testnet/tx/{}"
     },
     "xmr": {
-        "mainnet": "https://xmrchain.net/tx/{}",
-        "testnet": "https://testnet.xmrchain.net/tx/{}"
+        "mainnet": "",
+        "testnet": ""
     },
     "xrg": {
         "mainnet": "https://explorer.ergon.network/tx/{}"

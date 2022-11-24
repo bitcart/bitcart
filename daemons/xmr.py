@@ -441,12 +441,6 @@ class XMRDaemon(BlockProcessorDaemon):
         raise NotImplementedError("Currently not supported")
 
     @rpc(requires_network=True)
-    async def get_tx_status(self, tx, wallet=None):
-        data = self.coin.to_dict(await self.coin.get_tx_receipt_safe(tx))
-        data["confirmations"] = await self.coin.get_confirmations(tx, data)
-        return data
-
-    @rpc(requires_network=True)
     async def get_used_fee(self, tx_hash, wallet=None):
         tx_stats = await self.get_tx_status(tx_hash)
         return self.coin.to_dict(tx_stats["gasUsed"] * from_wei(tx_stats["effectiveGasPrice"]))

@@ -833,9 +833,10 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
         pass
 
     @rpc(requires_network=True)
-    @abstractmethod
     async def get_tx_status(self, tx, wallet=None):
-        pass
+        data = self.coin.to_dict(await self.coin.get_tx_receipt(tx))
+        data["confirmations"] = await self.coin.get_confirmations(tx, data)
+        return data
 
     @rpc(requires_wallet=True, requires_network=True)
     def get_updates(self, wallet):
