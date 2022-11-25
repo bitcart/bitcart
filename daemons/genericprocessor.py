@@ -38,6 +38,7 @@ AMOUNTGEN_LIMIT = 10**9
 PR_UNPAID = 0  # invoice amt not reached by txs in mempool+chain.
 PR_EXPIRED = 1  # invoice is unpaid and expiry time reached
 PR_PAID = 3  # paid and mined (1 conf).
+PR_UNCONFIRMED = 7
 
 daemon_ctx = ContextVar("daemon")
 
@@ -117,11 +118,7 @@ class BlockchainFeatures(metaclass=ABCMeta):
         return json.loads(StorageJSONEncoder(precision=daemon_ctx.get().DIVISIBILITY).encode(obj))
 
 
-pr_tooltips = {
-    PR_UNPAID: "Unpaid",
-    PR_PAID: "Paid",
-    PR_EXPIRED: "Expired",
-}
+pr_tooltips = {PR_UNPAID: "Unpaid", PR_PAID: "Paid", PR_EXPIRED: "Expired", PR_UNCONFIRMED: "Unconfirmed"}
 
 
 STR_TO_BOOL_MAPPING = {
@@ -433,7 +430,7 @@ class Wallet:
         for kwarg in kwargs:
             setattr(req, kwarg, kwargs[kwarg])
         self.add_payment_request(req, save_db=False)
-        if status != PR_UNPAID:
+        if status == PR_PAID:
             self.remove_from_detection_dict(req)
         self.save_db()
         return req
@@ -447,9 +444,9 @@ class Wallet:
             return
         self.set_request_status(req.id, PR_EXPIRED)
 
-    async def process_payment(self, wallet, amount, tx_hash, contract=None):
+    async def process_payment(self, wallet, amount, tx_hash, contract=None, status=PR_PAID):
         try:
-            req = self.set_request_status(amount, PR_PAID, tx_hash=tx_hash, contract=contract)
+            req = self.set_request_status(amount, status, tx_hash=tx_hash, contract=contract)
             await daemon_ctx.get().trigger_event(
                 {
                     "event": "new_payment",

@@ -9,7 +9,7 @@ from datetime import datetime
 from decimal import Decimal
 
 from aiohttp import ClientError as AsyncClientError
-from genericprocessor import NOOP_PATH, PR_UNPAID, BlockchainFeatures, BlockProcessorDaemon
+from genericprocessor import NOOP_PATH, PR_PAID, PR_UNCONFIRMED, PR_UNPAID, BlockchainFeatures, BlockProcessorDaemon
 from genericprocessor import Invoice as BaseInvoice
 from genericprocessor import KeyStore as BaseKeyStore
 from genericprocessor import Transaction as BaseTransaction
@@ -112,6 +112,12 @@ class MoneroRPC(RPCProvider):
             "transactions": await self.get_transactions([block["miner_tx_hash"]] + json_part["tx_hashes"]),
         }
 
+    async def get_mempool(self):
+        resp = await self.raw_request("get_transaction_pool")
+        if resp["status"] != "OK":
+            raise Exception(resp["status"])
+        return resp.get("transactions", [])
+
     async def broadcast(self, tx):
         resp = await self.raw_request("send_raw_transaction", tx_as_hex=tx)
         if resp["status"] != "OK":
@@ -199,7 +205,7 @@ class XMRFeatures(BlockchainFeatures):
     async def get_confirmations(self, tx_hash, data=None) -> int:
         data = data or await self.get_tx_receipt_safe(tx_hash)
         current_height = await self.get_block_number()
-        return max(0, current_height - data.height + 1)
+        return max(0, current_height - (data.height or current_height + 1) + 1)
 
     def to_dict(self, obj):
         return json.loads(JSONEncoder(precision=daemon_ctx.get().DIVISIBILITY).encode(obj))
@@ -248,11 +254,14 @@ class KeyStore(BaseKeyStore):
 @dataclass
 class Invoice(BaseInvoice):
     sent_amount: Decimal = Decimal(0)
+    confirmed_amount: Decimal = Decimal(0)
 
     def __post_init__(self):
         super().__post_init__()
         if isinstance(self.sent_amount, str):
             self.sent_amount = Decimal(self.sent_amount)
+        if isinstance(self.confirmed_amount, str):
+            self.confirmed_amount = Decimal(self.confirmed_amount)
 
 
 @dataclass
@@ -302,13 +311,17 @@ class Wallet(BaseWallet):
         d["sent_amount"] = decimal_to_string(req.sent_amount, self.divisibility)
         return d
 
-    async def process_new_payment(self, to_address, tx, payment, wallet):
+    async def process_new_payment(self, to_address, tx, payment, wallet, unconfirmed=False):
         req = self.get_request(to_address)
-        if req is None or req.status != PR_UNPAID:
+        if req is None or req.status not in (PR_UNPAID, PR_UNCONFIRMED):
             return
-        req.sent_amount += payment.amount
-        if req.sent_amount >= req.amount:
-            await self.process_payment(wallet, req.id, tx_hash=tx.hash)
+        if unconfirmed:
+            req.sent_amount += payment.amount
+        else:
+            req.confirmed_amount += payment.amount
+        req.sent_amount = max(req.sent_amount, req.confirmed_amount)
+        if (unconfirmed and req.sent_amount >= req.amount) or req.confirmed_amount >= req.amount:
+            await self.process_payment(wallet, req.id, tx_hash=tx.hash, status=PR_UNCONFIRMED if unconfirmed else PR_PAID)
         else:
             self.save_db()
 
@@ -320,6 +333,7 @@ class XMRDaemon(BlockProcessorDaemon):
 
     DIVISIBILITY = 12
     BLOCK_TIME = 60
+    MEMPOOL_TIME = 5
 
     DEFAULT_MAX_SYNC_BLOCKS = 300  # 10 hours
     # from coingecko API
@@ -336,10 +350,52 @@ class XMRDaemon(BlockProcessorDaemon):
     def __init__(self):
         super().__init__()
         self.network_const = self.NETWORK_MAPPING.get(self.NET.lower())
+        self.mempool_cache = {}
         if not self.network_const:
             raise ValueError(
                 f"Invalid network passed: {self.NET}. Valid choices are {', '.join(self.NETWORK_MAPPING.keys())}."
             )
+
+    async def on_startup(self, app):
+        await super().on_startup(app)
+        self.loop.create_task(self.process_mempool())
+
+    def create_mempool_tx(self, tx):
+        as_json = json.loads(tx["tx_json"])
+        fee = as_json.get("rct_signatures", {}).get("txnFee")
+        return MoneroTransaction(
+            hash=tx["id_hash"],
+            fee=from_atomic(fee) if fee else None,
+            height=None,
+            timestamp=None,
+            output_indices=None,
+            blob=binascii.unhexlify(tx["tx_blob"]) or None,
+            json=as_json,
+        )
+
+    async def process_mempool(self):  # noqa: C901
+        while self.running:
+            try:
+                mempool = await self.coin.rpc.get_mempool()
+                new_cache = {}
+                for tx_data in mempool:
+                    try:
+                        tx = await self.coin.process_tx_data(self.create_mempool_tx(tx_data))
+                        if tx is not None:
+                            if tx.hash in self.mempool_cache:
+                                continue
+                            new_cache[tx.hash] = True
+                            await self.process_transaction(tx, unconfirmed=True)
+                    except Exception:
+                        if self.VERBOSE:
+                            print(f"Error processing transaction {self.coin.get_tx_hash(tx_data)}:")
+                            print(traceback.format_exc())
+                self.mempool_cache = new_cache
+            except Exception:
+                if self.VERBOSE:
+                    print("Error processing mempool:")
+                    print(traceback.format_exc())
+            await asyncio.sleep(self.MEMPOOL_TIME)
 
     def create_coin(self):
         self.coin = XMRFeatures(MoneroRPC(self.SERVER))
@@ -387,7 +443,7 @@ class XMRDaemon(BlockProcessorDaemon):
             payment_id[i] ^= shared_secret[i]
         return address_func(address).with_payment_id(binascii.hexlify(payment_id).decode())
 
-    async def process_transaction(self, tx):  # noqa: C901
+    async def process_transaction(self, tx, unconfirmed=False):  # noqa: C901
         if tx.divisibility is None:
             tx.divisibility = self.DIVISIBILITY
         current_height = await self.coin.get_block_number()
@@ -412,7 +468,9 @@ class XMRDaemon(BlockProcessorDaemon):
                         for wallet in self.addresses[address]:
                             await self.trigger_event({"event": "new_transaction", "tx": tx.hash}, wallet)
                             if final_address in self.wallets[wallet].request_addresses:
-                                await self.wallets[wallet].process_new_payment(final_address, tx, output.payment, wallet)
+                                await self.wallets[wallet].process_new_payment(
+                                    final_address, tx, output.payment, wallet, unconfirmed=unconfirmed
+                                )
             except Exception:
                 if self.VERBOSE:
                     print(f"Error processing transaction {tx.hash}:")
