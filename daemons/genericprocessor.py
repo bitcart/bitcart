@@ -381,6 +381,7 @@ class Wallet:
     async def export_request(self, req):
         d = {
             "id": req.id,
+            "request_id": req.id,  # to distinguish from non-functional id in some coins
             "is_lightning": False,
             f"amount_{self.symbol}": decimal_to_string(req.amount, self.divisibility),
             "message": req.message,
@@ -392,7 +393,7 @@ class Wallet:
         if req.tx_hash:
             d["tx_hash"] = req.tx_hash
             d["confirmations"] = await self.coin.get_confirmations(req.tx_hash)
-        d["amount_wei"] = to_wei(req.amount, self.divisibility)
+        d[f"amount_{daemon_ctx.get().UNIT}"] = to_wei(req.amount, self.divisibility)
         d["address"] = req.address
         d["URI"] = await self.coin.get_payment_uri(req, self.divisibility, contract=getattr(self, "contract", None))
         return d
@@ -498,6 +499,7 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
     INVOICE_CLASS = Invoice
 
     coin: BlockchainFeatures  # set by create_coin()
+    UNIT: str
 
     latest_height = StoredProperty("latest_height", -1)
 
@@ -1091,3 +1093,17 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
     @rpc
     def version(self, wallet=None):
         return self.VERSION
+
+    # token methods: fallbacks
+
+    @rpc
+    def validatecontract(self, address, wallet=None):
+        return False
+
+    @rpc
+    def get_tokens(self, wallet=None):
+        return {}
+
+    @rpc
+    def getabi(self, wallet=None):
+        return []

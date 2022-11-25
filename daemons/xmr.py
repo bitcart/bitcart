@@ -54,6 +54,15 @@ class Transaction(BaseTransaction):
 
 
 class MoneroRPC(RPCProvider):
+    def __init__(self, url):
+        super().__init__(url)
+        self.jsonrpc_request = exception_retry_middleware(
+            self.jsonrpc_request, (AsyncClientError, TimeoutError, asyncio.TimeoutError), daemon_ctx.get().VERBOSE
+        )
+        self.raw_request = exception_retry_middleware(
+            self.raw_request, (AsyncClientError, TimeoutError, asyncio.TimeoutError), daemon_ctx.get().VERBOSE
+        )
+
     @staticmethod
     def _validate_hashes(hashes):
         if any(map(lambda h: not is_valid_hash(h), hashes)):
@@ -121,11 +130,6 @@ class XMRFeatures(BlockchainFeatures):
 
     def __init__(self, rpc):
         self.rpc = rpc
-        # TODO: find a list of exceptions to retry on
-        # self.get_block_safe = exception_retry_middleware(self.get_block, (BlockNotFound,), daemon_ctx.get().VERBOSE)
-        # self.get_tx_receipt_safe = exception_retry_middleware(
-        #     self.get_tx_receipt, (TransactionNotFound,), daemon_ctx.get().VERBOSE
-        # )
         self.get_block_safe = self.get_block
         self.get_tx_receipt_safe = self.get_tx_receipt
 
@@ -199,17 +203,6 @@ class XMRFeatures(BlockchainFeatures):
 
     def to_dict(self, obj):
         return json.loads(JSONEncoder(precision=daemon_ctx.get().DIVISIBILITY).encode(obj))
-
-
-# NOTE: there are 2 types of retry middlewares installed
-# This middleware handles network error and unexpected RPC failures
-# For BlockNotFound and TransactionNotFound we create _safe variants where needed
-async def async_http_retry_request_middleware(make_request, w3):
-    return exception_retry_middleware(
-        make_request,
-        (AsyncClientError, TimeoutError, asyncio.TimeoutError, ValueError),
-        daemon_ctx.get().VERBOSE,
-    )
 
 
 class KeyStore(BaseKeyStore):
@@ -331,6 +324,8 @@ class XMRDaemon(BlockProcessorDaemon):
     DEFAULT_MAX_SYNC_BLOCKS = 300  # 10 hours
     # from coingecko API
     FIAT_NAME = "monero"
+
+    UNIT = "piconero"
 
     KEYSTORE_CLASS = KeyStore
     WALLET_CLASS = Wallet
@@ -461,6 +456,10 @@ class XMRDaemon(BlockProcessorDaemon):
         }
         return self.coin.to_dict(data)
 
+    @rpc(requires_network=True)
+    async def get_tx_status(self, tx, wallet=None):
+        return await self.gettransaction(tx)
+
     @rpc(requires_wallet=True)
     async def listaddresses(self, unused=False, funded=False, balance=False, wallet=None):
         unused, funded, balance = str_to_bool(unused), str_to_bool(funded), str_to_bool(balance)
@@ -491,6 +490,14 @@ class XMRDaemon(BlockProcessorDaemon):
     @rpc
     def verifymessage(self, address, signature, message, wallet=None):
         raise NotImplementedError("Currently not supported")
+
+    @rpc
+    def validatekey(self, key, address=None, wallet=None):
+        try:
+            daemon_ctx.get().KEYSTORE_CLASS(key, address=address)
+            return True
+        except Exception:
+            return False
 
 
 if __name__ == "__main__":

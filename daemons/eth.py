@@ -249,6 +249,8 @@ class ETHDaemon(BlockProcessorDaemon):
     # from coingecko API
     FIAT_NAME = "ethereum"
 
+    UNIT = "wei"
+
     KEYSTORE_CLASS = KeyStore
 
     CONTRACT_TYPE = AsyncContract
