@@ -2,6 +2,24 @@
 
 ## Latest changes
 
+## 0.6.14.0
+
+### Monero support
+
+This release includes the long-awaited monero support!
+
+This means that now BitcartCC supports all major coins and no other solutions are needed to accept payments
+
+For now, payouts support and balance fetching is disabled for monero because it is not yet clear how to do that in a light-weight environment.
+
+For it to work, just enter your secret viewkey and address, and enjoy!
+
+We use integrated addresses to detect payments.
+
+### Cleaner payment methods selection
+
+Before it was not obvious that you can switch between currencies in admin panel's checkout UI. By adding a special icon, it is now way clearer
+
 ## 0.6.12.0
 
 ### Extreme speed
