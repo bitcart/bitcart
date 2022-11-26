@@ -52,7 +52,7 @@ class BlockchainFeatures(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def is_connected(self) -> bool:
+    async def is_connected(self) -> bool:
         pass
 
     @abstractmethod
@@ -877,7 +877,7 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
     @rpc
     async def getinfo(self, wallet=None):
         path = self.get_datadir()
-        if not self.coin.is_connected():
+        if not await self.coin.is_connected():
             return {"connected": False, "path": path, "version": self.VERSION}
         try:
             nodes = len(await self.coin.get_peer_list())
@@ -886,7 +886,7 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
         numblocks = await self.coin.get_block_number()
         return {
             "blockchain_height": self.latest_height,
-            "connected": self.coin.is_connected(),
+            "connected": await self.coin.is_connected(),
             "gas_price": await self.coin.get_gas_price(),
             "path": path,
             "server": self.SERVER,

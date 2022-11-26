@@ -59,8 +59,8 @@ class ETHFeatures(BlockchainFeatures):
     async def get_block_number(self):
         return await self.web3.eth.block_number
 
-    def is_connected(self):
-        return self.web3.isConnected()
+    async def is_connected(self):
+        return await self.web3.isConnected()
 
     async def get_gas_price(self):
         return await self.web3.eth.gas_price
@@ -122,7 +122,8 @@ class ETHFeatures(BlockchainFeatures):
 
     async def get_confirmations(self, tx_hash, data=None) -> int:
         data = data or await self.get_tx_receipt_safe(tx_hash)
-        return max(0, await self.get_block_number() - data["blockNumber"] + 1)
+        height = await self.get_block_number()
+        return max(0, height - (data["blockNumber"] or height + 1) + 1)
 
 
 with open("daemons/abi/erc20.json") as f:
@@ -252,6 +253,7 @@ class ETHDaemon(BlockProcessorDaemon):
     UNIT = "wei"
 
     KEYSTORE_CLASS = KeyStore
+    WALLET_CLASS = Wallet
 
     CONTRACT_TYPE = AsyncContract
 

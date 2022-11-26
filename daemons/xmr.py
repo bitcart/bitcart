@@ -142,7 +142,7 @@ class XMRFeatures(BlockchainFeatures):
     async def get_block_number(self):
         return (await self.rpc.jsonrpc_request("get_block_count"))["count"] - 1
 
-    def is_connected(self):
+    async def is_connected(self):
         return True
 
     async def get_gas_price(self):
