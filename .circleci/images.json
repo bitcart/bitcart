@@ -40,7 +40,8 @@
             "daemons/xmr.py",
             "requirements/base.txt",
             "requirements/daemons/xmr.txt"
-        ]
+        ],
+        "bases": "eth"
     },
     "bitcart-eth": {
         "dockerfile": "eth.Dockerfile",
