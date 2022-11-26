@@ -207,6 +207,13 @@ class Wallet(BaseModel):
     label = Column(Text)
     hint = Column(Text)
     contract = Column(Text)
+    additional_xpub_data = Column(JSON)
+
+    def prepare_edit(self, kwargs):  # pragma: no cover
+        super().prepare_edit(kwargs)
+        if "currency" in kwargs and "additional_xpub_data" not in kwargs and self.provider != kwargs["currency"]:
+            kwargs["additional_xpub_data"] = {}
+        return kwargs
 
     async def add_fields(self):
         await super().add_fields()
@@ -223,11 +230,16 @@ class Wallet(BaseModel):
 
     async def validate(self, kwargs):
         await super().validate(kwargs)
-        if "xpub" in kwargs or "contract" in kwargs:
+        if any(key in kwargs for key in ("xpub", "contract", "additional_xpub_data")):
             currency = kwargs.get("currency", self.currency)
             coin = settings.settings.get_coin(currency)
-            if "xpub" in kwargs:
-                await self.validate_xpub(coin, currency, kwargs["xpub"])
+            if "xpub" in kwargs or "additional_xpub_data" in kwargs:
+                await self.validate_xpub(
+                    coin,
+                    currency,
+                    kwargs.get("xpub", self.xpub),
+                    kwargs.get("additional_xpub_data", self.additional_xpub_data),
+                )
             if "contract" in kwargs and kwargs["contract"]:  # pragma: no cover
                 tokens = await coin.server.get_tokens()
                 kwargs["contract"] = tokens.get(kwargs["contract"], kwargs["contract"])
@@ -239,9 +251,9 @@ class Wallet(BaseModel):
                     logger.error(f"Failed to validate contract for currency {currency}:\n{get_exception_message(e)}")
                     raise HTTPException(422, "Invalid contract")
 
-    async def validate_xpub(self, coin, currency, xpub):
+    async def validate_xpub(self, coin, currency, xpub, additional_xpub_data):
         try:
-            if not await coin.validate_key(xpub):
+            if not await coin.validate_key(xpub, **additional_xpub_data):
                 raise HTTPException(422, "Wallet key invalid")
         except BitcartBaseError as e:
             logger.error(f"Failed to validate xpub for currency {currency}:\n{get_exception_message(e)}")
@@ -259,6 +271,7 @@ class Notification(BaseModel):
     created = Column(DateTime(True), nullable=False)
 
     def prepare_edit(self, kwargs):
+        super().prepare_edit(kwargs)
         if "provider" in kwargs and "data" not in kwargs and self.provider != kwargs["provider"]:
             kwargs["data"] = {}
         return kwargs

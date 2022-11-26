@@ -16,7 +16,8 @@
         "balance": "0.00000000",
         "label": "customlabel",
         "hint": "test",
-        "lightning_enabled": false
+        "lightning_enabled": false,
+        "additional_xpub_data": {}
     },
     "count": 1
 }

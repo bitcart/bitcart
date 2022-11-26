@@ -103,6 +103,7 @@ class CreateWallet(CreatedMixin):
     label: str = ""
     hint: str = ""
     contract: str = ""
+    additional_xpub_data: Optional[dict] = {}
 
     class Config:
         orm_mode = True

@@ -22,7 +22,9 @@ async def sync_wallet(event, event_data):
     model = await utils.database.get_object(models.Wallet, event_data["id"], raise_exception=False)
     if not model:
         return
-    coin = settings.settings.get_coin(model.currency, {"xpub": model.xpub, "contract": model.contract})
+    coin = settings.settings.get_coin(
+        model.currency, {"xpub": model.xpub, "contract": model.contract, **model.additional_xpub_data}
+    )
     try:
         balance = await coin.balance()
     except BitcartBaseError as e:

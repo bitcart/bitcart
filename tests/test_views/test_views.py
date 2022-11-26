@@ -1429,3 +1429,9 @@ async def test_invoices_authorized_access(client: TestClient, store, token):
         )
     ).status_code == 200
     assert (await client.post("/invoices", json={"price": 1, "store_id": store["id"]})).status_code == 403
+
+
+async def test_wallet_schema(client: TestClient):
+    resp = await client.get("/wallets/schema")
+    assert resp.status_code == 200
+    assert resp.json() == {"btc": {"required": [], "properties": []}}

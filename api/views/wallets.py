@@ -3,7 +3,7 @@ from typing import List
 from bitcart.errors import BaseError as BitcartBaseError
 from fastapi import APIRouter, HTTPException, Security
 
-from api import crud, models, schemes, utils
+from api import crud, models, schemes, settings, utils
 from api.ext.moneyformat import currency_table
 from api.types import Money
 
@@ -120,6 +120,14 @@ async def wallet_lnpay(
         if isinstance(e, HTTPException) and e.status_code != 422:
             raise
         raise HTTPException(400, "Failed to pay the invoice")
+
+
+@router.get("/schema")
+async def get_wallets_schema():
+    return {
+        currency: {"required": [], "properties": coin.additional_xpub_fields}
+        for currency, coin in settings.settings.cryptos.items()
+    }
 
 
 utils.routing.ModelView.register(
