@@ -1,2 +1,3 @@
 aiohttp<4.0
 monero
+universalasync
