@@ -16,7 +16,9 @@ logger = get_logger(__name__)
 
 async def get_rate(wallet, currency, fallback_currency=None):
     try:
-        coin = settings.settings.get_coin(wallet.currency, {"xpub": wallet.xpub, "contract": wallet.contract})
+        coin = settings.settings.get_coin(
+            wallet.currency, {"xpub": wallet.xpub, "contract": wallet.contract, **wallet.additional_xpub_data}
+        )
         symbol = await get_wallet_symbol(wallet, coin)
         if symbol.lower() == currency.lower():
             return Decimal(1)
@@ -37,7 +39,9 @@ async def get_rate(wallet, currency, fallback_currency=None):
 
 
 async def get_wallet_history(model, response):
-    coin = settings.settings.get_coin(model.currency, {"xpub": model.xpub, "contract": model.contract})
+    coin = settings.settings.get_coin(
+        model.currency, {"xpub": model.xpub, "contract": model.contract, **model.additional_xpub_data}
+    )
     txes = (await coin.history())["transactions"]
     for i in txes:
         response.append({"date": i["date"], "txid": i["txid"], "amount": i["bc_value"]})
@@ -45,7 +49,9 @@ async def get_wallet_history(model, response):
 
 async def get_wallet_balance(wallet) -> Union[bool, Decimal]:
     try:
-        coin = settings.settings.get_coin(wallet.currency, {"xpub": wallet.xpub, "contract": wallet.contract})
+        coin = settings.settings.get_coin(
+            wallet.currency, {"xpub": wallet.xpub, "contract": wallet.contract, **wallet.additional_xpub_data}
+        )
         divisibility = None if not wallet.contract else await coin.server.readcontract(wallet.contract, "decimals")
         return True, divisibility, await coin.balance()
     except (BitcartBaseError, HTTPException) as e:
@@ -84,5 +90,7 @@ async def get_divisibility(wallet, coin):
 
 
 async def get_wallet_symbol(wallet, coin=None):
-    coin = coin or settings.settings.get_coin(wallet.currency, {"xpub": wallet.xpub, "contract": wallet.contract})
+    coin = coin or settings.settings.get_coin(
+        wallet.currency, {"xpub": wallet.xpub, "contract": wallet.contract, **wallet.additional_xpub_data}
+    )
     return await coin.server.readcontract(wallet.contract, "symbol") if wallet.contract else wallet.currency

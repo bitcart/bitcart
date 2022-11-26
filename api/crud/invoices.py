@@ -57,7 +57,9 @@ async def create_invoice(invoice: schemes.CreateInvoice, user: schemes.User):
 
 
 async def _create_payment_method(invoice, wallet, product, store, discounts, promocode, lightning=False):
-    coin = settings.settings.get_coin(wallet.currency, {"xpub": wallet.xpub, "contract": wallet.contract})
+    coin = settings.settings.get_coin(
+        wallet.currency, {"xpub": wallet.xpub, "contract": wallet.contract, **wallet.additional_xpub_data}
+    )
     discount_id = None
     symbol = await utils.wallets.get_wallet_symbol(wallet, coin)
     divisibility = await utils.wallets.get_divisibility(wallet, coin)
@@ -97,8 +99,7 @@ async def _create_payment_method(invoice, wallet, product, store, discounts, pro
     url = data_got["URI"] if not lightning else data_got["lightning_invoice"]
     node_id = await coin.node_id if lightning else None
     rhash = data_got["rhash"] if lightning else None
-    # amount_wei is a way to identify eth-based chains
-    lookup_field = data_got["id"] if "amount_wei" in data_got else (rhash if lightning else address)
+    lookup_field = data_got["request_id"] if "request_id" in data_got else (rhash if lightning else address)
     return dict(
         id=utils.common.unique_id(),
         invoice_id=invoice.id,

@@ -37,7 +37,8 @@ async def send_payout(payout, private_key=None):
     if not wallet or not store or payout.status in SENT_STATUSES:
         return
     coin = settings.settings.get_coin(
-        wallet.currency, {"xpub": private_key or wallet.xpub, "contract": wallet.contract, "diskless": True}
+        wallet.currency,
+        {"xpub": private_key or wallet.xpub, "contract": wallet.contract, "diskless": True, **wallet.additional_xpub_data},
     )
     divisibility = await utils.wallets.get_divisibility(wallet, coin)
     rate = await utils.wallets.get_rate(wallet, payout.currency)
@@ -75,7 +76,9 @@ async def process_new_block(currency):
     coros = []
     for payout, wallet in payouts:
         with log_errors():
-            coin = settings.settings.get_coin(currency, {"xpub": wallet.xpub, "contract": wallet.contract})
+            coin = settings.settings.get_coin(
+                currency, {"xpub": wallet.xpub, "contract": wallet.contract, **wallet.additional_xpub_data}
+            )
             try:
                 confirmations = (await coin.get_tx(payout.tx_hash))["confirmations"]
             except bitcart.errors.TxNotFoundError:

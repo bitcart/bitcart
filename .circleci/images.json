@@ -33,6 +33,16 @@
         "bases": "bch",
         "name": "electron-cash"
     },
+    "bitcart-xmr": {
+        "dockerfile": "xmr.Dockerfile",
+        "files": [
+            "daemons/base.py",
+            "daemons/xmr.py",
+            "requirements/base.txt",
+            "requirements/daemons/xmr.txt"
+        ],
+        "bases": "eth"
+    },
     "bitcart-eth": {
         "dockerfile": "eth.Dockerfile",
         "files": [

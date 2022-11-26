@@ -103,6 +103,7 @@ class CreateWallet(CreatedMixin):
     label: str = ""
     hint: str = ""
     contract: str = ""
+    additional_xpub_data: Optional[dict] = {}
 
     class Config:
         orm_mode = True
@@ -447,7 +448,7 @@ class Policy(BaseModel):
         if not v:
             v = {}
         for key in settings.settings.cryptos:
-            if not settings.settings.cryptos[key].is_eth_based or settings.settings.cryptos[key].coin_name == "TRX":
+            if not settings.settings.cryptos[key].is_eth_based or settings.settings.cryptos[key].coin_name in ("TRX", "XMR"):
                 continue
             if v.get(key) is None:
                 v[key] = settings.settings.get_default_rpc(key)
