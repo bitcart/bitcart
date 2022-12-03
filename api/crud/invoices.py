@@ -99,7 +99,7 @@ async def _create_payment_method(invoice, wallet, product, store, discounts, pro
     url = data_got["URI"] if not lightning else data_got["lightning_invoice"]
     node_id = await coin.node_id if lightning else None
     rhash = data_got["rhash"] if lightning else None
-    lookup_field = data_got["request_id"] if "request_id" in data_got else (rhash if lightning else address)
+    lookup_field = data_got["request_id"] if "request_id" in data_got else address
     return dict(
         id=utils.common.unique_id(),
         invoice_id=invoice.id,

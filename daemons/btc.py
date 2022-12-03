@@ -41,8 +41,14 @@ class BTCDaemon(BaseDaemon):
         "request_status": "new_payment",
         "verified": "verified_tx",
     }
+    ALIASES = {"getrequest": "get_request"}
     # override if your daemon has different networks than default electrum provides
     NETWORK_MAPPING: dict = {}
+
+    def register_aliases(self):
+        for alias, func in self.ALIASES.items():
+            if func in self.supported_methods:
+                self.supported_methods[alias] = self.supported_methods[func]
 
     def load_electrum(self):
         import electrum
@@ -236,6 +242,7 @@ class BTCDaemon(BaseDaemon):
         if custom:
             return self.supported_methods[method]
         else:
+            method = self.ALIASES.get(method, method)
             return self.electrum.commands.known_commands[method]
 
     async def _get_wallet(self, id, req_method, xpub, diskless=False):
@@ -263,6 +270,7 @@ class BTCDaemon(BaseDaemon):
             exec_method, custom = self.supported_methods[req_method], True
         else:
             custom = False
+            req_method = self.ALIASES.get(req_method, req_method)
             if hasattr(cmd, req_method):
                 exec_method = getattr(cmd, req_method)
             else:
@@ -530,6 +538,7 @@ class BTCDaemon(BaseDaemon):
         if func is None:
             data = await self.get_commands_list(commands)
             data.extend(list(self.supported_methods.keys()))
+            data.extend(list(self.ALIASES.keys()))
             return data
         if func in self.supported_methods:
             return get_function_header(func, self.supported_methods[func])

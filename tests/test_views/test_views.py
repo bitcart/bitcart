@@ -701,7 +701,7 @@ async def test_invoice_ws(ws_client, token: str, store):
     async with ws_client.websocket_connect(f"/ws/invoices/{invoice_id}") as websocket:
         await asyncio.sleep(1)
         await invoices.new_payment_handler(
-            DummyInstance(), None, data["payments"][0]["payment_address"], InvoiceStatus.UNCONFIRMED, None
+            DummyInstance(), None, data["payments"][0]["lookup_field"], InvoiceStatus.UNCONFIRMED, None
         )  # emulate paid invoice
         await check_ws_response(websocket)
         async with ws_client.websocket_connect(
@@ -844,7 +844,7 @@ async def test_create_invoice_and_pay(client, token: str, store):
         custom_query=models.PaymentMethod.query.where(models.PaymentMethod.invoice_id == invoice_id),
     )
     await invoices.new_payment_handler(
-        DummyInstance(), None, data["payments"][0]["payment_address"], "complete", None
+        DummyInstance(), None, data["payments"][0]["lookup_field"], "complete", None
     )  # pay the invoice
     # validate invoice paid_currency
     assert (await utils.database.get_object(models.Invoice, invoice_id)).paid_currency == payment_method.currency.upper()
