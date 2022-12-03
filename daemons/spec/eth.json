@@ -1,5 +1,5 @@
 {
-    "version": "4.3.0",
+    "version": "4.3.2",
     "electrum_map": {
         "Procedure not found": -32601,
         "wallet not loaded": -32000,
