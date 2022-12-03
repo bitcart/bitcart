@@ -254,6 +254,6 @@ async def check_pending(currency):
             else:
                 invoice_data = await coin.get_request(method.lookup_field)
             coros.append(
-                process_electrum_status(invoice, method, wallet, invoice_data["status"]), invoice_data.get("tx_hashes", [])
+                process_electrum_status(invoice, method, wallet, invoice_data["status"], invoice_data.get("tx_hashes", []))
             )
     await asyncio.gather(*coros)

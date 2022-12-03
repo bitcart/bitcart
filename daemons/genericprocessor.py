@@ -388,7 +388,7 @@ class Wallet:
             "status_str": req.status_str,
         }
         if req.tx_hash:
-            d["tx_hash"] = req.tx_hash
+            d["tx_hashes"] = [req.tx_hash]
             d["confirmations"] = await self.coin.get_confirmations(req.tx_hash)
         d[f"amount_{daemon_ctx.get().UNIT}"] = to_wei(req.amount, self.divisibility)
         d["address"] = req.address
@@ -473,6 +473,7 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
         "clear_invoices": "clear_requests",
         "commands": "help",
         "get_invoice": "getrequest",
+        "get_request": "getrequest",
         "get_transaction": "gettransaction",
         "getaddressbalance_wallet": "getaddressbalance",
         "getunusedaddress": "getaddress",
