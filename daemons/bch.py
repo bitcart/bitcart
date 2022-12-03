@@ -47,7 +47,7 @@ class BCHDaemon(BTCDaemon):
             await self.loop.run_in_executor(None, self.daemon.join)
 
     def create_commands(self, config):
-        return self.electrum.commands.Commands(config=config, network=self.network, wallet=None)
+        return self.electrum.commands.Commands(config=config, network=self.network, wallet=None, daemon=self.daemon)
 
     def create_wallet(self, storage, config):
         return self.electrum.wallet.Wallet(storage)
@@ -106,22 +106,10 @@ class BCHDaemon(BTCDaemon):
         self.wallets[wallet]["wallet"].save_transactions()
 
     @rpc
-    def getinfo(self, wallet=None):  # TODO: add to electron cash
-        net_params = self.network.get_parameters()
-        response = {
-            "path": self.network.config.path,
-            "server": net_params[0],
-            "blockchain_height": self.network.get_local_height(),
-            "server_height": self.network.get_server_height(),
-            "spv_nodes": len(self.network.get_interfaces()),
-            "connected": self.network.is_connected(),
-            "auto_connect": net_params[4],
-            "version": self.electrum.version.PACKAGE_VERSION,
-            "default_wallet": self.electrum_config.get_wallet_path(),
-            "fee_per_kb": self.electrum_config.fee_per_kb(),
-            "synchronized": not self.is_still_syncing(),
-        }
-        return response
+    async def getinfo(self, wallet=None):
+        data = self.create_commands(config=self.electrum_config).getinfo()
+        data["synchronized"] = not self.is_still_syncing()
+        return data
 
     async def get_commands_list(self, commands):
         return commands.help()

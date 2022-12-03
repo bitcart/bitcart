@@ -231,8 +231,8 @@ dnspython==2.2.1 \
     --hash=sha256:0f7569a4a6ff151958b64304071d370daa3243d15941a7beedf0c9fe5105603e \
     --hash=sha256:a851e51367fb93e9e1361732c1d60dab63eff98712e503ea7d92e6eccb109b4f
     # via electrum-ltc
-electrum-ltc @ https://github.com/bitcartcc/Electron-Cash/archive/81908760ebc9cbcffc1a01b6c0dc4ae7f12bd75d.zip \
-    --hash=sha256:09a22985e7299cfc9c0990ef2ebae5f69e6c5a2c0bf1b2e3348f815da870dcda
+electrum-ltc @ https://github.com/bitcartcc/Electron-Cash/archive/b0c9bdf101986c4dbe7f438a760d66b79e3492e2.zip \
+    --hash=sha256:1ab729039854ddb9e9907aeebffe0d09c7cab097cd7f1122c3b6c09962c26586
     # via -r requirements/daemons/ltc.txt
 frozenlist==1.3.1 \
     --hash=sha256:022178b277cb9277d7d3b3f2762d294f15e85cd2534047e68a118c2bb0058f3e \
