@@ -2,6 +2,22 @@
 
 ## Latest changes
 
+## 0.6.15.0
+
+### Tx hashes of paid invoices in UI
+
+A commonly requested feature, now you can view (and even instantly view in block explorer) tx hashes of paid invoices.
+
+### New algorithm for detecting payments in ETH
+
+While our current ETH support is great and previous method (unique amounts) seemed to be the most optimal one with zero costs to the merchant, it actually incurred some costs: costs for customer support to handle cases with users sending not exact amounts. This is not greatly automated.
+
+That's why, we came up with a new way: ask customer for the address they will be sending from.
+
+This allowed us to process payments in the same way as in other currencies, it even allows invoice to be paid in parts. If user over-pays, there is no issue anymore.
+
+Checkout UI for eth-based currencies was reworked to present user with 3 choices: enter address manually, or pay via metamask or walletconnect (address gets pre-filled).
+
 ## 0.6.14.0
 
 ### Monero support

@@ -86,6 +86,8 @@ async def update_payment_details(
             break
     if found_payment is None:
         raise HTTPException(404, "No such payment method found")
+    if found_payment["user_address"] is not None:
+        raise HTTPException(422, "Can't update payment address once set")
     fetch_data = (
         await select([models.PaymentMethod, models.Wallet])
         .where(models.Wallet.id == models.PaymentMethod.wallet_id)
