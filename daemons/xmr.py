@@ -4,7 +4,7 @@ import json
 import os
 import secrets
 import traceback
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
 
@@ -193,6 +193,7 @@ class XMRFeatures(BlockchainFeatures):
             data.hash,
             None,
             None,
+            None,
             monero_tx=data,
         )
 
@@ -253,42 +254,22 @@ class KeyStore(BaseKeyStore):
 
 @dataclass
 class Invoice(BaseInvoice):
-    sent_amount: Decimal = Decimal(0)
     confirmed_amount: Decimal = Decimal(0)
 
     def __post_init__(self):
         super().__post_init__()
-        if isinstance(self.sent_amount, str):
-            self.sent_amount = Decimal(self.sent_amount)
         if isinstance(self.confirmed_amount, str):
             self.confirmed_amount = Decimal(self.confirmed_amount)
 
 
 @dataclass
 class Wallet(BaseWallet):
-    request_addresses: dict = field(default_factory=dict)
-
-    def __post_init__(self):
-        self.request_addresses = self.db.get_dict("request_addresses")
-        super().__post_init__()
-
-    def clear_requests(self):
-        self.receive_requests.clear()
-        self.request_addresses.clear()
-        self.save_db()
-
     def add_payment_request(self, req, save_db=True):
         self.receive_requests[req.id] = req
         self.request_addresses[req.address] = req.id
         if save_db:
             self.save_db()
         return req
-
-    def get_request(self, key):
-        try:
-            key = self.request_addresses.get(key, key)
-        finally:
-            return self.receive_requests.get(key)
 
     def remove_from_detection_dict(self, req):
         self.request_addresses.pop(req.address, None)
@@ -299,17 +280,12 @@ class Wallet(BaseWallet):
             address=str(address_func(address).with_payment_id(invoice_id)),
             message=message,
             time=timestamp,
-            original_amount=amount,
             amount=amount,
+            sent_amount=Decimal(0),
             exp=expiration,
             id=invoice_id,
             height=await self.coin.get_block_number(),
         )
-
-    async def export_request(self, req):
-        d = await super().export_request(req)
-        d["sent_amount"] = decimal_to_string(req.sent_amount, self.divisibility)
-        return d
 
     async def process_new_payment(self, to_address, tx, payment, wallet, unconfirmed=False):
         req = self.get_request(to_address)
@@ -556,6 +532,10 @@ class XMRDaemon(BlockProcessorDaemon):
             return True
         except Exception:
             return False
+
+    @rpc(requires_wallet=True)  # fallback
+    def setrequestaddress(self, key, address, wallet):
+        return False
 
 
 if __name__ == "__main__":

@@ -390,6 +390,11 @@ class CustomerUpdateData(BaseModel):
         return val  # pragma: no cover
 
 
+class MethodUpdateData(BaseModel):
+    id: str
+    address: str
+
+
 class Invoice(CreateInvoice):
     id: Optional[str]
     store_id: Optional[str]

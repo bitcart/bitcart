@@ -102,11 +102,11 @@ class ETHFeatures(BlockchainFeatures):
         chain_id = await self.chain_id()
         amount_wei = to_wei(req.amount, divisibility)
         if contract:
-            return f"ethereum:{contract}@{chain_id}/transfer?address={req.address}&uint256={amount_wei}"
+            return f"ethereum:{contract.address}@{chain_id}/transfer?address={req.address}&uint256={amount_wei}"
         return f"ethereum:{req.address}@{chain_id}?value={amount_wei}"
 
     async def process_tx_data(self, data):
-        return Transaction(str(data["hash"].hex()), data["to"], data["value"])
+        return Transaction(str(data["hash"].hex()), data["from"], data["to"], data["value"])
 
     def get_tx_hash(self, tx_data):
         return tx_data["hash"].hex()
@@ -269,6 +269,7 @@ class ETHDaemon(BlockProcessorDaemon):
                 try:
                     tx = Transaction(
                         str(tx_data["transactionHash"].hex()),
+                        tx_data["args"]["from"],
                         tx_data["args"]["to"],
                         tx_data["args"]["value"],
                         contract.address,

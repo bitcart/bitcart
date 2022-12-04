@@ -91,6 +91,7 @@ class TRXFeatures(BlockchainFeatures):
             return
         contract = full_data["raw_data"]["contract"][0]
         value = contract["parameter"]["value"]
+        from_address = self.normalize_address(value["owner_address"])
         if contract["type"] == "TriggerSmartContract":
             contract_address = self.normalize_address(value["contract_address"])
             try:
@@ -106,11 +107,13 @@ class TRXFeatures(BlockchainFeatures):
                 return
             if function.name != "transfer":
                 return
-            return Transaction(full_data["txID"], self.normalize_address(params[0]), params[1], contract_address, divisibility)
+            return Transaction(
+                full_data["txID"], from_address, self.normalize_address(params[0]), params[1], contract_address, divisibility
+            )
 
         if contract["type"] != "TransferContract":
             return
-        return Transaction(full_data["txID"], self.normalize_address(value["to_address"]), value["amount"])
+        return Transaction(full_data["txID"], from_address, self.normalize_address(value["to_address"]), value["amount"])
 
     def get_tx_hash(self, tx_data):
         return tx_data["txID"]

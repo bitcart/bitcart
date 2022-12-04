@@ -3,7 +3,6 @@ import functools
 import inspect
 import json
 import os
-import random
 import secrets
 import time
 import traceback
@@ -134,19 +133,30 @@ STR_TO_BOOL_MAPPING = {
 
 
 class WalletDB(StorageWalletDB):
-    STORAGE_VERSION = 1
+    STORAGE_VERSION = 2
 
     def _convert_dict(self, path, key, v):
         if key == "payment_requests":
             v = {k: daemon_ctx.get().INVOICE_CLASS(**x) for k, x in v.items()}
-        if key == "used_amounts":
-            v = {Decimal(k): x for k, x in v.items()}
         return v
 
     def _should_convert_to_stored_dict(self, key) -> bool:
         if key == "keystore":
             return False
         return True
+
+    def run_upgrades(self):
+        self._convert_version_2()
+
+    def _convert_version_2(self):
+        if not self._is_upgrade_method_needed(1, 1):
+            return
+        invoices = self.data.get("payment_requests", {})
+        for key in invoices:
+            invoices[key].pop("original_amount", None)
+            if "sent_amount" not in invoices[key]:
+                invoices[key]["sent_amount"] = decimal_to_string(Decimal(0))
+        self.put("version", 2)
 
 
 class ConfigDB(StorageConfigDB):
@@ -186,6 +196,7 @@ def to_wei(value: Decimal, precision=None) -> int:
 @dataclass
 class Transaction:
     hash: str
+    from_addr: str
     to: str
     value: int
     contract: str = None
@@ -229,12 +240,13 @@ class KeyStore(metaclass=ABCMeta):
 @dataclass
 class Invoice(CastingDataclass, StoredObject):
     message: str
-    original_amount: Decimal
+    sent_amount: Decimal
     amount: Decimal
     exp: int
     time: int
     height: int
     address: str
+    payment_address: str = None
     id: str = None
     status: int = 0
     tx_hash: str = None
@@ -256,7 +268,7 @@ class Wallet:
     db: WalletDB
     storage: Storage
     keystore: KeyStore = field(init=False)
-    used_amounts: dict = field(default_factory=dict)
+    request_addresses: dict = field(default_factory=dict)
     receive_requests: dict = field(default_factory=dict)
     symbol: str = None
     divisibility: int = None
@@ -270,7 +282,7 @@ class Wallet:
             self.divisibility = daemon_ctx.get().DIVISIBILITY
         self.keystore = daemon_ctx.get().KEYSTORE_CLASS.load(self.db.get("keystore"))
         self.receive_requests = self.db.get_dict("payment_requests")
-        self.used_amounts = self.db.get_dict("used_amounts")
+        self.request_addresses = self.db.get_dict("request_addresses")
         self.running = False
         self.loop = asyncio.get_event_loop()
         self.synchronized = False
@@ -307,7 +319,7 @@ class Wallet:
 
     def clear_requests(self):
         self.receive_requests.clear()
-        self.used_amounts.clear()
+        self.request_addresses.clear()
         self.save_db()
 
     def is_synchronized(self):
@@ -348,29 +360,15 @@ class Wallet:
             address=address,
             message=message,
             time=timestamp,
-            original_amount=amount,
-            amount=self.generate_unique_amount(amount),
+            amount=amount,
+            sent_amount=Decimal(0),
             exp=expiration,
             id=secrets.token_urlsafe(),
             height=await self.coin.get_block_number(),
         )
 
-    def generate_unique_amount(self, amount: Decimal):
-        add_low = 1
-        add_high = 2
-        cur_amount = amount
-        divisibility = min(self.divisibility, daemon_ctx.get().AMOUNTGEN_DIVISIBILITY)
-        AMOUNTGEN_PRECISION = Decimal(10) ** (-divisibility)
-        while cur_amount in self.used_amounts:
-            cur_amount = amount + random.randint(add_low, add_high) * AMOUNTGEN_PRECISION
-            if add_high < AMOUNTGEN_LIMIT:
-                add_low = add_high + 1
-                add_high *= 2
-        return cur_amount
-
     def add_payment_request(self, req, save_db=True):
         self.receive_requests[req.id] = req
-        self.used_amounts[req.amount] = req.id
         if save_db:
             self.save_db()
         return req
@@ -381,9 +379,11 @@ class Wallet:
             "request_id": req.id,  # to distinguish from non-functional id in some coins
             "is_lightning": False,
             f"amount_{self.symbol}": decimal_to_string(req.amount, self.divisibility),
+            "sent_amount": decimal_to_string(req.sent_amount, self.divisibility),
             "message": req.message,
             "timestamp": req.time,
             "expiration": req.time + req.exp if req.exp else 0,
+            "payment_address": req.payment_address,
             "status": req.status,
             "status_str": req.status_str,
         }
@@ -397,13 +397,12 @@ class Wallet:
 
     def get_request(self, key):
         try:
-            amount = Decimal(key)
-            key = self.used_amounts.get(amount)
+            key = self.request_addresses.get(key, key)
         finally:
             return self.receive_requests.get(key)
 
     def remove_from_detection_dict(self, req):
-        self.used_amounts.pop(req.amount, None)
+        self.request_addresses.pop(req.payment_address, None)
 
     def remove_request(self, key):
         req = self.get_request(key)
@@ -435,6 +434,16 @@ class Wallet:
         self.save_db()
         return req
 
+    def set_request_address(self, key, address):
+        req = self.get_request(key)
+        if not req:
+            return None
+        self.remove_from_detection_dict(req)
+        req.payment_address = address
+        self.request_addresses[address] = req.id
+        self.add_payment_request(req)
+        return req
+
     async def expired_task(self, req):
         left = req.time + req.exp - time.time() + 1  # to ensure it's already expired at that moment
         if left > 0:
@@ -444,9 +453,19 @@ class Wallet:
             return
         self.set_request_status(req.id, PR_EXPIRED)
 
-    async def process_payment(self, wallet, amount, tx_hash, contract=None, status=PR_PAID):
+    async def process_new_payment(self, from_address, tx, amount, wallet):
+        req = self.get_request(from_address)
+        if req is None or req.status != PR_UNPAID:
+            return
+        req.sent_amount += amount
+        if req.sent_amount >= req.amount:
+            await self.process_payment(wallet, req.id, tx_hash=tx.hash, status=PR_PAID, contract=tx.contract)
+        else:
+            self.save_db()
+
+    async def process_payment(self, wallet, key, tx_hash, contract=None, status=PR_PAID):
         try:
-            req = self.set_request_status(amount, status, tx_hash=tx_hash, contract=contract)
+            req = self.set_request_status(key, status, tx_hash=tx_hash, contract=contract)
             await daemon_ctx.get().trigger_event(
                 {
                     "event": "new_payment",
@@ -460,7 +479,7 @@ class Wallet:
             )
         except Exception:
             if daemon_ctx.get().VERBOSE:
-                print(f"Error processing successful payment {tx_hash} with {amount}:")
+                print(f"Error processing successful payment {tx_hash} with {key}:")
                 print(traceback.format_exc())
 
 
@@ -584,8 +603,8 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
             if tx.contract != wallet_contract:
                 continue
             await self.trigger_event({"event": "new_transaction", "tx": tx.hash}, wallet)
-            if amount in self.wallets[wallet].used_amounts:
-                self.loop.create_task(self.wallets[wallet].process_payment(wallet, amount, tx.hash, tx.contract))
+            if tx.from_addr in self.wallets[wallet].request_addresses:
+                self.loop.create_task(self.wallets[wallet].process_new_payment(tx.from_addr, tx, amount, wallet))
 
     async def process_tx_task(self, tx_data, semaphore):
         async with semaphore:
@@ -1058,6 +1077,12 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
     def setconfig(self, key, value, wallet=None):
         self.config.set_config(key, value)
         return True
+
+    @rpc(requires_wallet=True)
+    def setrequestaddress(self, key, address, wallet):
+        if not self.validateaddress(address):
+            return False
+        return bool(self.wallets[wallet].set_request_address(key, self.normalizeaddress(address)))
 
     @rpc(requires_wallet=True)
     @abstractmethod

@@ -291,8 +291,12 @@ class WalletDB(JsonDB):
     def requires_upgrade(self):
         return self.get_version() < self.STORAGE_VERSION
 
+    def run_upgrades(self):
+        pass
+
     def upgrade(self):
         # future upgrade code here
+        self.run_upgrades()
         self.put("version", self.STORAGE_VERSION)
         self._after_upgrade_tasks()
 

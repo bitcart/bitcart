@@ -1435,3 +1435,38 @@ async def test_wallet_schema(client: TestClient):
     resp = await client.get("/wallets/schema")
     assert resp.status_code == 200
     assert resp.json() == {"btc": {"required": [], "properties": []}}
+
+
+async def test_invoices_payment_details(client: TestClient, user, token):
+    invoice = await create_invoice(client, user["id"], token)
+    invoice_id = invoice["id"]
+    payment_id = invoice["payments"][0]["id"]
+    assert (await client.patch(f"/invoices/{invoice_id}/details")).status_code == 422
+    assert (
+        await client.patch(f"/invoices/{invoice_id}/details", json={"id": payment_id, "address": "test"})
+    ).status_code == 422
+    assert (
+        await client.patch(
+            f"/invoices/{invoice['id']}/details",
+            json={"id": "test", "address": static_data.PAYOUT_DESTINATION},
+        )
+    ).status_code == 404
+    assert (
+        await client.patch(
+            f"/invoices/{invoice_id}/details", json={"id": payment_id, "address": static_data.PAYOUT_DESTINATION}
+        )
+    ).status_code == 422  # unsupported in BTC
+    invoice = await create_invoice(client, user["id"], token)
+    assert (
+        await client.post(
+            "/invoices/batch",
+            json={"ids": [invoice["id"]], "command": "mark_complete"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+    ).status_code == 200
+    assert (
+        await client.patch(
+            f"/invoices/{invoice['id']}/details",
+            json={"id": invoice["payments"][0]["id"], "address": static_data.PAYOUT_DESTINATION},
+        )
+    ).status_code == 422

@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, Response, Security
 from fastapi.responses import StreamingResponse
+from sqlalchemy import select
 
-from api import crud, models, pagination, schemes, utils
+from api import crud, models, pagination, schemes, settings, utils
 from api.ext import export as export_ext
 from api.invoices import InvoiceStatus
 
@@ -68,6 +69,44 @@ async def update_invoice(
     if kwargs:
         await utils.database.modify_object(item, kwargs)
     return item
+
+
+@router.patch("/{model_id}/details")
+async def update_payment_details(
+    model_id: str,
+    data: schemes.MethodUpdateData,
+):  # pragma: no cover
+    item = await utils.database.get_object(models.Invoice, model_id)
+    if item.status != InvoiceStatus.PENDING:
+        raise HTTPException(422, "Can't update details for paid invoice")
+    found_payment = None
+    for payment in item.payments:
+        if payment["id"] == data.id:
+            found_payment = payment
+            break
+    if found_payment is None:
+        raise HTTPException(404, "No such payment method found")
+    fetch_data = (
+        await select([models.PaymentMethod, models.Wallet])
+        .where(models.Wallet.id == models.PaymentMethod.wallet_id)
+        .where(models.PaymentMethod.id == payment["id"])
+        .gino.load((models.PaymentMethod, models.Wallet))
+        .first()
+    )
+    if not fetch_data:
+        raise HTTPException(404, "No such payment method found")
+    method, wallet = fetch_data
+    coin = settings.settings.get_coin(
+        method.currency, {"xpub": wallet.xpub, "contract": method.contract, **wallet.additional_xpub_data}
+    )
+    try:
+        data.address = await coin.server.normalizeaddress(data.address)
+    except Exception:
+        raise HTTPException(422, "Invalid address")
+    if not await coin.server.setrequestaddress(method.lookup_field, data.address):
+        raise HTTPException(422, "Invalid address")
+    await method.update(user_address=data.address).apply()
+    return True
 
 
 utils.routing.ModelView.register(
