@@ -2,6 +2,10 @@
 
 ## Latest changes
 
+## 0.6.15.1
+
+Fix XRG daemon
+
 ## 0.6.15.0
 
 ### Tx hashes of paid invoices in UI
