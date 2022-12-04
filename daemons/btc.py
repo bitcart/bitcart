@@ -515,6 +515,10 @@ class BTCDaemon(BaseDaemon):
     def normalizeaddress(self, address, wallet=None):  # fallback
         return address
 
+    @rpc(requires_wallet=True)  # fallback
+    def setrequestaddress(self, key, address, wallet):
+        return False
+
     @rpc
     async def getinfo(self, wallet=None):
         data = await self.create_commands(config=self.electrum_config).getinfo()

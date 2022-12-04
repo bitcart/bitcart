@@ -73,10 +73,9 @@ def get_pending_invoices_query(currency, statuses=None):
             ]
         )
         .where(models.PaymentMethod.invoice_id == models.Invoice.id)
+        .where(models.PaymentMethod.wallet_id == models.Wallet.id)
         .where(get_pending_invoice_statuses(statuses=statuses))
         .where(models.PaymentMethod.currency == currency.lower())
-        .where(models.WalletxStore.wallet_id == models.Wallet.id)
-        .where(models.WalletxStore.store_id == models.Invoice.store_id)
         .where(models.Wallet.currency == models.PaymentMethod.currency)
         .order_by(models.PaymentMethod.created)
     )

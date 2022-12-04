@@ -103,6 +103,7 @@ async def _create_payment_method(invoice, wallet, product, store, discounts, pro
     return dict(
         id=utils.common.unique_id(),
         invoice_id=invoice.id,
+        wallet_id=wallet.id,
         amount=data_got[coin.amount_field],
         rate=rate,
         discount=discount_id,

@@ -443,6 +443,7 @@ class PaymentMethod(BaseModel):
 
     id = Column(Text, primary_key=True, index=True)
     invoice_id = Column(Text, ForeignKey("invoices.id", ondelete="SET NULL"))
+    wallet_id = Column(Text, ForeignKey("wallets.id", ondelete="SET NULL"))
     amount = Column(Numeric(36, 18), nullable=False)
     rate = Column(Numeric(36, 18))
     discount = Column(Text)
@@ -457,6 +458,7 @@ class PaymentMethod(BaseModel):
     lightning = Column(Boolean(), default=False)
     contract = Column(Text)
     divisibility = Column(Integer)
+    user_address = Column(Text)
     node_id = Column(Text)
     label = Column(Text)
     hint = Column(Text)
