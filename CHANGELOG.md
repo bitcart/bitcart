@@ -2,6 +2,14 @@
 
 ## Latest changes
 
+## 0.6.15.2
+
+Fix payouts in Tron mainnet
+
+Fix long-standing issue where backend logs where not transferred to log server. The server logs section will be way more detailed now.
+
+Clarify why customer address is needed in eth-based methods
+
 ## 0.6.15.1
 
 Fix XRG daemon
