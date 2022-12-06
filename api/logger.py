@@ -50,7 +50,7 @@ class MsgpackHandler(logging.handlers.SocketHandler):
 
 
 def configure_logserver():
-    socket_handler = MsgpackHandler(settings.settings.logserver_host, LOGSERVER_PORT)
+    socket_handler = MsgpackHandler(settings.settings.logserver_client_host, LOGSERVER_PORT)
     socket_handler.setLevel(logging.DEBUG)
     logger_client.addHandler(socket_handler)
     bitcart_logger.addHandler(socket_handler)
