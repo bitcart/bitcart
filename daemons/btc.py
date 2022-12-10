@@ -365,8 +365,13 @@ class BTCDaemon(BaseDaemon):
     def get_status_str(self, status):
         return self.electrum.invoices.pr_tooltips[status]
 
-    def get_tx_hashes_for_invoice(self, wallet, address):
-        invoice = wallet.get_request(address)
+    def _get_request(self, wallet, address):
+        return wallet.get_request(address)
+
+    def _get_request_address(self, invoice):
+        return invoice.get_address()
+
+    def get_tx_hashes_for_invoice(self, wallet, invoice):
         return wallet._is_onchain_invoice_paid(invoice)[2]
 
     def process_events(self, event, *args):
@@ -382,13 +387,14 @@ class BTCDaemon(BaseDaemon):
             data, wallet = self.process_new_transaction(args)
         elif event == "new_payment":
             wallet, address, status = args
-            tx_hashes = self.get_tx_hashes_for_invoice(wallet, address)
+            request = self._get_request(wallet, address)
+            tx_hashes = self.get_tx_hashes_for_invoice(wallet, request)
             data = {
                 "address": str(address),
                 "status": status,
                 "status_str": self.get_status_str(status),
                 "tx_hashes": tx_hashes,
-                "sent_amount": self.get_sent_amount(wallet, address, tx_hashes),
+                "sent_amount": self.get_sent_amount(wallet, self._get_request_address(request), tx_hashes),
             }
         elif event == "verified_tx":
             data, wallet = self.process_verified_tx(args)

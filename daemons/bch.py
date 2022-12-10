@@ -75,8 +75,14 @@ class BCHDaemon(BTCDaemon):
     def get_status_str(self, status):
         return self.electrum.paymentrequest.pr_tooltips[status]
 
-    def get_tx_hashes_for_invoice(self, wallet, address):
-        return wallet.get_payment_status(address, wallet.get_payment_request(address, self.electrum_config)["amount"])[2]
+    def _get_request(self, wallet, address):
+        return wallet.get_payment_request(address, self.electrum_config)
+
+    def _get_request_address(self, invoice):
+        return invoice["address"]
+
+    def get_tx_hashes_for_invoice(self, wallet, invoice):
+        return wallet.get_payment_status(invoice["address"], invoice["amount"])[2]
 
     def get_exception_message(self, e):
         return get_exception_message(e)
@@ -87,11 +93,38 @@ class BCHDaemon(BTCDaemon):
         result.update({"confirmations": result.get("confirmations", 0)})
         return result
 
+    @rpc(requires_wallet=True)
+    def payto(self, *args, **kwargs):
+        wallet = kwargs.pop("wallet", None)
+        result = self.wallets[wallet]["cmd"].payto(*args, **kwargs)
+        return result["hex"]
+
+    @rpc(requires_wallet=True)
+    def paytomany(self, *args, **kwargs):
+        wallet = kwargs.pop("wallet", None)
+        result = self.wallets[wallet]["cmd"].paytomany(*args, **kwargs)
+        return result["hex"]
+
+    @rpc(requires_wallet=True)
+    def addtransaction(self, tx, wallet):
+        tx = self.electrum.transaction.Transaction(tx)
+        self.wallets[wallet]["wallet"].add_transaction(tx.txid(), tx)
+        self.wallets[wallet]["wallet"].add_tx_to_history(tx.txid())
+        self.wallets[wallet]["wallet"].save_transactions()
+
     @rpc
     async def broadcast(self, *args, **kwargs):
-        wallet = kwargs.pop("wallet", None)
-        result = self.wallets[wallet]["cmd"].broadcast(*args, **kwargs)
+        kwargs.pop("wallet", None)
+        result = self.create_commands(config=self.electrum_config).broadcast(*args, **kwargs)
         return result[1]  # tx hash
+
+    @rpc(requires_wallet=True, requires_network=True)
+    def get_used_fee(self, tx_hash, wallet):
+        tx = self.wallets[wallet]["wallet"].transactions.get(tx_hash)
+        if tx is None:
+            raise Exception("No such blockchain transaction")
+        delta = self.wallets[wallet]["wallet"].get_wallet_delta(tx)
+        return format_satoshis(delta.fee)
 
     def get_sent_amount(self, wallet, address, tx_hashes):
         sent_amount = 0
