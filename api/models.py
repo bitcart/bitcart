@@ -634,8 +634,10 @@ class Payout(BaseModel):
                 await select([Wallet.currency]).where(Wallet.id == kwargs.get("wallet_id", self.wallet_id)).gino.scalar()
             )
             coin = settings.settings.get_coin(wallet_currency)
-            if not await coin.server.validateaddress(kwargs.get("destination", self.destination)):
+            destination = kwargs.get("destination", self.destination)
+            if not await coin.server.validateaddress(destination):
                 raise HTTPException(422, "Invalid destination address")
+            kwargs["destination"] = await coin.server.normalizeaddress(destination)
 
     async def add_related(self):
         from api import utils

@@ -1,6 +1,8 @@
+import asyncio
 import json
 from decimal import Decimal
 
+import httpx
 import trontxsize
 from eth import ETHDaemon
 from eth import KeyStore as ETHKeyStore
@@ -12,7 +14,7 @@ from tronpy import AsyncTron, keys
 from tronpy.abi import trx_abi
 from tronpy.async_tron import AsyncContract, AsyncHTTPProvider, AsyncTransaction
 from tronpy.exceptions import AddressNotFound
-from utils import rpc
+from utils import exception_retry_middleware, rpc
 
 with open("daemons/tokens/trc20.json") as f:
     TRC20_TOKENS = json.loads(f.read())
@@ -20,6 +22,8 @@ with open("daemons/tokens/trc20.json") as f:
 mnemonic = Mnemonic("english")
 
 TRX_ACCOUNT_PATH = "m/44'/195'/0'/0/0"
+
+DEFAULT_FEE_LIMIT = 20_000_000  # 20 TRX
 
 
 class TRXFeatures(BlockchainFeatures):
@@ -200,7 +204,13 @@ class TRXDaemon(ETHDaemon):
     def create_coin(self):
         if self.SERVER and not self.SERVER.endswith("/"):
             self.SERVER += "/"
-        self.coin = TRXFeatures(AsyncTron(AsyncHTTPProvider(self.SERVER)))
+        provider = AsyncHTTPProvider(self.SERVER)
+        provider.make_request = exception_retry_middleware(
+            provider.make_request,
+            (httpx.HTTPError, TimeoutError, asyncio.TimeoutError),
+            self.VERBOSE,
+        )
+        self.coin = TRXFeatures(AsyncTron(provider, conf={"fee_limit": DEFAULT_FEE_LIMIT}))
 
     async def check_contract_logs(self, contract, divisibility, from_block=None, to_block=None):
         pass  # we do it right during block processing
@@ -364,17 +374,31 @@ class TRXDaemon(ETHDaemon):
         energy = await self.get_default_gas(tx_dict)
         bandwidth = self.get_tx_size(tx_dict)
         value = tx_dict["raw_data"]["contract"][0]["parameter"]["value"]
+        to_address = value.get("to_address")
+        is_account_create = False
+        if to_address is not None:
+            try:
+                await self.coin.web3.get_account(to_address)
+            except AddressNotFound:
+                is_account_create = True
         address = value["owner_address"]
         resources = await self.coin.web3.get_account_resource(address)
         chain_params = await self.coin.web3.get_chain_parameters()
         bandwidth_cost = self.coin.find_chain_param(chain_params, "getTransactionFee", 1000)
         energy_cost = self.coin.find_chain_param(chain_params, "getEnergyFee", 1)
+        user_available_net = resources.get("NetLimit", 0) - resources.get("NetUsed", 0)
         allowed_bandwidth = max(
             resources.get("freeNetLimit", 0) - resources.get("freeNetUsed", 0),
-            resources.get("NetLimit", 0) - resources.get("NetUsed", 0),
+            user_available_net,
         )
         fee = Decimal(0)
-        if allowed_bandwidth < bandwidth:
+        if is_account_create:
+            if bandwidth > user_available_net:
+                fee += from_wei(self.coin.find_chain_param(chain_params, "getCreateAccountFee", 100000), self.DIVISIBILITY)
+            fee += from_wei(
+                self.coin.find_chain_param(chain_params, "getCreateNewAccountFeeInSystemContract", 1000000), self.DIVISIBILITY
+            )
+        elif bandwidth > allowed_bandwidth:
             fee += bandwidth * from_wei(bandwidth_cost, self.DIVISIBILITY)
         if energy > 0:
             user_energy = resources.get("EnergyLimit", 0) - resources.get("EnergyUsed", 0)
