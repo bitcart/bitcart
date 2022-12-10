@@ -1,5 +1,5 @@
 from btc import BTCDaemon
-from utils import get_exception_message, rpc
+from utils import format_satoshis, get_exception_message, rpc
 
 
 class BCHDaemon(BTCDaemon):
@@ -92,6 +92,26 @@ class BCHDaemon(BTCDaemon):
         wallet = kwargs.pop("wallet", None)
         result = self.wallets[wallet]["cmd"].broadcast(*args, **kwargs)
         return result[1]  # tx hash
+
+    def get_sent_amount(self, wallet, address, tx_hashes):
+        sent_amount = 0
+        if tx_hashes:
+            received, _ = wallet.get_addr_io(address)
+            for txo, x in received.items():
+                _, v, _ = x
+                txid, _ = txo.split(":")
+                if txid in tx_hashes:
+                    sent_amount += v
+        return format_satoshis(sent_amount)
+
+    @rpc(requires_wallet=True)
+    def getrequest(self, *args, **kwargs):
+        wallet = kwargs.pop("wallet", None)
+        result = self.wallets[wallet]["cmd"].getrequest(*args, **kwargs)
+        result["sent_amount"] = self.get_sent_amount(
+            self.wallets[wallet]["wallet"], self.electrum.address.Address.from_string(result["address"]), result["tx_hashes"]
+        )
+        return result
 
     @rpc
     def recommended_fee(self, target, wallet=None) -> float:  # no fee estimation for BCH

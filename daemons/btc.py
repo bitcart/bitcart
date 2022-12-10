@@ -382,17 +382,32 @@ class BTCDaemon(BaseDaemon):
             data, wallet = self.process_new_transaction(args)
         elif event == "new_payment":
             wallet, address, status = args
+            tx_hashes = self.get_tx_hashes_for_invoice(wallet, address)
             data = {
                 "address": str(address),
                 "status": status,
                 "status_str": self.get_status_str(status),
-                "tx_hashes": self.get_tx_hashes_for_invoice(wallet, address),
+                "tx_hashes": tx_hashes,
+                "sent_amount": self.get_sent_amount(wallet, address, tx_hashes),
             }
         elif event == "verified_tx":
             data, wallet = self.process_verified_tx(args)
         else:
             return None, None
         return data, wallet
+
+    def get_sent_amount(self, wallet, address, tx_hashes):
+        sent_amount = 0
+        for tx in tx_hashes:
+            sent_amount += wallet.db.get_transaction(tx).output_value_for_address(address)
+        return format_satoshis(sent_amount)
+
+    @rpc(requires_wallet=True)
+    async def get_request(self, *args, **kwargs):
+        wallet = kwargs.pop("wallet", None)
+        result = await self.wallets[wallet]["cmd"].get_request(*args, **kwargs, wallet=self.wallets[wallet]["wallet"])
+        result["sent_amount"] = self.get_sent_amount(self.wallets[wallet]["wallet"], result["address"], result["tx_hashes"])
+        return result
 
     @rpc
     def validatekey(self, key, wallet=None):

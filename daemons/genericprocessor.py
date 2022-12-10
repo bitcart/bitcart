@@ -473,6 +473,7 @@ class Wallet:
                     "status": req.status,
                     "status_str": req.status_str,
                     "tx_hashes": [tx_hash],
+                    "sent_amount": decimal_to_string(req.sent_amount, self.divisibility),
                     "contract": contract,
                 },
                 wallet,
