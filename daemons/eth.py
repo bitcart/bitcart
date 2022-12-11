@@ -17,7 +17,7 @@ from hexbytes import HexBytes
 from mnemonic import Mnemonic
 from storage import JSONEncoder as StorageJSONEncoder
 from storage import Storage
-from utils import exception_retry_middleware, load_json_dict, rpc, try_cast_num
+from utils import exception_retry_middleware, load_json_dict, modify_payment_url, rpc, try_cast_num
 from web3 import Web3
 from web3.contract import AsyncContract
 from web3.datastructures import AttributeDict
@@ -577,6 +577,12 @@ class ETHDaemon(BlockProcessorDaemon):
             return tx
         signed = self._sign_transaction(tx, self.wallets[wallet].keystore.private_key)
         return await self.broadcast(signed)
+
+    @rpc
+    async def modifypaymenturl(self, url, amount, divisibility=None, wallet=None):
+        if "/transfer" in url:
+            return modify_payment_url("uint256", url, to_wei(amount, divisibility))
+        return modify_payment_url("value", url, to_wei(amount, divisibility))
 
 
 if __name__ == "__main__":

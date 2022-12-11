@@ -133,7 +133,7 @@ STR_TO_BOOL_MAPPING = {
 
 
 class WalletDB(StorageWalletDB):
-    STORAGE_VERSION = 2
+    STORAGE_VERSION = 3
 
     def _convert_dict(self, path, key, v):
         if key == "payment_requests":
@@ -147,6 +147,7 @@ class WalletDB(StorageWalletDB):
 
     def run_upgrades(self):
         self._convert_version_2()
+        self._convert_version_3()
 
     def _convert_version_2(self):
         if not self._is_upgrade_method_needed(1, 1):
@@ -157,6 +158,19 @@ class WalletDB(StorageWalletDB):
             if "sent_amount" not in invoices[key]:
                 invoices[key]["sent_amount"] = decimal_to_string(Decimal(0))
         self.put("version", 2)
+
+    def _convert_version_3(self):
+        if not self._is_upgrade_method_needed(2, 2):
+            return
+        invoices = self.data.get("payment_requests", {})
+        for key in invoices:
+            tx_hashes = []
+            if "tx_hash" in invoices[key]:
+                tx_hash = invoices[key].pop("tx_hash")
+                if tx_hash is not None:
+                    tx_hashes.append(tx_hash)
+            invoices[key]["tx_hashes"] = tx_hashes
+        self.put("version", 3)
 
 
 class ConfigDB(StorageConfigDB):
@@ -249,7 +263,7 @@ class Invoice(CastingDataclass, StoredObject):
     payment_address: str = None
     id: str = None
     status: int = 0
-    tx_hash: str = None
+    tx_hashes: list = field(default_factory=list)
     contract: str = None
 
     @property
@@ -387,9 +401,9 @@ class Wallet:
             "status": req.status,
             "status_str": req.status_str,
         }
-        if req.tx_hash:
-            d["tx_hashes"] = [req.tx_hash]
-            d["confirmations"] = await self.coin.get_confirmations(req.tx_hash)
+        if req.tx_hashes:
+            d["tx_hashes"] = req.tx_hashes
+            d["confirmations"] = await self.coin.get_confirmations(req.tx_hashes[0])
         d[f"amount_{daemon_ctx.get().UNIT}"] = to_wei(req.amount, self.divisibility)
         d["address"] = req.address
         d["URI"] = await self.coin.get_payment_uri(req, self.divisibility, contract=getattr(self, "contract", None))
@@ -419,13 +433,16 @@ class Wallet:
         out.sort(key=lambda x: x.time)
         return out
 
-    def set_request_status(self, key, status, **kwargs):
+    def set_request_status(self, key, status, tx_hash=None, **kwargs):
         req = self.get_request(key)
         if not req:
             return None
         if req.status == PR_PAID:  # immutable
             return req
         req.status = status
+        if tx_hash is not None:
+            req.tx_hashes.append(tx_hash)
+            req.tx_hashes = list(dict.fromkeys(req.tx_hashes))  # remove duplicates
         for kwarg in kwargs:
             setattr(req, kwarg, kwargs[kwarg])
         self.add_payment_request(req, save_db=False)
@@ -461,6 +478,8 @@ class Wallet:
         if req.sent_amount >= req.amount:
             await self.process_payment(wallet, req.id, tx_hash=tx.hash, status=PR_PAID, contract=tx.contract)
         else:
+            if tx.hash not in req.tx_hashes:
+                req.tx_hashes.append(tx.hash)
             self.save_db()
 
     async def process_payment(self, wallet, key, tx_hash, contract=None, status=PR_PAID):
@@ -472,7 +491,7 @@ class Wallet:
                     "address": req.id,
                     "status": req.status,
                     "status_str": req.status_str,
-                    "tx_hashes": [tx_hash],
+                    "tx_hashes": req.tx_hashes,
                     "sent_amount": decimal_to_string(req.sent_amount, self.divisibility),
                     "contract": contract,
                 },

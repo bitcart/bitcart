@@ -5,6 +5,7 @@ import inspect
 import os
 import sys
 import traceback
+from decimal import Decimal
 from types import ModuleType
 from typing import Union
 from urllib.parse import urlparse
@@ -18,6 +19,7 @@ from utils import (
     get_exception_message,
     get_function_header,
     hide_logging_errors,
+    modify_payment_url,
     rpc,
 )
 
@@ -553,6 +555,19 @@ class BTCDaemon(BaseDaemon):
             raise Exception("No such blockchain transaction")
         delta = self.wallets[wallet]["wallet"].get_wallet_delta(tx)
         return format_satoshis(delta.fee)
+
+    @rpc
+    async def modifypaymenturl(self, url, amount, divisibility=None, wallet=None):
+        try:
+            lnaddr = self.electrum.lnaddr.lndecode(url)
+            if wallet not in self.wallets:
+                raise Exception("Wallet not loaded")
+            lnaddr.amount = Decimal(amount)
+            return self.electrum.lnaddr.lnencode(lnaddr, self.wallets[wallet]["wallet"].lnworker.node_keypair.privkey)
+        except Exception as e:
+            if str(e) == "Wallet not loaded":
+                raise
+            return modify_payment_url("amount", url, amount)
 
     async def get_commands_list(self, commands):
         return await commands.help()

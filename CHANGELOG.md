@@ -2,6 +2,22 @@
 
 ## Latest changes
 
+## 0.6.15.3
+
+Fix important issue in processing XMR mempool
+
+Make `underpaid_percentage` work the expected way again
+
+Fix normalization of destination address in payouts and payouts on tron mainnet
+
+Our fee prediction algorithm for tron should now account for 100% of cases.
+
+Add `sent_amount` to internal invoices in the daemon everywhere
+
+Fix payouts for BCH
+
+Fix `tx_hashes` not working for multiple transactions in ETH
+
 ## 0.6.15.2
 
 Fix payouts in Tron mainnet

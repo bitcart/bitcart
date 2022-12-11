@@ -11,6 +11,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from decimal import Decimal
 from typing import Any, Optional
+from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 from aiohttp import web
 
@@ -234,3 +235,11 @@ def get_function_header(func, func_obj):
     if doc is not None:
         s += f"\n\n{doc}"
     return s
+
+
+def modify_payment_url(key, url, amount):
+    parsed = urlparse(url)
+    qs = dict(parse_qsl(parsed.query))
+    qs[key] = amount
+    parsed = parsed._replace(query=urlencode(qs))
+    return urlunparse(parsed)

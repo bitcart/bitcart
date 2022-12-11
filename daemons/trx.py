@@ -427,6 +427,10 @@ class TRXDaemon(ETHDaemon):
             success_balance = False
         return success_balance
 
+    @rpc
+    async def modifypaymenturl(self, url, amount, divisibility=None, wallet=None):
+        return url
+
 
 if __name__ == "__main__":
     daemon = TRXDaemon()

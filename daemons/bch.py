@@ -1,5 +1,5 @@
 from btc import BTCDaemon
-from utils import format_satoshis, get_exception_message, rpc
+from utils import format_satoshis, get_exception_message, modify_payment_url, rpc
 
 
 class BCHDaemon(BTCDaemon):
@@ -125,6 +125,10 @@ class BCHDaemon(BTCDaemon):
             raise Exception("No such blockchain transaction")
         delta = self.wallets[wallet]["wallet"].get_wallet_delta(tx)
         return format_satoshis(delta.fee)
+
+    @rpc
+    async def modifypaymenturl(self, url, amount, divisibility=None, wallet=None):
+        return modify_payment_url("amount", url, amount)
 
     def get_sent_amount(self, wallet, address, tx_hashes):
         sent_amount = 0

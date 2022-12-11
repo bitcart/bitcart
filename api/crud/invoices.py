@@ -82,6 +82,7 @@ async def _create_payment_method(invoice, wallet, product, store, discounts, pro
             pass
     request_price = price * (1 - (Decimal(store.checkout_settings.underpaid_percentage) / 100))
     request_price = currency_table.normalize(wallet.currency, request_price / rate, divisibility=divisibility)
+    price = currency_table.normalize(wallet.currency, price / rate, divisibility=divisibility)
     method = coin.add_request
     if lightning:  # pragma: no cover
         try:
@@ -97,6 +98,8 @@ async def _create_payment_method(invoice, wallet, product, store, discounts, pro
     data_got = await method(request_price, description=product.name if product else "", expire=invoice.expiration)
     address = data_got["address"] if not lightning else data_got["lightning_invoice"]
     url = data_got["URI"] if not lightning else data_got["lightning_invoice"]
+    if store.checkout_settings.underpaid_percentage > 0:  # pragma: no cover
+        url = await coin.server.modifypaymenturl(url, price, divisibility)
     node_id = await coin.node_id if lightning else None
     rhash = data_got["rhash"] if lightning else None
     lookup_field = data_got["request_id"] if "request_id" in data_got else address
@@ -104,7 +107,7 @@ async def _create_payment_method(invoice, wallet, product, store, discounts, pro
         id=utils.common.unique_id(),
         invoice_id=invoice.id,
         wallet_id=wallet.id,
-        amount=data_got[coin.amount_field],
+        amount=price,
         rate=rate,
         discount=discount_id,
         currency=wallet.currency,

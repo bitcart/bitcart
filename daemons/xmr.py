@@ -14,7 +14,7 @@ from genericprocessor import Invoice as BaseInvoice
 from genericprocessor import KeyStore as BaseKeyStore
 from genericprocessor import Transaction as BaseTransaction
 from genericprocessor import Wallet as BaseWallet
-from genericprocessor import WalletDB, daemon_ctx, decimal_to_string, from_wei, str_to_bool
+from genericprocessor import WalletDB, daemon_ctx, decimal_to_string, from_wei, str_to_bool, to_wei
 from jsonrpc import RPCProvider
 from monero import const as monero_const
 from monero import ed25519
@@ -28,7 +28,7 @@ from monero.transaction import Transaction as MoneroTransaction
 from monero.wallet import Wallet as MoneroWallet
 from storage import JSONEncoder as StorageJSONEncoder
 from storage import Storage
-from utils import exception_retry_middleware, load_json_dict, rpc
+from utils import exception_retry_middleware, load_json_dict, modify_payment_url, rpc
 
 MAX_FETCH_TXES = 100
 
@@ -299,6 +299,8 @@ class Wallet(BaseWallet):
         if (unconfirmed and req.sent_amount >= req.amount) or req.confirmed_amount >= req.amount:
             await self.process_payment(wallet, req.id, tx_hash=tx.hash, status=PR_UNCONFIRMED if unconfirmed else PR_PAID)
         else:
+            if tx.hash not in req.tx_hashes:
+                req.tx_hashes.append(tx.hash)
             self.save_db()
 
 
@@ -358,9 +360,9 @@ class XMRDaemon(BlockProcessorDaemon):
                     try:
                         tx = await self.coin.process_tx_data(self.create_mempool_tx(tx_data))
                         if tx is not None:
+                            new_cache[tx.hash] = True
                             if tx.hash in self.mempool_cache:
                                 continue
-                            new_cache[tx.hash] = True
                             await self.process_transaction(tx, unconfirmed=True)
                     except Exception:
                         if self.VERBOSE:
@@ -536,6 +538,10 @@ class XMRDaemon(BlockProcessorDaemon):
     @rpc(requires_wallet=True)  # fallback
     def setrequestaddress(self, key, address, wallet):
         return False
+
+    @rpc
+    async def modifypaymenturl(self, url, amount, divisibility=None, wallet=None):
+        return modify_payment_url("tx_amount", url, to_wei(amount, divisibility))
 
 
 if __name__ == "__main__":
