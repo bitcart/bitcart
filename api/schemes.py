@@ -1,12 +1,11 @@
 from datetime import datetime
 from decimal import Decimal
-from typing import Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 import paramiko
 from fastapi.exceptions import HTTPException
 from pydantic import BaseModel as PydanticBaseModel
 from pydantic import EmailStr, root_validator, validator
-from pydantic.fields import ModelField
 from pydantic.utils import GetterDict as PydanticGetterDict
 
 from api.constants import BACKUP_FREQUENCIES, BACKUP_PROVIDERS, FEE_ETA_TARGETS, MAX_CONFIRMATION_WATCH
@@ -20,17 +19,10 @@ class GetterDict(PydanticGetterDict):  # for some reason, by default adding keys
 
 
 class BaseModel(PydanticBaseModel):
+    metadata: Optional[Dict[str, Any]] = {}
+
     class Config:
         getter_dict = GetterDict
-
-    @root_validator(pre=True)
-    def build_extra(cls, values):
-        for key, value in values.get("plugins_data", {}).items():
-            cls.__fields__[key] = ModelField.infer(
-                name=key, value=None, annotation=type(value), class_validators=None, config=cls.__config__
-            )
-            values[key] = value
-        return values
 
 
 class CreatedMixin(BaseModel):

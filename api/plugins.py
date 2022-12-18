@@ -108,8 +108,8 @@ json_encode = jsonable_encoder
 
 
 async def _get_and_check_meta(model, object_id):
-    if not hasattr(model, "plugins_data"):
-        raise Exception("Model does not support plugins data")
+    if not hasattr(model, "metadata"):
+        raise Exception("Model does not support metadata")
     obj = await utils.database.get_object(model, object_id, raise_exception=False)
     if obj is None:
         raise Exception("Object not found")
@@ -118,17 +118,17 @@ async def _get_and_check_meta(model, object_id):
 
 async def set_metadata(model, object_id, key, value):
     obj = await _get_and_check_meta(model, object_id)
-    obj.plugins_data[key] = value
-    await obj.update(plugins_data=obj.plugins_data).apply()
+    obj.metadata[key] = value
+    await obj.update(metadata=obj.metadata).apply()
 
 
 async def get_metadata(model, object_id, key, default=None):
     obj = await _get_and_check_meta(model, object_id)
-    return obj["plugins_data"].get(key, default)
+    return obj["metadata"].get(key, default)
 
 
 async def delete_metadata(model, object_id, key):
     obj = await _get_and_check_meta(model, object_id)
-    if key in obj.plugins_data:
-        del obj.plugins_data[key]
-        await obj.update(plugins_data=obj.plugins_data).apply()
+    if key in obj.metadata:
+        del obj.metadata[key]
+        await obj.update(metadata=obj.metadata).apply()
