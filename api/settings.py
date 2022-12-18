@@ -58,6 +58,7 @@ class Settings(BaseSettings):
     redis_pool: aioredis.Redis = None
     config: Config = None
     logger: logging.Logger = None
+    plugins: list = None
 
     class Config:
         env_file = "conf/.env"
@@ -123,6 +124,8 @@ class Settings(BaseSettings):
             self.log_file_regex = re.compile(fnmatch.translate(f"{filename_no_ext}*{file_extension}"))
 
     def __init__(self, **data):
+        from api.plugins import PluginsManager
+
         super().__init__(**data)
         self.config = Config("conf/.env")
         self.set_log_file(self.log_file_name)
@@ -130,6 +133,9 @@ class Settings(BaseSettings):
             self.ssh_settings = load_ssh_settings(self.config)
         self.load_cryptos()
         self.load_notification_providers()
+        configure_logserver(self)
+        self.logger = get_logger(__name__)
+        self.plugins = PluginsManager()
 
     def load_cryptos(self):
         self.cryptos = {}
@@ -216,9 +222,6 @@ class Settings(BaseSettings):
         await self.shutdown_db_engine()
 
     def init_logging(self):
-        configure_logserver()
-
-        self.logger = get_logger(__name__)
         sys.excepthook = excepthook_handler(self, sys.excepthook)
         asyncio.get_running_loop().set_exception_handler(lambda *args, **kwargs: handle_exception(self, *args, **kwargs))
 

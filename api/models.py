@@ -7,6 +7,7 @@ from bitcart.errors import BaseError as BitcartBaseError
 from fastapi import HTTPException
 from fastapi.encoders import jsonable_encoder
 from gino.crud import UpdateRequest
+from gino.declarative import ModelType
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import ARRAY
 
@@ -40,7 +41,18 @@ async def delete_relations(model_id, key_info):
     await key_info["table"].delete.where(getattr(key_info["table"], key_info["current_id"]) == model_id).gino.status()
 
 
-class BaseModel(db.Model):
+class SetTablePrefixMeta(ModelType):
+    def __new__(cls, name, bases, attrs):
+        new_class = type.__new__(cls, name, bases, attrs)
+        new_class.__namespace__ = attrs
+        if hasattr(new_class, "__tablename__") and hasattr(new_class, "TABLE_PREFIX"):
+            new_class.__namespace__["__tablename__"] = f"plugin_{new_class.TABLE_PREFIX}_{new_class.__tablename__}"
+        if new_class.__table__ is None:
+            new_class.__table__ = getattr(new_class, "_init_table")(new_class)
+        return new_class
+
+
+class BaseModel(db.Model, metaclass=SetTablePrefixMeta):
     JSON_KEYS: dict = {}
 
     @property

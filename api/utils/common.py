@@ -19,15 +19,20 @@ def unique_id(length=ID_LENGTH):
     return "".join(secrets.choice(ALPHABET) for i in range(length))
 
 
+async def run_universal(func, *args, **kwargs):
+    result = func(*args, **kwargs)
+    if inspect.isawaitable(result):  # pragma: no cover
+        result = await result
+    return result
+
+
 async def run_repeated(func, timeout, start_timeout=None):  # pragma: no cover
     if not start_timeout:
         start_timeout = timeout
     first_iter = True
     while True:
         await asyncio.sleep(start_timeout if first_iter else timeout)
-        result = func()
-        if inspect.isawaitable(result):  # pragma: no cover
-            await result
+        await run_universal(func)
         first_iter = False
 
 

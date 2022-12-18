@@ -50,6 +50,7 @@ def get_app():
         allow_headers=["*"],
         expose_headers=["Content-Disposition"],
     )
+    settings.plugins.setup_app(app)
 
     @app.middleware("http")
     async def add_onion_host(request: Request, call_next):
@@ -65,10 +66,12 @@ def get_app():
     async def startup():
         app.ctx_token = settings_module.settings_ctx.set(app.settings)  # for events context
         await settings_module.init()
+        await settings.plugins.startup()
 
     @app.on_event("shutdown")
     async def shutdown():
         await app.settings.shutdown()
+        await settings.plugins.shutdown()
         settings_module.settings_ctx.reset(app.ctx_token)
 
     @app.exception_handler(500)
