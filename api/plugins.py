@@ -5,10 +5,11 @@ from abc import ABCMeta, abstractmethod
 from collections import defaultdict
 
 from fastapi import FastAPI
+from fastapi.encoders import jsonable_encoder
 
 from alembic import command
 from alembic.config import Config
-from api import settings
+from api import settings, utils
 from api.logger import get_logger
 from api.utils.common import run_universal
 from api.utils.logging import get_exception_message
@@ -88,6 +89,9 @@ class PluginsManager:
                 logger.error(f"Plugin {plugin} failed to shutdown: {get_exception_message(e)}")
 
 
+### Public API
+
+
 async def run_hook(name, *args, **kwargs):
     for hook in settings.settings.plugins.hooks[name]:
         try:
@@ -98,3 +102,33 @@ async def run_hook(name, *args, **kwargs):
 
 def register_hook(name, hook):
     settings.settings.plugins.hooks[name].append(hook)
+
+
+json_encode = jsonable_encoder
+
+
+async def _get_and_check_meta(model, object_id):
+    if not hasattr(model, "plugins_data"):
+        raise Exception("Model does not support plugins data")
+    obj = await utils.database.get_object(model, object_id, raise_exception=False)
+    if obj is None:
+        raise Exception("Object not found")
+    return obj
+
+
+async def set_metadata(model, object_id, key, value):
+    obj = await _get_and_check_meta(model, object_id)
+    obj.plugins_data[key] = value
+    await obj.update(plugins_data=obj.plugins_data).apply()
+
+
+async def get_metadata(model, object_id, key, default=None):
+    obj = await _get_and_check_meta(model, object_id)
+    return obj["plugins_data"].get(key, default)
+
+
+async def delete_metadata(model, object_id, key):
+    obj = await _get_and_check_meta(model, object_id)
+    if key in obj.plugins_data:
+        del obj.plugins_data[key]
+        await obj.update(plugins_data=obj.plugins_data).apply()

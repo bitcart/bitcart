@@ -41,18 +41,21 @@ async def delete_relations(model_id, key_info):
     await key_info["table"].delete.where(getattr(key_info["table"], key_info["current_id"]) == model_id).gino.status()
 
 
-class SetTablePrefixMeta(ModelType):
+class BaseModelMeta(ModelType):
     def __new__(cls, name, bases, attrs):
         new_class = type.__new__(cls, name, bases, attrs)
         new_class.__namespace__ = attrs
-        if hasattr(new_class, "__tablename__") and hasattr(new_class, "TABLE_PREFIX"):
-            new_class.__namespace__["__tablename__"] = f"plugin_{new_class.TABLE_PREFIX}_{new_class.__tablename__}"
+        if hasattr(new_class, "__tablename__"):
+            if hasattr(new_class, "TABLE_PREFIX"):
+                new_class.__namespace__["__tablename__"] = f"plugin_{new_class.TABLE_PREFIX}_{new_class.__tablename__}"
+            if getattr(new_class, "PLUGINS_DATA", True):
+                new_class.__namespace__["plugins_data"] = Column(JSON)
         if new_class.__table__ is None:
             new_class.__table__ = getattr(new_class, "_init_table")(new_class)
         return new_class
 
 
-class BaseModel(db.Model, metaclass=SetTablePrefixMeta):
+class BaseModel(db.Model, metaclass=BaseModelMeta):
     JSON_KEYS: dict = {}
 
     @property
@@ -84,6 +87,10 @@ class BaseModel(db.Model, metaclass=SetTablePrefixMeta):
     async def add_fields(self):
         for field, scheme in self.JSON_KEYS.items():
             setattr(self, field, self.get_json_key(field, scheme))
+        if hasattr(self, "plugins_data"):
+            # unpack plugins data
+            for key, value in self.plugins_data.items():
+                setattr(self, key, value)
 
     async def load_data(self):
         await self.add_related()
@@ -137,6 +144,8 @@ class BaseModel(db.Model, metaclass=SetTablePrefixMeta):
         from api import utils
 
         kwargs["id"] = utils.common.unique_id()
+        if "plugins_data" not in kwargs:
+            kwargs["plugins_data"] = {}
         return kwargs
 
     def prepare_edit(self, kwargs):
@@ -303,12 +312,16 @@ class Template(BaseModel):
 class WalletxStore(BaseModel):
     __tablename__ = "walletsxstores"
 
+    PLUGINS_DATA = False
+
     wallet_id = Column(Text, ForeignKey("wallets.id", ondelete="SET NULL"))
     store_id = Column(Text, ForeignKey("stores.id", ondelete="SET NULL"))
 
 
 class NotificationxStore(BaseModel):
     __tablename__ = "notificationsxstores"
+
+    PLUGINS_DATA = False
 
     notification_id = Column(Text, ForeignKey("notifications.id", ondelete="SET NULL"))
     store_id = Column(Text, ForeignKey("stores.id", ondelete="SET NULL"))
@@ -385,6 +398,8 @@ class Discount(BaseModel):
 class DiscountxProduct(BaseModel):
     __tablename__ = "discountsxproducts"
 
+    PLUGINS_DATA = False
+
     discount_id = Column(Text, ForeignKey("discounts.id", ondelete="SET NULL"))
     product_id = Column(Text, ForeignKey("products.id", ondelete="SET NULL"))
 
@@ -444,6 +459,8 @@ class Product(BaseModel):
 
 class ProductxInvoice(BaseModel):
     __tablename__ = "productsxinvoices"
+
+    PLUGINS_DATA = False
 
     product_id = Column(Text, ForeignKey("products.id", ondelete="SET NULL"))
     invoice_id = Column(Text, ForeignKey("invoices.id", ondelete="SET NULL"))
@@ -590,6 +607,8 @@ class Invoice(BaseModel):
 
 class Setting(BaseModel):
     __tablename__ = "settings"
+
+    PLUGINS_DATA = False
 
     id = Column(Text, primary_key=True, index=True)
     name = Column(Text)

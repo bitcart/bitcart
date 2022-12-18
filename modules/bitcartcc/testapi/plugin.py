@@ -1,4 +1,5 @@
-from api.plugins import BasePlugin, register_hook
+from api import models
+from api.plugins import BasePlugin, register_hook, set_metadata
 
 from .views import router
 
@@ -17,3 +18,4 @@ class Plugin(BasePlugin):
 
     async def handle_invoice(self, invoice):
         print("Invoice created", invoice)
+        await set_metadata(models.Invoice, invoice.id, "rating", 0)
