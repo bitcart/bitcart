@@ -38,6 +38,10 @@ class BasePlugin(metaclass=ABCMeta):
     async def shutdown(self):
         pass
 
+    @abstractmethod
+    async def worker_setup(self):
+        pass
+
 
 class PluginsManager:
     def __init__(self):
@@ -88,6 +92,13 @@ class PluginsManager:
             except Exception as e:
                 logger.error(f"Plugin {plugin} failed to shutdown: {get_exception_message(e)}")
 
+    async def worker_setup(self):
+        for plugin in self.plugins.values():
+            try:
+                await plugin.worker_setup()
+            except Exception as e:
+                logger.error(f"Plugin {plugin} failed to setup worker: {get_exception_message(e)}")
+
 
 ### Public API
 
@@ -125,7 +136,7 @@ async def _get_and_check_meta(model, object_id):
     return obj
 
 
-async def set_metadata(model, object_id, key, value):
+async def update_metadata(model, object_id, key, value):
     obj = await _get_and_check_meta(model, object_id)
     obj.metadata[key] = value
     await obj.update(metadata=obj.metadata).apply()

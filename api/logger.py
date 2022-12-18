@@ -49,8 +49,8 @@ class MsgpackHandler(logging.handlers.SocketHandler):
         return msgpack.packb(record.__dict__, default=self.msgpack_encoder)
 
 
-def configure_logserver(settings):
-    socket_handler = MsgpackHandler(settings.logserver_client_host, LOGSERVER_PORT)
+def configure_logserver(logserver_client_host):
+    socket_handler = MsgpackHandler(logserver_client_host, LOGSERVER_PORT)
     socket_handler.setLevel(logging.DEBUG)
     logger_client.addHandler(socket_handler)
     bitcart_logger.addHandler(socket_handler)

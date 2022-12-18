@@ -50,6 +50,8 @@ def get_app():
         allow_headers=["*"],
         expose_headers=["Content-Disposition"],
     )
+    settings.init_logging()
+    settings.load_plugins()
     settings.plugins.setup_app(app)
 
     @app.middleware("http")
@@ -65,7 +67,7 @@ def get_app():
     @app.on_event("startup")
     async def startup():
         app.ctx_token = settings_module.settings_ctx.set(app.settings)  # for events context
-        await settings_module.init()
+        await settings.init()
         await settings.plugins.startup()
 
     @app.on_event("shutdown")

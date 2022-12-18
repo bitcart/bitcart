@@ -61,6 +61,7 @@ async def init_db(request, app, anyio_backend):
         await db.status(f"DROP DATABASE IF EXISTS {db_name}")
         await db.status(f"CREATE DATABASE {db_name} TEMPLATE {template_db}")
     settings.settings.db_name = db_name
+    settings.settings.init_logging()
     await settings.settings.init()
     yield
 

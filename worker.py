@@ -41,7 +41,10 @@ def check_db():
 async def main():
     settings = settings_module.settings_ctx.get()
     try:
-        await settings_module.init()
+        settings.init_logging()
+        await settings.init()
+        settings.load_plugins()
+        await settings.plugins.startup()
         settings_module.log_startup_info()
         await tor_ext.refresh(log=False)  # to pre-load data for initial requests
         await update_ext.refresh()
@@ -54,8 +57,10 @@ async def main():
         await invoices.create_expired_tasks()  # to ensure invoices get expired actually
         coro = events.start_listening(tasks.event_handler)  # to avoid deleted task errors
         asyncio.ensure_future(coro)
+        await settings.plugins.worker_setup()
         await settings.manager.start_websocket(reconnect_callback=invoices.check_pending, force_connect=True)
     finally:
+        await settings.plugins.shutdown()
         await settings.shutdown()
 
 

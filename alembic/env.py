@@ -24,7 +24,10 @@ sys.path.insert(0, ".")
 from api.models import db  # noqa: E402: sys.path imports
 from api.settings import Settings  # noqa: E402: sys.path imports
 
-CONNECTION_STR = Settings().connection_str
+settings = Settings()
+settings.init_logging(worker=False)
+settings.load_plugins()
+CONNECTION_STR = settings.connection_str
 target_metadata = db
 
 # other values from the config, defined by the needs of env.py,
