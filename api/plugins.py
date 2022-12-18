@@ -42,7 +42,7 @@ class BasePlugin(metaclass=ABCMeta):
 class PluginsManager:
     def __init__(self):
         self.plugins = {}
-        self.hooks = defaultdict(list)
+        self.callbacks = defaultdict(list)
         plugins_list = glob.glob("modules/**/plugin.py")
         plugins_list.extend(glob.glob("modules/**/**/plugin.py"))
         for plugin in plugins_list:
@@ -93,15 +93,24 @@ class PluginsManager:
 
 
 async def run_hook(name, *args, **kwargs):
-    for hook in settings.settings.plugins.hooks[name]:
+    for hook in settings.settings.plugins.callbacks[name]:
         try:
             await run_universal(hook, *args, **kwargs)
         except Exception as e:
             logger.error(f"Hook {name} failed: {get_exception_message(e)}")
 
 
+async def apply_filters(name, value, *args, **kwargs):
+    for hook in settings.settings.plugins.callbacks[name]:
+        try:
+            value = await run_universal(hook, value, *args, **kwargs)
+        except Exception as e:
+            logger.error(f"Filter {name} failed: {get_exception_message(e)}")
+    return value
+
+
 def register_hook(name, hook):
-    settings.settings.plugins.hooks[name].append(hook)
+    settings.settings.plugins.callbacks[name].append(hook)
 
 
 json_encode = jsonable_encoder
@@ -120,6 +129,7 @@ async def set_metadata(model, object_id, key, value):
     obj = await _get_and_check_meta(model, object_id)
     obj.metadata[key] = value
     await obj.update(metadata=obj.metadata).apply()
+    return obj
 
 
 async def get_metadata(model, object_id, key, default=None):
@@ -132,3 +142,4 @@ async def delete_metadata(model, object_id, key):
     if key in obj.metadata:
         del obj.metadata[key]
         await obj.update(metadata=obj.metadata).apply()
+    return obj

@@ -18,4 +18,4 @@ class Plugin(BasePlugin):
 
     async def handle_invoice(self, invoice):
         print("Invoice created", invoice)
-        await set_metadata(models.Invoice, invoice.id, "rating", 0)
+        return await set_metadata(models.Invoice, invoice.id, "rating", 0)

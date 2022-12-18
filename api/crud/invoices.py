@@ -12,7 +12,7 @@ from starlette.datastructures import CommaSeparatedStrings
 from api import db, events, invoices, models, schemes, settings, utils
 from api.ext.moneyformat import currency_table, truncate
 from api.logger import get_exception_message, get_logger
-from api.plugins import run_hook
+from api.plugins import apply_filters
 from api.utils.database import safe_db_write
 
 logger = get_logger(__name__)
@@ -54,8 +54,7 @@ async def create_invoice(invoice: schemes.CreateInvoice, user: schemes.User):
     discounts = list(filter(lambda x: current_date <= x.end_date, discounts))
     with safe_db_write():
         await update_invoice_payments(obj, store.wallets, discounts, store, product, promocode)
-    await run_hook("invoice_created", obj)
-    return obj
+    return await apply_filters("invoice_created", obj)
 
 
 async def _create_payment_method(invoice, wallet, product, store, discounts, promocode, lightning=False):
