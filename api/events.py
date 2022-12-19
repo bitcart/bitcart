@@ -9,9 +9,12 @@ from api import constants, utils
 
 class EventHandler:
     def __init__(self, events=None):
-        self.events = events or {}
+        self.events = {}
+        for name, event in events.items():
+            self.add_event(name, event)
 
     def add_event(self, name, event):
+        event["handlers"] = event.get("handlers", [])
         self.events[name] = event
 
     def add_handler(self, event, handler):
@@ -71,19 +74,15 @@ event_handler = EventHandler(
     events={
         "expired_task": {
             "params": {"id"},
-            "handlers": [],
         },
         "sync_wallet": {
             "params": {"id"},
-            "handlers": [],
         },
         "deploy_task": {
             "params": {"id"},
-            "handlers": [],
         },
         "invoice_status": {
             "params": {"id", "status"},
-            "handlers": [],
         },
     }
 )

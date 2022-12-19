@@ -9,7 +9,7 @@ from fastapi.encoders import jsonable_encoder
 
 from alembic import command
 from alembic.config import Config
-from api import settings, utils
+from api import events, settings, utils
 from api.logger import get_logger
 from api.templates import Template
 from api.utils.common import run_universal
@@ -129,6 +129,18 @@ async def apply_filters(name, value, *args, **kwargs):
 
 def register_hook(name, hook):
     settings.settings.plugins.callbacks[name].append(hook)
+
+
+def register_event(name, params):
+    events.event_handler.add_event(name, {"params": set(params)})
+
+
+def register_event_handler(name, handler):
+    events.event_handler.add_handler(name, handler)
+
+
+async def publish_event(name, data):
+    await events.event_handler.publish(name, data)
 
 
 json_encode = jsonable_encoder
