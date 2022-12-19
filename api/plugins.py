@@ -11,6 +11,7 @@ from alembic import command
 from alembic.config import Config
 from api import settings, utils
 from api.logger import get_logger
+from api.templates import Template
 from api.utils.common import run_universal
 from api.utils.logging import get_exception_message
 
@@ -41,6 +42,11 @@ class BasePlugin(metaclass=ABCMeta):
     @abstractmethod
     async def worker_setup(self):
         pass
+
+    def register_template(self, name, text=None, applicable_to=""):
+        settings.settings.template_manager.add_template(
+            Template(name, text, applicable_to, prefix=os.path.join(self.path, "templates"))
+        )
 
 
 class PluginsManager:

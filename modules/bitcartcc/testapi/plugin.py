@@ -12,6 +12,7 @@ class Plugin(BasePlugin):
 
     async def startup(self):
         register_hook("invoice_created", self.handle_invoice)
+        self.register_template("test", applicable_to="product")
 
     async def shutdown(self):
         pass

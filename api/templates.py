@@ -7,7 +7,8 @@ from api.exceptions import TemplateLoadError
 
 
 class Template:
-    def __init__(self, name, text=None, applicable_to=""):
+    def __init__(self, name, text=None, applicable_to="", prefix="api/templates"):
+        self.prefix = prefix
         self.name = name
         self.applicable_to = applicable_to
         if text:
@@ -18,7 +19,7 @@ class Template:
 
     def load_from_file(self, name):
         try:
-            with open(f"api/templates/{name}.j2") as f:
+            with open(f"{self.prefix}/{name}.j2") as f:
                 self.template_text = f.read().strip()
         except OSError as e:
             raise TemplateLoadError(f"Failed to load template {name}: {e.strerror}")
@@ -34,7 +35,17 @@ ProductTemplate = Template("product", applicable_to="product")
 BaseShopTemplate = Template("shop", applicable_to="store")
 NotificationTemplate = Template("notification", applicable_to="store")
 
-templates = {template.name: template for template in globals().values() if isinstance(template, Template)}
-templates_strings = defaultdict(list)
-for template in templates.values():
-    templates_strings[template.applicable_to].append(template.name)
+
+class TemplateManager:
+    def __init__(self):
+        self.init_defaults()
+
+    def add_template(self, template):
+        self.templates[template.name] = template
+        self.templates_strings[template.applicable_to].append(template.name)
+
+    def init_defaults(self):
+        self.templates = {template.name: template for template in globals().values() if isinstance(template, Template)}
+        self.templates_strings = defaultdict(list)
+        for template in self.templates.values():
+            self.templates_strings[template.applicable_to].append(template.name)
