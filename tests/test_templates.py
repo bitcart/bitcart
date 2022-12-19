@@ -26,3 +26,10 @@ def test_text_template_render():
     assert template.template_text == "Hello {{var}}!"
     assert template.render() == "Hello !"
     assert template.render(var="world") == "Hello world!"
+
+
+def test_add_template():
+    manager = templates.TemplateManager()
+    template = templates.Template("product")
+    manager.add_template(template)
+    assert manager.templates["product"] == template

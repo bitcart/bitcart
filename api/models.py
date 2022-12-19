@@ -140,7 +140,7 @@ class BaseModel(db.Model, metaclass=BaseModelMeta):
         from api import utils
 
         kwargs["id"] = utils.common.unique_id()
-        if "metadata" not in kwargs and getattr(cls, "METADATA", True):
+        if "metadata" not in kwargs and getattr(cls, "METADATA", True):  # pragma: no cover
             kwargs["metadata"] = {}
         return kwargs
 

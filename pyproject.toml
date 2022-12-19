@@ -31,6 +31,7 @@ omit = [
     "*alembic/*",
     "*settings*",
     "*tests/*",
+    "modules/*",
     "venv/*",
     "env/*",
     "api/ext/update.py",
@@ -42,6 +43,7 @@ omit = [
     "api/logger.py",
     "api/logserver.py",
     "api/invoices.py",
+    "api/plugins.py",
     "api/tasks.py",
     "*__init__.py"
 ]

@@ -118,8 +118,8 @@ async def verify_captcha(code, secret):  # pragma: no cover
 
 async def captcha_flow(code):
     policies = await utils.policies.get_setting(schemes.Policy)
-    if policies.enable_captcha:
-        if not await verify_captcha(code, policies.captcha_secretkey):  # pragma: no cover
+    if policies.enable_captcha:  # pragma: no cover
+        if not await verify_captcha(code, policies.captcha_secretkey):
             await run_hook("captcha_failed")
             raise HTTPException(401, {"message": "Unauthorized", "status": 403})
         await run_hook("captcha_passed")
