@@ -6,7 +6,7 @@ from sqlalchemy import distinct
 
 from api import db, models
 from api.logger import get_exception_message, get_logger
-from api.plugins import run_hook
+from api.plugins import apply_filters, run_hook
 
 logger = get_logger(__name__)
 
@@ -43,9 +43,7 @@ async def create_object_core(model, kwargs):
 
 async def create_object(model, data, user=None, **additional_kwargs):
     kwargs = prepare_create_kwargs(model, data, user, **additional_kwargs)
-    obj = await create_object_core(model, kwargs)
-    await run_hook(f"db_create_{model.__name__.lower()}", obj)
-    return obj
+    return await apply_filters(f"db_create_{model.__name__.lower()}", await create_object_core(model, kwargs))
 
 
 async def modify_object(model, data, **additional_kwargs):

@@ -1,5 +1,6 @@
 from api import models, schemes, utils
 from api.db import db
+from api.plugins import run_hook
 
 
 async def store_count():
@@ -13,6 +14,7 @@ async def create_store(create_store: schemes.CreateStore, user: schemes.User):
         # First store created by superuser is the one shown on store POS
         # Substract one because current one is already created
         if count - 1 == 0:
+            await run_hook("first_store", store)
             await utils.policies.set_setting(schemes.GlobalStorePolicy(pos_id=store.id))
     return store
 
