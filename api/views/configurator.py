@@ -7,6 +7,7 @@ from starlette.requests import Request
 from api import schemes, settings, utils
 from api.ext import configurator
 from api.ext import ssh as ssh_ext
+from api.plugins import run_hook
 
 router = APIRouter()
 
@@ -37,4 +38,6 @@ async def get_server_settings(request: Request, ssh_settings: Optional[schemes.S
     if not ssh_settings:
         await utils.authorization.AuthDependency()(request, SecurityScopes(["server_management"]))
         ssh_settings = settings.settings.ssh_settings
-    return ssh_ext.collect_server_settings(ssh_settings)
+    server_settings = ssh_ext.collect_server_settings(ssh_settings)
+    await run_hook("configurator_server_settings", server_settings)
+    return server_settings

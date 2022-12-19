@@ -5,6 +5,7 @@ from sqlalchemy import select
 from api import crud, models, pagination, schemes, settings, utils
 from api.ext import export as export_ext
 from api.invoices import InvoiceStatus
+from api.plugins import run_hook
 
 router = APIRouter()
 
@@ -67,6 +68,7 @@ async def update_invoice(
         if not getattr(item, field) and value:
             kwargs[field] = value
     if kwargs:
+        await run_hook("invoice_customer_update", item, kwargs)
         await utils.database.modify_object(item, kwargs)
     return item
 
@@ -107,6 +109,7 @@ async def update_payment_details(
         raise HTTPException(422, "Invalid address")
     if not await coin.server.setrequestaddress(method.lookup_field, data.address):
         raise HTTPException(422, "Invalid address")
+    await run_hook("invoice_payment_address_set", item, method, data.address)
     await method.update(user_address=data.address).apply()
     return True
 
