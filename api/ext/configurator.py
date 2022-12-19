@@ -10,6 +10,7 @@ from starlette.concurrency import run_in_threadpool
 from api import events, schemes, settings, utils
 from api.constants import DOCKER_REPO_URL
 from api.logger import get_logger
+from api.plugins import run_hook
 from api.schemes import SSHSettings
 from api.utils.logging import log_errors
 
@@ -153,7 +154,9 @@ async def deploy_task(event, event_data):
     if not task:
         return
     logger.debug(f"Started deployment {task_id}")
+    await run_hook("pre_deploy", task_id, task)
     success, output = await run_in_threadpool(execute_ssh_commands, task["script"], SSHSettings(**task["ssh_settings"]))
+    await run_hook("post_deploy", task_id, task, success, output)
     logger.debug(f"Deployment {task_id} success: {success}")
     task["finished"] = True
     task["success"] = success

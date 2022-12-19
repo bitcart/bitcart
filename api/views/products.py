@@ -82,6 +82,8 @@ async def get_products(
     min_price: Optional[Decimal] = None,
     max_price: Optional[Decimal] = None,
     sale: Optional[bool] = False,
+    *args,
+    **kwargs
 ):
     try:
         user = await utils.authorization.AuthDependency()(request, SecurityScopes(["product_management"]))
@@ -89,7 +91,9 @@ async def get_products(
         if store is None:
             raise
         user = None
-    return await utils.database.paginate_object(models.Product, pagination, user, store, category, min_price, max_price, sale)
+    return await utils.database.paginate_object(
+        models.Product, pagination, user, store, category, min_price, max_price, sale, *args, **kwargs
+    )
 
 
 @router.get("/maxprice")

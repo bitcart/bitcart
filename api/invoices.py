@@ -6,6 +6,7 @@ from api import constants, events, models, settings, utils
 from api.ext import payouts as payout_ext
 from api.ext.moneyformat import currency_table
 from api.logger import get_logger
+from api.plugins import apply_filters, run_hook
 from api.utils.logging import log_errors
 
 logger = get_logger(__name__)
@@ -102,6 +103,7 @@ async def make_expired_task(invoice):
         return  # invoice deleted meantime
     if invoice.status == InvoiceStatus.PENDING:  # to ensure there are no duplicate notifications
         await update_status(invoice, InvoiceStatus.EXPIRED)
+        await run_hook("invoice_expired", invoice)
 
 
 async def process_electrum_status(invoice, method, wallet, electrum_status, tx_hashes):
@@ -131,6 +133,7 @@ async def new_payment_handler(instance, event, address, status, status_str, tx_h
             return
         method, invoice, wallet = data
         await invoice.load_data()
+        await run_hook("new_payment", invoice, method, wallet, status, status_str, tx_hashes)
         await process_electrum_status(invoice, method, wallet, status, tx_hashes)
 
 
@@ -168,14 +171,17 @@ async def new_block_handler(instance, event, height):
             confirmations = await get_confirmations(method, wallet)
             if confirmations != method.confirmations:
                 coros.append(update_confirmations(invoice, method, confirmations))
+    coros.append(run_hook("new_block", instance.coin_name.lower(), height))
     # NOTE: if another operation in progress exception occurs, make it await one by one
     await asyncio.gather(*coros)
 
 
 async def invoice_notification(invoice: models.Invoice, status: str):
+    await run_hook("invoice_status", invoice, status)
     await utils.notifications.send_ipn(invoice, status)
     if status == InvoiceStatus.COMPLETE:
         logger.info(f"Invoice {invoice.id} complete, sending notifications...")
+        await run_hook("invoice_complete", invoice)
         store = await utils.database.get_object(models.Store, invoice.store_id)
         await utils.notifications.notify(store, await utils.templates.get_notify_template(store, invoice))
         if invoice.products:
@@ -205,8 +211,15 @@ async def invoice_notification(invoice: models.Invoice, status: str):
                         f"Invoice {invoice.id} email notification: rendered product template for product {product.id}:\n"
                         f"{product_template}"
                     )
-                store_template = await utils.templates.get_store_template(store, messages)
+                store_template = await apply_filters(
+                    "email_notification_text",
+                    await utils.templates.get_store_template(store, messages),
+                    invoice,
+                    store,
+                    products,
+                )
                 logger.debug(f"Invoice {invoice.id} email notification: rendered final template:\n{store_template}")
+                await run_hook("invoice_email", invoice, store_template)
                 utils.email.send_mail(
                     store,
                     invoice.buyer_email,

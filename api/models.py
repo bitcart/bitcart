@@ -87,10 +87,6 @@ class BaseModel(db.Model, metaclass=BaseModelMeta):
     async def add_fields(self):
         for field, scheme in self.JSON_KEYS.items():
             setattr(self, field, self.get_json_key(field, scheme))
-        if hasattr(self, "metadata"):
-            # unpack plugins data
-            for key, value in self.metadata.items():
-                setattr(self, key, value)
 
     async def load_data(self):
         await self.add_related()

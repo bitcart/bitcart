@@ -5,6 +5,7 @@ from api.events import event_handler
 from api.ext.configurator import deploy_task
 from api.ext.shopify import shopify_invoice_update
 from api.logger import get_exception_message, get_logger
+from api.plugins import run_hook
 
 logger = get_logger(__name__)
 
@@ -31,6 +32,7 @@ async def sync_wallet(event, event_data):
         logger.error(f"Wallet {model.id} failed to sync:\n{get_exception_message(e)}")
         await utils.redis.publish_message(f"wallet:{model.id}", {"status": "error", "balance": 0})
         return
+    await run_hook("wallet_synced", model, balance)
     logger.info(f"Wallet {model.id} synced, balance: {balance['confirmed']}")
     await utils.redis.publish_message(
         f"wallet:{model.id}", {"status": "success", "balance": str(balance["confirmed"])}

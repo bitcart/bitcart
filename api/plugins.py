@@ -131,6 +131,9 @@ def register_hook(name, hook):
     settings.settings.plugins.callbacks[name].append(hook)
 
 
+register_filter = register_hook  # for better readability
+
+
 def register_event(name, params):
     events.event_handler.add_event(name, {"params": set(params)})
 

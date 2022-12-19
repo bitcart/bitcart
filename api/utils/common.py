@@ -125,3 +125,11 @@ def str_to_bool(s):
     if s in STR_TO_BOOL_MAPPING:
         return STR_TO_BOOL_MAPPING[s]
     return False
+
+
+def prepare_query_params(request):
+    params = dict(request.query_params)
+    # TODO: make it better, for now must be kept in sync with pagination.py
+    for key in ("model", "offset", "limit", "query", "multiple", "sort", "desc"):
+        params.pop(key, None)
+    return params
