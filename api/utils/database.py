@@ -6,6 +6,7 @@ from sqlalchemy import distinct
 
 from api import db, models
 from api.logger import get_exception_message, get_logger
+from api.plugins import run_hook
 
 logger = get_logger(__name__)
 
@@ -42,7 +43,9 @@ async def create_object_core(model, kwargs):
 
 async def create_object(model, data, user=None, **additional_kwargs):
     kwargs = prepare_create_kwargs(model, data, user, **additional_kwargs)
-    return await create_object_core(model, kwargs)
+    obj = await create_object_core(model, kwargs)
+    await run_hook(f"db_create_{model.__name__.lower()}", obj)
+    return obj
 
 
 async def modify_object(model, data, **additional_kwargs):
@@ -52,6 +55,7 @@ async def modify_object(model, data, **additional_kwargs):
     with safe_db_write():
         try:
             await model.update(**kwargs).apply()
+            await run_hook(f"db_modify_{model.__name__.lower()}", model)
         except asyncpg.exceptions.PostgresSyntaxError as e:  # pragma: no cover
             logger.error(get_exception_message(e))
 
