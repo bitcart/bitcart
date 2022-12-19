@@ -53,7 +53,7 @@ async def modify_object(model, data, **additional_kwargs):
     with safe_db_write():
         try:
             await model.update(**kwargs).apply()
-            await run_hook(f"db_modify_{model.__name__.lower()}", model)
+            await run_hook(f"db_modify_{model.__class__.__name__.lower()}", model)
         except asyncpg.exceptions.PostgresSyntaxError as e:  # pragma: no cover
             logger.error(get_exception_message(e))
 

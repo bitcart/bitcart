@@ -10,7 +10,8 @@
     "response": {
         "data": {},
         "name": "Telegram",
-        "provider": "telegram"
+        "provider": "telegram",
+        "metadata": {}
     },
     "count": 1
 }

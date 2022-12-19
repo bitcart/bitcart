@@ -8,7 +8,7 @@ from api import constants, utils
 
 
 class EventHandler:
-    def __init__(self, events=None):
+    def __init__(self, events={}):
         self.events = {}
         for name, event in events.items():
             self.add_event(name, event)

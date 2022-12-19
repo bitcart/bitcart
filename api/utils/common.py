@@ -127,9 +127,9 @@ def str_to_bool(s):
     return False
 
 
-def prepare_query_params(request):
+def prepare_query_params(request, custom_params=()):
     params = dict(request.query_params)
     # TODO: make it better, for now must be kept in sync with pagination.py
-    for key in ("model", "offset", "limit", "query", "multiple", "sort", "desc"):
+    for key in ("model", "offset", "limit", "query", "multiple", "sort", "desc") + custom_params:
         params.pop(key, None)
     return params

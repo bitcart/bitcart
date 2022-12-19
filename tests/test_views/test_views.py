@@ -13,7 +13,7 @@ from bitcart import BTC, LTC
 from bitcart.errors import BaseError as BitcartBaseError
 from parametrization import Parametrization
 
-from api import invoices, models, schemes, settings, templates, utils
+from api import invoices, models, schemes, settings, utils
 from api.constants import BACKUP_FREQUENCIES, BACKUP_PROVIDERS, DOCKER_REPO_URL, SUPPORTED_CRYPTOS
 from api.ext import tor as tor_ext
 from api.invoices import InvoiceStatus
@@ -531,13 +531,13 @@ async def test_template_list(client: TestClient):
     resp = await client.get("/templates/list")
     assert resp.status_code == 200
     assert resp.json() == {
-        "count": len(templates.templates_strings),
+        "count": len(settings.settings.template_manager.templates_strings),
         "next": None,
         "previous": None,
-        "result": templates.templates_strings,
+        "result": settings.settings.template_manager.templates_strings,
     }
     resp1 = await client.get("/templates/list?show_all=true")
-    result = [v for template_set in templates.templates_strings.values() for v in template_set]
+    result = [v for template_set in settings.settings.template_manager.templates_strings.values() for v in template_set]
     assert resp1.status_code == 200
     assert resp1.json() == {
         "count": len(result),
@@ -548,10 +548,10 @@ async def test_template_list(client: TestClient):
     resp2 = await client.get("/templates/list?applicable_to=product")
     assert resp2.status_code == 200
     assert resp2.json() == {
-        "count": len(templates.templates_strings["product"]),
+        "count": len(settings.settings.template_manager.templates_strings["product"]),
         "next": None,
         "previous": None,
-        "result": templates.templates_strings["product"],
+        "result": settings.settings.template_manager.templates_strings["product"],
     }
     resp3 = await client.get("/templates/list?applicable_to=notfound")
     assert resp3.status_code == 200
@@ -875,6 +875,7 @@ async def test_get_public_store(client: TestClient, store):
         "checkout_settings",
         "theme_settings",
         "currency_data",
+        "metadata",
     }
 
 
