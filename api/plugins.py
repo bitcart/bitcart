@@ -80,7 +80,8 @@ class PluginsManager:
     async def startup(self):
         for plugin in self.plugins.values():
             try:
-                self.run_migrations(plugin)
+                if os.path.exists(os.path.join(plugin.path, "versions")):
+                    self.run_migrations(plugin)
                 await plugin.startup()
             except Exception as e:
                 logger.error(f"Plugin {plugin} failed to start: {get_exception_message(e)}")

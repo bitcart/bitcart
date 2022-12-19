@@ -19,13 +19,12 @@ class GetterDict(PydanticGetterDict):  # for some reason, by default adding keys
 
 
 class BaseModel(PydanticBaseModel):
-    metadata: Optional[Dict[str, Any]] = {}
-
     class Config:
         getter_dict = GetterDict
 
 
 class CreatedMixin(BaseModel):
+    metadata: Optional[Dict[str, Any]] = {}
     created: Optional[datetime]
 
     @validator("created", pre=True, always=True)
