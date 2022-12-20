@@ -17,7 +17,8 @@
         "label": "customlabel",
         "hint": "test",
         "lightning_enabled": false,
-        "additional_xpub_data": {}
+        "additional_xpub_data": {},
+        "metadata": {}
     },
     "count": 1
 }

@@ -5,6 +5,7 @@ from fastapi.security import SecurityScopes
 from starlette.requests import Request
 
 from api import models, pagination, schemes, utils
+from api.plugins import run_hook
 
 router = APIRouter()
 
@@ -99,6 +100,7 @@ async def create_token(
             if permission not in token.permissions:
                 raise HTTPException(403, "Not enough permissions")
     token = await utils.database.create_object(models.Token, schemes.CreateDBToken(**token_data, user_id=user.id))
+    await run_hook("token_created", token)
     return {
         **schemes.Token.from_orm(token).dict(),
         "access_token": token.id,

@@ -7,6 +7,7 @@ from sqlalchemy import select
 from api import models, settings, utils
 from api.ext.moneyformat import currency_table
 from api.logger import get_logger
+from api.plugins import run_hook
 from api.utils.logging import log_errors
 
 logger = get_logger(__name__)
@@ -29,6 +30,7 @@ async def update_status(payout, status):
         return
     await payout.update(status=status).apply()
     await utils.notifications.send_ipn(payout, status)
+    await run_hook("payout_status", payout, status)
 
 
 async def send_payout(payout, private_key=None):

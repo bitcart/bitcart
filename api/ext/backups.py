@@ -3,6 +3,7 @@ import time
 
 from api import schemes, utils
 from api.logger import get_logger
+from api.plugins import run_hook
 
 DAY = 60 * 60 * 24
 FREQUENCIES = {"daily": DAY, "weekly": 7 * DAY, "monthly": 30 * DAY}
@@ -78,10 +79,12 @@ class BackupsManager:
         env_vars.update(backup_policy.environment_variables)
         self.logger.info("Starting backup, settings:")
         self.logger.info(backup_policy)
+        await run_hook("pre_backup", backup_policy)
         exec_command = "./backup.sh"
         self.logger.debug(f"Running {exec_command} with env {env_vars}")
         ok, output = utils.host.run_host(exec_command, env=env_vars, disown=False)
         output = {"status": "success" if ok else "error", "message": output}
+        await run_hook("post_backup", backup_policy, output)
         if output["status"] == "error":
             self.logger.error(output)
         else:

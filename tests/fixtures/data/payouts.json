@@ -15,7 +15,8 @@
         "notification_url": "",
         "status": "pending",
         "tx_hash": null,
-        "used_fee": null
+        "used_fee": null,
+        "metadata": {}
     },
     "count": 1
 }

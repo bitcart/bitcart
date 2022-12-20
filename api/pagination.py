@@ -8,6 +8,7 @@ from starlette.requests import Request
 
 from api import models, utils
 from api.db import db
+from api.plugins import apply_filters
 
 
 def get_all_columns_filter(model, text):
@@ -104,9 +105,11 @@ class Pagination:
         redirect_url=None,
         permissions=None,
         count_only=False,
+        *args,
+        **kwargs,
     ) -> Union[dict, int]:
-        query = self.get_queryset(
-            model, user_id, sale, store_id, category, min_price, max_price, app_id, redirect_url, permissions
+        query = await self.get_queryset(
+            model, user_id, sale, store_id, category, min_price, max_price, app_id, redirect_url, permissions, *args, **kwargs
         )
         if count_only:
             return await self.get_count(query)
@@ -129,7 +132,21 @@ class Pagination:
         query = query.where(queries) if queries != [] else query  # sqlalchemy core requires explicit checks
         return query
 
-    def get_queryset(self, model, user_id, sale, store_id, category, min_price, max_price, app_id, redirect_url, permissions):
+    async def get_queryset(
+        self,
+        model,
+        user_id,
+        sale,
+        store_id,
+        category,
+        min_price,
+        max_price,
+        app_id,
+        redirect_url,
+        permissions,
+        *args,
+        **kwargs,
+    ):
         query = self.get_base_query(model)
         if user_id is not None and model != models.User:
             query = query.where(model.user_id == user_id)
@@ -137,6 +154,7 @@ class Pagination:
             query = self._filter_in_product(query, store_id, category, min_price, max_price, sale)
         elif model == models.Token:
             query = self._filter_in_token(query, app_id, redirect_url, permissions)
+        query = await apply_filters("search_filters", query, model, *args, **kwargs)
         return query
 
     @staticmethod

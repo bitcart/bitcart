@@ -7,6 +7,7 @@ from bitcart.errors import BaseError as BitcartBaseError
 from fastapi import HTTPException
 from fastapi.encoders import jsonable_encoder
 from gino.crud import UpdateRequest
+from gino.declarative import ModelType
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import ARRAY
 
@@ -40,7 +41,21 @@ async def delete_relations(model_id, key_info):
     await key_info["table"].delete.where(getattr(key_info["table"], key_info["current_id"]) == model_id).gino.status()
 
 
-class BaseModel(db.Model):
+class BaseModelMeta(ModelType):
+    def __new__(cls, name, bases, attrs):
+        new_class = type.__new__(cls, name, bases, attrs)
+        new_class.__namespace__ = attrs
+        if hasattr(new_class, "__tablename__"):
+            if hasattr(new_class, "TABLE_PREFIX"):
+                new_class.__namespace__["__tablename__"] = f"plugin_{new_class.TABLE_PREFIX}_{new_class.__tablename__}"
+            if getattr(new_class, "METADATA", True):
+                new_class.__namespace__["metadata"] = Column(JSON)
+        if new_class.__table__ is None:
+            new_class.__table__ = getattr(new_class, "_init_table")(new_class)
+        return new_class
+
+
+class BaseModel(db.Model, metaclass=BaseModelMeta):
     JSON_KEYS: dict = {}
 
     @property
@@ -125,6 +140,8 @@ class BaseModel(db.Model):
         from api import utils
 
         kwargs["id"] = utils.common.unique_id()
+        if "metadata" not in kwargs and getattr(cls, "METADATA", True):  # pragma: no cover
+            kwargs["metadata"] = {}
         return kwargs
 
     def prepare_edit(self, kwargs):
@@ -291,12 +308,16 @@ class Template(BaseModel):
 class WalletxStore(BaseModel):
     __tablename__ = "walletsxstores"
 
+    METADATA = False
+
     wallet_id = Column(Text, ForeignKey("wallets.id", ondelete="SET NULL"))
     store_id = Column(Text, ForeignKey("stores.id", ondelete="SET NULL"))
 
 
 class NotificationxStore(BaseModel):
     __tablename__ = "notificationsxstores"
+
+    METADATA = False
 
     notification_id = Column(Text, ForeignKey("notifications.id", ondelete="SET NULL"))
     store_id = Column(Text, ForeignKey("stores.id", ondelete="SET NULL"))
@@ -373,6 +394,8 @@ class Discount(BaseModel):
 class DiscountxProduct(BaseModel):
     __tablename__ = "discountsxproducts"
 
+    METADATA = False
+
     discount_id = Column(Text, ForeignKey("discounts.id", ondelete="SET NULL"))
     product_id = Column(Text, ForeignKey("products.id", ondelete="SET NULL"))
 
@@ -432,6 +455,8 @@ class Product(BaseModel):
 
 class ProductxInvoice(BaseModel):
     __tablename__ = "productsxinvoices"
+
+    METADATA = False
 
     product_id = Column(Text, ForeignKey("products.id", ondelete="SET NULL"))
     invoice_id = Column(Text, ForeignKey("invoices.id", ondelete="SET NULL"))
@@ -578,6 +603,8 @@ class Invoice(BaseModel):
 
 class Setting(BaseModel):
     __tablename__ = "settings"
+
+    METADATA = False
 
     id = Column(Text, primary_key=True, index=True)
     name = Column(Text)

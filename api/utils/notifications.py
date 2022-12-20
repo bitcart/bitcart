@@ -6,15 +6,17 @@ from aiohttp import ClientSession
 
 from api import models, utils
 from api.logger import get_logger
+from api.plugins import apply_filters, run_hook
 
 logger = get_logger(__name__)
 
 
 async def send_ipn(obj, status):  # pragma: no cover
     if obj.notification_url:
-        data = {"id": obj.id, "status": status}
+        data = await apply_filters("ipn_data", {"id": obj.id, "status": status}, obj, status)
         base_log_message = f"Sending IPN with data {data} to {obj.notification_url}"
         try:
+            await run_hook("send_ipn", obj, status, data)
             async with ClientSession() as session:
                 await session.post(obj.notification_url, json=data)
             logger.info(f"{base_log_message}: success")
@@ -45,4 +47,5 @@ async def notify(store, text):  # pragma: no cover
     for db_provider in notification_providers:
         provider = notifiers.get_notifier(db_provider.provider)
         data = validate_data(provider, db_provider.data)
+        await run_hook("notify", db_provider, text, data)
         provider.notify(message=text, **data)

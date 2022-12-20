@@ -17,7 +17,8 @@
         "status": "active",
         "name": "test",
         "image": null,
-        "category": ""
+        "category": "",
+        "metadata": {}
     },
     "count": 1
 }

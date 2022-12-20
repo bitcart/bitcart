@@ -89,7 +89,10 @@ async def get_products(
         if store is None:
             raise
         user = None
-    return await utils.database.paginate_object(models.Product, pagination, user, store, category, min_price, max_price, sale)
+    params = utils.common.prepare_query_params(request, custom_params=("store", "category", "min_price", "max_price", "sale"))
+    return await utils.database.paginate_object(
+        models.Product, pagination, user, store, category, min_price, max_price, sale, **params
+    )
 
 
 @router.get("/maxprice")

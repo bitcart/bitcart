@@ -19,15 +19,20 @@ def unique_id(length=ID_LENGTH):
     return "".join(secrets.choice(ALPHABET) for i in range(length))
 
 
+async def run_universal(func, *args, **kwargs):
+    result = func(*args, **kwargs)
+    if inspect.isawaitable(result):  # pragma: no cover
+        result = await result
+    return result
+
+
 async def run_repeated(func, timeout, start_timeout=None):  # pragma: no cover
     if not start_timeout:
         start_timeout = timeout
     first_iter = True
     while True:
         await asyncio.sleep(start_timeout if first_iter else timeout)
-        result = func()
-        if inspect.isawaitable(result):  # pragma: no cover
-            await result
+        await run_universal(func)
         first_iter = False
 
 
@@ -120,3 +125,11 @@ def str_to_bool(s):
     if s in STR_TO_BOOL_MAPPING:
         return STR_TO_BOOL_MAPPING[s]
     return False
+
+
+def prepare_query_params(request, custom_params=()):
+    params = dict(request.query_params)
+    # TODO: make it better, for now must be kept in sync with pagination.py
+    for key in ("model", "offset", "limit", "query", "multiple", "sort", "desc") + custom_params:
+        params.pop(key, None)
+    return params

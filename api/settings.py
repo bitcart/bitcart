@@ -27,6 +27,7 @@ from api.ext.rpc import RPC
 from api.ext.ssh import load_ssh_settings
 from api.logger import configure_logserver, get_exception_message, get_logger
 from api.schemes import SSHSettings
+from api.templates import TemplateManager
 from api.utils.files import ensure_exists
 
 
@@ -58,6 +59,8 @@ class Settings(BaseSettings):
     redis_pool: aioredis.Redis = None
     config: Config = None
     logger: logging.Logger = None
+    template_manager: TemplateManager = None
+    plugins: list = None
 
     class Config:
         env_file = "conf/.env"
@@ -130,6 +133,12 @@ class Settings(BaseSettings):
             self.ssh_settings = load_ssh_settings(self.config)
         self.load_cryptos()
         self.load_notification_providers()
+        self.template_manager = TemplateManager()
+
+    def load_plugins(self):
+        from api.plugins import PluginsManager
+
+        self.plugins = PluginsManager()
 
     def load_cryptos(self):
         self.cryptos = {}
@@ -215,12 +224,13 @@ class Settings(BaseSettings):
             await self.redis_pool.close()
         await self.shutdown_db_engine()
 
-    def init_logging(self):
-        configure_logserver()
-
+    def init_logging(self, worker=True):
+        if worker:
+            configure_logserver(self.logserver_client_host)
         self.logger = get_logger(__name__)
-        sys.excepthook = excepthook_handler(self, sys.excepthook)
-        asyncio.get_running_loop().set_exception_handler(lambda *args, **kwargs: handle_exception(self, *args, **kwargs))
+        if worker:
+            sys.excepthook = excepthook_handler(self, sys.excepthook)
+            asyncio.get_running_loop().set_exception_handler(lambda *args, **kwargs: handle_exception(self, *args, **kwargs))
 
 
 def excepthook_handler(settings, excepthook):
@@ -250,12 +260,6 @@ def log_startup_info():
     )
     settings.logger.info(f"Successfully loaded {len(settings.cryptos)} cryptos")
     settings.logger.info(f"{len(settings.notifiers)} notification providers available")
-
-
-async def init():
-    settings = settings_ctx.get()
-    settings.init_logging()
-    await settings.init()
 
 
 settings_ctx = ContextVar("settings")

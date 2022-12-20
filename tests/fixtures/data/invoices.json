@@ -17,7 +17,8 @@
         "currency": "USD",
         "paid_currency": "",
         "expiration": 15,
-        "expiration_seconds": 900
+        "expiration_seconds": 900,
+        "metadata": {}
     },
     "count": 1
 }

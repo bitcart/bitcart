@@ -13,7 +13,8 @@
         "description": "",
         "name": "test",
         "percent": 50,
-        "promocode": ""
+        "promocode": "",
+        "metadata": {}
     },
     "count": 1
 }

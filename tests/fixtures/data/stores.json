@@ -33,7 +33,8 @@
             "allow_anonymous_invoice_creation": true
         },
         "notifications": [],
-        "templates": {}
+        "templates": {},
+        "metadata": {}
     },
     "count": 1
 }

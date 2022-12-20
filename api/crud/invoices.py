@@ -12,6 +12,7 @@ from starlette.datastructures import CommaSeparatedStrings
 from api import db, events, invoices, models, schemes, settings, utils
 from api.ext.moneyformat import currency_table, truncate
 from api.logger import get_exception_message, get_logger
+from api.plugins import apply_filters
 from api.utils.database import safe_db_write
 
 logger = get_logger(__name__)
@@ -53,7 +54,7 @@ async def create_invoice(invoice: schemes.CreateInvoice, user: schemes.User):
     discounts = list(filter(lambda x: current_date <= x.end_date, discounts))
     with safe_db_write():
         await update_invoice_payments(obj, store.wallets, discounts, store, product, promocode)
-    return obj
+    return await apply_filters("invoice_created", obj)
 
 
 async def _create_payment_method(invoice, wallet, product, store, discounts, promocode, lightning=False):
@@ -103,27 +104,36 @@ async def _create_payment_method(invoice, wallet, product, store, discounts, pro
     node_id = await coin.node_id if lightning else None
     rhash = data_got["rhash"] if lightning else None
     lookup_field = data_got["request_id"] if "request_id" in data_got else address
-    return dict(
-        id=utils.common.unique_id(),
-        invoice_id=invoice.id,
-        wallet_id=wallet.id,
-        amount=price,
-        rate=rate,
-        discount=discount_id,
-        currency=wallet.currency,
-        payment_address=address,
-        payment_url=url,
-        lookup_field=lookup_field,
-        rhash=rhash,
-        lightning=lightning,
-        node_id=node_id,
-        recommended_fee=recommended_fee,
-        confirmations=0,
-        label=wallet.label,
-        hint=wallet.hint,
-        contract=wallet.contract,
-        symbol=symbol,
-        divisibility=divisibility,
+    return await apply_filters(
+        "create_payment_method",
+        dict(
+            id=utils.common.unique_id(),
+            invoice_id=invoice.id,
+            wallet_id=wallet.id,
+            amount=price,
+            rate=rate,
+            discount=discount_id,
+            currency=wallet.currency,
+            payment_address=address,
+            payment_url=url,
+            lookup_field=lookup_field,
+            rhash=rhash,
+            lightning=lightning,
+            node_id=node_id,
+            recommended_fee=recommended_fee,
+            confirmations=0,
+            label=wallet.label,
+            hint=wallet.hint,
+            contract=wallet.contract,
+            symbol=symbol,
+            divisibility=divisibility,
+        ),
+        invoice,
+        wallet,
+        product,
+        store,
+        discounts,
+        promocode,
     )
 
 

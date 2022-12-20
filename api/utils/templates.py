@@ -1,4 +1,4 @@
-from api import exceptions, models, templates, utils
+from api import exceptions, models, settings, templates, utils
 from api.logger import get_logger
 from api.utils.common import get_object_name
 
@@ -24,9 +24,9 @@ async def get_template(name, user_id=None, obj=None):
     if custom_template:
         logger.info(f'{get_template_matching_str(name,obj)} selected custom template "{custom_template.name}"')
         return templates.Template(name, custom_template.text)
-    if name in templates.templates:
+    if name in settings.settings.template_manager.templates:
         logger.info(f"{get_template_matching_str(name,obj)} selected default template")
-        return templates.templates[name]
+        return settings.settings.template_manager.templates[name]
     raise exceptions.TemplateDoesNotExistError(f"Template {name} does not exist and has no default")
 
 

@@ -3,6 +3,7 @@ from fastapi.security import SecurityScopes
 from sqlalchemy import distinct, func, select
 
 from api import crud, db, models, schemes, utils
+from api.plugins import run_hook
 
 router = APIRouter()
 
@@ -53,6 +54,7 @@ async def create_user(model: schemes.CreateUser, request: Request):
     )
     data = schemes.DisplayUser.from_orm(user).dict()
     data["token"] = token.id
+    await run_hook("user_created", user, token)
     return data
 
 

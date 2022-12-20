@@ -8,6 +8,7 @@ from starlette.requests import Request
 from starlette.status import HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN
 
 from api import models, schemes, utils
+from api.plugins import run_hook
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -91,9 +92,12 @@ class AuthDependency:
         if "full_control" not in token.permissions:
             for scope in security_scopes.scopes:
                 if scope not in token.permissions and not check_selective_scopes(request, scope, token):
+                    await run_hook("permission_denied", user, token, scope)
                     raise forbidden_exception
         if "server_management" in security_scopes.scopes and not user.is_superuser:
+            await run_hook("permission_denied", user, token, "server_management")
             raise forbidden_exception
+        await run_hook("permission_granted", user, token, security_scopes.scopes)
         if return_token:
             return user, token
         return user
@@ -114,6 +118,8 @@ async def verify_captcha(code, secret):  # pragma: no cover
 
 async def captcha_flow(code):
     policies = await utils.policies.get_setting(schemes.Policy)
-    if policies.enable_captcha:
-        if not await verify_captcha(code, policies.captcha_secretkey):  # pragma: no cover
+    if policies.enable_captcha:  # pragma: no cover
+        if not await verify_captcha(code, policies.captcha_secretkey):
+            await run_hook("captcha_failed")
             raise HTTPException(401, {"message": "Unauthorized", "status": 403})
+        await run_hook("captcha_passed")

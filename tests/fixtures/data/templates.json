@@ -9,7 +9,8 @@
     },
     "response": {
         "name": "test",
-        "text": "Test {{template}}"
+        "text": "Test {{template}}",
+        "metadata": {}
     },
     "count": 1
 }

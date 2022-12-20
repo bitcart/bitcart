@@ -336,3 +336,14 @@ async def test_send_notification(client, token, user, mocker):
     )
     await check_modify_notify(client, store, notification_id, token, base_data, "max_price", "5.5", int, expect_raises=False)
     await check_modify_notify(client, store, notification_id, token, base_data, "max_price", "test", int, expect_raises=True)
+
+
+@pytest.mark.anyio
+async def test_run_universal():
+    def func(arg):
+        return arg
+
+    async def async_func(arg):
+        return arg
+
+    assert await utils.common.run_universal(func, 5) == await utils.common.run_universal(async_func, 5) == 5

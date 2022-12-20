@@ -1,6 +1,6 @@
 from datetime import datetime
 from decimal import Decimal
-from typing import Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 import paramiko
 from fastapi.exceptions import HTTPException
@@ -24,6 +24,7 @@ class BaseModel(PydanticBaseModel):
 
 
 class CreatedMixin(BaseModel):
+    metadata: Optional[Dict[str, Any]] = {}
     created: Optional[datetime]
 
     @validator("created", pre=True, always=True)

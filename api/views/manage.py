@@ -10,6 +10,7 @@ from fastapi.security import SecurityScopes
 
 from api import constants, models, schemes, settings, utils
 from api.ext import backups as backups_ext
+from api.plugins import run_hook
 
 router = APIRouter()
 
@@ -19,6 +20,7 @@ router = APIRouter()
 @router.post("/restart")
 async def restart_server(user: models.User = Security(utils.authorization.AuthDependency(), scopes=["server_management"])):
     if settings.settings.docker_env:  # pragma: no cover
+        await run_hook("server_restart")
         return utils.host.run_host_output("./restart.sh", "Successfully started restart process!")
     return {"status": "error", "message": "Not running in docker"}
 
@@ -26,6 +28,7 @@ async def restart_server(user: models.User = Security(utils.authorization.AuthDe
 @router.post("/update")
 async def update_server(user: models.User = Security(utils.authorization.AuthDependency(), scopes=["server_management"])):
     if settings.settings.docker_env:  # pragma: no cover
+        await run_hook("server_update")
         return utils.host.run_host_output("./update.sh", "Successfully started update process!")
     return {"status": "error", "message": "Not running in docker"}
 
@@ -33,6 +36,7 @@ async def update_server(user: models.User = Security(utils.authorization.AuthDep
 @router.post("/cleanup/images")
 async def cleanup_images(user: models.User = Security(utils.authorization.AuthDependency(), scopes=["server_management"])):
     if settings.settings.docker_env:  # pragma: no cover
+        await run_hook("server_cleanup_images")
         return utils.host.run_host_output("./cleanup.sh", "Successfully started cleanup process!")
     return {"status": "error", "message": "Not running in docker"}
 
@@ -209,6 +213,7 @@ async def restore_backup(
         path = os.path.join(tempfile.mkdtemp(), "backup.tar.gz")
         async with aiofiles.open(path, "wb") as f:
             await f.write(await backup.read())
+        await run_hook("restore_backup", path)
         return utils.host.run_host_output(f"./restore.sh --delete-backup {path}", "Successfully started restore process!")
     return {"status": "error", "message": "Not running in docker"}
 

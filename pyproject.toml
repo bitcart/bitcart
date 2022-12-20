@@ -28,11 +28,12 @@ source = ["."]
 omit = [
     "main.py",
     "worker.py",
-    "*alembic/*",
-    "*settings*",
-    "*tests/*",
-    "venv/*",
-    "env/*",
+    "alembic/**",
+    "settings/**",
+    "tests/**",
+    "modules/**",
+    "venv/**",
+    "env/**",
     "api/ext/update.py",
     "api/ext/configurator.py",
     "api/ext/backups.py",
@@ -42,6 +43,8 @@ omit = [
     "api/logger.py",
     "api/logserver.py",
     "api/invoices.py",
+    "api/plugins.py",
     "api/tasks.py",
+    "api/settings.py",
     "*__init__.py"
 ]

@@ -2,6 +2,7 @@ from fastapi import HTTPException
 
 from api import models, schemes, utils
 from api.db import db
+from api.plugins import run_hook
 
 
 async def user_count():
@@ -22,4 +23,7 @@ async def create_user(user: schemes.CreateUser, auth_user: schemes.User):
     d = user.dict()
     d["is_superuser"] = is_superuser
     d.pop("captcha_code", None)
-    return await utils.database.create_object(models.User, d)
+    obj = await utils.database.create_object(models.User, d)
+    if is_superuser and auth_user is None:
+        await run_hook("first_user", obj)
+    return obj

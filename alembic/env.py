@@ -11,7 +11,8 @@ config = context.config
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
-fileConfig(config.config_file_name)
+if not config.get_main_option("no_logs"):
+    fileConfig(config.config_file_name)
 
 # add your model's MetaData object here
 # for 'autogenerate' support
@@ -23,7 +24,10 @@ sys.path.insert(0, ".")
 from api.models import db  # noqa: E402: sys.path imports
 from api.settings import Settings  # noqa: E402: sys.path imports
 
-CONNECTION_STR = Settings().connection_str
+settings = Settings()
+settings.init_logging(worker=False)
+settings.load_plugins()
+CONNECTION_STR = settings.connection_str
 target_metadata = db
 
 # other values from the config, defined by the needs of env.py,
@@ -31,10 +35,18 @@ target_metadata = db
 # my_important_option = config.get_main_option("my_important_option")
 # ... etc.
 
+plugin_name = config.get_main_option("plugin_name")
+version_table = f"plugin_{plugin_name}_alembic_version" if plugin_name else "alembic_version"
+
 
 def include_object(object, name, type_, reflected, compare_to):
-    if type_ == "table" and name.startswith("app_"):
-        return False
+    if type_ == "table":
+        if name.startswith("app_"):
+            return False
+        if not plugin_name:
+            return not name.startswith("plugin_")
+        else:
+            return name.startswith(f"plugin_{plugin_name}_")
     return True
 
 
@@ -61,6 +73,7 @@ def run_migrations_offline():
         literal_binds=True,
         include_object=include_object,
         dialect_opts={"paramstyle": "named"},
+        version_table=version_table,
     )
 
     with context.begin_transaction():
@@ -81,7 +94,11 @@ def run_migrations_online():
 
     with connectable.connect() as connection:
         context.configure(
-            compare_type=True, connection=connection, target_metadata=target_metadata, include_object=include_object
+            compare_type=True,
+            connection=connection,
+            target_metadata=target_metadata,
+            include_object=include_object,
+            version_table=version_table,
         )
 
         with context.begin_transaction():

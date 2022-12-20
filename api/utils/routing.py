@@ -148,13 +148,15 @@ class ModelView:
 
     def _get(self):
         async def get(
+            request: Request,
             pagination: pagination.Pagination = Depends(),
             user: Union[None, ModelView.schemes.User] = Security(self.auth_dependency, scopes=self.scopes["get_all"]),
         ):
+            params = utils.common.prepare_query_params(request)
             if self.custom_methods.get("get"):
-                return await self.custom_methods["get"](pagination, user)  # pragma: no cover
+                return await self.custom_methods["get"](pagination, user, **params)  # pragma: no cover
             else:
-                return await utils.database.paginate_object(self.orm_model, pagination, user)
+                return await utils.database.paginate_object(self.orm_model, pagination, user, **params)
 
         return get
 
