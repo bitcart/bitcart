@@ -45,5 +45,6 @@ omit = [
     "api/invoices.py",
     "api/plugins.py",
     "api/tasks.py",
+    "api/settings.py",
     "*__init__.py"
 ]
