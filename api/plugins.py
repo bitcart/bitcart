@@ -53,8 +53,8 @@ class PluginsManager:
     def __init__(self):
         self.plugins = {}
         self.callbacks = defaultdict(list)
-        plugins_list = glob.glob("modules/**/plugin.py")
-        plugins_list.extend(glob.glob("modules/**/**/plugin.py"))
+        plugins_list = glob.glob("plugins/**/plugin.py")
+        plugins_list.extend(glob.glob("plugins/**/**/plugin.py"))
         for plugin in plugins_list:
             try:
                 module = self.load_module(plugin)

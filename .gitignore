@@ -15,4 +15,5 @@ bitcart-cli-*
 bitcart-docker
 env/
 htmlcov/
+plugins/*
 venv
