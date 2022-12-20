@@ -31,7 +31,7 @@ omit = [
     "alembic/**",
     "settings/**",
     "tests/**",
-    "plugins/**",
+    "modules/**",
     "venv/**",
     "env/**",
     "api/ext/update.py",
