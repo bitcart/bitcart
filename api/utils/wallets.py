@@ -30,8 +30,7 @@ async def get_rate(wallet, currency, fallback_currency=None):
             rate = await coin.rate("USD")
         if math.isnan(rate):
             rate = Decimal(1)  # no rate available, no conversion
-        # TODO: merge with get_rate somehow
-        rate = await apply_filters("get_checkout_rate", rate, wallet, currency, fallback_currency)
+        rate = await apply_filters("get_rate", rate, coin, currency, fallback_currency)
     except (BitcartBaseError, HTTPException) as e:
         logger.error(
             f"Error fetching rates of coin {wallet.currency.upper()} for currency {currency}, falling back to 1:\n"

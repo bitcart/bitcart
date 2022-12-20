@@ -27,9 +27,8 @@ async def get_supported_cryptos():
 
 @router.get("/rate")
 async def rate(currency: str = "btc", fiat_currency: str = "USD"):
-    rate = await apply_filters(
-        "get_rate", await settings.settings.get_coin(currency).rate(fiat_currency.upper()), currency, fiat_currency.upper()
-    )
+    coin = settings.settings.get_coin(currency)
+    rate = await apply_filters("get_rate", await coin.rate(fiat_currency.upper()), coin, fiat_currency.upper(), None)
     if math.isnan(rate):
         raise HTTPException(422, "Unsupported fiat currency")
     return rate
