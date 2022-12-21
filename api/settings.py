@@ -46,6 +46,7 @@ class Settings(BaseSettings):
     db_port: int = Field(5432, env="DB_PORT")
     datadir: str = Field("data", env="BITCART_DATADIR")
     backups_dir: str = Field("data/backups", env="BITCART_BACKUPS_DIR")
+    backend_plugins_dir: str = Field("modules", env="BITCART_BACKEND_PLUGINS_DIR")
     admin_plugins_dir: str = Field("data/admin_plugins", env="BITCART_ADMIN_PLUGINS_DIR")
     store_plugins_dir: str = Field("data/store_plugins", env="BITCART_STORE_PLUGINS_DIR")
     docker_plugins_dir: str = Field("data/docker_plugins", env="BITCART_DOCKER_PLUGINS_DIR")
@@ -125,6 +126,12 @@ class Settings(BaseSettings):
 
     @validator("backups_dir", pre=True, always=True)
     def set_backups_dir(cls, path):
+        path = os.path.abspath(path)
+        ensure_exists(path)
+        return path
+
+    @validator("backend_plugins_dir", pre=True, always=True)
+    def set_backend_plugins_dir(cls, path):
         path = os.path.abspath(path)
         ensure_exists(path)
         return path

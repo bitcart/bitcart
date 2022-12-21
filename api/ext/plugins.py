@@ -46,7 +46,7 @@ def parse_manifest(manifest):
 
 def get_moved_name(manifest, install):
     variants = {
-        "backend": "modules",
+        "backend": settings.settings.backend_plugins_dir,
         "admin": settings.settings.admin_plugins_dir,
         "store": settings.settings.store_plugins_dir,
         "docker-compose": settings.settings.docker_plugins_dir,
