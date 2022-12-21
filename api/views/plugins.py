@@ -15,7 +15,9 @@ router = APIRouter()
 async def get_plugins(
     user: models.User = Security(utils.authorization.AuthDependency(), scopes=["server_management"]),
 ):
-    return plugin_ext.get_plugins()
+    failed_path = os.path.join(settings.settings.datadir, ".plugins-failed")
+    is_error = os.path.exists(failed_path)
+    return {"success": not is_error, "plugins": plugin_ext.get_plugins()}
 
 
 @router.post("/install")
