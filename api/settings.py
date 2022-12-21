@@ -1,5 +1,6 @@
 import asyncio
 import fnmatch
+import json
 import logging
 import os
 import platform
@@ -10,6 +11,7 @@ from contextlib import asynccontextmanager
 from contextvars import ContextVar
 from typing import Dict
 
+from aiohttp import ClientSession
 from bitcart import COINS, APIManager
 from bitcart.coin import Coin
 from fastapi import HTTPException
@@ -20,7 +22,7 @@ from starlette.config import Config
 from starlette.datastructures import CommaSeparatedStrings
 
 from api import db
-from api.constants import GIT_REPO_URL, VERSION, WEBSITE
+from api.constants import GIT_REPO_URL, PLUGINS_SCHEMA_URL, VERSION, WEBSITE
 from api.ext.blockexplorer import EXPLORERS
 from api.ext.notifiers import parse_notifier_schema
 from api.ext.rpc import RPC
@@ -44,6 +46,9 @@ class Settings(BaseSettings):
     db_port: int = Field(5432, env="DB_PORT")
     datadir: str = Field("data", env="BITCART_DATADIR")
     backups_dir: str = Field("data/backups", env="BITCART_BACKUPS_DIR")
+    admin_plugins_dir: str = Field("data/admin_plugins", env="BITCART_ADMIN_PLUGINS_DIR")
+    store_plugins_dir: str = Field("data/store_plugins", env="BITCART_STORE_PLUGINS_DIR")
+    docker_plugins_dir: str = Field("data/docker_plugins", env="BITCART_DOCKER_PLUGINS_DIR")
     log_file: str = None
     log_file_name: str = Field(None, env="LOG_FILE")
     log_file_regex: re.Pattern = None
@@ -61,6 +66,7 @@ class Settings(BaseSettings):
     logger: logging.Logger = None
     template_manager: TemplateManager = None
     plugins: list = None
+    plugins_schema: dict = {}
 
     class Config:
         env_file = "conf/.env"
@@ -92,6 +98,12 @@ class Settings(BaseSettings):
         return path
 
     @property
+    def plugins_dir(self) -> str:
+        path = os.path.join(self.datadir, "plugins")
+        ensure_exists(path)
+        return path
+
+    @property
     def connection_str(self):
         return f"postgresql://{self.db_user}:{self.db_password}@{self.db_host}:{self.db_port}/{self.db_name}"
 
@@ -113,6 +125,24 @@ class Settings(BaseSettings):
 
     @validator("backups_dir", pre=True, always=True)
     def set_backups_dir(cls, path):
+        path = os.path.abspath(path)
+        ensure_exists(path)
+        return path
+
+    @validator("admin_plugins_dir", pre=True, always=True)
+    def set_admin_plugins_dir(cls, path):
+        path = os.path.abspath(path)
+        ensure_exists(path)
+        return path
+
+    @validator("store_plugins_dir", pre=True, always=True)
+    def set_store_plugins_dir(cls, path):
+        path = os.path.abspath(path)
+        ensure_exists(path)
+        return path
+
+    @validator("docker_plugins_dir", pre=True, always=True)
+    def set_docker_plugins_dir(cls, path):
         path = os.path.abspath(path)
         ensure_exists(path)
         return path
@@ -214,7 +244,22 @@ class Settings(BaseSettings):
         yield engine
         await self.shutdown_db_engine()
 
+    async def fetch_schema(self):
+        schema_path = os.path.join(self.datadir, "plugins_schema.json")
+        if os.path.exists(schema_path):
+            with open(schema_path) as f:
+                plugins_schema = json.loads(f.read())
+            if plugins_schema["$id"] == PLUGINS_SCHEMA_URL:
+                self.plugins_schema = plugins_schema
+                return
+        async with ClientSession() as session:
+            async with session.get(PLUGINS_SCHEMA_URL) as resp:
+                self.plugins_schema = await resp.json()
+        with open(schema_path, "w") as f:
+            f.write(json.dumps(self.plugins_schema))
+
     async def init(self):
+        await self.fetch_schema()
         self.redis_pool = aioredis.from_url(self.redis_host, decode_responses=True)
         await self.redis_pool.ping()
         await self.create_db_engine()

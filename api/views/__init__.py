@@ -7,6 +7,7 @@ from api.views.invoices import router as invoice_router
 from api.views.manage import router as manage_router
 from api.views.notifications import router as notification_router
 from api.views.payouts import router as payout_router
+from api.views.plugins import router as plugin_router
 from api.views.products import router as product_router
 from api.views.stores import router as store_router
 from api.views.templates import router as template_router
@@ -49,3 +50,5 @@ router.include_router(crypto_router, prefix="/cryptos")
 router.include_router(configurator_router, prefix="/configurator")
 router.include_router(tor_router, prefix="/tor")
 router.include_router(update_router, prefix="/update")
+
+router.include_router(plugin_router, prefix="/plugins")

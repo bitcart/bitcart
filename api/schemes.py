@@ -623,3 +623,8 @@ class Payout(CreatePayout):
 
 class DisplayPayout(Payout):
     wallet_currency: Optional[str]
+
+
+class UninstallPluginData(BaseModel):
+    organization: str
+    name: str

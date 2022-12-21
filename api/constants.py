@@ -30,3 +30,4 @@ STR_TO_BOOL_MAPPING = {
 }  # common str -> bool conversions
 # due to many exchanges lacking more than 8 digits, we limit eth-based divisibility for invoices to 8
 MAX_CONTRACT_DIVISIBILITY = 8
+PLUGINS_SCHEMA_URL = "https://bitcartcc.com/schemas/plugin/1.0.0/plugin.schema.json"

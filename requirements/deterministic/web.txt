@@ -676,7 +676,9 @@ notifiers==1.3.3 \
 packaging==21.3 \
     --hash=sha256:dd47c42927d89ab911e606518907cc2d3a1f38bbd026385970643f9c5b8ecfeb \
     --hash=sha256:ef103e05f519cdc783ae24ea4e2e0f508a9c99b2d4969652eed6a2e1ea5bd522
-    # via redis
+    # via
+    #   -r requirements/web.txt
+    #   redis
 paramiko==2.11.0 \
     --hash=sha256:003e6bee7c034c21fbb051bf83dc0a9ee4106204dd3c53054c71452cc4ec3938 \
     --hash=sha256:655f25dc8baf763277b933dfcea101d636581df8d6b9774d1fb653426b72c270

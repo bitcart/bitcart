@@ -46,7 +46,7 @@ class BaseModelMeta(ModelType):
         new_class = type.__new__(cls, name, bases, attrs)
         new_class.__namespace__ = attrs
         if hasattr(new_class, "__tablename__"):
-            if hasattr(new_class, "TABLE_PREFIX"):
+            if hasattr(new_class, "TABLE_PREFIX"):  # pragma: no cover
                 new_class.__namespace__["__tablename__"] = f"plugin_{new_class.TABLE_PREFIX}_{new_class.__tablename__}"
             if getattr(new_class, "METADATA", True):
                 new_class.__namespace__["metadata"] = Column(JSON)
