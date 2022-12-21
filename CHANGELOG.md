@@ -2,6 +2,30 @@
 
 ## Latest changes
 
+## 0.7.0.0
+
+### Plugins support
+
+It's finally here! Starting from this new major release series, BitcartCC is now fully extendable!
+
+Anything is now possible
+
+Server admins can now install plugins from the UI.
+
+Just upload a plugin archive (`.bitcartcc` extension), and it will automatically re-build everything!
+
+It is possible to customize backend (by adding new pages, database tables or adding metadata, hooks and filters), UI (new pages, extend in special UI slots, add new data), and docker deployment (new auto-loaded components and rules).
+
+The opportunities are limitless!
+
+See example here: https://github.com/bitcartcc/bitcart-plugin
+
+The plugins support will get extended over time.
+
+We encourage all plugin authors to start working on their first plugins, we will issue follow-up releases polishing the API
+
+Anything that has ever been requested before which didn't fit well in BitcartCC core can be extracted to a plugin!
+
 ## 0.6.15.3
 
 Fix important issue in processing XMR mempool
