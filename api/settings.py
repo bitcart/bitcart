@@ -266,6 +266,8 @@ class Settings(BaseSettings):
             f.write(json.dumps(self.plugins_schema))
 
     async def init(self):
+        sys.excepthook = excepthook_handler(self, sys.excepthook)
+        asyncio.get_running_loop().set_exception_handler(lambda *args, **kwargs: handle_exception(self, *args, **kwargs))
         await self.fetch_schema()
         self.redis_pool = aioredis.from_url(self.redis_host, decode_responses=True)
         await self.redis_pool.ping()
@@ -280,9 +282,6 @@ class Settings(BaseSettings):
         if worker:
             configure_logserver(self.logserver_client_host)
         self.logger = get_logger(__name__)
-        if worker:
-            sys.excepthook = excepthook_handler(self, sys.excepthook)
-            asyncio.get_running_loop().set_exception_handler(lambda *args, **kwargs: handle_exception(self, *args, **kwargs))
 
 
 def excepthook_handler(settings, excepthook):

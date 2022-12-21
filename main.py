@@ -50,8 +50,7 @@ def get_app():
         allow_headers=["*"],
         expose_headers=["Content-Disposition"],
     )
-    if not settings.test:
-        settings.init_logging()
+    settings.init_logging()
     settings.load_plugins()
     settings.plugins.setup_app(app)
 
