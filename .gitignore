@@ -16,4 +16,5 @@ bitcart-docker
 env/
 htmlcov/
 modules/*
+!modules/.gitkeep
 venv
