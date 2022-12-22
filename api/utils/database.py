@@ -38,12 +38,12 @@ async def create_object_core(model, kwargs):
     await model.validate(kwargs)
     with safe_db_write():
         result = await model.create(**kwargs)
-    return result
+    return await apply_filters(f"db_create_{model.__class__.__name__.lower()}", result)
 
 
 async def create_object(model, data, user=None, **additional_kwargs):
     kwargs = prepare_create_kwargs(model, data, user, **additional_kwargs)
-    return await apply_filters(f"db_create_{model.__name__.lower()}", await create_object_core(model, kwargs))
+    return await create_object_core(model, kwargs)
 
 
 async def modify_object(model, data, **additional_kwargs):

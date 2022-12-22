@@ -2,6 +2,10 @@
 
 ## Latest changes
 
+## 0.7.0.1
+
+Fixes in plugin API: metadata is now json-encodable, fixed calling product creation hooks, better UI slots in store
+
 ## 0.7.0.0
 
 ### Plugins support
