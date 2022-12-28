@@ -221,9 +221,15 @@ async def invoice_notification(invoice: models.Invoice, status: str):
                 logger.debug(f"Invoice {invoice.id} email notification: rendered final template:\n{store_template}")
                 await run_hook("invoice_email", invoice, store_template)
                 utils.email.send_mail(
-                    store,
+                    store.email_host,
+                    store.email_port,
+                    store.email_user,
+                    store.email_password,
+                    store.email,
+                    store.email_use_ssl,
                     invoice.buyer_email,
                     store_template,
+                    use_html_templates=store.checkout_settings.use_html_templates,
                 )
 
 

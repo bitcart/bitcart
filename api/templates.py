@@ -34,6 +34,7 @@ class Template:
 ProductTemplate = Template("product", applicable_to="product")
 BaseShopTemplate = Template("shop", applicable_to="store")
 NotificationTemplate = Template("notification", applicable_to="store")
+ForgotPasswordTemplate = Template("forgotpassword")
 
 
 class TemplateManager:

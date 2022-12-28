@@ -231,3 +231,17 @@ async def fetch_currency_info(coin):
 async def get_syncinfo(user: models.User = Security(utils.authorization.AuthDependency(), scopes=["server_management"])):
     coros = [fetch_currency_info(coin) for coin in settings.settings.cryptos]
     return await asyncio.gather(*coros)
+
+
+@router.get("/testping")
+async def test_email_ping(user: models.User = Security(utils.authorization.AuthDependency(), scopes=["server_management"])):
+    policy = await utils.policies.get_setting(schemes.Policy)
+    email_settings = policy.email_settings
+    return utils.email.check_ping(
+        email_settings.get("email_host"),
+        email_settings.get("email_port"),
+        email_settings.get("email_user"),
+        email_settings.get("email_password"),
+        email_settings.get("email"),
+        email_settings.get("email_use_ssl"),
+    )

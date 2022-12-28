@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Request, Security
 from fastapi.security import SecurityScopes
 from sqlalchemy import distinct, func, select
 
-from api import crud, db, models, schemes, utils
+from api import crud, db, models, schemes, settings, utils
 from api.plugins import run_hook
 
 router = APIRouter()
@@ -37,6 +37,32 @@ async def set_settings(
 ):
     await user.set_json_key("settings", settings)
     return user
+
+
+# NOTE: it is a good practice not to return any information whether the user exists in the system
+@router.post("/reset_password")
+async def reset_password(data: schemes.ResetPasswordData):
+    await utils.authorization.captcha_flow(data.captcha_code)
+    user = await utils.database.get_object(
+        models.User, custom_query=models.User.query.where(models.User.email == data.email), raise_exception=False
+    )
+    if not user:
+        return True
+    await crud.users.reset_user_password(user, data.next_url)
+    return True
+
+
+@router.post("/reset_password/finalize/{code}")
+async def finalize_password_reset(code: str, data: schemes.ResetPasswordFinalize):
+    async with utils.redis.wait_for_redis():
+        user_id = await settings.settings.redis_pool.execute_command("GETDEL", f"{crud.users.RESET_REDIS_KEY}:{code}")
+    if user_id is None:
+        raise HTTPException(422, "Invalid code")
+    user = await utils.database.get_object(models.User, user_id, raise_exception=False)
+    if not user:  # pragma: no cover
+        raise HTTPException(422, "Invalid code")
+    await crud.users.change_password(user, data.password, data.logout_all)
+    return True
 
 
 class CreateUserWithToken(schemes.DisplayUser):

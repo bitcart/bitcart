@@ -2,6 +2,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 from os.path import join as path_join
 from typing import Any, Callable, ClassVar, Dict, List, Optional, Type, Union
+from urllib import parse as urlparse
 
 from fastapi import APIRouter, Depends, HTTPException, Security
 from fastapi.security import SecurityScopes
@@ -267,3 +268,18 @@ def get_pagination_model(display_model):
         result=(List[display_model], ...),
         __base__=BaseModel,
     )
+
+
+def get_redirect_url(url, **kwargs):
+    parsed = urlparse.urlparse(url)
+    query = parsed.query
+    url_dict = dict(urlparse.parse_qs(query))
+    for key in kwargs:
+        if key not in url_dict:
+            url_dict[key] = kwargs[key]
+        else:
+            url_dict[key].append(kwargs[key])
+    url_new_query = urlparse.urlencode(url_dict, doseq=True)
+    parsed = parsed._replace(query=url_new_query)
+    new_url = urlparse.urlunparse(parsed)
+    return new_url

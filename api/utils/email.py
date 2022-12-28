@@ -31,18 +31,20 @@ def check_ping(host, port, user, password, email, ssl=True):  # pragma: no cover
         return False
 
 
-def send_mail(store, where, text, subject="Thank you for your purchase"):  # pragma: no cover
+def send_mail(
+    host, port, user, password, email, ssl, where, text, subject="Thank you for your purchase", use_html_templates=False
+):  # pragma: no cover
     if not where:
         return
     message_obj = MIMEMultipart()
     message_obj["Subject"] = subject
-    message_obj["From"] = store.email
+    message_obj["From"] = email
     message_obj["To"] = where
-    message_obj.attach(MIMEText(text, "html" if store.checkout_settings.use_html_templates else "plain"))
+    message_obj.attach(MIMEText(text, "html" if use_html_templates else "plain"))
     message = message_obj.as_string()
-    server = smtplib.SMTP(host=store.email_host, port=store.email_port, timeout=2)
-    if store.email_use_ssl:
+    server = smtplib.SMTP(host=host, port=port, timeout=2)
+    if ssl:
         server.starttls()
-    server.login(store.email_user, store.email_password)
-    server.sendmail(store.email, where, message)
+    server.login(user, password)
+    server.sendmail(email, where, message)
     server.quit()

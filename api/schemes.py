@@ -78,7 +78,7 @@ class HTTPCreateToken(CreatedMixin):
 
 
 class HTTPCreateLoginToken(HTTPCreateToken):
-    email: str = ""
+    email: EmailStr = ""
     password: str = ""
     captcha_code: str = ""
     strict: bool = True
@@ -94,6 +94,17 @@ class CreateDBToken(HTTPCreateToken):
 
 class Token(CreateDBToken):
     id: str
+
+
+class ResetPasswordData(BaseModel):
+    email: EmailStr
+    next_url: str
+    captcha_code: str = ""
+
+
+class ResetPasswordFinalize(BaseModel):
+    password: str
+    logout_all: bool = True
 
 
 class CreateWallet(CreatedMixin):
@@ -431,7 +442,7 @@ class BalanceResponse(BaseModel):
 
 
 class Policy(BaseModel):
-    _SECRET_FIELDS = {"captcha_secretkey"}
+    _SECRET_FIELDS = {"captcha_secretkey", "email_settings"}
 
     disable_registration: bool = False
     discourage_index: bool = False
@@ -442,6 +453,7 @@ class Policy(BaseModel):
     enable_captcha: bool = False
     explorer_urls: Dict[str, str] = {}
     rpc_urls: Dict[str, str] = {}
+    email_settings: dict = {}
 
     @validator("explorer_urls", pre=True, always=True)
     def set_explorer_urls(cls, v):

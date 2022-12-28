@@ -415,6 +415,7 @@ async def test_policies(client: TestClient, token: str):
             "btc": static_data.DEFAULT_EXPLORER,
         },
         "rpc_urls": {},
+        "email_settings": {},
     }
     assert (await client.post("/users", json=static_data.POLICY_USER)).status_code == 422  # registration is off
     # Test for loading data from db instead of loading scheme's defaults
@@ -448,6 +449,7 @@ async def test_policies(client: TestClient, token: str):
             "btc": static_data.DEFAULT_EXPLORER,
         },
         "rpc_urls": {},
+        "email_settings": {},
     }
     assert (await client.post("/users", json=static_data.POLICY_USER)).status_code == 200  # registration is on again
     resp = await client.get("/manage/stores")
@@ -1471,3 +1473,35 @@ async def test_invoices_payment_details(client: TestClient, user, token):
             json={"id": invoice["payments"][0]["id"], "address": static_data.PAYOUT_DESTINATION},
         )
     ).status_code == 422
+
+
+async def test_ping_server_mail(client: TestClient, token: str):
+    assert (await client.get("/manage/testping")).status_code == 401
+    resp = await client.get("/manage/testping", headers={"Authorization": f"Bearer {token}"})
+    assert resp.status_code == 200
+    assert not resp.json()
+
+
+async def test_password_reset(client: TestClient, user, token, mocker):
+    auth_code = None
+
+    def func(url, code):
+        nonlocal auth_code
+        auth_code = code
+
+    mocker.patch("api.utils.email.check_ping", return_value=True)
+    mocker.patch("api.utils.email.send_mail", return_value=True)
+    mocker.patch("api.utils.routing.get_redirect_url", side_effect=func)
+    assert (
+        await client.post("/users/reset_password", json={"email": "notexisting@gmail.com", "next_url": "https://example.com"})
+    ).status_code == 200
+    assert (
+        await client.post("/users/reset_password", json={"email": user["email"], "next_url": "https://example.com"})
+    ).status_code == 200
+    assert auth_code is not None
+    assert (await client.post("/users/reset_password/finalize/notexisting", json={"password": "12345678"})).status_code == 422
+    assert (await client.post(f"/users/reset_password/finalize/{auth_code}", json={"password": "12345678"})).status_code == 200
+    assert (await client.post(f"/users/reset_password/finalize/{auth_code}", json={"password": "12345678"})).status_code == 422
+    assert (await client.get("/users/me", headers={"Authorization": f"Bearer {token}"})).status_code == 401
+    assert (await client.post("/token", json={"email": user["email"], "password": static_data.USER_PWD})).status_code == 401
+    assert (await client.post("/token", json={"email": user["email"], "password": "12345678"})).status_code == 200

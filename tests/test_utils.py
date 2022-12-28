@@ -347,3 +347,8 @@ async def test_run_universal():
         return arg
 
     assert await utils.common.run_universal(func, 5) == await utils.common.run_universal(async_func, 5) == 5
+
+
+def test_get_redirect_url():
+    assert utils.routing.get_redirect_url("https://example.com", code="test") == "https://example.com?code=test"
+    assert utils.routing.get_redirect_url("https://example.com?code=1", code="test") == "https://example.com?code=1&code=test"
