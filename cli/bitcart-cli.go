@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"flag"
@@ -14,7 +15,7 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/urfave/cli/v2"
-	"github.com/ybbus/jsonrpc/v2"
+	"github.com/ybbus/jsonrpc/v3"
 )
 
 var Version = "dev"
@@ -139,7 +140,7 @@ func runCommand(c *cli.Context) (*jsonrpc.RPCResponse, map[string]interface{}, e
 	}
 	params = append(params, keyParams)
 	// call RPC method
-	result, err := rpcClient.Call(args.Get(0), params)
+	result, err := rpcClient.Call(context.Background(), args.Get(0), params)
 	if err != nil {
 		return nil, nil, err
 	}
