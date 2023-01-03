@@ -395,9 +395,9 @@ requests==2.28.1 \
     --hash=sha256:7c5599b102feddaa661c826c56ab4fee28bfd17f5abca1ebbe3e7f19d7c97983 \
     --hash=sha256:8fefa2a1a1365bf5520aac41836fbee479da67864514bdb821f31ce07ce65349
     # via monero
-universalasync==0.2.0.2 \
-    --hash=sha256:0bdfe9c6b8b17e965574fb1f729b39e417f41870575809c6adcfa568ba2c6f0f \
-    --hash=sha256:743e3b79944e2557ae18ba1161e695a1a1b84e5ae01fb7b13cc437b02cb4c431
+universalasync==0.3.0.0 \
+    --hash=sha256:55f622e5a14d018e36d776e55f4454d1c887603765a895fcb8b89547e70d4d10 \
+    --hash=sha256:edd67ea2cfb6e5fc9cead6d3f1ff71bcf537fa06af6c67be23c2d9d9ce1f84c0
     # via -r requirements/daemons/xmr.txt
 urllib3==1.26.13 \
     --hash=sha256:47cc05d99aaa09c9e72ed5809b60e7ba354e64b59c9c173ac3018642d8bb41fc \

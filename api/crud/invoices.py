@@ -4,7 +4,6 @@ from collections import defaultdict
 from decimal import Decimal
 from operator import attrgetter
 
-from bitcart.errors import errors
 from fastapi import HTTPException
 from sqlalchemy import select, text
 from starlette.datastructures import CommaSeparatedStrings
@@ -84,27 +83,16 @@ async def _create_payment_method(invoice, wallet, product, store, discounts, pro
     request_price = price * (1 - (Decimal(store.checkout_settings.underpaid_percentage) / 100))
     request_price = currency_table.normalize(wallet.currency, request_price / rate, divisibility=divisibility)
     price = currency_table.normalize(wallet.currency, price / rate, divisibility=divisibility)
-    method = coin.add_request
-    if lightning:  # pragma: no cover
-        try:
-            await coin.node_id  # check if works
-            method = coin.add_invoice
-        except errors.LightningUnsupportedError:
-            return
-    recommended_fee = (
-        await coin.server.recommended_fee(store.checkout_settings.recommended_fee_target_blocks) if not lightning else 0
-    )
+    recommended_fee = await coin.server.recommended_fee(store.checkout_settings.recommended_fee_target_blocks)
     recommended_fee = 0 if recommended_fee is None else recommended_fee  # if no rate available, disable it
     recommended_fee = truncate(Decimal(recommended_fee) / 1024, 2)  # convert to sat/byte, two decimal places
-    data_got = await method(request_price, description=product.name if product else "", expire=invoice.expiration)
-    address = data_got["address"] if not lightning else data_got["lightning_invoice"]
-    url = data_got["URI"] if not lightning else data_got["lightning_invoice"]
+    data_got = await coin.add_request(request_price, description=product.name if product else "", expire=invoice.expiration)
+    address = data_got["address"]
+    url = data_got["URI"]
     if store.checkout_settings.underpaid_percentage > 0:  # pragma: no cover
         url = await coin.server.modifypaymenturl(url, price, divisibility)
-    node_id = await coin.node_id if lightning else None
-    rhash = data_got["rhash"] if lightning else None
     lookup_field = data_got["request_id"] if "request_id" in data_got else address
-    return await apply_filters(
+    main_method = await apply_filters(
         "create_payment_method",
         dict(
             id=utils.common.unique_id(),
@@ -117,9 +105,9 @@ async def _create_payment_method(invoice, wallet, product, store, discounts, pro
             payment_address=address,
             payment_url=url,
             lookup_field=lookup_field,
-            rhash=rhash,
-            lightning=lightning,
-            node_id=node_id,
+            rhash=None,
+            lightning=False,
+            node_id=None,
             recommended_fee=recommended_fee,
             confirmations=0,
             label=wallet.label,
@@ -135,14 +123,24 @@ async def _create_payment_method(invoice, wallet, product, store, discounts, pro
         discounts,
         promocode,
     )
+    results = [main_method]
+    if lightning and data_got.get("lightning_invoice") is not None:
+        lightning_method = main_method.copy()
+        lightning_method["id"] = utils.common.unique_id()
+        lightning_method["lightning"] = True
+        lightning_method["payment_url"] = data_got["lightning_invoice"]
+        lightning_method["payment_address"] = data_got["lightning_invoice"]
+        lightning_method["node_id"] = await coin.node_id
+        lightning_method["rhash"] = data_got["rhash"]
+        lightning_method["recommended_fee"] = 0
+        results.append(lightning_method)
+    return results
 
 
 async def create_payment_method(invoice, wallet, product, store, discounts, promocode):
-    results = [await _create_payment_method(invoice, wallet, product, store, discounts, promocode)]
     coin_settings = settings.settings.crypto_settings.get(wallet.currency.lower())
-    if coin_settings and coin_settings["lightning"] and wallet.lightning_enabled:  # pragma: no cover
-        results.append(await _create_payment_method(invoice, wallet, product, store, discounts, promocode, lightning=True))
-    return results
+    lightning_supported = coin_settings and coin_settings["lightning"] and wallet.lightning_enabled
+    return await _create_payment_method(invoice, wallet, product, store, discounts, promocode, lightning=lightning_supported)
 
 
 async def create_method_for_wallet(invoice, wallet, discounts, store, product, promocode):
