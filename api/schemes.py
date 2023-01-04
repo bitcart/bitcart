@@ -304,7 +304,7 @@ class Template(CreateTemplate):
 class CreateProduct(CreatedMixin):
     status: str = "active"
     price: Decimal
-    quantity: Decimal
+    quantity: int
     name: str
     download_url: Optional[str] = ""
     description: str = ""

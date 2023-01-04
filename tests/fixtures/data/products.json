@@ -2,7 +2,7 @@
     "create": {
         "name": "test",
         "price": 0.5,
-        "quantity": 0.5
+        "quantity": 5
     },
     "patch": {
         "download_url": "https://example.com",
@@ -12,7 +12,7 @@
     "response": {
         "price": "0.50",
         "description": "",
-        "quantity": 0.5,
+        "quantity": 5,
         "download_url": "",
         "status": "active",
         "name": "test",

@@ -418,7 +418,7 @@ class Product(BaseModel):
     id = Column(Text, primary_key=True, index=True)
     name = Column(Text, index=True)
     price = Column(Numeric(36, 18), nullable=False)
-    quantity = Column(Numeric(36, 18), nullable=False)
+    quantity = Column(Integer, nullable=False)
     download_url = Column(Text)
     category = Column(Text)
     description = Column(Text)

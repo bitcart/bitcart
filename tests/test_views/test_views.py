@@ -1511,3 +1511,27 @@ async def test_password_reset(client: TestClient, user, token, mocker):
     assert (await client.get("/users/me", headers={"Authorization": f"Bearer {token}"})).status_code == 401
     assert (await client.post("/token", json={"email": user["email"], "password": static_data.USER_PWD})).status_code == 401
     assert (await client.post("/token", json={"email": user["email"], "password": "12345678"})).status_code == 200
+
+
+async def test_products_quantity_management(client: TestClient, user, token, store):
+    store_id = store["id"]
+    product1 = await create_product(client, user["id"], token, store_id=store_id, quantity=-1)
+    product2 = await create_product(client, user["id"], token, store_id=store_id, quantity=5)
+    invoice1 = await create_invoice(client, user["id"], token, store_id=store_id, products=[product1["id"]])
+    invoice2 = await create_invoice(client, user["id"], token, store_id=store_id, products=[product2["id"]])
+    await client.post(
+        "/invoices/batch",
+        json={"ids": [invoice1["id"]], "command": "mark_complete"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    await client.post(
+        "/invoices/batch",
+        json={"ids": [invoice2["id"]], "command": "mark_complete"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    print(product1)
+    assert (await client.get(f"/products/{product1['id']}")).json()["quantity"] == -1
+    assert (await client.get(f"/products/{product2['id']}")).json()["quantity"] == 4
+    assert (
+        await client.post("/invoices", json={"price": 1, "store_id": store_id, "products": {product2["id"]: 10}})
+    ).status_code == 422  # disallow creating invoice with too much stock

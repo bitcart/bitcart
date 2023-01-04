@@ -259,6 +259,22 @@ async def process_notifications(invoice):
     await invoice_notification(invoice, invoice.status)
 
 
+async def update_stock_levels(invoice):
+    quantities = (
+        await select([models.Product.quantity, models.ProductxInvoice.product_id, models.ProductxInvoice.count])
+        .where(models.ProductxInvoice.product_id == models.Product.id)
+        .where(models.ProductxInvoice.invoice_id == invoice.id)
+        .gino.all()
+    )
+    async with utils.database.iterate_helper():  # transaction (ACID)
+        for product_quantity, product_id, quantity in quantities:
+            if product_quantity == -1:  # unlimited quantity
+                continue
+            await models.Product.update.values(quantity=max(0, product_quantity - quantity)).where(
+                models.Product.id == product_id
+            ).gino.status()
+
+
 async def update_status(invoice, status, method=None, tx_hashes=[], sent_amount=Decimal(0)):
     if status == InvoiceStatus.PENDING and invoice.status == InvoiceStatus.PENDING and method:
         full_method_name = method.get_name()
@@ -296,6 +312,8 @@ async def update_status(invoice, status, method=None, tx_hashes=[], sent_amount=
             log_text += f" with payment method {full_method_name}"
         logger.info(f"{log_text} to {status}")
         await invoice.update(status=status).apply()
+        if status == InvoiceStatus.COMPLETE:
+            await update_stock_levels(invoice)
         await process_notifications(invoice)
         return True
 

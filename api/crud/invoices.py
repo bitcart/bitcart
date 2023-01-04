@@ -18,6 +18,25 @@ from api.utils.database import safe_db_write
 logger = get_logger(__name__)
 
 
+async def validate_stock_levels(products):
+    quantities = (
+        await select([models.Product.id, models.Product.name, models.Product.quantity])
+        .where(models.Product.id.in_(list(products.keys())))
+        .gino.all()
+    )
+    for product_id, product_name, quantity in quantities:
+        if quantity == -1:  # unlimited quantity
+            continue
+        if quantity < products[product_id]:
+            raise HTTPException(
+                422,
+                (
+                    f"Product {product_name} only has {quantity} items left in stock, requested {products[product_id]}."
+                    " Please refresh your page and re-fill your cart from scratch"
+                ),
+            )
+
+
 async def create_invoice(invoice: schemes.CreateInvoice, user: schemes.User):
     d = invoice.dict()
     store = await utils.database.get_object(models.Store, d["store_id"], user)
@@ -32,6 +51,9 @@ async def create_invoice(invoice: schemes.CreateInvoice, user: schemes.User):
     products = d.pop("products", {})
     if isinstance(products, list):
         products = {k: 1 for k in products}
+    # validate stock levels
+    if products:
+        await validate_stock_levels(products)
     promocode = d.get("promocode")
     d["user_id"] = store.user_id
     # Launch products access validation
