@@ -440,6 +440,7 @@ class DisplayInvoice(Invoice):
     time_left: int
     expiration: int
     expiration_seconds: int
+    product_names: dict
     payments: list = []
 
 

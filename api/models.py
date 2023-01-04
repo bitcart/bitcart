@@ -601,6 +601,8 @@ class Invoice(BaseModel):
     async def add_fields(self):
         await super().add_fields()
         self.add_invoice_expiration()
+        names = await select([Product.id, Product.name]).where(Product.id.in_(self.products)).gino.all()
+        self.product_names = {name[0]: name[1] for name in names}
 
 
 class Setting(BaseModel):
