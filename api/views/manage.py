@@ -1,6 +1,5 @@
 import asyncio
 import os
-import tempfile
 
 import aiofiles
 from bitcart.errors import BaseError as BitcartBaseError
@@ -210,11 +209,17 @@ async def restore_backup(
     user: models.User = Security(utils.authorization.AuthDependency(), scopes=["server_management"]),
 ):
     if settings.settings.docker_env:  # pragma: no cover
-        path = os.path.join(tempfile.mkdtemp(), "backup.tar.gz")
+        path = os.path.join(settings.settings.datadir, "backup.tar.gz")
         async with aiofiles.open(path, "wb") as f:
             await f.write(await backup.read())
         await run_hook("restore_backup", path)
-        return utils.host.run_host_output(f"./restore.sh --delete-backup {path}", "Successfully started restore process!")
+        return utils.host.run_host_output(
+            (
+                '. helpers.sh; load_env; ./restore.sh --delete-backup "/var/lib/docker/volumes/$(volume_name'
+                ' bitcart_datadir)/_data/backup.tar.gz" '
+            ),
+            "Successfully started restore process!",
+        )
     return {"status": "error", "message": "Not running in docker"}
 
 
