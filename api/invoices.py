@@ -253,6 +253,7 @@ async def process_notifications(invoice):
             "status": invoice.status,
             "exception_status": invoice.exception_status,
             "sent_amount": currency_table.format_decimal(invoice.paid_currency, invoice.sent_amount),
+            "paid_currency": invoice.paid_currency,
         },
     )
     await invoice_notification(invoice, invoice.status)

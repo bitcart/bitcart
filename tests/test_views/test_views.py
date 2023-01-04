@@ -156,14 +156,14 @@ async def test_fiatlist_multi_coins(client: TestClient, mocker):
 
 async def check_ws_response(ws, sent_amount):
     data = await ws.receive_json()
-    assert data == {"status": "paid", "exception_status": "none", "sent_amount": sent_amount}
+    assert data == {"status": "paid", "exception_status": "none", "sent_amount": sent_amount, "paid_currency": "BTC"}
     data = await ws.receive_json()
-    assert data == {"status": "complete", "exception_status": "none", "sent_amount": sent_amount}
+    assert data == {"status": "complete", "exception_status": "none", "sent_amount": sent_amount, "paid_currency": "BTC"}
 
 
 async def check_ws_response_complete(ws, sent_amount):
     data = await ws.receive_json()
-    assert data == {"status": "complete", "exception_status": "none", "sent_amount": sent_amount}
+    assert data == {"status": "complete", "exception_status": "none", "sent_amount": sent_amount, "paid_currency": "BTC"}
 
 
 async def check_ws_response2(ws):

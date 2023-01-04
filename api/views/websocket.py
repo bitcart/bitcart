@@ -76,6 +76,7 @@ class InvoiceNotify(GenericWebsocketEndpoint):
                     "status": self.object.status,
                     "exception_status": self.object.exception_status,
                     "sent_amount": currency_table.format_decimal(self.object.paid_currency, self.object.sent_amount),
+                    "paid_currency": self.object.paid_currency,
                 }
             )
             await websocket.close()
