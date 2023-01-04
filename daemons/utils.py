@@ -238,6 +238,8 @@ def get_function_header(func, func_obj):
 
 
 def modify_payment_url(key, url, amount):
+    if not Decimal(amount):
+        return url
     parsed = urlparse(url)
     qs = dict(parse_qsl(parsed.query))
     qs[key] = amount

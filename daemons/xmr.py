@@ -186,7 +186,10 @@ class XMRFeatures(BlockchainFeatures):
         return []
 
     async def get_payment_uri(self, req, divisibility, contract=None):
-        return f"monero:{req.address}?tx_amount={decimal_to_string(req.amount, XMRDaemon.DIVISIBILITY)}"
+        base_url = f"monero:{req.address}"
+        if req.amount:
+            base_url += f"?tx_amount={decimal_to_string(req.amount, XMRDaemon.DIVISIBILITY)}"
+        return base_url
 
     async def process_tx_data(self, data):
         return Transaction(
