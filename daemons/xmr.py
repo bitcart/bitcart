@@ -299,12 +299,12 @@ class Wallet(BaseWallet):
         else:
             req.confirmed_amount += payment.amount
         req.sent_amount = max(req.sent_amount, req.confirmed_amount)
-        if (unconfirmed and req.sent_amount >= req.amount) or req.confirmed_amount >= req.amount:
-            await self.process_payment(wallet, req.id, tx_hash=tx.hash, status=PR_UNCONFIRMED if unconfirmed else PR_PAID)
-        else:
-            if tx.hash not in req.tx_hashes:
-                req.tx_hashes.append(tx.hash)
-            self.save_db()
+        set_status = PR_UNPAID
+        if unconfirmed and req.sent_amount >= req.amount:
+            set_status = PR_UNCONFIRMED
+        elif req.confirmed_amount >= req.amount:
+            set_status = PR_PAID
+        await self.process_payment(wallet, req.id, tx_hash=tx.hash, status=set_status)
 
 
 class XMRDaemon(BlockProcessorDaemon):

@@ -348,6 +348,7 @@ class CreateInvoice(CreatedMixin):
     store_id: str
     currency: str = ""
     paid_currency: Optional[str] = ""
+    sent_amount: Decimal = 0
     order_id: Optional[str] = ""
     notification_url: Optional[str] = ""
     redirect_url: Optional[str] = ""
@@ -357,6 +358,7 @@ class CreateInvoice(CreatedMixin):
     notes: Optional[str] = ""
     discount: Optional[str]
     status: str = None
+    exception_status: str = None
     products: Optional[Union[List[str], Dict[str, int]]] = {}
     tx_hashes: Optional[List[str]] = []
 
@@ -371,6 +373,16 @@ class CreateInvoice(CreatedMixin):
         from api.invoices import InvoiceStatus
 
         return v or InvoiceStatus.PENDING
+
+    @validator("exception_status", pre=True, always=True)
+    def set_exception_status(cls, v):
+        from api.invoices import InvoiceExceptionStatus
+
+        return v or InvoiceExceptionStatus.NONE
+
+    @validator("sent_amount", pre=True, always=True)
+    def set_sent_amount(cls, v):
+        return v or Decimal(0)
 
     @validator("buyer_email", pre=True, always=False)
     def validate_buyer_email(cls, val):
@@ -413,11 +425,14 @@ class Invoice(CreateInvoice):
     user_id: str
     currency: str = "USD"
     price: Money
+    sent_amount: Money
 
     @root_validator(pre=True)
     def set_price(cls, values):
         if "price" in values:
             values["price"] = currency_table.format_decimal(values.get("currency"), values["price"])
+        if "sent_amount" in values:
+            values["sent_amount"] = currency_table.format_decimal(values.get("paid_currency"), values["sent_amount"])
         return values
 
 

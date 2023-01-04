@@ -4,6 +4,7 @@ from starlette.endpoints import WebSocketEndpoint
 from starlette.status import WS_1008_POLICY_VIOLATION
 
 from api import models, utils
+from api.ext.moneyformat import currency_table
 from api.invoices import InvoiceStatus
 
 router = APIRouter()
@@ -70,7 +71,13 @@ class InvoiceNotify(GenericWebsocketEndpoint):
 
     async def maybe_exit_early(self, websocket):
         if self.object.status in [InvoiceStatus.EXPIRED, InvoiceStatus.COMPLETE]:
-            await websocket.send_json({"status": self.object.status})
+            await websocket.send_json(
+                {
+                    "status": self.object.status,
+                    "exception_status": self.object.exception_status,
+                    "sent_amount": currency_table.format_decimal(self.object.paid_currency, self.object.sent_amount),
+                }
+            )
             await websocket.close()
             return True
         return False

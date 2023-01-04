@@ -539,6 +539,8 @@ class Invoice(BaseModel):
 
     id = Column(Text, primary_key=True, index=True)
     price = Column(Numeric(36, 18), nullable=False)
+    sent_amount = Column(Numeric(36, 18))
+    exception_status = Column(Text)
     currency = Column(Text)
     paid_currency = Column(Text)
     status = Column(Text, nullable=False)

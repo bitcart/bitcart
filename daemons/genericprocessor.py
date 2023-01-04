@@ -475,12 +475,13 @@ class Wallet:
         if req is None or req.status != PR_UNPAID:
             return
         req.sent_amount += amount
-        if req.sent_amount >= req.amount:
-            await self.process_payment(wallet, req.id, tx_hash=tx.hash, status=PR_PAID, contract=tx.contract)
-        else:
-            if tx.hash not in req.tx_hashes:
-                req.tx_hashes.append(tx.hash)
-            self.save_db()
+        await self.process_payment(
+            wallet,
+            req.id,
+            tx_hash=tx.hash,
+            status=PR_PAID if req.sent_amount >= req.amount else PR_UNPAID,
+            contract=tx.contract,
+        )
 
     async def process_payment(self, wallet, key, tx_hash, contract=None, status=PR_PAID):
         try:

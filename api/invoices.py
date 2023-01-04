@@ -1,4 +1,5 @@
 import asyncio
+from decimal import Decimal
 
 from sqlalchemy import or_, select
 
@@ -20,6 +21,12 @@ class InvoiceStatus:
     EXPIRED = "expired"
     INVALID = "invalid"
     COMPLETE = "complete"
+
+
+class InvoiceExceptionStatus:
+    NONE = "none"
+    PAID_PARTIAL = "paid_partial"
+    PAID_OVER = "paid_over"
 
 
 # TODO: move it to daemon somehow
@@ -106,25 +113,30 @@ async def make_expired_task(invoice):
         await run_hook("invoice_expired", invoice)
 
 
-async def process_electrum_status(invoice, method, wallet, electrum_status, tx_hashes):
+async def process_electrum_status(invoice, method, wallet, electrum_status, tx_hashes, sent_amount):
     electrum_status = convert_status(electrum_status)
     if invoice.status not in DEFAULT_PENDING_STATUSES:  # double-check
         return
+    if electrum_status == InvoiceStatus.PENDING and sent_amount > 0:
+        await update_status(invoice, InvoiceStatus.PENDING, method, tx_hashes, sent_amount)
     if electrum_status == InvoiceStatus.UNCONFIRMED:  # for on-chain invoices only
-        await update_status(invoice, InvoiceStatus.PAID, method, tx_hashes)
+        await update_status(invoice, InvoiceStatus.PAID, method, tx_hashes, sent_amount)
         await update_confirmations(
-            invoice, method, confirmations=0, tx_hashes=tx_hashes
+            invoice, method, confirmations=0, tx_hashes=tx_hashes, sent_amount=sent_amount
         )  # to trigger complete for stores accepting 0-conf
     if electrum_status == InvoiceStatus.COMPLETE:  # for paid lightning invoices or confirmed on-chain invoices
         if method.lightning:
-            await update_status(invoice, InvoiceStatus.COMPLETE, method, tx_hashes)
+            await update_status(invoice, InvoiceStatus.COMPLETE, method, tx_hashes, sent_amount)
         else:
-            await update_confirmations(invoice, method, await get_confirmations(method, wallet), tx_hashes)
+            await update_confirmations(invoice, method, await get_confirmations(method, wallet), tx_hashes, sent_amount)
     return True
 
 
-async def new_payment_handler(instance, event, address, status, status_str, tx_hashes=[], contract=None):
+async def new_payment_handler(
+    instance, event, address, status, status_str, tx_hashes=[], sent_amount=Decimal(0), contract=None
+):
     with log_errors():
+        sent_amount = Decimal(sent_amount)
         query = get_pending_invoices_query(instance.coin_name.lower()).where(models.PaymentMethod.lookup_field == address)
         if contract:
             query = query.where(models.PaymentMethod.contract == contract)
@@ -133,11 +145,11 @@ async def new_payment_handler(instance, event, address, status, status_str, tx_h
             return
         method, invoice, wallet = data
         await invoice.load_data()
-        await run_hook("new_payment", invoice, method, wallet, status, status_str, tx_hashes)
-        await process_electrum_status(invoice, method, wallet, status, tx_hashes)
+        await run_hook("new_payment", invoice, method, wallet, status, status_str, tx_hashes, sent_amount)
+        await process_electrum_status(invoice, method, wallet, status, tx_hashes, sent_amount)
 
 
-async def update_confirmations(invoice, method, confirmations, tx_hashes=[]):
+async def update_confirmations(invoice, method, confirmations, tx_hashes=[], sent_amount=Decimal(0)):
     await method.update(confirmations=confirmations).apply()
     store = await utils.database.get_object(models.Store, invoice.store_id)
     status = invoice.status
@@ -145,7 +157,7 @@ async def update_confirmations(invoice, method, confirmations, tx_hashes=[]):
         status = InvoiceStatus.CONFIRMED
     if confirmations >= store.checkout_settings.transaction_speed:
         status = InvoiceStatus.COMPLETE
-    await update_status(invoice, status, method, tx_hashes)
+    await update_status(invoice, status, method, tx_hashes, sent_amount)
 
 
 async def get_confirmations(method, wallet):
@@ -233,19 +245,57 @@ async def invoice_notification(invoice: models.Invoice, status: str):
                 )
 
 
-async def update_status(invoice, status, method=None, tx_hashes=[]):
+async def process_notifications(invoice):
+    await events.event_handler.publish("invoice_status", {"id": invoice.id, "status": invoice.status})
+    await utils.redis.publish_message(
+        f"invoice:{invoice.id}",
+        {
+            "status": invoice.status,
+            "exception_status": invoice.exception_status,
+            "sent_amount": currency_table.format_decimal(invoice.paid_currency, invoice.sent_amount),
+        },
+    )
+    await invoice_notification(invoice, invoice.status)
+
+
+async def update_status(invoice, status, method=None, tx_hashes=[], sent_amount=Decimal(0)):
+    if status == InvoiceStatus.PENDING and invoice.status == InvoiceStatus.PENDING and method:
+        full_method_name = method.get_name()
+        if not invoice.paid_currency or invoice.paid_currency == full_method_name:
+            await invoice.update(
+                paid_currency=full_method_name,
+                discount=method.discount,
+                tx_hashes=tx_hashes,
+                sent_amount=sent_amount,
+                exception_status=InvoiceExceptionStatus.PAID_PARTIAL,
+            ).apply()
+            await process_notifications(invoice)
+
     if invoice.status != status and status != InvoiceStatus.PENDING and invoice.status != InvoiceStatus.COMPLETE:
         log_text = f"Updating status of invoice {invoice.id}"
         if method:
             full_method_name = method.get_name()
-            if not invoice.paid_currency and status in [InvoiceStatus.PAID, InvoiceStatus.CONFIRMED, InvoiceStatus.COMPLETE]:
-                await invoice.update(paid_currency=full_method_name, discount=method.discount, tx_hashes=tx_hashes).apply()
+            if (not invoice.paid_currency or invoice.paid_currency == full_method_name) and status in [
+                InvoiceStatus.PAID,
+                InvoiceStatus.CONFIRMED,
+                InvoiceStatus.COMPLETE,
+            ]:
+                exception_status = (
+                    InvoiceExceptionStatus.NONE
+                    if sent_amount == method.amount or method.lightning
+                    else InvoiceExceptionStatus.PAID_OVER
+                )
+                await invoice.update(
+                    paid_currency=full_method_name,
+                    discount=method.discount,
+                    tx_hashes=tx_hashes,
+                    sent_amount=sent_amount,
+                    exception_status=exception_status,
+                ).apply()
             log_text += f" with payment method {full_method_name}"
         logger.info(f"{log_text} to {status}")
         await invoice.update(status=status).apply()
-        await events.event_handler.publish("invoice_status", {"id": invoice.id, "status": status})
-        await utils.redis.publish_message(f"invoice:{invoice.id}", {"status": status})
-        await invoice_notification(invoice, status)
+        await process_notifications(invoice)
         return True
 
 
@@ -272,6 +322,13 @@ async def check_pending(currency):
             else:
                 invoice_data = await coin.get_request(method.lookup_field)
             coros.append(
-                process_electrum_status(invoice, method, wallet, invoice_data["status"], invoice_data.get("tx_hashes", []))
+                process_electrum_status(
+                    invoice,
+                    method,
+                    wallet,
+                    invoice_data["status"],
+                    invoice_data.get("tx_hashes", []),
+                    Decimal(invoice_data.get("sent_amount", 0)),
+                )
             )
     await asyncio.gather(*coros)

@@ -10,6 +10,7 @@ from bitcart import BTC
 from bitcart.utils import bitcoins
 
 from api.constants import MAX_CONFIRMATION_WATCH
+from api.ext.moneyformat import truncate
 from tests.functional import utils
 from tests.helper import create_store, create_wallet
 
@@ -37,13 +38,19 @@ async def get_status(client, obj_id, token):
     return resp.json()["status"]
 
 
-async def check_invoice_status(ws_client, invoice_id, expected_status, allow_next=False):
+async def check_invoice_status(
+    ws_client, invoice_id, expected_status, allow_next=False, exception_status=None, sent_amount=None
+):
     async with async_timeout.timeout(30):
         async with ws_client.websocket_connect(f"/ws/invoices/{invoice_id}") as ws:
             msg = await ws.receive_json()
             if allow_next:  # when there are two statuses in a row (zeroconf)
                 msg = await ws.receive_json()
             assert msg["status"] == expected_status
+            if exception_status is not None:
+                assert msg["exception_status"] == exception_status
+            if sent_amount is not None:
+                assert Decimal(msg["sent_amount"]) == Decimal(sent_amount)
     await asyncio.sleep(1)  # ensure IPNs are already sent
 
 
@@ -186,13 +193,27 @@ async def test_onchain_pay_flow(client, ws_client, regtest_api_store, token, wor
     invoice_id = invoice["id"]
     zeroconf = speed == 0
     expected_status = "complete" if zeroconf else "paid"
-    await check_invoice_status(ws_client, invoice_id, expected_status, allow_next=zeroconf)
-    if speed > 0:
-        utils.run_shell(["newblocks", str(speed)])
-        await check_invoice_status(ws_client, invoice_id, "complete")
-    assert queue.qsize() == 2
-    check_status(queue, {"id": invoice["id"], "status": "paid"})
-    check_status(queue, {"id": invoice["id"], "status": "complete"})
+    await check_invoice_status(
+        ws_client, invoice_id, expected_status, sent_amount=amount, exception_status="none", allow_next=zeroconf
+    )
+
+
+async def test_exception_statuses(client, ws_client, regtest_api_store, token, worker, ipn_server):
+    store_id = regtest_api_store["id"]
+    invoice = (await client.post("/invoices", json={"price": 5, "store_id": store_id})).json()
+    pay_details = invoice["payments"][0]
+    address = pay_details["payment_address"]
+    amount = Decimal(pay_details["amount"])
+    part1 = truncate(amount / 2, 8)
+    part2 = amount - part1
+    await asyncio.sleep(3)  # wait for the worker startup (remove when electrum fixes pending tx_hashes returning)
+    await send_to_address(address, part1)
+    invoice_id = invoice["id"]
+    await check_invoice_status(ws_client, invoice_id, "pending", exception_status="paid_partial", sent_amount=part1)
+    await send_to_address(address, part2)
+    await check_invoice_status(
+        ws_client, invoice_id, "complete", exception_status="none", sent_amount=pay_details["amount"], allow_next=True
+    )
 
 
 async def test_lightning_pay_flow(
@@ -221,9 +242,12 @@ async def test_lightning_pay_flow(
     pay_details = invoice["payments"][1]  # lightning methods are always created after onchain ones
     await regtest_lnnode.lnpay(pay_details["payment_address"])
     invoice_id = invoice["id"]
-    await check_invoice_status(ws_client, invoice_id, "complete")
+    await check_invoice_status(ws_client, invoice_id, "complete", exception_status="none")
     assert queue.qsize() == 1
     check_status(queue, {"id": invoice["id"], "status": "complete"})
+    # check that it was paid with lightning actually
+    resp = await client.get(f"/invoices/{invoice_id}")
+    assert resp.json()["paid_currency"] == "BTC (⚡)"
 
 
 async def apply_batch_payout_action(client, token, command, ids, options={}):

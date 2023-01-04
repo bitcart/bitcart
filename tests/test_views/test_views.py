@@ -154,16 +154,16 @@ async def test_fiatlist_multi_coins(client: TestClient, mocker):
     assert resp.json() == ["USD"]
 
 
-async def check_ws_response(ws):
+async def check_ws_response(ws, sent_amount):
     data = await ws.receive_json()
-    assert data == {"status": "paid"}
+    assert data == {"status": "paid", "exception_status": "none", "sent_amount": sent_amount}
     data = await ws.receive_json()
-    assert data == {"status": "complete"}
+    assert data == {"status": "complete", "exception_status": "none", "sent_amount": sent_amount}
 
 
-async def check_ws_response_complete(ws):
+async def check_ws_response_complete(ws, sent_amount):
     data = await ws.receive_json()
-    assert data == {"status": "complete"}
+    assert data == {"status": "complete", "exception_status": "none", "sent_amount": sent_amount}
 
 
 async def check_ws_response2(ws):
@@ -703,19 +703,25 @@ async def test_invoice_ws(ws_client, token: str, store):
     async with ws_client.websocket_connect(f"/ws/invoices/{invoice_id}") as websocket:
         await asyncio.sleep(1)
         await invoices.new_payment_handler(
-            DummyInstance(), None, data["payments"][0]["lookup_field"], InvoiceStatus.UNCONFIRMED, None
+            DummyInstance(),
+            None,
+            data["payments"][0]["lookup_field"],
+            InvoiceStatus.UNCONFIRMED,
+            None,
+            [],
+            data["payments"][0]["amount"],
         )  # emulate paid invoice
-        await check_ws_response(websocket)
+        await check_ws_response(websocket, data["payments"][0]["amount"])
         async with ws_client.websocket_connect(
             f"/ws/invoices/{invoice_id}"
         ) as websocket2:  # test if after invoice was completed websocket returns immediately
-            await check_ws_response_complete(websocket2)
+            await check_ws_response_complete(websocket2, data["payments"][0]["amount"])
     with pytest.raises(Exception):
         async with ws_client.websocket_connect("/ws/invoices/555") as websocket:
-            await check_ws_response(websocket)
+            await check_ws_response(websocket, 0)
     with pytest.raises(Exception):
         async with ws_client.websocket_connect("/ws/invoices/invalid_id") as websocket:
-            await check_ws_response(websocket)
+            await check_ws_response(websocket, 0)
 
 
 @pytest.mark.parametrize("currencies", ["", "DUMMY", "btc"])
