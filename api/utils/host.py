@@ -1,5 +1,5 @@
 from api import settings
-from api.ext.ssh import execute_ssh_command
+from api.ext.ssh import execute_ssh_command, prepare_shell_command
 from api.logger import get_exception_message, get_logger
 
 logger = get_logger(__name__)
@@ -14,7 +14,8 @@ def run_host(command, env={}, disown=True):
     try:
         output = execute_ssh_command(
             client,
-            f'. {settings.settings.ssh_settings.bash_profile_script}; cd "$BITCART_BASE_DIRECTORY"; {env_vars} nohup {command}'
+            f'. {settings.settings.ssh_settings.bash_profile_script}; cd "$BITCART_BASE_DIRECTORY"; {env_vars} nohup'
+            f" {prepare_shell_command(command)}"
             + (" > /dev/null 2>&1 & disown" if disown else ""),
         )
         if not disown:  # pragma: no cover
