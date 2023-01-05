@@ -68,6 +68,7 @@ class Pagination:
         if not self.sort:
             self.sort = "created"
             self.desc_s = "desc"
+        query = query.group_by(self.model.id)
         if self.limit != -1:
             query = query.limit(self.limit)
         query = query.order_by(text(f"{self.sort} {self.desc_s}"))
@@ -113,7 +114,7 @@ class Pagination:
         )
         if count_only:
             return await self.get_count(query)
-        count, data = await asyncio.gather(self.get_count(query), self.get_list(query.group_by(model.id)))
+        count, data = await asyncio.gather(self.get_count(query), self.get_list(query))
         if postprocess:
             data = await postprocess(data)
         return {
