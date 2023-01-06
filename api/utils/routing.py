@@ -142,7 +142,7 @@ class ModelView:
         }
 
     async def _get_one(self, model_id: str, user: schemes.User, internal: bool = False):
-        item = await utils.database.get_object(self.orm_model, model_id, user)
+        item = await utils.database.get_object(self.orm_model, model_id, user if self.get_one_auth else None)
         if self.custom_methods.get("get_one"):
             item = await self.custom_methods["get_one"](model_id, user, item, internal)
         return item

@@ -868,12 +868,8 @@ async def test_get_public_store(client: TestClient, store):
             json={"email": "test2auth@example.com", "password": "test12345", "permissions": ["full_control"]},
         )
     ).json()["access_token"]
-    # When logged in, prohibit any access to non-own objects, even if public access is available
-    assert (await client.get(f"/stores/{store_id}", headers={"Authorization": f"Bearer {new_token}"})).status_code == 404
-    await client.delete(f"/users/{user_id}")
-    # get store without user
-    store = await client.get(f"/stores/{store_id}")
-    assert set(store.json().keys()) == {
+    # When logged in, allow limited access to public objects
+    PUBLIC_KEYS = {
         "created",
         "name",
         "default_currency",
@@ -885,6 +881,14 @@ async def test_get_public_store(client: TestClient, store):
         "currency_data",
         "metadata",
     }
+    assert (
+        set((await client.get(f"/stores/{store_id}", headers={"Authorization": f"Bearer {new_token}"})).json().keys())
+        == PUBLIC_KEYS
+    )
+    await client.delete(f"/users/{user_id}")
+    # get store without user
+    store = await client.get(f"/stores/{store_id}")
+    assert set(store.json().keys()) == PUBLIC_KEYS
 
 
 async def test_get_product_params(client: TestClient, token: str, product):

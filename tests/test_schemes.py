@@ -6,4 +6,7 @@ def test_http_create_token_validator():
 
 
 def test_invoice_tx_hashes_validator():
-    assert schemes.Invoice(tx_hashes="", price=5, user_id="1", sent_amount="0").tx_hashes == []
+    assert (
+        schemes.Invoice(id="", payments=[], paid_currency="", tx_hashes="", price=5, user_id="1", sent_amount="0").tx_hashes
+        == []
+    )

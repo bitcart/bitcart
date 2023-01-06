@@ -429,10 +429,18 @@ class Invoice(CreateInvoice):
 
     @root_validator(pre=True)
     def set_price(cls, values):
+        from api import crud
+
         if "price" in values:
             values["price"] = currency_table.format_decimal(values.get("currency"), values["price"])
         if "sent_amount" in values:
-            values["sent_amount"] = currency_table.format_decimal(values.get("paid_currency"), values["sent_amount"])
+            values["sent_amount"] = currency_table.format_decimal(
+                "",
+                values["sent_amount"],
+                divisibility=crud.invoices.find_sent_amount_divisibility(
+                    values["id"], values["payments"], values["paid_currency"]
+                ),
+            )
         return values
 
 

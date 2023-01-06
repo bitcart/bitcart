@@ -3,7 +3,7 @@ from decimal import Decimal
 
 from sqlalchemy import or_, select
 
-from api import constants, events, models, settings, utils
+from api import constants, crud, events, models, settings, utils
 from api.ext import payouts as payout_ext
 from api.ext.moneyformat import currency_table
 from api.logger import get_logger
@@ -252,7 +252,11 @@ async def process_notifications(invoice):
         {
             "status": invoice.status,
             "exception_status": invoice.exception_status,
-            "sent_amount": currency_table.format_decimal(invoice.paid_currency, invoice.sent_amount),
+            "sent_amount": currency_table.format_decimal(
+                "",
+                invoice.sent_amount,
+                divisibility=crud.invoices.find_sent_amount_divisibility(invoice.id, invoice.payments, invoice.paid_currency),
+            ),
             "paid_currency": invoice.paid_currency,
         },
     )

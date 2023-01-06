@@ -22,7 +22,7 @@ async def create_store(create_store: schemes.CreateStore, user: schemes.User):
 async def get_store(model_id: str, user: schemes.User, item: models.Store, internal: bool = False):
     if internal:
         return item
-    elif user:
+    elif user and user.id == item.user_id:
         return schemes.Store.from_orm(item)
     else:
         return schemes.PublicStore.from_orm(item)
