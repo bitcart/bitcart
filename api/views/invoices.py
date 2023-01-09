@@ -15,11 +15,19 @@ async def get_invoice_noauth(model_id: str):
     return item
 
 
-@router.get("/order_id/{order_id}", response_model=schemes.DisplayInvoice)
-async def get_invoice_by_order_id(order_id: str):
+@router.post("/order_id/{order_id}", response_model=schemes.DisplayInvoice)
+async def get_or_create_invoice_by_order_id(order_id: str, data: schemes.CreateInvoice):
     item = await utils.database.get_object(
-        models.Invoice, order_id, custom_query=models.Invoice.query.where(models.Invoice.order_id == order_id)
+        models.Invoice,
+        order_id,
+        custom_query=models.Invoice.query.where(models.Invoice.order_id == order_id).where(
+            models.Invoice.status == InvoiceStatus.PENDING
+        ),
+        raise_exception=False,
     )
+    if not item:
+        data.order_id = order_id
+        item = await crud.invoices.create_invoice(data, user=None)
     return item
 
 

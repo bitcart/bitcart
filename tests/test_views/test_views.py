@@ -760,24 +760,18 @@ async def test_create_invoice_discount(client: TestClient, token: str, store, cu
     ).status_code == 200
 
 
-@pytest.mark.parametrize("order_id,expect_status_code", [(-1, 404), (10, 200)])
-async def test_get_invoice_by_order_id(client: TestClient, token: str, order_id: int, store, expect_status_code):
+async def test_get_or_create_invoice_by_order_id(client: TestClient, token: str, store):
     store_id = store["id"]
-    resp = None
-    if expect_status_code == 200:
-        resp = await client.post(
-            "/invoices",
-            json={"store_id": store_id, "price": 0.98, "order_id": str(order_id)},
-            headers={"Authorization": f"Bearer {token}"},
-        )
-        assert resp.status_code == 200
-    assert (
-        await client.get(f"/invoices/order_id/{order_id}", headers={"Authorization": f"Bearer {token}"})
-    ).status_code == expect_status_code
-    if resp:
-        assert (
-            await client.delete(f"/invoices/{resp.json()['id']}", headers={"Authorization": f"Bearer {token}"})
-        ).status_code == 200
+    resp = await client.post("/invoices/order_id/1", json={"price": 5, "store_id": store_id})
+    assert resp.status_code == 200
+    assert resp.json()["order_id"] == "1"
+    assert (await client.post("/invoices/order_id/1", json={"price": 5, "store_id": store_id})).json()["id"] == resp.json()[
+        "id"
+    ]
+    await invoices.new_payment_handler(DummyInstance(), None, resp.json()["payments"][0]["lookup_field"], "complete", None)
+    assert (await client.post("/invoices/order_id/1", json={"price": 5, "store_id": store_id})).json()["id"] != resp.json()[
+        "id"
+    ]
 
 
 async def test_get_max_product_price(client: TestClient, token: str, store):
