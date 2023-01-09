@@ -268,7 +268,8 @@ class Settings(BaseSettings):
     async def init(self):
         sys.excepthook = excepthook_handler(self, sys.excepthook)
         asyncio.get_running_loop().set_exception_handler(lambda *args, **kwargs: handle_exception(self, *args, **kwargs))
-        await self.fetch_schema()
+        if not self.test:
+            await self.fetch_schema()
         self.redis_pool = aioredis.from_url(self.redis_host, decode_responses=True)
         await self.redis_pool.ping()
         await self.create_db_engine()

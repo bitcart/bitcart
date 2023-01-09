@@ -361,6 +361,11 @@ class CreateInvoice(CreatedMixin):
     exception_status: str = None
     products: Optional[Union[List[str], Dict[str, int]]] = {}
     tx_hashes: Optional[List[str]] = []
+    expiration: int = None
+
+    @validator("expiration", pre=True, always=True)
+    def set_expiration(cls, v):
+        return v or None
 
     @validator("tx_hashes", pre=True, always=False)
     def validate_tx_hashes(cls, val):

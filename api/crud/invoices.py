@@ -47,7 +47,7 @@ async def create_invoice(invoice: schemes.CreateInvoice, user: schemes.User):
     logger.info("Started creating invoice")
     logger.debug(invoice)
     d["currency"] = d["currency"] or store.default_currency or "USD"
-    d["expiration"] = store.checkout_settings.expiration
+    d["expiration"] = d["expiration"] or store.checkout_settings.expiration
     products = d.pop("products", {})
     if isinstance(products, list):
         products = {k: 1 for k in products}
