@@ -28,7 +28,9 @@ async def restart_server(user: models.User = Security(utils.authorization.AuthDe
 async def update_server(user: models.User = Security(utils.authorization.AuthDependency(), scopes=["server_management"])):
     if settings.settings.docker_env:  # pragma: no cover
         await run_hook("server_update")
-        return utils.host.run_host_output("./update.sh", "Successfully started update process!")
+        policy = await utils.policies.get_setting(schemes.Policy)
+        run_script = "./install-master.sh" if policy.staging_updates else "./update.sh"
+        return utils.host.run_host_output(run_script, "Successfully started update process!")
     return {"status": "error", "message": "Not running in docker"}
 
 

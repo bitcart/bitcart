@@ -471,6 +471,7 @@ class Policy(BaseModel):
     disable_registration: bool = False
     discourage_index: bool = False
     check_updates: bool = True
+    staging_updates: bool = False
     allow_anonymous_configurator: bool = True
     captcha_sitekey: str = ""
     captcha_secretkey: str = ""
