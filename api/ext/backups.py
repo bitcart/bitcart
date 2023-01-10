@@ -86,9 +86,9 @@ class BackupsManager:
         output = {"status": "success" if ok else "error", "message": output}
         await run_hook("post_backup", backup_policy, output)
         if output["status"] == "error":
-            self.logger.error(output)
+            self.logger.error(f"Backup failed with error:\n{output['message']}")
         else:
-            self.logger.info(output)
+            self.logger.info("Successfully performed backup!")
         return output
 
 
