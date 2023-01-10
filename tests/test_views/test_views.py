@@ -1537,3 +1537,8 @@ async def test_products_quantity_management(client: TestClient, user, token, sto
     assert (
         await client.post("/invoices", json={"price": 1, "store_id": store_id, "products": {product2["id"]: 10}})
     ).status_code == 422  # disallow creating invoice with too much stock
+
+
+async def test_configurator_dns_resolve(client: TestClient):
+    assert (await client.get("/configurator/dns-resolve?name=test")).json() is False
+    assert (await client.get("/configurator/dns-resolve?name=example.com")).json() is True

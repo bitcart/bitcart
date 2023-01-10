@@ -1,3 +1,4 @@
+import socket
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException
@@ -41,3 +42,12 @@ async def get_server_settings(request: Request, ssh_settings: Optional[schemes.S
     server_settings = ssh_ext.collect_server_settings(ssh_settings)
     await run_hook("configurator_server_settings", server_settings)
     return server_settings
+
+
+@router.get("/dns-resolve")
+async def check_dns_entry(name: str):
+    try:
+        socket.getaddrinfo(name, 0)
+        return True
+    except Exception:
+        return False
