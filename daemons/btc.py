@@ -390,6 +390,16 @@ class BTCDaemon(BaseDaemon):
         elif event == "new_payment":
             wallet, address, status = args
             request = self._get_request(wallet, address)
+            # TODO: remove workaround when we fix electrums
+            if hasattr(wallet, "_requests_addr_to_key"):
+                actual_address = self._get_request_address(request)
+                keys = wallet._requests_addr_to_key.get(actual_address) or []
+                reqs = [wallet._receive_requests.get(key) for key in keys]
+                for req in reqs:
+                    if not req.has_expired():
+                        address = req.get_id()
+                        request = self._get_request(wallet, address)
+                        break
             tx_hashes = self.get_tx_hashes_for_invoice(wallet, request)
             data = {
                 "address": str(address),

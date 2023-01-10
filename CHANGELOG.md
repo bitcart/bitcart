@@ -2,6 +2,69 @@
 
 ## Latest changes
 
+## 0.7.1.0
+
+This release packs a lot of small, but quality of life improvements and fixes
+
+### Fix BTC payments processing
+
+BTC payments processing was not working in some cases since 0.6.15.0 release. This is now fixed.
+
+### Underpaid/overpaid payments detection
+
+Now for each invoice you will be able to see sent amount - how much exactly the customer sent, and exception status: none if customer sent the exact required sum, `paid_partial` if customer underpaid, `paid_over` if customer overpaid.
+
+In case a partial payment is sent, checkout UI now updates and notifies the user that they didn't pay in full yet
+
+### Zero amount invoices
+
+It is now possible to create zero amount invoices: such invoices will get complete upon any payment. They are useful for top-up operations in some services.
+
+### Password reset
+
+Finally possible! If server owner has configured email server in server policies, it will be possible to reset password by a link to email.
+
+### Basic quantity management
+
+The store POS has gained basic quantity management: when a product is bought, it's quantity reduces. Unlimited quantity can be specified by setting `-1` as product quantity.
+
+### Allow running on bare ip
+
+It is now possible to easily run without a domain, just set `BITCART_HOST` to server ip address and it will just work!
+
+### Allow running staging updates
+
+In case you want to test a new feature, you can enable new setting in store policies, then update button will build docker images directly from master branch, allowing to test fixes without a release
+
+### DNS lookup in the configurator
+
+The configurator now checks if `BITCART_HOST` specified actually has any DNS records configured. If it doesn't, it warns the user that the installation will likely fail
+
+### Lunanode configurator shut down
+
+The old lunanode configurator deprecated long time ago is now shut down. https://launch.bitcartcc.com now redirects to the configurator.
+
+### New endpoint to get/create invoice by order id
+
+A new endpoint POST `/invoices/order_id/{order_id}` was added. It gets a pending invoice by order id, or if it doesn't exist, creates one with params specified. This is useful for our plugin integrations and it will be used to avoid duplicate invoices created on i.e. page refresh.
+
+### Misc changes and fixes
+
+- In case Merchants API is not available, store POS displays a helpful troubleshooting page
+- Use nodejs 18 in all frontends
+- Display product name in admin panel invoices page
+- Display if discount was applied
+- Loading animation for management commands buttons
+- Allow setting invoice expiration without modifying store checkout settings
+- Fix alembic migrations bad logs
+- Fix restoring backups from UI and other UI commands
+- Fix invoice export
+- Less verbose logging for backups
+- Allow configuring debug setting for daemons via `COIN_DEBUG`
+- Improve reliability of backup script
+- Allow running older version via `BITCART_VERSION` in docker deployment
+- Save plugins data in backups
+
 ## 0.7.0.1
 
 Fixes in plugin API: metadata is now json-encodable, fixed calling product creation hooks, better UI slots in store
