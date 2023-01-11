@@ -1,5 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, Response, Security
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, Security
 from fastapi.responses import StreamingResponse
+from fastapi.security import SecurityScopes
 from sqlalchemy import select
 
 from api import crud, models, pagination, schemes, settings, utils
@@ -16,7 +17,11 @@ async def get_invoice_noauth(model_id: str):
 
 
 @router.post("/order_id/{order_id}", response_model=schemes.DisplayInvoice)
-async def get_or_create_invoice_by_order_id(order_id: str, data: schemes.CreateInvoice):
+async def get_or_create_invoice_by_order_id(request: Request, order_id: str, data: schemes.CreateInvoice):
+    try:
+        user = await utils.authorization.AuthDependency()(request, SecurityScopes(["invoice_management"]))
+    except HTTPException:
+        user = None
     item = await utils.database.get_object(
         models.Invoice,
         order_id,
@@ -27,7 +32,7 @@ async def get_or_create_invoice_by_order_id(order_id: str, data: schemes.CreateI
     )
     if not item:
         data.order_id = order_id
-        item = await crud.invoices.create_invoice(data, user=None)
+        item = await crud.invoices.create_invoice(data, user)
     return item
 
 
