@@ -79,7 +79,8 @@ async def validate_credentials(request, token_data):
         user, status = await utils.authorization.authenticate_user(token_data.email, token_data.password)
         if not user:
             raise HTTPException(401, {"message": "Unauthorized", "status": status})
-    await utils.authorization.captcha_flow(token_data.captcha_code)
+    if not token:
+        await utils.authorization.captcha_flow(token_data.captcha_code)
     return user, token
 
 
