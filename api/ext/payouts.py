@@ -12,6 +12,8 @@ from api.utils.logging import log_errors
 
 logger = get_logger(__name__)
 
+SEND_ALL = Decimal("-1")
+
 
 class PayoutStatus:
     PENDING = "pending"
@@ -46,11 +48,25 @@ async def send_payout(payout, private_key=None):
     rate = await utils.wallets.get_rate(wallet, payout.currency)
     request_amount = currency_table.normalize(wallet.currency, payout.amount / rate, divisibility=divisibility)
     if not coin.is_eth_based:
+        if payout.amount == SEND_ALL:
+            request_amount = "!"
         raw_tx = await coin.pay_to(payout.destination, request_amount, broadcast=False)
     else:
         if wallet.contract:
+            if payout.amount == SEND_ALL:
+                request_amount = Decimal(await coin.server.readcontract(wallet.contract, "balanceOf", wallet.xpub)) / Decimal(
+                    10**divisibility
+                )
             raw_tx = await coin.server.transfer(wallet.contract, payout.destination, request_amount, unsigned=True)
         else:
+            if payout.amount == SEND_ALL:
+                request_amount = Decimal((await coin.balance())["confirmed"])
+                estimated_fee = Decimal(
+                    await coin.server.get_default_fee(
+                        await coin.server.payto(payout.destination, request_amount, unsigned=True)
+                    )
+                )
+                request_amount -= estimated_fee
             raw_tx = await coin.server.payto(payout.destination, request_amount, unsigned=True)
     predicted_fee = Decimal(await coin.server.get_default_fee(raw_tx))
     if payout.max_fee is not None:
