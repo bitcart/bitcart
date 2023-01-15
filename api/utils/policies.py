@@ -9,8 +9,12 @@ async def get_setting(scheme):
         models.Setting, custom_query=models.Setting.query.where(models.Setting.name == name), raise_exception=False
     )
     if not item:
-        return scheme()
-    return scheme(**json.loads(item.value))
+        data = scheme()
+    else:
+        data = scheme(**json.loads(item.value))
+    if hasattr(data, "async_init"):
+        await data.async_init()
+    return data
 
 
 async def set_setting(scheme):
@@ -29,4 +33,7 @@ async def set_setting(scheme):
     else:
         data["value"] = json.dumps(json_data)
         await utils.database.create_object(models.Setting, data)
-    return scheme.__class__(**json.loads(data["value"]))
+    data = scheme.__class__(**json.loads(data["value"]))
+    if hasattr(data, "async_init"):
+        await data.async_init()
+    return data

@@ -1,5 +1,3 @@
-from bitcart.errors import BaseError as BitcartBaseError
-
 from api import invoices, models, settings, utils
 from api.events import event_handler
 from api.ext.configurator import deploy_task
@@ -23,12 +21,12 @@ async def sync_wallet(event, event_data):
     model = await utils.database.get_object(models.Wallet, event_data["id"], raise_exception=False)
     if not model:
         return
-    coin = settings.settings.get_coin(
+    coin = await settings.settings.get_coin(
         model.currency, {"xpub": model.xpub, "contract": model.contract, **model.additional_xpub_data}
     )
     try:
         balance = await coin.balance()
-    except BitcartBaseError as e:
+    except Exception as e:
         logger.error(f"Wallet {model.id} failed to sync:\n{get_exception_message(e)}")
         await utils.redis.publish_message(f"wallet:{model.id}", {"status": "error", "balance": 0})
         return

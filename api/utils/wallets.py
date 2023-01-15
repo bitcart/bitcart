@@ -17,7 +17,7 @@ logger = get_logger(__name__)
 
 async def get_rate(wallet, currency, fallback_currency=None):
     try:
-        coin = settings.settings.get_coin(
+        coin = await settings.settings.get_coin(
             wallet.currency, {"xpub": wallet.xpub, "contract": wallet.contract, **wallet.additional_xpub_data}
         )
         symbol = await get_wallet_symbol(wallet, coin)
@@ -41,7 +41,7 @@ async def get_rate(wallet, currency, fallback_currency=None):
 
 
 async def get_wallet_history(model, response):
-    coin = settings.settings.get_coin(
+    coin = await settings.settings.get_coin(
         model.currency, {"xpub": model.xpub, "contract": model.contract, **model.additional_xpub_data}
     )
     txes = (await coin.history())["transactions"]
@@ -51,12 +51,12 @@ async def get_wallet_history(model, response):
 
 async def get_wallet_balance(wallet) -> Union[bool, Decimal]:
     try:
-        coin = settings.settings.get_coin(
+        coin = await settings.settings.get_coin(
             wallet.currency, {"xpub": wallet.xpub, "contract": wallet.contract, **wallet.additional_xpub_data}
         )
         divisibility = None if not wallet.contract else await coin.server.readcontract(wallet.contract, "decimals")
         return True, divisibility, await coin.balance()
-    except (BitcartBaseError, HTTPException) as e:
+    except Exception as e:
         logger.error(
             f"Error getting wallet balance for wallet {wallet.id} with currency {wallet.currency}:\n{get_exception_message(e)}"
         )
@@ -92,7 +92,7 @@ async def get_divisibility(wallet, coin):
 
 
 async def get_wallet_symbol(wallet, coin=None):
-    coin = coin or settings.settings.get_coin(
+    coin = coin or await settings.settings.get_coin(
         wallet.currency, {"xpub": wallet.xpub, "contract": wallet.contract, **wallet.additional_xpub_data}
     )
     return await coin.server.readcontract(wallet.contract, "symbol") if wallet.contract else wallet.currency

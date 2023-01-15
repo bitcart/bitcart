@@ -113,7 +113,7 @@ async def update_payment_details(
     if not fetch_data:
         raise HTTPException(404, "No such payment method found")
     method, wallet = fetch_data
-    coin = settings.settings.get_coin(
+    coin = await settings.settings.get_coin(
         method.currency, {"xpub": wallet.xpub, "contract": method.contract, **wallet.additional_xpub_data}
     )
     try:

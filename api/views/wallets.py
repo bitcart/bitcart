@@ -125,7 +125,7 @@ async def wallet_lnpay(
 @router.get("/schema")
 async def get_wallets_schema():
     return {
-        currency: {"required": [], "properties": coin.additional_xpub_fields}
+        currency: {"required": getattr(coin, "required_xpub_fields", []), "properties": coin.additional_xpub_fields}
         for currency, coin in settings.settings.cryptos.items()
     }
 

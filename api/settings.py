@@ -217,19 +217,29 @@ class Settings(BaseSettings):
                     required.remove("message")
             self.notifiers[notifier.name] = {"properties": properties, "required": required}
 
-    def get_coin(self, coin, xpub=None):
+    async def get_coin(self, coin, xpub=None):
+        from api.plugins import apply_filters
+
         coin = coin.lower()
         if coin not in self.cryptos:
             raise HTTPException(422, "Unsupported currency")
         if not xpub:
             return self.cryptos[coin]
-        return COINS[coin.upper()](xpub=xpub, **self.crypto_settings[coin]["credentials"])
+        obj = None
+        if coin.upper() in COINS:
+            obj = COINS[coin.upper()](xpub=xpub, **self.crypto_settings[coin]["credentials"])
+        return await apply_filters("get_coin", obj, coin, xpub)
 
-    def get_default_explorer(self, coin):
+    async def get_default_explorer(self, coin):
+        from api.plugins import apply_filters
+
         coin = coin.lower()
         if coin not in self.cryptos:
             raise HTTPException(422, "Unsupported currency")
-        return EXPLORERS.get(coin, {}).get(self.crypto_settings[coin]["network"], "")
+        explorer = ""
+        if coin in self.crypto_settings:
+            explorer = EXPLORERS.get(coin, {}).get(self.crypto_settings[coin]["network"], "")
+        return await apply_filters("get_coin_explorer", explorer, coin)
 
     def get_default_rpc(self, coin):
         coin = coin.lower()
@@ -273,6 +283,11 @@ class Settings(BaseSettings):
         self.redis_pool = aioredis.from_url(self.redis_host, decode_responses=True)
         await self.redis_pool.ping()
         await self.create_db_engine()
+
+    async def post_plugin_init(self):
+        from api.plugins import apply_filters
+
+        self.cryptos = await apply_filters("get_cryptos", self.cryptos)
 
     async def shutdown(self):
         if self.redis_pool:

@@ -27,7 +27,7 @@ async def run_universal(func, *args, **kwargs):
 
 
 async def run_repeated(func, timeout, start_timeout=None):  # pragma: no cover
-    if not start_timeout:
+    if start_timeout is None:
         start_timeout = timeout
     first_iter = True
     while True:

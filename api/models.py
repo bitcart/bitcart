@@ -249,7 +249,7 @@ class Wallet(BaseModel):
         await super().validate(kwargs)
         if any(key in kwargs for key in ("xpub", "contract", "additional_xpub_data")):
             currency = kwargs.get("currency", self.currency)
-            coin = settings.settings.get_coin(currency)
+            coin = await settings.settings.get_coin(currency)
             if "xpub" in kwargs or "additional_xpub_data" in kwargs:
                 await self.validate_xpub(
                     coin,
@@ -262,7 +262,7 @@ class Wallet(BaseModel):
                 kwargs["contract"] = tokens.get(kwargs["contract"], kwargs["contract"])
                 try:
                     if not await coin.server.validatecontract(kwargs["contract"]):
-                        raise HTTPException(422, "Contract invalid")
+                        raise HTTPException(422, "Invalid contract")
                     kwargs["contract"] = await coin.server.normalizeaddress(kwargs["contract"])
                 except BitcartBaseError as e:
                     logger.error(f"Failed to validate contract for currency {currency}:\n{get_exception_message(e)}")
@@ -664,7 +664,7 @@ class Payout(BaseModel):
             wallet_currency = (
                 await select([Wallet.currency]).where(Wallet.id == kwargs.get("wallet_id", self.wallet_id)).gino.scalar()
             )
-            coin = settings.settings.get_coin(wallet_currency)
+            coin = await settings.settings.get_coin(wallet_currency)
             destination = kwargs.get("destination", self.destination)
             if not await coin.server.validateaddress(destination):
                 raise HTTPException(422, "Invalid destination address")

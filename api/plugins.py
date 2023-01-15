@@ -49,6 +49,79 @@ class BasePlugin(metaclass=ABCMeta):
         )
 
 
+class CoinServer:
+    def __init__(self, currency, *args, **kwargs):
+        self.currency = currency
+
+    async def getinfo(self):
+        return {"currency": self.currency, "synchronized": True}
+
+    async def get_tokens(self):
+        return {}
+
+    async def getabi(self):
+        return []
+
+    async def validatecontract(self, contract):
+        return False
+
+    async def normalizeaddress(self, address):
+        return address
+
+    async def setrequestaddress(self, *args, **kwargs):
+        return False
+
+    async def validateaddress(self, address):
+        return True
+
+
+class BaseCoin(metaclass=ABCMeta):
+    coin_name: str
+    friendly_name: str
+    is_eth_based = False
+    additional_xpub_fields = []
+
+    def __init__(self, xpub=None, **additional_data):
+        self.xpub = xpub
+        server_cls = getattr(self, "server_cls", CoinServer)
+        self.server = server_cls(self.coin_name.capitalize())
+
+    @abstractmethod
+    async def validate_key(self, key, *args, **kwargs):
+        pass
+
+    @abstractmethod
+    async def balance(self):
+        pass
+
+    @abstractmethod
+    async def rate(self, currency):
+        pass
+
+    @abstractmethod
+    async def list_fiat(self):
+        pass
+
+    @property
+    async def node_id(self):
+        return None
+
+    async def list_channels(self):
+        return []
+
+    async def history(self):
+        return {"transactions": []}
+
+    async def open_channel(self, *args, **kwargs):
+        return False
+
+    async def close_channel(self, *args, **kwargs):
+        return False
+
+    async def lnpay(self, *args, **kwargs):
+        return False
+
+
 class PluginsManager:
     def __init__(self):
         self.plugins = {}
@@ -91,6 +164,7 @@ class PluginsManager:
                 await plugin.startup()
             except Exception as e:
                 logger.error(f"Plugin {plugin} failed to start: {get_exception_message(e)}")
+        await settings.settings.post_plugin_init()
 
     async def shutdown(self):
         for plugin in self.plugins.values():

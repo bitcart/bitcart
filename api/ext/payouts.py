@@ -40,7 +40,7 @@ async def send_payout(payout, private_key=None):
     store = await utils.database.get_object(models.Store, payout.store_id, raise_exception=False)
     if not wallet or not store or payout.status in SENT_STATUSES:
         return
-    coin = settings.settings.get_coin(
+    coin = await settings.settings.get_coin(
         wallet.currency,
         {"xpub": private_key or wallet.xpub, "contract": wallet.contract, "diskless": True, **wallet.additional_xpub_data},
     )
@@ -94,7 +94,7 @@ async def process_new_block(currency):
     coros = []
     for payout, wallet in payouts:
         with log_errors():
-            coin = settings.settings.get_coin(
+            coin = await settings.settings.get_coin(
                 currency, {"xpub": wallet.xpub, "contract": wallet.contract, **wallet.additional_xpub_data}
             )
             try:

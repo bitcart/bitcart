@@ -151,7 +151,7 @@ async def test_fiatlist_multi_coins(client: TestClient, mocker):
     mocker.patch("bitcart.BTC.list_fiat", return_value=get_future_return_value(["USD", "RMB", "JPY"]))
     mocker.patch("bitcart.LTC.list_fiat", return_value=get_future_return_value(["USD", "RUA", "AUD"]))
     resp = await client.get("/cryptos/fiatlist")
-    assert resp.json() == ["USD"]
+    assert resp.json() == ["AUD", "JPY", "RMB", "RUA", "USD"]
 
 
 async def check_ws_response(ws, sent_amount):
@@ -1531,7 +1531,6 @@ async def test_products_quantity_management(client: TestClient, user, token, sto
         json={"ids": [invoice2["id"]], "command": "mark_complete"},
         headers={"Authorization": f"Bearer {token}"},
     )
-    print(product1)
     assert (await client.get(f"/products/{product1['id']}")).json()["quantity"] == -1
     assert (await client.get(f"/products/{product2['id']}")).json()["quantity"] == 4
     assert (

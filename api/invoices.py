@@ -161,7 +161,7 @@ async def update_confirmations(invoice, method, confirmations, tx_hashes=[], sen
 
 
 async def get_confirmations(method, wallet):
-    coin = settings.settings.get_coin(
+    coin = await settings.settings.get_coin(
         method.currency, {"xpub": wallet.xpub, "contract": method.contract, **wallet.additional_xpub_data}
     )
     invoice_data = await coin.get_request(method.lookup_field)
@@ -330,14 +330,14 @@ async def create_expired_tasks():
                     asyncio.ensure_future(make_expired_task(invoice))
 
 
-async def check_pending(currency):
+async def check_pending(currency, process_func=process_electrum_status):
     coros = []
     coros.append(payout_ext.process_new_block(currency.lower()))
     async for method, invoice, wallet in iterate_pending_invoices(currency):
         with log_errors():  # issues processing one item
             if invoice.status == InvoiceStatus.EXPIRED:
                 continue
-            coin = settings.settings.get_coin(
+            coin = await settings.settings.get_coin(
                 method.currency, {"xpub": wallet.xpub, "contract": method.contract, **wallet.additional_xpub_data}
             )
             if method.lightning:
@@ -345,7 +345,7 @@ async def check_pending(currency):
             else:
                 invoice_data = await coin.get_request(method.lookup_field)
             coros.append(
-                process_electrum_status(
+                process_func(
                     invoice,
                     method,
                     wallet,

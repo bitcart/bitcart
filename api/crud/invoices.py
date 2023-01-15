@@ -80,9 +80,14 @@ async def create_invoice(invoice: schemes.CreateInvoice, user: schemes.User):
 
 
 async def _create_payment_method(invoice, wallet, product, store, discounts, promocode, lightning=False):
-    coin = settings.settings.get_coin(
+    coin = await settings.settings.get_coin(
         wallet.currency, {"xpub": wallet.xpub, "contract": wallet.contract, **wallet.additional_xpub_data}
     )
+    method = await apply_filters(
+        "create_payment_method", None, coin, invoice, wallet, product, store, discounts, promocode, lightning
+    )
+    if method is not None:  # pragma: no cover
+        return method
     discount_id = None
     symbol = await utils.wallets.get_wallet_symbol(wallet, coin)
     divisibility = await utils.wallets.get_divisibility(wallet, coin)
@@ -127,7 +132,7 @@ async def _create_payment_method(invoice, wallet, product, store, discounts, pro
     rhash = data_got["rhash"] if lightning else None
     lookup_field = data_got["request_id"] if "request_id" in data_got else address
     return await apply_filters(
-        "create_payment_method",
+        "postcreate_payment_method",
         dict(
             id=utils.common.unique_id(),
             invoice_id=invoice.id,
@@ -149,6 +154,7 @@ async def _create_payment_method(invoice, wallet, product, store, discounts, pro
             contract=wallet.contract,
             symbol=symbol,
             divisibility=divisibility,
+            metadata={},
         ),
         invoice,
         wallet,

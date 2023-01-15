@@ -17,7 +17,7 @@ router = APIRouter()
 
 @router.get("")  # Note: we use empty string there as it's included as subrouter, to avoid redirects
 async def get_cryptos():
-    return prepare_compliant_response(list(settings.settings.cryptos.keys()))
+    return prepare_compliant_response(await apply_filters("get_currencies", list(settings.settings.cryptos.keys())))
 
 
 @router.get("/supported")
@@ -27,7 +27,7 @@ async def get_supported_cryptos():
 
 @router.get("/rate")
 async def rate(currency: str = "btc", fiat_currency: str = "USD"):
-    coin = settings.settings.get_coin(currency)
+    coin = await settings.settings.get_coin(currency)
     rate = await apply_filters("get_rate", await coin.rate(fiat_currency.upper()), coin, fiat_currency.upper(), None)
     if math.isnan(rate):
         raise HTTPException(422, "Unsupported fiat currency")
@@ -49,7 +49,7 @@ async def get_fiatlist(query: Optional[str] = None):
         if not s:
             s = set(fiat_list)
         else:
-            s = s.intersection(fiat_list)
+            s = s.union(fiat_list)
     if not s:
         s = set()
     s = await apply_filters("get_fiatlist", s)
@@ -61,18 +61,20 @@ async def get_fiatlist(query: Optional[str] = None):
 
 @router.get("/tokens/{currency}")
 async def get_tokens(currency: str):
-    tokens = await apply_filters("get_tokens", await settings.settings.get_coin(currency).server.get_tokens(), currency)
+    tokens = await apply_filters(
+        "get_tokens", await (await settings.settings.get_coin(currency)).server.get_tokens(), currency
+    )
     return prepare_compliant_response(list(tokens.keys()))
 
 
 @router.get("/tokens/{currency}/abi")
 async def get_tokens_abi(currency: str):
-    return await apply_filters("get_tokens_abi", await settings.settings.get_coin(currency).server.getabi(), currency)
+    return await apply_filters("get_tokens_abi", await (await settings.settings.get_coin(currency)).server.getabi(), currency)
 
 
 @router.get("/explorer/{currency}")
 async def get_default_explorer(currency: str):
-    return await apply_filters("get_default_explorer", settings.settings.get_default_explorer(currency), currency)
+    return await apply_filters("get_default_explorer", await settings.settings.get_default_explorer(currency), currency)
 
 
 @router.get("/rpc/{currency}")

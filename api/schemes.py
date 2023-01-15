@@ -487,14 +487,14 @@ class Policy(BaseModel):
 
     @validator("explorer_urls", pre=True, always=True)
     def set_explorer_urls(cls, v):
+        return v or {}
+
+    async def async_init(self):
         from api import settings
 
-        if not v:
-            v = {}
         for key in settings.settings.cryptos:
-            if v.get(key) is None:
-                v[key] = settings.settings.get_default_explorer(key)
-        return v
+            if self.explorer_urls.get(key) is None:
+                self.explorer_urls[key] = await settings.settings.get_default_explorer(key)
 
     @validator("rpc_urls", pre=True, always=True)  # pragma: no cover
     def set_rpc_urls(cls, v):
