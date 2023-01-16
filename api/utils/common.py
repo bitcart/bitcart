@@ -4,8 +4,10 @@ import secrets
 from collections import defaultdict
 from datetime import timedelta
 
+from anyio import Semaphore
 from dateutil.parser import isoparse
 from fastapi import HTTPException
+from starlette.concurrency import run_in_threadpool
 
 from api import utils
 from api.constants import ALPHABET, ID_LENGTH, STR_TO_BOOL_MAPPING
@@ -133,3 +135,14 @@ def prepare_query_params(request, custom_params=()):
     for key in ("model", "offset", "limit", "query", "multiple", "sort", "desc") + custom_params:
         params.pop(key, None)
     return params
+
+
+# To not have too many threads running (which could happen on too many concurrent
+# requests, we limit it with a semaphore.
+MAX_CONCURRENT_THREADS = 50
+MAX_THREADS_GUARD = Semaphore(MAX_CONCURRENT_THREADS)
+
+
+async def run_async(func, *args, **kwargs):  # pragma: no cover
+    async with MAX_THREADS_GUARD:
+        return await run_in_threadpool(func, *args, **kwargs)
