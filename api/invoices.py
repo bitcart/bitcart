@@ -280,7 +280,7 @@ async def update_stock_levels(invoice):
 
 
 async def update_status(invoice, status, method=None, tx_hashes=[], sent_amount=Decimal(0)):
-    if status == InvoiceStatus.PENDING and invoice.status == InvoiceStatus.PENDING and method:
+    if status == InvoiceStatus.PENDING and invoice.status == InvoiceStatus.PENDING and method and sent_amount > 0:
         full_method_name = method.get_name()
         if not invoice.paid_currency or invoice.paid_currency == full_method_name:
             await invoice.update(
