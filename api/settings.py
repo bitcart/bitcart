@@ -17,8 +17,6 @@ from bitcart import COINS, APIManager
 from bitcart.coin import Coin
 from cachetools import TTLCache
 from fastapi import HTTPException
-from fido2.server import Fido2Server
-from fido2.webauthn import PublicKeyCredentialRpEntity
 from notifiers import all_providers, get_notifier
 from pydantic import BaseSettings, Field, validator
 from redis import asyncio as aioredis
@@ -72,7 +70,6 @@ class Settings(BaseSettings):
     config: Config = None
     logger: logging.Logger = None
     template_manager: TemplateManager = None
-    fido2_server: Fido2Server = None
     fido2_register_cache: TTLCache = None
     fido2_login_cache: TTLCache = None
     plugins: list = None
@@ -180,8 +177,6 @@ class Settings(BaseSettings):
         self.load_cryptos()
         self.load_notification_providers()
         self.template_manager = TemplateManager()
-        # TODO: check what does id do
-        self.fido2_server = Fido2Server(PublicKeyCredentialRpEntity(name="BitcartCC", id="localhost"))
         self.fido2_register_cache = TTLCache(maxsize=float("inf"), ttl=SHORT_EXPIRATION)
         self.fido2_login_cache = TTLCache(maxsize=float("inf"), ttl=SHORT_EXPIRATION)
 

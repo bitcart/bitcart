@@ -1,7 +1,8 @@
 import pyotp
 from fastapi import APIRouter, HTTPException, Request, Security
 from fastapi.security import SecurityScopes
-from fido2.webauthn import AttestedCredentialData, PublicKeyCredentialUserEntity
+from fido2.server import Fido2Server
+from fido2.webauthn import AttestedCredentialData, PublicKeyCredentialRpEntity, PublicKeyCredentialUserEntity
 from sqlalchemy import distinct, func, select
 
 from api import crud, db, models, schemes, settings, utils
@@ -108,10 +109,11 @@ async def disable_totp(
 
 @router.post("/2fa/fido2/register/begin")
 async def register_fido2(
+    auth_data: schemes.LoginFIDOData,
     user: models.User = Security(utils.authorization.AuthDependency(), scopes=["token_management"]),
 ):  # pragma: no cover
     existing_credentials = list(map(lambda x: AttestedCredentialData(bytes.fromhex(x["device_data"])), user.fido2_devices))
-    options, state = settings.settings.fido2_server.register_begin(
+    options, state = Fido2Server(PublicKeyCredentialRpEntity(name="BitcartCC", id=auth_data.auth_host)).register_begin(
         PublicKeyCredentialUserEntity(
             id=user.id.encode(),
             name=user.email,
@@ -131,10 +133,11 @@ async def fido2_complete_registration(
     user: models.User = Security(utils.authorization.AuthDependency(), scopes=["token_management"]),
 ):  # pragma: no cover
     data = await request.json()
-    if "name" not in data:
+    if "name" not in data or "auth_host" not in data:
         raise HTTPException(422, "Missing name")
+    auth_host = data["auth_host"]
     try:
-        auth_data = settings.settings.fido2_server.register_complete(
+        auth_data = Fido2Server(PublicKeyCredentialRpEntity(name="BitcartCC", id=auth_host)).register_complete(
             settings.settings.fido2_register_cache.pop(user.id, None), data
         )
     except Exception as e:

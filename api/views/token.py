@@ -4,7 +4,8 @@ from typing import List, Optional
 import pyotp
 from fastapi import APIRouter, Depends, HTTPException, Query, Security
 from fastapi.security import SecurityScopes
-from fido2.webauthn import AttestedCredentialData
+from fido2.server import Fido2Server
+from fido2.webauthn import AttestedCredentialData, PublicKeyCredentialRpEntity
 from starlette.requests import Request
 
 from api import models, pagination, schemes, settings, utils
@@ -106,7 +107,7 @@ async def create_token(
         for permission in token_data["permissions"]:
             if permission not in token.permissions:
                 raise HTTPException(403, "Not enough permissions")
-    requires_extra = user.tfa_enabled or bool(user.fido2_devices)
+    requires_extra = not token and (user.tfa_enabled or bool(user.fido2_devices))
     if requires_extra:
         async with utils.redis.wait_for_redis():
             code = utils.common.unique_id()
@@ -171,7 +172,9 @@ async def create_token_fido2_begin(auth_data: schemes.FIDO2Auth):  # pragma: no 
     if not user:
         raise HTTPException(422, "Invalid token")
     existing_credentials = list(map(lambda x: AttestedCredentialData(bytes.fromhex(x["device_data"])), user.fido2_devices))
-    options, state = settings.settings.fido2_server.authenticate_begin(existing_credentials, user_verification="discouraged")
+    options, state = Fido2Server(PublicKeyCredentialRpEntity(name="BitcartCC", id=auth_data.auth_host)).authenticate_begin(
+        existing_credentials, user_verification="discouraged"
+    )
     settings.settings.fido2_login_cache[user.id] = state
     return dict(options)
 
@@ -179,8 +182,9 @@ async def create_token_fido2_begin(auth_data: schemes.FIDO2Auth):  # pragma: no 
 @router.post("/2fa/fido2/complete")
 async def create_token_fido2_complete(request: Request):  # pragma: no cover
     data = await request.json()
-    if "token" not in data:
+    if "token" not in data or "auth_host" not in data:
         raise HTTPException(422, "Missing name")
+    auth_host = data["auth_host"]
     async with utils.redis.wait_for_redis():
         token_data = await settings.settings.redis_pool.get(f"{TFA_REDIS_KEY}:{data['token']}")
     if token_data is None:
@@ -191,7 +195,7 @@ async def create_token_fido2_complete(request: Request):  # pragma: no cover
         raise HTTPException(422, "Invalid token")
     existing_credentials = list(map(lambda x: AttestedCredentialData(bytes.fromhex(x["device_data"])), user.fido2_devices))
     try:
-        settings.settings.fido2_server.authenticate_complete(
+        Fido2Server(PublicKeyCredentialRpEntity(name="BitcartCC", id=auth_host)).authenticate_complete(
             settings.settings.fido2_login_cache.pop(user.id, None),
             existing_credentials,
             data,

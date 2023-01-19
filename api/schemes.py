@@ -98,6 +98,11 @@ class TOTPAuth(VerifyTOTP):
 
 class FIDO2Auth(BaseModel):
     token: str
+    auth_host: str
+
+
+class LoginFIDOData(BaseModel):
+    auth_host: str
 
 
 class RegisterFidoData(BaseModel):
