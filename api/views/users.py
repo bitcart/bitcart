@@ -1,3 +1,5 @@
+import json
+
 import pyotp
 from fastapi import APIRouter, HTTPException, Request, Security
 from fastapi.security import SecurityScopes
@@ -6,6 +8,7 @@ from fido2.webauthn import AttestedCredentialData, PublicKeyCredentialRpEntity, 
 from sqlalchemy import distinct, func, select
 
 from api import crud, db, models, schemes, settings, utils
+from api.constants import FIDO2_REGISTER_KEY, SHORT_EXPIRATION
 from api.plugins import run_hook
 
 router = APIRouter()
@@ -123,7 +126,8 @@ async def register_fido2(
         user_verification="preferred",
         authenticator_attachment="cross-platform",
     )
-    settings.settings.fido2_register_cache[user.id] = state
+    async with utils.redis.wait_for_redis():
+        await settings.settings.redis_pool.set(f"{FIDO2_REGISTER_KEY}:{user.id}", json.dumps(state), ex=SHORT_EXPIRATION)
     return dict(options)
 
 
@@ -136,12 +140,15 @@ async def fido2_complete_registration(
     if "name" not in data or "auth_host" not in data:
         raise HTTPException(422, "Missing name")
     auth_host = data["auth_host"]
+    async with utils.redis.wait_for_redis():
+        state = await settings.settings.redis_pool.get(f"{FIDO2_REGISTER_KEY}:{user.id}")
+        state = json.loads(state) if state else None
     try:
-        auth_data = Fido2Server(PublicKeyCredentialRpEntity(name="BitcartCC", id=auth_host)).register_complete(
-            settings.settings.fido2_register_cache.pop(user.id, None), data
-        )
+        auth_data = Fido2Server(PublicKeyCredentialRpEntity(name="BitcartCC", id=auth_host)).register_complete(state, data)
     except Exception as e:
         raise HTTPException(422, str(e))
+    async with utils.redis.wait_for_redis():
+        await settings.settings.redis_pool.delete(f"{FIDO2_REGISTER_KEY}:{user.id}")
     user.fido2_devices.append(
         {"name": data["name"], "id": utils.common.unique_id(), "device_data": auth_data.credential_data.hex()}
     )

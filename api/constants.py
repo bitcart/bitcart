@@ -34,3 +34,5 @@ PLUGINS_SCHEMA_URL = "https://bitcartcc.com/schemas/plugin/1.0.0/plugin.schema.j
 SHORT_EXPIRATION = 60 * 60  # used for temporary codes
 TFA_RECOVERY_ALPHABET = "23456789BCDFGHJKMNPQRTVWXY".lower()  # avoid confusing chars
 TFA_RECOVERY_LENGTH = 5  # each part has 5 chars
+FIDO2_REGISTER_KEY = "fido2_register_cache"
+FIDO2_LOGIN_KEY = "fido2_login_cache"

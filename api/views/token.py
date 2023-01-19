@@ -9,7 +9,7 @@ from fido2.webauthn import AttestedCredentialData, PublicKeyCredentialRpEntity
 from starlette.requests import Request
 
 from api import models, pagination, schemes, settings, utils
-from api.constants import SHORT_EXPIRATION
+from api.constants import FIDO2_LOGIN_KEY, SHORT_EXPIRATION
 from api.plugins import run_hook
 
 router = APIRouter()
@@ -175,7 +175,8 @@ async def create_token_fido2_begin(auth_data: schemes.FIDO2Auth):  # pragma: no 
     options, state = Fido2Server(PublicKeyCredentialRpEntity(name="BitcartCC", id=auth_data.auth_host)).authenticate_begin(
         existing_credentials, user_verification="discouraged"
     )
-    settings.settings.fido2_login_cache[user.id] = state
+    async with utils.redis.wait_for_redis():
+        await settings.settings.redis_pool.set(f"{FIDO2_LOGIN_KEY}:{user.id}", json.dumps(state), ex=SHORT_EXPIRATION)
     return dict(options)
 
 
@@ -194,14 +195,19 @@ async def create_token_fido2_complete(request: Request):  # pragma: no cover
     if not user:
         raise HTTPException(422, "Invalid token")
     existing_credentials = list(map(lambda x: AttestedCredentialData(bytes.fromhex(x["device_data"])), user.fido2_devices))
+    async with utils.redis.wait_for_redis():
+        state = await settings.settings.redis_pool.get(f"{FIDO2_LOGIN_KEY}:{user.id}")
+        state = json.loads(state) if state else None
     try:
         Fido2Server(PublicKeyCredentialRpEntity(name="BitcartCC", id=auth_host)).authenticate_complete(
-            settings.settings.fido2_login_cache.pop(user.id, None),
+            state,
             existing_credentials,
             data,
         )
     except Exception as e:
         raise HTTPException(422, str(e))
+    async with utils.redis.wait_for_redis():
+        await settings.settings.redis_pool.delete(f"{FIDO2_LOGIN_KEY}:{user.id}")
     token = await utils.database.create_object(models.Token, token_data)
     await run_hook("token_created", token)
     async with utils.redis.wait_for_redis():

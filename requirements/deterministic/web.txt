@@ -190,10 +190,6 @@ bitcart==1.10.7.0 \
     --hash=sha256:86dba7ef763dc35e718b2a689eab73508facd3faa224ee039358996d378ba1b8 \
     --hash=sha256:d05a88359eaf942365337caa3b4143c88e13f47944e58ae2147f56455000ac2d
     # via -r requirements/web.txt
-cachetools==5.2.1 \
-    --hash=sha256:5991bc0e08a1319bb618d3195ca5b6bc76646a49c21d55962977197b301cc1fe \
-    --hash=sha256:8462eebf3a6c15d25430a8c27c56ac61340b2ecf60c9ce57afc2b97e450e47da
-    # via -r requirements/web.txt
 certifi==2022.12.7 \
     --hash=sha256:35824b4c3a97115964b408844d64aa14db1cc518f6562e8d7261699d1350a9e3 \
     --hash=sha256:4ad3232f5e926d6718ec31cfc1fcadfde020920e278684144551c91769c7bc18
