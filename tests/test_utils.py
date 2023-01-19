@@ -13,6 +13,7 @@ from notifiers.exceptions import BadArguments
 from redis.asyncio.client import PubSub
 
 from api import exceptions, models, schemes, settings, utils
+from api.constants import TFA_RECOVERY_ALPHABET
 from tests.helper import create_notification, create_store
 
 
@@ -352,3 +353,11 @@ async def test_run_universal():
 def test_get_redirect_url():
     assert utils.routing.get_redirect_url("https://example.com", code="test") == "https://example.com?code=test"
     assert utils.routing.get_redirect_url("https://example.com?code=1", code="test") == "https://example.com?code=1&code=test"
+
+
+def test_gen_recovery_code():
+    code = utils.authorization.generate_tfa_recovery_code()
+    assert len(code) == 11
+    assert code[5] == "-"
+    assert all(x in TFA_RECOVERY_ALPHABET for x in code[:5])
+    assert all(x in TFA_RECOVERY_ALPHABET for x in code[6:])

@@ -11,10 +11,14 @@ from contextlib import asynccontextmanager
 from contextvars import ContextVar
 from typing import Dict
 
+import fido2.features
 from aiohttp import ClientSession
 from bitcart import COINS, APIManager
 from bitcart.coin import Coin
+from cachetools import TTLCache
 from fastapi import HTTPException
+from fido2.server import Fido2Server
+from fido2.webauthn import PublicKeyCredentialRpEntity
 from notifiers import all_providers, get_notifier
 from pydantic import BaseSettings, Field, validator
 from redis import asyncio as aioredis
@@ -22,7 +26,7 @@ from starlette.config import Config
 from starlette.datastructures import CommaSeparatedStrings
 
 from api import db
-from api.constants import GIT_REPO_URL, PLUGINS_SCHEMA_URL, VERSION, WEBSITE
+from api.constants import GIT_REPO_URL, PLUGINS_SCHEMA_URL, SHORT_EXPIRATION, VERSION, WEBSITE
 from api.ext.blockexplorer import EXPLORERS
 from api.ext.notifiers import parse_notifier_schema
 from api.ext.rpc import RPC
@@ -31,6 +35,8 @@ from api.logger import configure_logserver, get_exception_message, get_logger
 from api.schemes import SSHSettings
 from api.templates import TemplateManager
 from api.utils.files import ensure_exists
+
+fido2.features.webauthn_json_mapping.enabled = True
 
 
 class Settings(BaseSettings):
@@ -66,6 +72,9 @@ class Settings(BaseSettings):
     config: Config = None
     logger: logging.Logger = None
     template_manager: TemplateManager = None
+    fido2_server: Fido2Server = None
+    fido2_register_cache: TTLCache = None
+    fido2_login_cache: TTLCache = None
     plugins: list = None
     plugins_schema: dict = {}
 
@@ -171,6 +180,10 @@ class Settings(BaseSettings):
         self.load_cryptos()
         self.load_notification_providers()
         self.template_manager = TemplateManager()
+        # TODO: check what does id do
+        self.fido2_server = Fido2Server(PublicKeyCredentialRpEntity(name="BitcartCC", id="localhost"))
+        self.fido2_register_cache = TTLCache(maxsize=float("inf"), ttl=SHORT_EXPIRATION)
+        self.fido2_login_cache = TTLCache(maxsize=float("inf"), ttl=SHORT_EXPIRATION)
 
     def load_plugins(self):
         from api.plugins import PluginsManager

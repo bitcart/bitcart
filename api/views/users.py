@@ -1,5 +1,7 @@
+import pyotp
 from fastapi import APIRouter, HTTPException, Request, Security
 from fastapi.security import SecurityScopes
+from fido2.webauthn import AttestedCredentialData, PublicKeyCredentialUserEntity
 from sqlalchemy import distinct, func, select
 
 from api import crud, db, models, schemes, settings, utils
@@ -82,6 +84,79 @@ async def create_user(model: schemes.CreateUser, request: Request):
     data["token"] = token.id
     await run_hook("user_created", user, token)
     return data
+
+
+@router.post("/2fa/totp/verify")
+async def verify_totp(
+    token_data: schemes.VerifyTOTP,
+    user: models.User = Security(utils.authorization.AuthDependency(), scopes=["token_management"]),
+):
+    if not pyotp.TOTP(user.totp_key).verify(token_data.code.replace(" ", "")):
+        raise HTTPException(422, "Invalid code")
+    recovery_codes = [utils.authorization.generate_tfa_recovery_code() for _ in range(10)]
+    await user.update(tfa_enabled=True, recovery_codes=recovery_codes).apply()
+    return recovery_codes
+
+
+@router.post("/2fa/disable")
+async def disable_totp(
+    user: models.User = Security(utils.authorization.AuthDependency(), scopes=["token_management"]),
+):
+    await user.update(tfa_enabled=False, totp_key=pyotp.random_base32()).apply()
+    return True
+
+
+@router.post("/2fa/fido2/register/begin")
+async def register_fido2(
+    user: models.User = Security(utils.authorization.AuthDependency(), scopes=["token_management"]),
+):  # pragma: no cover
+    existing_credentials = list(map(lambda x: AttestedCredentialData(bytes.fromhex(x["device_data"])), user.fido2_devices))
+    options, state = settings.settings.fido2_server.register_begin(
+        PublicKeyCredentialUserEntity(
+            id=user.id.encode(),
+            name=user.email,
+            display_name=user.email,
+        ),
+        existing_credentials,
+        user_verification="preferred",
+        authenticator_attachment="cross-platform",
+    )
+    settings.settings.fido2_register_cache[user.id] = state
+    return dict(options)
+
+
+@router.post("/2fa/fido2/register/complete")
+async def fido2_complete_registration(
+    request: Request,
+    user: models.User = Security(utils.authorization.AuthDependency(), scopes=["token_management"]),
+):  # pragma: no cover
+    data = await request.json()
+    if "name" not in data:
+        raise HTTPException(422, "Missing name")
+    try:
+        auth_data = settings.settings.fido2_server.register_complete(
+            settings.settings.fido2_register_cache.pop(user.id, None), data
+        )
+    except Exception as e:
+        raise HTTPException(422, str(e))
+    user.fido2_devices.append(
+        {"name": data["name"], "id": utils.common.unique_id(), "device_data": auth_data.credential_data.hex()}
+    )
+    await user.update(fido2_devices=user.fido2_devices).apply()
+    return True
+
+
+@router.delete("/2fa/fido2/{device_id}")
+async def fido2_delete_device(
+    device_id: str,
+    user: models.User = Security(utils.authorization.AuthDependency(), scopes=["token_management"]),
+):  # pragma: no cover
+    for device in user.fido2_devices:
+        if device["id"] == device_id:
+            user.fido2_devices.remove(device)
+            break
+    await user.update(fido2_devices=user.fido2_devices).apply()
+    return True
 
 
 utils.routing.ModelView.register(

@@ -2,8 +2,10 @@
 aiofiles
 alembic
 bitcart
+cachetools
 email-validator
 fastapi
+fido2
 gino
 hiredis
 Jinja2
@@ -13,6 +15,7 @@ packaging
 paramiko
 passlib[bcrypt]
 psycopg2-binary
+pyotp
 python-dateutil
 python-dotenv
 python-multipart
