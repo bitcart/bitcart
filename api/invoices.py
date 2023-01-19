@@ -182,7 +182,7 @@ async def new_block_handler(instance, event, height):
             await invoice.load_data()
             confirmations = await get_confirmations(method, wallet)
             if confirmations != method.confirmations:
-                coros.append(update_confirmations(invoice, method, confirmations))
+                coros.append(update_confirmations(invoice, method, confirmations, invoice.tx_hashes, invoice.sent_amount))
     coros.append(run_hook("new_block", instance.coin_name.lower(), height))
     # NOTE: if another operation in progress exception occurs, make it await one by one
     await asyncio.gather(*coros)
