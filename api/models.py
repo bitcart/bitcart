@@ -3,6 +3,7 @@ import secrets
 import sys
 from datetime import timedelta
 
+import pyotp
 from bitcart.errors import BaseError as BitcartBaseError
 from fastapi import HTTPException
 from fastapi.encoders import jsonable_encoder
@@ -197,7 +198,22 @@ class User(BaseModel):
     hashed_password = Column(Text)
     is_superuser = Column(Boolean(), default=False)
     created = Column(DateTime(True), nullable=False)
+    totp_key = Column(Text)
+    tfa_enabled = Column(Boolean(), default=False)
+    recovery_codes = Column(ARRAY(Text))
     settings = Column(JSON)
+
+    async def add_fields(self):
+        await super().add_fields()
+        if not self.totp_key:
+            self.totp_key = pyotp.random_base32()
+            await self.update(totp_key=self.totp_key).apply()
+        self.totp_url = pyotp.TOTP(self.totp_key).provisioning_uri(self.email, issuer_name="BitcartCC")
+
+    @classmethod
+    def prepare_create(cls, kwargs):
+        kwargs = super().prepare_create(kwargs)
+        kwargs["totp_key"] = pyotp.random_base32()
 
     @classmethod
     def process_kwargs(cls, kwargs):

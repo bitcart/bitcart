@@ -1,13 +1,18 @@
+import json
 from typing import List, Optional
 
+import pyotp
 from fastapi import APIRouter, Depends, HTTPException, Query, Security
 from fastapi.security import SecurityScopes
 from starlette.requests import Request
 
-from api import models, pagination, schemes, utils
+from api import models, pagination, schemes, settings, utils
+from api.constants import SHORT_EXPIRATION
 from api.plugins import run_hook
 
 router = APIRouter()
+
+TFA_REDIS_KEY = "users_tfa"
 
 
 @router.get("", response_model=utils.routing.get_pagination_model(schemes.Token))
@@ -100,10 +105,45 @@ async def create_token(
         for permission in token_data["permissions"]:
             if permission not in token.permissions:
                 raise HTTPException(403, "Not enough permissions")
-    token = await utils.database.create_object(models.Token, schemes.CreateDBToken(**token_data, user_id=user.id))
+    if user.tfa_enabled:
+        async with utils.redis.wait_for_redis():
+            code = utils.common.unique_id()
+            await settings.settings.redis_pool.set(
+                f"{TFA_REDIS_KEY}:{code}", schemes.CreateDBToken(**token_data, user_id=user.id).json(), ex=SHORT_EXPIRATION
+            )
+    else:
+        token = await utils.database.create_object(models.Token, schemes.CreateDBToken(**token_data, user_id=user.id))
+        await run_hook("token_created", token)
+    return {
+        **(schemes.Token.from_orm(token).dict() if not user.tfa_enabled else {}),
+        "access_token": token.id if not user.tfa_enabled else None,
+        "token_type": "bearer",
+        "tfa_required": user.tfa_enabled,
+        "tfa_code": code if user.tfa_enabled else None,
+    }
+
+
+@router.post("/2fa/totp")
+async def create_token_totp_auth(auth_data: schemes.TOTPAuth):
+    async with utils.redis.wait_for_redis():
+        token_data = await settings.settings.redis_pool.get(f"{TFA_REDIS_KEY}:{auth_data.token}")
+    if token_data is None:
+        raise HTTPException(422, "Invalid token")
+    token_data = schemes.CreateDBToken(**json.loads(token_data))
+    user = await utils.database.get_object(models.User, token_data.user_id, raise_exception=False)
+    if not user:
+        raise HTTPException(422, "Invalid token")
+    if auth_data.code not in user.recovery_codes and not pyotp.TOTP(user.totp_key).verify(auth_data.code.replace(" ", "")):
+        raise HTTPException(422, "Invalid code")
+    if auth_data.code in user.recovery_codes:
+        user.recovery_codes.remove(auth_data.code)
+        await user.update(recovery_codes=user.recovery_codes).apply()
+    token = await utils.database.create_object(models.Token, token_data)
     await run_hook("token_created", token)
     return {
         **schemes.Token.from_orm(token).dict(),
         "access_token": token.id,
         "token_type": "bearer",
+        "tfa_required": False,
+        "tfa_code": None,
     }

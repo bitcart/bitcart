@@ -1,3 +1,4 @@
+import pyotp
 from fastapi import APIRouter, HTTPException, Request, Security
 from fastapi.security import SecurityScopes
 from sqlalchemy import distinct, func, select
@@ -82,6 +83,26 @@ async def create_user(model: schemes.CreateUser, request: Request):
     data["token"] = token.id
     await run_hook("user_created", user, token)
     return data
+
+
+@router.post("/2fa/totp/verify")
+async def verify_totp(
+    token_data: schemes.VerifyTOTP,
+    user: models.User = Security(utils.authorization.AuthDependency(), scopes=["token_management"]),
+):
+    if not pyotp.TOTP(user.totp_key).verify(token_data.code.replace(" ", "")):
+        raise HTTPException(422, "Invalid code")
+    recovery_codes = [utils.authorization.generate_tfa_recovery_code() for _ in range(10)]
+    await user.update(tfa_enabled=True, recovery_codes=recovery_codes).apply()
+    return recovery_codes
+
+
+@router.post("/2fa/disable")
+async def disable_totp(
+    user: models.User = Security(utils.authorization.AuthDependency(), scopes=["token_management"]),
+):
+    await user.update(tfa_enabled=False, totp_key=pyotp.random_base32()).apply()
+    return True
 
 
 utils.routing.ModelView.register(

@@ -60,6 +60,9 @@ class User(BaseUser):
 
 class DisplayUser(BaseUser):
     id: Optional[str]
+    totp_key: str
+    totp_url: str
+    tfa_enabled: bool
 
 
 class HTTPCreateToken(CreatedMixin):
@@ -82,6 +85,14 @@ class HTTPCreateLoginToken(HTTPCreateToken):
     password: str = ""
     captcha_code: str = ""
     strict: bool = True
+
+
+class VerifyTOTP(BaseModel):
+    code: str
+
+
+class TOTPAuth(VerifyTOTP):
+    token: str
 
 
 class EditToken(BaseModel):

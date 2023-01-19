@@ -13,6 +13,7 @@ packaging
 paramiko
 passlib[bcrypt]
 psycopg2-binary
+pyotp
 python-dateutil
 python-dotenv
 python-multipart

@@ -1,3 +1,4 @@
+import secrets
 from typing import Optional
 
 from aiohttp import ClientSession
@@ -8,6 +9,7 @@ from starlette.requests import Request
 from starlette.status import HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN
 
 from api import models, schemes, utils
+from api.constants import TFA_RECOVERY_ALPHABET, TFA_RECOVERY_LENGTH
 from api.plugins import run_hook
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -19,6 +21,14 @@ def verify_password(plain_password, hashed_password):
 
 def get_password_hash(password):
     return pwd_context.hash(password)
+
+
+def generate_tfa_recovery_code():
+    return (
+        "".join(secrets.choice(TFA_RECOVERY_ALPHABET) for i in range(TFA_RECOVERY_LENGTH))
+        + "-"
+        + "".join(secrets.choice(TFA_RECOVERY_ALPHABET) for i in range(TFA_RECOVERY_LENGTH))
+    )
 
 
 async def authenticate_user(email: str, password: str):
