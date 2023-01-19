@@ -63,6 +63,7 @@ class DisplayUser(BaseUser):
     totp_key: str
     totp_url: str
     tfa_enabled: bool
+    fido2_devices: list
 
 
 class HTTPCreateToken(CreatedMixin):
@@ -93,6 +94,14 @@ class VerifyTOTP(BaseModel):
 
 class TOTPAuth(VerifyTOTP):
     token: str
+
+
+class FIDO2Auth(BaseModel):
+    token: str
+
+
+class RegisterFidoData(BaseModel):
+    name: str
 
 
 class EditToken(BaseModel):

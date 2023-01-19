@@ -8,6 +8,7 @@ from collections import defaultdict
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
+import pyotp
 import pytest
 from bitcart import BTC, LTC
 from bitcart.errors import BaseError as BitcartBaseError
@@ -1541,3 +1542,39 @@ async def test_products_quantity_management(client: TestClient, user, token, sto
 async def test_configurator_dns_resolve(client: TestClient):
     assert (await client.get("/configurator/dns-resolve?name=test")).json() is False
     assert (await client.get("/configurator/dns-resolve?name=example.com")).json() is True
+
+
+async def test_tfa_flow(client: TestClient, user, token):
+    original_token = token
+    assert (
+        await client.post("/users/2fa/totp/verify", json={"code": "wrong"}, headers={"Authorization": f"Bearer {token}"})
+    ).status_code == 422
+    resp = await client.post(
+        "/users/2fa/totp/verify",
+        json={"code": pyotp.TOTP(user["totp_key"]).now()},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 200
+    assert len(resp.json()) == 10
+    recovery_code = resp.json()[0]
+    token = (await client.post("/token", json={"email": user["email"], "password": static_data.USER_PWD})).json()
+    assert token["tfa_required"] is True
+    assert token["tfa_types"] == ["totp"]
+    assert (
+        await client.post("/token/2fa/totp", json={"token": "wrong", "code": pyotp.TOTP(user["totp_key"]).now()})
+    ).status_code == 422
+    assert (await client.post("/token/2fa/totp", json={"token": token["tfa_code"], "code": "wrong"})).status_code == 422
+    resp = await client.post("/token/2fa/totp", json={"token": token["tfa_code"], "code": pyotp.TOTP(user["totp_key"]).now()})
+    assert resp.status_code == 200
+    assert resp.json()["tfa_required"] is False
+    assert len(resp.json()["access_token"]) == len(original_token)
+    assert (
+        await client.post("/token/2fa/totp", json={"token": token["tfa_code"], "code": pyotp.TOTP(user["totp_key"]).now()})
+    ).status_code == 422
+    token = (await client.post("/token", json={"email": user["email"], "password": static_data.USER_PWD})).json()
+    assert (await client.post("/token/2fa/totp", json={"token": token["tfa_code"], "code": recovery_code})).status_code == 200
+    assert (await client.post("/token/2fa/totp", json={"token": token["tfa_code"], "code": recovery_code})).status_code == 422
+    assert (await client.post("/users/2fa/disable", headers={"Authorization": f"Bearer {original_token}"})).status_code == 200
+    assert (await client.post("/token", json={"email": user["email"], "password": static_data.USER_PWD})).json()[
+        "tfa_required"
+    ] is False

@@ -4,6 +4,7 @@ from typing import List, Optional
 import pyotp
 from fastapi import APIRouter, Depends, HTTPException, Query, Security
 from fastapi.security import SecurityScopes
+from fido2.webauthn import AttestedCredentialData
 from starlette.requests import Request
 
 from api import models, pagination, schemes, settings, utils
@@ -105,7 +106,8 @@ async def create_token(
         for permission in token_data["permissions"]:
             if permission not in token.permissions:
                 raise HTTPException(403, "Not enough permissions")
-    if user.tfa_enabled:
+    requires_extra = user.tfa_enabled or bool(user.fido2_devices)
+    if requires_extra:
         async with utils.redis.wait_for_redis():
             code = utils.common.unique_id()
             await settings.settings.redis_pool.set(
@@ -114,12 +116,18 @@ async def create_token(
     else:
         token = await utils.database.create_object(models.Token, schemes.CreateDBToken(**token_data, user_id=user.id))
         await run_hook("token_created", token)
+    tfa_types = []
+    if user.fido2_devices:  # pragma: no cover
+        tfa_types.append("fido2")
+    if user.tfa_enabled:
+        tfa_types.append("totp")
     return {
-        **(schemes.Token.from_orm(token).dict() if not user.tfa_enabled else {}),
-        "access_token": token.id if not user.tfa_enabled else None,
+        **(schemes.Token.from_orm(token).dict() if not requires_extra else {}),
+        "access_token": token.id if not requires_extra else None,
         "token_type": "bearer",
-        "tfa_required": user.tfa_enabled,
-        "tfa_code": code if user.tfa_enabled else None,
+        "tfa_required": requires_extra,
+        "tfa_code": code if requires_extra else None,
+        "tfa_types": tfa_types,
     }
 
 
@@ -131,7 +139,7 @@ async def create_token_totp_auth(auth_data: schemes.TOTPAuth):
         raise HTTPException(422, "Invalid token")
     token_data = schemes.CreateDBToken(**json.loads(token_data))
     user = await utils.database.get_object(models.User, token_data.user_id, raise_exception=False)
-    if not user:
+    if not user:  # pragma: no cover
         raise HTTPException(422, "Invalid token")
     if auth_data.code not in user.recovery_codes and not pyotp.TOTP(user.totp_key).verify(auth_data.code.replace(" ", "")):
         raise HTTPException(422, "Invalid code")
@@ -140,10 +148,65 @@ async def create_token_totp_auth(auth_data: schemes.TOTPAuth):
         await user.update(recovery_codes=user.recovery_codes).apply()
     token = await utils.database.create_object(models.Token, token_data)
     await run_hook("token_created", token)
+    async with utils.redis.wait_for_redis():
+        await settings.settings.redis_pool.delete(f"{TFA_REDIS_KEY}:{auth_data.token}")
     return {
         **schemes.Token.from_orm(token).dict(),
         "access_token": token.id,
         "token_type": "bearer",
         "tfa_required": False,
         "tfa_code": None,
+        "tfa_types": [],
+    }
+
+
+@router.post("/2fa/fido2/begin")
+async def create_token_fido2_begin(auth_data: schemes.FIDO2Auth):  # pragma: no cover
+    async with utils.redis.wait_for_redis():
+        token_data = await settings.settings.redis_pool.get(f"{TFA_REDIS_KEY}:{auth_data.token}")
+    if token_data is None:
+        raise HTTPException(422, "Invalid token")
+    token_data = schemes.CreateDBToken(**json.loads(token_data))
+    user = await utils.database.get_object(models.User, token_data.user_id, raise_exception=False)
+    if not user:
+        raise HTTPException(422, "Invalid token")
+    existing_credentials = list(map(lambda x: AttestedCredentialData(bytes.fromhex(x["device_data"])), user.fido2_devices))
+    options, state = settings.settings.fido2_server.authenticate_begin(existing_credentials, user_verification="discouraged")
+    settings.settings.fido2_login_cache[user.id] = state
+    return dict(options)
+
+
+@router.post("/2fa/fido2/complete")
+async def create_token_fido2_complete(request: Request):  # pragma: no cover
+    data = await request.json()
+    if "token" not in data:
+        raise HTTPException(422, "Missing name")
+    async with utils.redis.wait_for_redis():
+        token_data = await settings.settings.redis_pool.get(f"{TFA_REDIS_KEY}:{data['token']}")
+    if token_data is None:
+        raise HTTPException(422, "Invalid token")
+    token_data = schemes.CreateDBToken(**json.loads(token_data))
+    user = await utils.database.get_object(models.User, token_data.user_id, raise_exception=False)
+    if not user:
+        raise HTTPException(422, "Invalid token")
+    existing_credentials = list(map(lambda x: AttestedCredentialData(bytes.fromhex(x["device_data"])), user.fido2_devices))
+    try:
+        settings.settings.fido2_server.authenticate_complete(
+            settings.settings.fido2_login_cache.pop(user.id, None),
+            existing_credentials,
+            data,
+        )
+    except Exception as e:
+        raise HTTPException(422, str(e))
+    token = await utils.database.create_object(models.Token, token_data)
+    await run_hook("token_created", token)
+    async with utils.redis.wait_for_redis():
+        await settings.settings.redis_pool.delete(f"{TFA_REDIS_KEY}:{data['token']}")
+    return {
+        **schemes.Token.from_orm(token).dict(),
+        "access_token": token.id,
+        "token_type": "bearer",
+        "tfa_required": False,
+        "tfa_code": None,
+        "tfa_types": [],
     }

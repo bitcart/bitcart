@@ -201,11 +201,12 @@ class User(BaseModel):
     totp_key = Column(Text)
     tfa_enabled = Column(Boolean(), default=False)
     recovery_codes = Column(ARRAY(Text))
+    fido2_devices = Column(ARRAY(JSON))
     settings = Column(JSON)
 
     async def add_fields(self):
         await super().add_fields()
-        if not self.totp_key:
+        if not self.totp_key:  # pragma: no cover # TODO: remove a few releases later
             self.totp_key = pyotp.random_base32()
             await self.update(totp_key=self.totp_key).apply()
         self.totp_url = pyotp.TOTP(self.totp_key).provisioning_uri(self.email, issuer_name="BitcartCC")
@@ -214,6 +215,9 @@ class User(BaseModel):
     def prepare_create(cls, kwargs):
         kwargs = super().prepare_create(kwargs)
         kwargs["totp_key"] = pyotp.random_base32()
+        kwargs["recovery_codes"] = []
+        kwargs["fido2_devices"] = []
+        return kwargs
 
     @classmethod
     def process_kwargs(cls, kwargs):

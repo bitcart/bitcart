@@ -2,8 +2,10 @@
 aiofiles
 alembic
 bitcart
+cachetools
 email-validator
 fastapi
+fido2
 gino
 hiredis
 Jinja2
