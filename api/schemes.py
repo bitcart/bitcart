@@ -56,10 +56,14 @@ class CreateUser(BaseUser):
 class User(BaseUser):
     id: Optional[str]
     password: Optional[str]
+    is_verified: bool = False
+    is_enabled: bool = True
 
 
 class DisplayUser(BaseUser):
     id: Optional[str]
+    is_verified: bool
+    is_enabled: bool
     totp_key: str
     totp_url: str
     tfa_enabled: bool
@@ -125,6 +129,10 @@ class ResetPasswordData(BaseModel):
     email: EmailStr
     next_url: str
     captcha_code: str = ""
+
+
+class VerifyEmailData(ResetPasswordData):
+    pass
 
 
 class ResetPasswordFinalize(BaseModel):
@@ -499,6 +507,7 @@ class Policy(BaseModel):
     _SECRET_FIELDS = {"captcha_secretkey", "email_settings"}
 
     disable_registration: bool = False
+    require_verified_email: bool = False
     discourage_index: bool = False
     check_updates: bool = True
     staging_updates: bool = False

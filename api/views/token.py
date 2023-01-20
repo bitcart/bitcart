@@ -107,27 +107,48 @@ async def create_token(
         for permission in token_data["permissions"]:
             if permission not in token.permissions:
                 raise HTTPException(403, "Not enough permissions")
+    if not user.is_enabled:
+        raise HTTPException(403, "Account is disabled")
+    policies = await utils.policies.get_setting(schemes.Policy)
+    if policies.require_verified_email and not user.is_verified:
+        raise HTTPException(403, "Email is not verified")
     requires_extra = not token and (user.tfa_enabled or bool(user.fido2_devices))
+    token_data = schemes.CreateDBToken(**token_data, user_id=user.id).dict()
     if requires_extra:
-        async with utils.redis.wait_for_redis():
-            code = utils.common.unique_id()
-            await settings.settings.redis_pool.set(
-                f"{TFA_REDIS_KEY}:{code}", schemes.CreateDBToken(**token_data, user_id=user.id).json(), ex=SHORT_EXPIRATION
-            )
+        return await create_token_tfa_flow(token_data, user)
     else:
-        token = await utils.database.create_object(models.Token, schemes.CreateDBToken(**token_data, user_id=user.id))
-        await run_hook("token_created", token)
+        return await create_token_normal(token_data)
+
+
+async def create_token_normal(token_data):
+    token = await utils.database.create_object(models.Token, token_data)
+    await run_hook("token_created", token)
+    return {
+        **schemes.Token.from_orm(token).dict(),
+        "access_token": token.id,
+        "token_type": "bearer",
+        "tfa_required": False,
+        "tfa_code": None,
+        "tfa_types": [],
+    }
+
+
+async def create_token_tfa_flow(token_data, user):
+    async with utils.redis.wait_for_redis():
+        code = utils.common.unique_id()
+        await settings.settings.redis_pool.set(
+            f"{TFA_REDIS_KEY}:{code}", schemes.CreateDBToken(**token_data).json(), ex=SHORT_EXPIRATION
+        )
     tfa_types = []
     if user.fido2_devices:  # pragma: no cover
         tfa_types.append("fido2")
     if user.tfa_enabled:
         tfa_types.append("totp")
     return {
-        **(schemes.Token.from_orm(token).dict() if not requires_extra else {}),
-        "access_token": token.id if not requires_extra else None,
+        "access_token": None,
         "token_type": "bearer",
-        "tfa_required": requires_extra,
-        "tfa_code": code if requires_extra else None,
+        "tfa_required": True,
+        "tfa_code": code,
         "tfa_types": tfa_types,
     }
 
@@ -147,18 +168,9 @@ async def create_token_totp_auth(auth_data: schemes.TOTPAuth):
     if auth_data.code in user.recovery_codes:
         user.recovery_codes.remove(auth_data.code)
         await user.update(recovery_codes=user.recovery_codes).apply()
-    token = await utils.database.create_object(models.Token, token_data)
-    await run_hook("token_created", token)
     async with utils.redis.wait_for_redis():
         await settings.settings.redis_pool.delete(f"{TFA_REDIS_KEY}:{auth_data.token}")
-    return {
-        **schemes.Token.from_orm(token).dict(),
-        "access_token": token.id,
-        "token_type": "bearer",
-        "tfa_required": False,
-        "tfa_code": None,
-        "tfa_types": [],
-    }
+    return await create_token_normal(token_data)
 
 
 @router.post("/2fa/fido2/begin")
@@ -208,15 +220,5 @@ async def create_token_fido2_complete(request: Request):  # pragma: no cover
         raise HTTPException(422, str(e))
     async with utils.redis.wait_for_redis():
         await settings.settings.redis_pool.delete(f"{FIDO2_LOGIN_KEY}:{user.id}")
-    token = await utils.database.create_object(models.Token, token_data)
-    await run_hook("token_created", token)
-    async with utils.redis.wait_for_redis():
         await settings.settings.redis_pool.delete(f"{TFA_REDIS_KEY}:{data['token']}")
-    return {
-        **schemes.Token.from_orm(token).dict(),
-        "access_token": token.id,
-        "token_type": "bearer",
-        "tfa_required": False,
-        "tfa_code": None,
-        "tfa_types": [],
-    }
+    return await create_token_normal(token_data)

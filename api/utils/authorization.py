@@ -94,6 +94,8 @@ class AuthDependency:
             )
         user, token = data  # first validate data, then unpack
         await user.load_data()
+        if not user.is_enabled:
+            raise HTTPException(403, "Account is disabled")
         forbidden_exception = HTTPException(
             status_code=HTTP_403_FORBIDDEN,
             detail="Not enough permissions",

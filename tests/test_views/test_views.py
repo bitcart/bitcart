@@ -388,6 +388,7 @@ async def test_policies(client: TestClient, token: str):
     assert resp.json() == {
         "allow_anonymous_configurator": True,
         "disable_registration": False,
+        "require_verified_email": False,
         "discourage_index": False,
         "check_updates": True,
         "staging_updates": False,
@@ -408,6 +409,7 @@ async def test_policies(client: TestClient, token: str):
     assert resp.json() == {
         "allow_anonymous_configurator": True,
         "disable_registration": True,
+        "require_verified_email": False,
         "discourage_index": False,
         "check_updates": True,
         "staging_updates": False,
@@ -425,6 +427,7 @@ async def test_policies(client: TestClient, token: str):
     assert (await client.get("/manage/policies")).json() == {
         "allow_anonymous_configurator": True,
         "disable_registration": True,
+        "require_verified_email": False,
         "discourage_index": False,
         "check_updates": True,
         "staging_updates": False,
@@ -444,6 +447,7 @@ async def test_policies(client: TestClient, token: str):
     assert resp.json() == {
         "allow_anonymous_configurator": True,
         "disable_registration": False,
+        "require_verified_email": False,
         "discourage_index": False,
         "check_updates": True,
         "staging_updates": False,
@@ -1578,3 +1582,53 @@ async def test_tfa_flow(client: TestClient, user, token):
     assert (await client.post("/token", json={"email": user["email"], "password": static_data.USER_PWD})).json()[
         "tfa_required"
     ] is False
+
+
+async def test_verify_email(client: TestClient, user, token, mocker):
+    assert user["is_verified"] is False
+    auth_code = None
+
+    def func(url, code):
+        nonlocal auth_code
+        auth_code = code
+
+    mocker.patch("api.utils.email.check_ping", return_value=True)
+    mocker.patch("api.utils.email.send_mail", return_value=True)
+    mocker.patch("api.utils.routing.get_redirect_url", side_effect=func)
+    assert (
+        await client.post("/users/verify", json={"email": "notexisting@gmail.com", "next_url": "https://example.com"})
+    ).status_code == 200
+    assert (
+        await client.post("/users/verify", json={"email": user["email"], "next_url": "https://example.com"})
+    ).status_code == 200
+    assert auth_code is not None
+    assert (await client.post("/users/verify/finalize/notexisting", json={"password": "12345678"})).status_code == 422
+    assert (await client.post(f"/users/verify/finalize/{auth_code}", json={"password": "12345678"})).status_code == 200
+    assert (await client.post(f"/users/verify/finalize/{auth_code}", json={"password": "12345678"})).status_code == 422
+    assert (await client.get("/users/me", headers={"Authorization": f"Bearer {token}"})).json()["is_verified"] is True
+    assert (await client.post("/users/verify", json={"email": user["email"], "next_url": "https://example.com"})).json()[
+        "detail"
+    ] == "User is already verified"
+
+
+async def test_token_verification(client: TestClient, user, token):
+    assert (
+        await client.post("/token", json={"email": "testsuperuser@example.com", "password": static_data.USER_PWD})
+    ).status_code == 200
+    await client.post(
+        "/manage/policies",
+        json={"require_verified_email": True},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert (await client.post("/token", json={"email": "testsuperuser@example.com", "password": static_data.USER_PWD})).json()[
+        "detail"
+    ] == "Email is not verified"
+    assert (
+        await client.patch(f"/users/{user['id']}", json={"is_enabled": False}, headers={"Authorization": f"Bearer {token}"})
+    ).status_code == 200
+    assert (await client.post("/token", json={"email": "testsuperuser@example.com", "password": static_data.USER_PWD})).json()[
+        "detail"
+    ] == "Account is disabled"
+    assert (
+        await client.patch(f"/users/{user['id']}", json={"is_enabled": True}, headers={"Authorization": f"Bearer {token}"})
+    ).json()["detail"] == "Account is disabled"

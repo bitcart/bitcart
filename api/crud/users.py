@@ -6,6 +6,7 @@ from api.db import db
 from api.plugins import run_hook
 
 RESET_REDIS_KEY = "reset_password"
+VERIFY_REDIS_KEY = "verify_email"
 
 
 async def user_count():
@@ -33,7 +34,7 @@ async def create_user(user: schemes.CreateUser, auth_user: schemes.User):
     return obj
 
 
-async def reset_user_password(user, next_url):
+async def generic_email_code_flow(redis_key, template_name, email_title, hook_name, user, next_url):
     policy = await utils.policies.get_setting(schemes.Policy)
     email_settings = policy.email_settings
     args = (
@@ -48,13 +49,21 @@ async def reset_user_password(user, next_url):
         return True
     code = utils.common.unique_id()
     async with utils.redis.wait_for_redis():
-        await settings.settings.redis_pool.set(f"{RESET_REDIS_KEY}:{code}", user.id, ex=SHORT_EXPIRATION)
+        await settings.settings.redis_pool.set(f"{redis_key}:{code}", user.id, ex=SHORT_EXPIRATION)
     reset_url = utils.routing.get_redirect_url(next_url, code=code)
     # TODO: switch to get_template and allow customizing for server admins only
-    template = settings.settings.template_manager.templates["forgotpassword"]
+    template = settings.settings.template_manager.templates[template_name]
     email_text = template.render(email=user.email, link=reset_url)
-    utils.email.send_mail(*args, user.email, email_text, "Password reset")
-    await run_hook("password_reset_requested", user, code)
+    utils.email.send_mail(*args, user.email, email_text, email_title)
+    await run_hook(f"{hook_name}_requested", user, code)
+
+
+async def reset_user_password(user, next_url):
+    await generic_email_code_flow(RESET_REDIS_KEY, "forgotpassword", "Password reset", "password_reset", user, next_url)
+
+
+async def send_verification_email(user, next_url):
+    await generic_email_code_flow(VERIFY_REDIS_KEY, "verifyemail", "Verify email", "verify_email", user, next_url)
 
 
 async def change_password(user, password, logout_all=True):

@@ -71,6 +71,33 @@ async def finalize_password_reset(code: str, data: schemes.ResetPasswordFinalize
     return True
 
 
+@router.post("/verify")
+async def send_verification_email(data: schemes.VerifyEmailData):
+    await utils.authorization.captcha_flow(data.captcha_code)
+    user = await utils.database.get_object(
+        models.User, custom_query=models.User.query.where(models.User.email == data.email), raise_exception=False
+    )
+    if not user:
+        return True
+    if user.is_verified:
+        raise HTTPException(422, "User is already verified")
+    await crud.users.send_verification_email(user, data.next_url)
+    return True
+
+
+@router.post("/verify/finalize/{code}")
+async def finalize_email_verification(code: str):
+    async with utils.redis.wait_for_redis():
+        user_id = await settings.settings.redis_pool.execute_command("GETDEL", f"{crud.users.VERIFY_REDIS_KEY}:{code}")
+    if user_id is None:
+        raise HTTPException(422, "Invalid code")
+    user = await utils.database.get_object(models.User, user_id, raise_exception=False)
+    if not user:  # pragma: no cover
+        raise HTTPException(422, "Invalid code")
+    await user.update(is_verified=True).apply()
+    return True
+
+
 class CreateUserWithToken(schemes.DisplayUser):
     token: str
 

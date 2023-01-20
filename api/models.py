@@ -197,6 +197,8 @@ class User(BaseModel):
     email = Column(Text, unique=True, index=True)
     hashed_password = Column(Text)
     is_superuser = Column(Boolean(), default=False)
+    is_verified = Column(Boolean(), default=False)
+    is_enabled = Column(Boolean(), default=True)
     created = Column(DateTime(True), nullable=False)
     totp_key = Column(Text)
     tfa_enabled = Column(Boolean(), default=False)
