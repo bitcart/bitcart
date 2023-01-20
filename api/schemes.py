@@ -114,6 +114,12 @@ class RegisterFidoData(BaseModel):
     name: str
 
 
+class ChangePassword(BaseModel):
+    old_password: str
+    password: str
+    logout_all: bool = False
+
+
 class EditToken(BaseModel):
     redirect_url: str = ""
 

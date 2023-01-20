@@ -1632,3 +1632,23 @@ async def test_token_verification(client: TestClient, user, token):
     assert (
         await client.patch(f"/users/{user['id']}", json={"is_enabled": True}, headers={"Authorization": f"Bearer {token}"})
     ).json()["detail"] == "Account is disabled"
+
+
+async def test_reset_password(client: TestClient, token):
+    assert (
+        await client.post(
+            "/users/password",
+            json={"old_password": "wrong", "password": "12345678"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+    ).status_code == 422
+    assert (
+        await client.post(
+            "/users/password",
+            json={"old_password": static_data.USER_PWD, "password": "12345678"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+    ).status_code == 200
+    assert (
+        await client.post("/token", json={"email": "testsuperuser@example.com", "password": static_data.USER_PWD})
+    ).status_code == 401

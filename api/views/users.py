@@ -126,6 +126,17 @@ async def create_user(model: schemes.CreateUser, request: Request):
     return data
 
 
+@router.post("/password")
+async def change_password(
+    data: schemes.ChangePassword,
+    user: models.User = Security(utils.authorization.AuthDependency(), scopes=["token_management"]),
+):
+    if not utils.authorization.verify_password(data.old_password, user.hashed_password):
+        raise HTTPException(422, "Invalid password")
+    await crud.users.change_password(user, data.password, data.logout_all)
+    return True
+
+
 @router.post("/2fa/totp/verify")
 async def verify_totp(
     token_data: schemes.VerifyTOTP,
