@@ -75,6 +75,9 @@ event_handler = EventHandler(
         "expired_task": {
             "params": {"id"},
         },
+        "send_verification_email": {
+            "params": {"id", "next_url"},
+        },
         "sync_wallet": {
             "params": {"id"},
         },

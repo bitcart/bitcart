@@ -36,3 +36,4 @@ TFA_RECOVERY_ALPHABET = "23456789BCDFGHJKMNPQRTVWXY".lower()  # avoid confusing 
 TFA_RECOVERY_LENGTH = 5  # each part has 5 chars
 FIDO2_REGISTER_KEY = "fido2_register_cache"
 FIDO2_LOGIN_KEY = "fido2_login_cache"
+VERIFY_EMAIL_EXPIRATION = 60 * 60 * 24  # 1 day

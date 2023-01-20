@@ -1,4 +1,4 @@
-from api import invoices, models, settings, utils
+from api import crud, invoices, models, settings, utils
 from api.events import event_handler
 from api.ext.configurator import deploy_task
 from api.ext.shopify import shopify_invoice_update
@@ -14,6 +14,14 @@ async def create_expired_task(event, event_data):
     if not invoice:
         return
     await invoices.make_expired_task(invoice)
+
+
+@event_handler.on("send_verification_email")
+async def send_verification_email(event, event_data):
+    user = await utils.database.get_object(models.User, event_data["id"], raise_exception=False)
+    if not user:
+        return
+    await crud.users.send_verification_email(user, event_data["next_url"])
 
 
 @event_handler.on("sync_wallet")

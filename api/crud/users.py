@@ -1,7 +1,7 @@
 from fastapi import HTTPException
 
 from api import models, schemes, settings, utils
-from api.constants import SHORT_EXPIRATION
+from api.constants import SHORT_EXPIRATION, VERIFY_EMAIL_EXPIRATION
 from api.db import db
 from api.plugins import run_hook
 
@@ -27,14 +27,17 @@ async def create_user(user: schemes.CreateUser, auth_user: schemes.User):
         is_superuser = user.is_superuser
     d = user.dict()
     d["is_superuser"] = is_superuser
-    d.pop("captcha_code", None)
+    for key in ("verify_url", "captcha_code"):
+        d.pop(key, None)
     obj = await utils.database.create_object(models.User, d)
     if is_superuser and auth_user is None:
         await run_hook("first_user", obj)
     return obj
 
 
-async def generic_email_code_flow(redis_key, template_name, email_title, hook_name, user, next_url):
+async def generic_email_code_flow(
+    redis_key, template_name, email_title, hook_name, user, next_url, expire_time=SHORT_EXPIRATION
+):
     policy = await utils.policies.get_setting(schemes.Policy)
     email_settings = policy.email_settings
     args = (
@@ -49,7 +52,7 @@ async def generic_email_code_flow(redis_key, template_name, email_title, hook_na
         return True
     code = utils.common.unique_id()
     async with utils.redis.wait_for_redis():
-        await settings.settings.redis_pool.set(f"{redis_key}:{code}", user.id, ex=SHORT_EXPIRATION)
+        await settings.settings.redis_pool.set(f"{redis_key}:{code}", user.id, ex=expire_time)
     reset_url = utils.routing.get_redirect_url(next_url, code=code)
     # TODO: switch to get_template and allow customizing for server admins only
     template = settings.settings.template_manager.templates[template_name]
@@ -62,8 +65,10 @@ async def reset_user_password(user, next_url):
     await generic_email_code_flow(RESET_REDIS_KEY, "forgotpassword", "Password reset", "password_reset", user, next_url)
 
 
-async def send_verification_email(user, next_url):
-    await generic_email_code_flow(VERIFY_REDIS_KEY, "verifyemail", "Verify email", "verify_email", user, next_url)
+async def send_verification_email(user, next_url, expire_time=VERIFY_EMAIL_EXPIRATION):
+    await generic_email_code_flow(
+        VERIFY_REDIS_KEY, "verifyemail", "Verify email", "verify_email", user, next_url, expire_time=expire_time
+    )
 
 
 async def change_password(user, password, logout_all=True):

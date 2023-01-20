@@ -7,7 +7,7 @@ from fido2.server import Fido2Server
 from fido2.webauthn import AttestedCredentialData, PublicKeyCredentialRpEntity, PublicKeyCredentialUserEntity
 from sqlalchemy import distinct, func, select
 
-from api import crud, db, models, schemes, settings, utils
+from api import crud, db, events, models, schemes, settings, utils
 from api.constants import FIDO2_REGISTER_KEY, SHORT_EXPIRATION
 from api.plugins import run_hook
 
@@ -72,8 +72,13 @@ async def finalize_password_reset(code: str, data: schemes.ResetPasswordFinalize
 
 
 @router.post("/verify")
-async def send_verification_email(data: schemes.VerifyEmailData):
-    await utils.authorization.captcha_flow(data.captcha_code)
+async def send_verification_email(request: Request, data: schemes.VerifyEmailData):
+    try:
+        auth_user = await utils.authorization.AuthDependency()(request, SecurityScopes(["token_management"]))
+    except HTTPException:
+        auth_user = None
+    if not auth_user:
+        await utils.authorization.captcha_flow(data.captcha_code)
     user = await utils.database.get_object(
         models.User, custom_query=models.User.query.where(models.User.email == data.email), raise_exception=False
     )
@@ -108,6 +113,10 @@ async def create_user(model: schemes.CreateUser, request: Request):
     except HTTPException:
         auth_user = None
     user = await crud.users.create_user(model, auth_user)
+    await events.event_handler.publish("send_verification_email", {"id": user.id, "next_url": model.verify_url})
+    policies = await utils.policies.get_setting(schemes.Policy)
+    if policies.require_verified_email:  # pragma: no cover
+        raise HTTPException(403, "Email is not verified")
     token = await utils.database.create_object(
         models.Token, schemes.CreateDBToken(permissions=["full_control"], user_id=user.id)
     )
