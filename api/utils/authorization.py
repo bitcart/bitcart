@@ -55,6 +55,7 @@ oauth2_scheme = OAuth2PasswordBearer(
         "payout_management": "Create, list or edit payouts",
         "notification_management": "Create, list or edit notification providers",
         "template_management": "Create, list or edit templates",
+        "file_management": "Create, list or edit files",
         "full_control": "Full control over what current user has",
     },
 )

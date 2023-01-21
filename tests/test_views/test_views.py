@@ -389,6 +389,7 @@ async def test_policies(client: TestClient, token: str):
         "allow_anonymous_configurator": True,
         "disable_registration": False,
         "require_verified_email": False,
+        "allow_file_uploads": True,
         "discourage_index": False,
         "check_updates": True,
         "staging_updates": False,
@@ -410,6 +411,7 @@ async def test_policies(client: TestClient, token: str):
         "allow_anonymous_configurator": True,
         "disable_registration": True,
         "require_verified_email": False,
+        "allow_file_uploads": True,
         "discourage_index": False,
         "check_updates": True,
         "staging_updates": False,
@@ -428,6 +430,7 @@ async def test_policies(client: TestClient, token: str):
         "allow_anonymous_configurator": True,
         "disable_registration": True,
         "require_verified_email": False,
+        "allow_file_uploads": True,
         "discourage_index": False,
         "check_updates": True,
         "staging_updates": False,
@@ -448,6 +451,7 @@ async def test_policies(client: TestClient, token: str):
         "allow_anonymous_configurator": True,
         "disable_registration": False,
         "require_verified_email": False,
+        "allow_file_uploads": True,
         "discourage_index": False,
         "check_updates": True,
         "staging_updates": False,
@@ -820,6 +824,15 @@ async def test_create_product_with_image(client: TestClient, token: str, image: 
         headers={"Authorization": f"Bearer {token}"},
     )
     assert patch_product_resp.status_code == 200
+    assert os.path.exists(os.path.join(settings.settings.products_image_dir, f"{product_dict['id']}.png"))
+    assert (
+        await client.post(
+            "/products/batch",
+            json={"ids": [product_dict["id"]], "command": "delete"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+    ).status_code == 200
+    assert not os.path.exists(os.path.join(settings.settings.products_image_dir, f"{product_dict['id']}.png"))
 
 
 async def test_create_invoice_without_coin_rate(client, token: str, mocker, store):
@@ -1652,3 +1665,53 @@ async def test_reset_password(client: TestClient, token):
     assert (
         await client.post("/token", json={"email": "testsuperuser@example.com", "password": static_data.USER_PWD})
     ).status_code == 401
+
+
+async def test_files_functionality(client: TestClient, token, limited_user):
+    limited_token = (await create_token(client, limited_user, permissions=["file_management"]))["access_token"]
+    resp = await client.post("/files", files={"file": ("test.txt", b"test")}, headers={"Authorization": f"Bearer {token}"})
+    assert resp.status_code == 200
+    file_id = resp.json()["id"]
+    stored_fname = f"{file_id}-{resp.json()['filename']}"
+    assert os.path.exists(os.path.join(settings.settings.files_dir, stored_fname))
+    limited_resp = await client.post(
+        "/files", files={"file": ("test.txt", b"test")}, headers={"Authorization": f"Bearer {limited_token}"}
+    )
+    assert limited_resp.status_code == 200
+    limited_file_id = limited_resp.json()["id"]
+    assert (
+        await client.post("/manage/policies", json={"allow_file_uploads": False}, headers={"Authorization": f"Bearer {token}"})
+    ).status_code == 200
+    assert (
+        await client.post(
+            "/files", files={"file": ("test.txt", b"test")}, headers={"Authorization": f"Bearer {limited_token}"}
+        )
+    ).status_code == 403
+    assert (
+        await client.patch(
+            f"/files/{limited_file_id}",
+            files={"file": ("test.txt", b"test")},
+            headers={"Authorization": f"Bearer {limited_token}"},
+        )
+    ).status_code == 403
+    assert (
+        await client.patch(
+            f"/files/{file_id}", files={"file": ("test2.txt", b"test2")}, headers={"Authorization": f"Bearer {token}"}
+        )
+    ).status_code == 200
+    assert not os.path.exists(os.path.join(settings.settings.files_dir, stored_fname))
+    stored_fname = f"{file_id}-test2.txt"
+    assert os.path.exists(os.path.join(settings.settings.files_dir, stored_fname))
+    assert (
+        await client.get(f"/files/handle/{file_id}")
+    ).next_request.url == f"http://testserver/files/localstorage/{stored_fname}"
+    assert (await client.delete(f"/files/{file_id}", headers={"Authorization": f"Bearer {token}"})).status_code == 200
+    assert not os.path.exists(os.path.join(settings.settings.files_dir, stored_fname))
+    assert (
+        await client.post(
+            "/files/batch",
+            json={"command": "delete", "ids": [limited_file_id]},
+            headers={"Authorization": f"Bearer {limited_token}"},
+        )
+    ).status_code == 200
+    assert not os.path.exists(os.path.join(settings.settings.files_dir, f"{limited_file_id}-test.txt"))

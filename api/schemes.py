@@ -515,6 +515,7 @@ class Policy(BaseModel):
 
     disable_registration: bool = False
     require_verified_email: bool = False
+    allow_file_uploads: bool = True
     discourage_index: bool = False
     check_updates: bool = True
     staging_updates: bool = False
@@ -711,3 +712,14 @@ class DisplayPayout(Payout):
 class UninstallPluginData(BaseModel):
     organization: str
     name: str
+
+
+class CreateFile(CreatedMixin):
+    class Config:
+        orm_mode = True
+
+
+class File(CreateFile):
+    id: str
+    filename: str
+    user_id: str

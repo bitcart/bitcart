@@ -96,6 +96,12 @@ class Settings(BaseSettings):
         return path
 
     @property
+    def files_dir(self) -> str:
+        path = os.path.join(self.datadir, "files")
+        ensure_exists(path)
+        return path
+
+    @property
     def log_dir(self) -> str:
         path = os.path.join(self.datadir, "logs")
         ensure_exists(path)

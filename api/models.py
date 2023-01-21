@@ -663,6 +663,23 @@ class Token(BaseModel):
         return kwargs
 
 
+class File(BaseModel):
+    __tablename__ = "files"
+
+    id = Column(Text, primary_key=True, index=True)
+    filename = Column(Text)
+    user_id = Column(Text, ForeignKey(User.id, ondelete="SET NULL"))
+    created = Column(DateTime(True), nullable=False)
+
+    @classmethod
+    def prepare_create(cls, kwargs):
+        from api import utils
+
+        kwargs = super().prepare_create(kwargs)
+        kwargs["created"] = utils.time.now()
+        return kwargs
+
+
 class Payout(BaseModel):
     __tablename__ = "payouts"
 
