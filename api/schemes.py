@@ -723,3 +723,8 @@ class File(CreateFile):
     id: str
     filename: str
     user_id: str
+
+
+class CreateWalletData(BaseModel):
+    currency: str
+    hot_wallet: bool

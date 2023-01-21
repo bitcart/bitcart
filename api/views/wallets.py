@@ -130,6 +130,21 @@ async def get_wallets_schema():
     }
 
 
+@router.post("/create")
+async def create_wallet(
+    data: schemes.CreateWalletData,
+    user: models.User = Security(utils.authorization.AuthDependency(), scopes=["wallet_management"]),
+):
+    coin = await settings.settings.get_coin(data.currency)
+    seed = await coin.server.make_seed()
+    if data.hot_wallet:
+        return {"seed": seed, "key": seed}
+    else:
+        coin = await settings.settings.get_coin(data.currency, {"xpub": seed, "diskless": True})
+        key = await coin.server.getmpk() if not coin.is_eth_based else await coin.server.getaddress()
+        return {"seed": seed, "key": key}
+
+
 utils.routing.ModelView.register(
     router,
     "/",

@@ -1715,3 +1715,17 @@ async def test_files_functionality(client: TestClient, token, limited_user):
         )
     ).status_code == 200
     assert not os.path.exists(os.path.join(settings.settings.files_dir, f"{limited_file_id}-test.txt"))
+
+
+async def test_generate_wallet(client: TestClient, token):
+    resp1 = await client.post(
+        "/wallets/create", json={"currency": "btc", "hot_wallet": True}, headers={"Authorization": f"Bearer {token}"}
+    )
+    resp2 = await client.post(
+        "/wallets/create", json={"currency": "btc", "hot_wallet": False}, headers={"Authorization": f"Bearer {token}"}
+    )
+    assert resp1.status_code == 200
+    assert resp2.status_code == 200
+    assert len(resp1.json()["seed"].split()) == len(resp2.json()["seed"].split()) == 12
+    assert resp1.json()["seed"] == resp1.json()["key"]
+    assert resp2.json()["key"].startswith("vpub")
