@@ -261,8 +261,8 @@ multidict==6.0.2 \
     # via
     #   aiohttp
     #   yarl
-oregano @ https://github.com/Ergon-moe/Oregano/archive/6b4c72f4af9d8e8fb1d3b3325cc63a67ae74ee18.zip \
-    --hash=sha256:92c9077ae87ea6db3e2b02860fb37b79bea21b875752909cbc968ceb01d1a112
+oregano @ https://github.com/Ergon-moe/Oregano/archive/6fc11cd927eda956e7fe3738fbddd30c347920a1.zip \
+    --hash=sha256:87301fc52d78f7b2cca2c581f69bdfa7945461b23afbf8bf3c495165cdd9d050
     # via -r requirements/daemons/xrg.txt
 packaging==21.3 \
     --hash=sha256:dd47c42927d89ab911e606518907cc2d3a1f38bbd026385970643f9c5b8ecfeb \

@@ -390,16 +390,6 @@ class BTCDaemon(BaseDaemon):
         elif event == "new_payment":
             wallet, address, status = args
             request = self._get_request(wallet, address)
-            # TODO: remove workaround when we fix electrums
-            if hasattr(wallet, "_requests_addr_to_key"):
-                actual_address = self._get_request_address(request)
-                keys = wallet._requests_addr_to_key.get(actual_address) or []
-                reqs = [wallet._receive_requests.get(key) for key in keys]
-                for req in reqs:
-                    if not req.has_expired():
-                        address = req.get_id()
-                        request = self._get_request(wallet, address)
-                        break
             tx_hashes = self.get_tx_hashes_for_invoice(wallet, request)
             data = {
                 "address": str(address),
@@ -578,6 +568,24 @@ class BTCDaemon(BaseDaemon):
             if str(e) == "Wallet not loaded":
                 raise
             return modify_payment_url("amount", url, amount)
+
+    @rpc(requires_wallet=True)
+    async def adjustforhwsign(self, tx, fingerprint, derivation, wallet):
+        self.wallets[wallet]["wallet"].keystore.add_key_origin(derivation_prefix=derivation, root_fingerprint=fingerprint)
+        tx = self.electrum.transaction.tx_from_any(tx)
+        tx.add_info_from_wallet(self.wallets[wallet]["wallet"])
+        tx.prepare_for_export_for_hardware_device(self.wallets[wallet]["wallet"])
+        return str(tx)
+
+    @rpc
+    async def getfingerprint(self, xpub, wallet=None):
+        return self.electrum.bip32.root_fp_and_der_prefix_from_xkey(xpub)[0]
+
+    @rpc(requires_wallet=True, requires_network=True)
+    async def finalizepsbt(self, psbt, wallet):
+        tx = self.electrum.transaction.tx_from_any(psbt)
+        tx.add_info_from_wallet(self.wallets[wallet]["wallet"])
+        return tx.serialize_to_network()
 
     async def get_commands_list(self, commands):
         return await commands.help()
