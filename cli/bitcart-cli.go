@@ -1,25 +1,43 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"context"
+	"embed"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
+	"text/template"
+	"time"
+	"unicode"
 
+	"github.com/AlecAivazis/survey/v2"
 	"github.com/joho/godotenv"
+	"github.com/santhosh-tekuri/jsonschema/v5"
+	_ "github.com/santhosh-tekuri/jsonschema/v5/httploader"
 	"github.com/urfave/cli/v2"
 	"github.com/ybbus/jsonrpc/v3"
+	"golang.org/x/exp/slices"
 )
+
+//go:embed plugin/*
+var pluginsData embed.FS
 
 var Version = "dev"
 var envFile = "../conf/.env"
+var schemaURL = "https://bitcartcc.com/schemas/plugin/1.0.0/plugin.schema.json"
+
 var COINS = map[string]string{
 	"btc":   "5000",
 	"ltc":   "5001",
@@ -33,6 +51,43 @@ var COINS = map[string]string{
 	"trx":   "5009",
 	"grs":   "5010",
 	"xmr":   "5011",
+}
+
+var basicPluginCreate = []*survey.Question{
+	{
+		Name:     "name",
+		Prompt:   &survey.Input{Message: "Enter the name for your plugin"},
+		Validate: survey.Required,
+	},
+	{
+		Name:     "organization",
+		Prompt:   &survey.Input{Message: "Enter the organization name for your plugin"},
+		Validate: survey.Required,
+	},
+	{
+		Name:   "description",
+		Prompt: &survey.Input{Message: "Enter plugin description (optional)"},
+	},
+	{
+		Name: "ComponentTypes",
+		Prompt: &survey.MultiSelect{
+			Message: "Select which components will your plugin update",
+			Options: []string{"backend", "admin", "store", "docker"},
+		},
+	},
+}
+
+type ComponentType struct {
+	Type string
+	Path string
+}
+
+type BasicCreatePluginAnswers struct {
+	Name           string
+	Organization   string
+	Description    string
+	ComponentTypes []string
+	FinalTypes     []ComponentType
 }
 
 func getSpec(client *http.Client, endpoint string, user string, password string) map[string]interface{} {
@@ -151,9 +206,223 @@ func runCommand(c *cli.Context) (*jsonrpc.RPCResponse, map[string]interface{}, e
 	return result, spec, nil
 }
 
+func getCacheDir() string {
+	baseDir, _ := os.UserCacheDir()
+	cacheDir := filepath.Join(baseDir, "bitcart-cli")
+	if _, err := os.Stat(cacheDir); os.IsNotExist(err) {
+		os.MkdirAll(cacheDir, 0755)
+	}
+	return cacheDir
+}
+
+func prepareSchema() *jsonschema.Schema {
+	cacheDir := getCacheDir()
+	schemaPath := filepath.Join(cacheDir, "plugin.schema.json")
+	if statResult, err := os.Stat(schemaPath); os.IsNotExist(err) || time.Since(statResult.ModTime().AddDate(0, 0, 7)) > time.Since(time.Now()) {
+		resp, err := http.Get(schemaURL)
+		checkErr(err)
+		defer resp.Body.Close()
+		data, err := ioutil.ReadAll(resp.Body)
+		checkErr(err)
+		checkErr(ioutil.WriteFile(schemaPath, data, 0644))
+	}
+	sch, err := jsonschema.Compile(schemaPath)
+	checkErr(err)
+	return sch
+}
+
+func validateFileExists(path string) bool {
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		return false
+	}
+	return true
+}
+
+func directoryValidator(val interface{}) error {
+	statResult, err := os.Stat(val.(string))
+	if os.IsNotExist(err) {
+		return errors.New("Directory does not exist")
+	}
+	if !statResult.IsDir() {
+		return errors.New("Path is not a directory")
+	}
+	return nil
+}
+
+func backendDirectoryValidator(val interface{}) error {
+	if !validateFileExists(filepath.Join(val.(string), "gunicorn.conf.py")) {
+		return errors.New("Directory does not look to be a cloned https://github.com/bitcartcc/bitcart repository")
+	}
+	return nil
+}
+
+func frontendDirectoryValidator(val interface{}) error {
+	if !validateFileExists(filepath.Join(val.(string), "nuxt.config.js")) {
+		return errors.New("Directory does not look to be a frontend repository")
+	}
+	return nil
+}
+
+func validateFrontend(componentType string, path string) {
+	for _, file := range []string{"index.js", "package.json", "config/index.js"} {
+		if !validateFileExists(filepath.Join(path, file)) {
+			log.Fatalf("Plugin's %s component %s does not include %s", componentType, path, file)
+		}
+	}
+}
+
+func validatePlugin(c *cli.Context) error {
+	args := c.Args()
+	if args.Len() < 1 {
+		return cli.ShowSubcommandHelp(c)
+	}
+	path := args.Get(0)
+	sch := prepareSchema()
+	manifestPath := filepath.Join(path, "manifest.json")
+	data, err := ioutil.ReadFile(manifestPath)
+	if err != nil {
+		log.Fatal(err)
+	}
+	var manifest interface{}
+	if err := json.Unmarshal(data, &manifest); err != nil {
+		log.Fatal(err)
+	}
+	if err = sch.Validate(manifest); err != nil {
+		log.Fatalf("%#v", err)
+	}
+	for _, installData := range manifest.(map[string]interface{})["installs"].([]interface{}) {
+		installData := installData.(map[string]interface{})
+		componentPath := filepath.Join(path, installData["path"].(string))
+		switch installData["type"] {
+		case "backend":
+			pluginBase := filepath.Join(componentPath, "plugin.py")
+			if !validateFileExists(pluginBase) {
+				log.Fatalf("Plugin's backend component %s does not include plugin.py", componentPath)
+			}
+		case "admin":
+			validateFrontend("admin", componentPath)
+		case "store":
+			validateFrontend("store", componentPath)
+		}
+	}
+	fmt.Println("Plugin is valid!")
+	return nil
+}
+
+func isBlank(str string) bool {
+	for _, r := range str {
+		if !unicode.IsSpace(r) {
+			return false
+		}
+	}
+	return true
+}
+
+func removeBlankLines(reader io.Reader, writer io.Writer) {
+	breader := bufio.NewReader(reader)
+	bwriter := bufio.NewWriter(writer)
+
+	for {
+		line, err := breader.ReadString('\n')
+
+		if !isBlank(line) {
+			bwriter.WriteString(line)
+		}
+
+		if err != nil {
+			break
+		}
+	}
+
+	bwriter.Flush()
+}
+
+func executeTemplate(templatePath string, data interface{}, stripSpaces bool) []byte {
+	tmpl, err := template.New(filepath.Base(templatePath)).Funcs(template.FuncMap{
+		"IsLast": func(i, size int) bool { return i == size-1 },
+	}).ParseFS(pluginsData, templatePath)
+	checkErr(err)
+	buf := new(bytes.Buffer)
+	checkErr(tmpl.ExecuteTemplate(buf, filepath.Base(templatePath), &data))
+	if !stripSpaces {
+		return buf.Bytes()
+	}
+	newBuf := new(bytes.Buffer)
+	removeBlankLines(bytes.NewReader(buf.Bytes()), newBuf)
+	return newBuf.Bytes()
+}
+
+func safeSymlink(src, dst string) {
+	os.MkdirAll(filepath.Dir(dst), os.ModePerm)
+	os.Remove(dst)
+	checkErr(os.Symlink(src, dst))
+}
+
+func copyFileContents(src, dst string) {
+	fileContent, err := pluginsData.ReadFile(src)
+	checkErr(err)
+	checkErr(os.WriteFile(dst, fileContent, os.ModePerm))
+}
+
+func initPlugin(c *cli.Context) error {
+	args := c.Args()
+	if args.Len() < 1 {
+		return cli.ShowSubcommandHelp(c)
+	}
+	path := args.Get(0)
+	path, err := filepath.Abs(path)
+	os.MkdirAll(path, os.ModePerm)
+	checkErr(err)
+	answers := BasicCreatePluginAnswers{}
+	checkErr(survey.Ask(basicPluginCreate, &answers))
+	if slices.Contains(answers.ComponentTypes, "backend") {
+		var backendPath string
+		var componentName string
+		checkErr(survey.AskOne(&survey.Input{Message: "Enter name of your backend component (i.e. name of the subfolder)"}, &componentName, survey.WithValidator(survey.Required)))
+		checkErr(survey.AskOne(&survey.Input{Message: "Enter the path to cloned bitcart repository"}, &backendPath, survey.WithValidator(survey.Required), survey.WithValidator(directoryValidator), survey.WithValidator(backendDirectoryValidator)))
+		backendPath, err := filepath.Abs(backendPath)
+		checkErr(err)
+		internalPath := filepath.Join(path, "src/backend/"+componentName)
+		answers.FinalTypes = append(answers.FinalTypes, ComponentType{Type: "backend", Path: "src/backend/" + componentName})
+		data := struct {
+			Name string
+		}{Name: componentName}
+		os.MkdirAll(internalPath, os.ModePerm)
+		checkErr(ioutil.WriteFile(filepath.Join(internalPath, "plugin.py"), executeTemplate("plugin/src/backend/plugin.py.tmpl", data, false), os.ModePerm))
+		safeSymlink(internalPath, filepath.Join(backendPath, "modules", answers.Organization, componentName))
+	}
+	for _, componentType := range []string{"admin", "store"} {
+		if slices.Contains(answers.ComponentTypes, componentType) {
+			var frontendPath string
+			var componentName string
+			checkErr(survey.AskOne(&survey.Input{Message: fmt.Sprintf("Enter name of your %s component (i.e. name of the subfolder)", componentType)}, &componentName, survey.WithValidator(survey.Required)))
+			checkErr(survey.AskOne(&survey.Input{Message: fmt.Sprintf("Enter the path to cloned %s frontend repository", componentType)}, &frontendPath, survey.WithValidator(survey.Required), survey.WithValidator(directoryValidator), survey.WithValidator(frontendDirectoryValidator)))
+			frontendPath, err := filepath.Abs(frontendPath)
+			checkErr(err)
+			answers.FinalTypes = append(answers.FinalTypes, ComponentType{Type: componentType, Path: "src/" + componentType + "/" + componentName})
+			internalPath := filepath.Join(path, "src/"+componentType+"/"+componentName)
+			os.MkdirAll(internalPath, os.ModePerm)
+			os.MkdirAll(filepath.Join(internalPath, "config"), os.ModePerm)
+			for _, file := range []string{"index.js", "config/extends.js", "config/routes.js"} {
+				copyFileContents(filepath.Join("plugin/src/frontend", file), filepath.Join(internalPath, file))
+			}
+			data := struct {
+				Organization string
+				Name         string
+			}{Organization: answers.Organization, Name: componentName}
+			checkErr(ioutil.WriteFile(filepath.Join(internalPath, "package.json"), executeTemplate("plugin/src/frontend/package.json.tmpl", data, false), os.ModePerm))
+			checkErr(ioutil.WriteFile(filepath.Join(internalPath, "config/index.js"), executeTemplate("plugin/src/frontend/config/index.js.tmpl", data, false), os.ModePerm))
+			safeSymlink(internalPath, filepath.Join(frontendPath, "modules", "@"+answers.Organization, componentName))
+		}
+	}
+	checkErr(ioutil.WriteFile(filepath.Join(path, "manifest.json"), executeTemplate("plugin/manifest.json.tmpl", answers, true), os.ModePerm))
+	fmt.Println("Plugin created successfully")
+	return nil
+}
+
 func main() {
 	app := cli.NewApp()
-	app.Name = "Bitcart CLI"
+	app.Name = "bitcart-cli"
 	app.Version = Version
 	app.HideHelp = true
 	app.Usage = "Call RPC methods from console"
@@ -234,8 +503,10 @@ func main() {
 		set.Parse([]string{"help"})
 		output, _, err := runCommand(cli.NewContext(app, set, c))
 		if err != nil || output.Error != nil {
+			fmt.Println("plugin")
 			return
 		}
+		output.Result = append(output.Result.([]interface{}), "plugin")
 		for _, v := range output.Result.([]interface{}) {
 			fmt.Println(v)
 		}
@@ -272,6 +543,26 @@ func main() {
 			cli.ShowAppHelp(c)
 		}
 		return nil
+	}
+	app.Commands = []*cli.Command{
+		{
+			Name:  "plugin",
+			Usage: "Manage plugins",
+			Subcommands: []*cli.Command{
+				{
+					Name:      "init",
+					Action:    initPlugin,
+					Usage:     "Create a new plugin",
+					UsageText: "bitcart-cli plugin init <path>",
+				},
+				{
+					Name:      "validate",
+					Action:    validatePlugin,
+					Usage:     "Validate plugin manifest and common checks",
+					UsageText: "bitcart-cli plugin validate <path>",
+				},
+			},
+		},
 	}
 	godotenv.Load(envFile)
 	err := app.Run(os.Args)

@@ -1,0 +1,12 @@
+{
+  "$schema": "https://bitcartcc.com/schemas/plugin/1.0.0/plugin.schema.json",
+  "name": "{{ .Name }}",
+  "organization": "{{ .Organization }}",
+  "version": "1.0.0",
+  "description": "{{ .Description }}",
+  "constraints": { "bitcartcc": "" },
+  "installs": [
+    {{ range $i,$el := .FinalTypes }}{ "type": "{{ $el.Type }}", "path": "{{ $el.Path }}" }{{ if not (IsLast $i (len $.FinalTypes)) }},{{ end }}
+    {{ end }}
+  ]
+}

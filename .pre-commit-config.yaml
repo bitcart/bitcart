@@ -48,6 +48,8 @@ repos:
     rev: v3.0.0-alpha.4
     hooks:
       - id: prettier
+        exclude: >-
+          ^cli/plugin/.*.$
   - repo: local
     hooks:
       - id: check-compiled
