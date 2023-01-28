@@ -90,4 +90,4 @@ This project follows the [all-contributors](https://github.com/all-contributors/
 
 Copyright (C) 2019 MrNaif2018
 
-Licensed under the [GPLv3+](LICENSE)
+Licensed under the [MIT license](LICENSE)
