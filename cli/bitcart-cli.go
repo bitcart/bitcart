@@ -209,7 +209,7 @@ func getCacheDir() string {
 	baseDir, _ := os.UserCacheDir()
 	cacheDir := filepath.Join(baseDir, "bitcart-cli")
 	if _, err := os.Stat(cacheDir); os.IsNotExist(err) {
-		os.MkdirAll(cacheDir, 0755)
+		os.MkdirAll(cacheDir, os.ModePerm)
 	}
 	return cacheDir
 }
@@ -223,7 +223,7 @@ func prepareSchema() *jsonschema.Schema {
 		defer resp.Body.Close()
 		data, err := ioutil.ReadAll(resp.Body)
 		checkErr(err)
-		checkErr(ioutil.WriteFile(schemaPath, data, 0644))
+		checkErr(ioutil.WriteFile(schemaPath, data, os.ModePerm))
 	}
 	sch, err := jsonschema.Compile(schemaPath)
 	checkErr(err)
