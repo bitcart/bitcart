@@ -16,7 +16,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"reflect"
 	"strings"
 	"text/template"
 	"time"
@@ -496,9 +495,6 @@ func main() {
 		},
 	}
 	app.BashComplete = func(c *cli.Context) {
-		if c.NArg() > 0 && !reflect.DeepEqual(c.Args().Slice(), []string{"help"}) {
-			return
-		}
 		set := flag.NewFlagSet("app", 0)
 		set.Parse([]string{"help"})
 		output, _, err := runCommand(cli.NewContext(app, set, c))

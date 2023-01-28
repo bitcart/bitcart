@@ -1,3 +1,3 @@
 aiohttp<4.0
-https://github.com/bitcartcc/web3.py/archive/asyncify-contract.zip # we use it temporarily
+https://github.com/ethereum/web3.py/archive/9940bdefb2015a36d56f823db4b87fdb52fe306c.zip # TODO: pin back to stable when available
 mnemonic
