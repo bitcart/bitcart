@@ -84,7 +84,10 @@ class BaseDaemon:
             return xpub.pop("xpub", None), xpub.pop("contract", None), xpub
 
     async def get_handle_request_params(self, request):
-        data = await (request.json() if LEGACY_AIOHTTP else request.json(content_type=None))
+        try:
+            data = await (request.json() if LEGACY_AIOHTTP else request.json(content_type=None))
+        except json.decoder.JSONDecodeError:
+            return None, None, None, None, None, None, None, JsonResponse(code=-32700, error="Parse error")
         method, id, params = data.get("method"), data.get("id", None), data.get("params", [])
         error = None if method else JsonResponse(code=-32601, error="Procedure not found", id=id)
         args, kwargs = parse_params(params)
