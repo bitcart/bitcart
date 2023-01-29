@@ -1,6 +1,7 @@
 package main
 
 import (
+	"archive/zip"
 	"bufio"
 	"bytes"
 	"context"
@@ -315,6 +316,69 @@ func validatePlugin(c *cli.Context) error {
 	return nil
 }
 
+func createZip(in string, out string) {
+	file, err := os.Create(out)
+	checkErr(err)
+	defer file.Close()
+	w := zip.NewWriter(file)
+	defer w.Close()
+	walker := func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return nil
+		}
+		relPath, err := filepath.Rel(in, path)
+		checkErr(err)
+		fmt.Printf("Crawling: %#v\n", relPath)
+		if info.IsDir() {
+			return nil
+		}
+		file, err := os.Open(path)
+		checkErr(err)
+		defer file.Close()
+		path, err = filepath.Rel(in, path)
+		if path == filepath.Base(out) {
+			return nil
+		}
+		checkErr(err)
+		f, err := w.Create(relPath)
+		checkErr(err)
+		_, err = io.Copy(f, file)
+		checkErr(err)
+		return nil
+	}
+	checkErr(filepath.Walk(in, walker))
+}
+
+func packagePlugin(c *cli.Context) error {
+	args := c.Args()
+	if args.Len() < 1 {
+		return cli.ShowSubcommandHelp(c)
+	}
+	path := args.Get(0)
+	noStrip := c.Bool("no-strip")
+	if !noStrip {
+		walker := func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return nil
+			}
+			if info.IsDir() {
+				if info.Name() == "node_modules" || info.Name() == "__pycache__" {
+					return os.RemoveAll(path)
+				}
+				return nil
+			}
+			if info.Name() == "yarn.lock" || info.Name() == "package-lock.json" {
+				return os.RemoveAll(path)
+			}
+			return nil
+		}
+		checkErr(filepath.Walk(path, walker))
+	}
+	outPath := filepath.Join(path, filepath.Base(path)+".bitcartcc")
+	createZip(path, outPath)
+	return nil
+}
+
 func isBlank(str string) bool {
 	for _, r := range str {
 		if !unicode.IsSpace(r) {
@@ -575,6 +639,19 @@ func main() {
 					Action:    validatePlugin,
 					Usage:     "Validate plugin manifest and common checks",
 					UsageText: "bitcart-cli plugin validate <path>",
+				},
+				{
+					Name:      "package",
+					Action:    packagePlugin,
+					Usage:     "Package plugin from its directory",
+					UsageText: "bitcart-cli plugin package <path>",
+					Flags: []cli.Flag{
+						&cli.BoolFlag{
+							Name:  "no-strip",
+							Usage: "Don't strip unneccesary files from the package (i.e. node_modules)",
+							Value: false,
+						},
+					},
 				},
 			},
 		},
