@@ -376,6 +376,7 @@ func packagePlugin(c *cli.Context) error {
 	}
 	outPath := filepath.Join(path, filepath.Base(path)+".bitcartcc")
 	createZip(path, outPath)
+	fmt.Println("Plugin packaged to", outPath)
 	return nil
 }
 
