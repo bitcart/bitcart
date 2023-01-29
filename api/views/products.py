@@ -149,7 +149,6 @@ async def categories(store: str):
 async def batch_product_action(query, batch_settings: schemes.BatchSettings, user: schemes.User):
     if batch_settings.command == "delete":
         for (product_id,) in await select([models.Product.id]).where(models.Product.id.in_(batch_settings.ids)).gino.all():
-            print(product_id, get_image_local_path(product_id))
             utils.files.safe_remove(get_image_local_path(product_id))
     await query.gino.status()
     return True

@@ -49,11 +49,13 @@ def get_moved_name(manifest, install):
         "backend": settings.settings.backend_plugins_dir,
         "admin": settings.settings.admin_plugins_dir,
         "store": settings.settings.store_plugins_dir,
-        "docker-compose": settings.settings.docker_plugins_dir,
+        "docker": settings.settings.docker_plugins_dir,
     }
     org_name = manifest["organization"].lower()
     if install["type"] in ("admin", "store"):
         org_name = "@" + org_name
+    if install["type"] == "docker":
+        return os.path.join(variants[install["type"]], org_name + "_" + os.path.basename(install["path"]))
     return os.path.join(variants[install["type"]], org_name, os.path.basename(install["path"]))
 
 

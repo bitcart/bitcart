@@ -255,6 +255,13 @@ func backendDirectoryValidator(val interface{}) error {
 	return nil
 }
 
+func dockerDirectoryValidator(val interface{}) error {
+	if !validateFileExists(filepath.Join(val.(string), "setup.sh")) {
+		return errors.New("Directory does not look to be a cloned https://github.com/bitcartcc/bitcart-docker repository")
+	}
+	return nil
+}
+
 func frontendDirectoryValidator(val interface{}) error {
 	if !validateFileExists(filepath.Join(val.(string), "nuxt.config.js")) {
 		return errors.New("Directory does not look to be a frontend repository")
@@ -389,6 +396,18 @@ func initPlugin(c *cli.Context) error {
 		os.MkdirAll(internalPath, os.ModePerm)
 		checkErr(ioutil.WriteFile(filepath.Join(internalPath, "plugin.py"), executeTemplate("plugin/src/backend/plugin.py.tmpl", data, false), os.ModePerm))
 		safeSymlink(internalPath, filepath.Join(backendPath, "modules", answers.Organization, componentName))
+	}
+	if slices.Contains(answers.ComponentTypes, "docker") {
+		var dockerPath string
+		var componentName string
+		checkErr(survey.AskOne(&survey.Input{Message: "Enter name of your docker component (i.e. name of the subfolder)"}, &componentName, survey.WithValidator(survey.Required)))
+		checkErr(survey.AskOne(&survey.Input{Message: "Enter the path to cloned bitcart-docker repository"}, &dockerPath, survey.WithValidator(survey.Required), survey.WithValidator(directoryValidator), survey.WithValidator(dockerDirectoryValidator)))
+		dockerPath, err := filepath.Abs(dockerPath)
+		checkErr(err)
+		internalPath := filepath.Join(path, "src/docker/"+componentName)
+		answers.FinalTypes = append(answers.FinalTypes, ComponentType{Type: "docker", Path: "src/docker/" + componentName})
+		os.MkdirAll(internalPath, os.ModePerm)
+		safeSymlink(internalPath, filepath.Join(dockerPath, "compose/plugins/docker", answers.Organization+"_"+componentName))
 	}
 	for _, componentType := range []string{"admin", "store"} {
 		if slices.Contains(answers.ComponentTypes, componentType) {
