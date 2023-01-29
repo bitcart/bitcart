@@ -645,7 +645,7 @@ func main() {
 					Name:      "package",
 					Action:    packagePlugin,
 					Usage:     "Package plugin from its directory",
-					UsageText: "bitcart-cli plugin package <path>",
+					UsageText: "bitcart-cli plugin package [command options] <path>",
 					Flags: []cli.Flag{
 						&cli.BoolFlag{
 							Name:  "no-strip",
