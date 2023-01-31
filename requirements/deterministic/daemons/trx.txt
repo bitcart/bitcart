@@ -835,8 +835,8 @@ toolz==0.12.0 \
     --hash=sha256:2059bd4148deb1884bb0eb770a3cde70e7f954cfbbdc2285f1f2de01fd21eb6f \
     --hash=sha256:88c570861c440ee3f2f6037c4654613228ff40c93a6c25e0eba70d17282c6194
     # via cytoolz
-tronpy @ https://github.com/bitcartcc/tronpy/archive/b444a61b786671ef189baecbb9853888a88a40eb.zip \
-    --hash=sha256:002cf1f14cc4b07587d1ec5af16b4898ff83cc66f37b286a2447af2f2a1afe64
+tronpy @ https://github.com/bitcartcc/tronpy/archive/a2d46aef6533a5852425f29064fa4217e6cfe020.zip \
+    --hash=sha256:0d581ca4f329963e693380f84389229525d7607b109c9ead7bb6bd218021e3a4
     # via -r requirements/daemons/trx.txt
 trontxsize==1.0.4 \
     --hash=sha256:76129d51a2039f47c4f6bdbe725abfebcebe8a08813a2cfb9dda139d7bddaa4c \

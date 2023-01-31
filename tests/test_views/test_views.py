@@ -1463,7 +1463,7 @@ async def test_invoices_authorized_access(client: TestClient, store, token):
 async def test_wallet_schema(client: TestClient):
     resp = await client.get("/wallets/schema")
     assert resp.status_code == 200
-    assert resp.json() == {"btc": {"required": [], "properties": []}}
+    assert resp.json() == {"btc": {"required": [], "properties": [], "xpub_name": "Xpub"}}
 
 
 async def test_invoices_payment_details(client: TestClient, user, token):

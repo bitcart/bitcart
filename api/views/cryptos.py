@@ -1,5 +1,6 @@
 import math
 import re
+from decimal import Decimal
 from typing import Optional
 
 from bitcart.errors import BaseError as BitcartBaseError
@@ -80,3 +81,10 @@ async def get_default_explorer(currency: str):
 @router.get("/rpc/{currency}")
 async def get_default_rpc(currency: str):
     return await apply_filters("get_default_rpc", settings.settings.get_default_rpc(currency), currency)
+
+
+# SATS is useful for lightning network
+async def get_sats_rate(rate, coin, currency, fallback_currency):  # pragma: no cover
+    if currency == "SATS":
+        return await coin.rate("BTC") * Decimal(10**8)
+    return rate

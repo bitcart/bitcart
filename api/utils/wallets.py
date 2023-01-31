@@ -54,7 +54,7 @@ async def get_wallet_balance(wallet) -> Union[bool, Decimal]:
         coin = await settings.settings.get_coin(
             wallet.currency, {"xpub": wallet.xpub, "contract": wallet.contract, **wallet.additional_xpub_data}
         )
-        divisibility = None if not wallet.contract else await coin.server.readcontract(wallet.contract, "decimals")
+        divisibility = await get_divisibility(wallet, coin)
         return True, divisibility, await coin.balance()
     except Exception as e:
         logger.error(
@@ -88,11 +88,12 @@ async def get_divisibility(wallet, coin):
     divisibility = currency_table.get_currency_data(wallet.currency)["divisibility"]
     if wallet.contract:  # pragma: no cover
         divisibility = min(MAX_CONTRACT_DIVISIBILITY, await coin.server.readcontract(wallet.contract, "decimals"))
-    return divisibility
+    return await apply_filters("get_divisibility", divisibility, wallet, coin)
 
 
 async def get_wallet_symbol(wallet, coin=None):
     coin = coin or await settings.settings.get_coin(
         wallet.currency, {"xpub": wallet.xpub, "contract": wallet.contract, **wallet.additional_xpub_data}
     )
-    return await coin.server.readcontract(wallet.contract, "symbol") if wallet.contract else wallet.currency
+    data = await coin.server.readcontract(wallet.contract, "symbol") if wallet.contract else wallet.currency
+    return await apply_filters("get_wallet_symbol", data, wallet, coin)

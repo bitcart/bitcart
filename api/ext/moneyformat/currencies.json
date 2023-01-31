@@ -272,13 +272,11 @@
     "BTC": {
         "name": "Bitcoin",
         "divisibility": 8,
-        "symbol": "₿",
         "crypto": true
     },
     "SATS": {
         "name": "Satoshis",
         "divisibility": 0,
-        "symbol": "Sats",
         "crypto": true
     },
     "LTC": {

@@ -7,6 +7,8 @@ def set_v(data, key, default):
 
 
 def truncate(value, precision):
+    if precision == 0:
+        return value
     q = Decimal(10) ** -precision
     return value.quantize(q, rounding=ROUND_HALF_EVEN)
 
@@ -82,20 +84,19 @@ class CurrencyTable:
     def normalize(self, currency, value, divisibility=None):
         return truncate(value, divisibility or self.get_currency_data(currency)["divisibility"])
 
-    def format_currency(self, currency, value, fancy=None, divisibility=None):
+    def format_currency(self, currency, value, fancy=True, divisibility=None):
         if value is None or currency is None:
             return value
         currency_info = self.get_currency_data(currency)
-        crypto = currency_info["crypto"]
-        if fancy is None:
-            fancy = not crypto
-        symbol = currency_info["symbol"] if fancy else ""
+        symbol = currency_info["symbol"]
         kwargs = {"places": divisibility if divisibility else currency_info["divisibility"], "sep": ""}
         if fancy:
             kwargs.update({"curr": symbol, "sep": ","})
         value = moneyfmt(value, **kwargs)
-        if crypto or not fancy:
+        if not fancy:
             return value
+        if not symbol:
+            return f"{value} {currency}"
         return f"{value} ({currency})"
 
     def format_decimal(self, currency, value, divisibility=None):

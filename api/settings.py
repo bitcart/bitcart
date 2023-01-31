@@ -294,9 +294,12 @@ class Settings(BaseSettings):
         await self.create_db_engine()
 
     async def post_plugin_init(self):
-        from api.plugins import apply_filters
+        from api.plugins import apply_filters, register_filter
+        from api.views.cryptos import get_sats_rate
 
         self.cryptos = await apply_filters("get_cryptos", self.cryptos)
+        register_filter("get_fiatlist", lambda s: s.union({"SATS"}))
+        register_filter("get_rate", get_sats_rate)
 
     async def shutdown(self):
         if self.redis_pool:

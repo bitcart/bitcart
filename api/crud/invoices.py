@@ -84,7 +84,7 @@ async def _create_payment_method(invoice, wallet, product, store, discounts, pro
         wallet.currency, {"xpub": wallet.xpub, "contract": wallet.contract, **wallet.additional_xpub_data}
     )
     method = await apply_filters(
-        "create_payment_method", None, coin, invoice, wallet, product, store, discounts, promocode, lightning
+        "pre_create_payment_method", None, coin, invoice, wallet, product, store, discounts, promocode, lightning
     )
     if method is not None:  # pragma: no cover
         return method
@@ -111,28 +111,44 @@ async def _create_payment_method(invoice, wallet, product, store, discounts, pro
     request_price = price * (1 - (Decimal(store.checkout_settings.underpaid_percentage) / 100))
     request_price = currency_table.normalize(wallet.currency, request_price / rate, divisibility=divisibility)
     price = currency_table.normalize(wallet.currency, price / rate, divisibility=divisibility)
-    method = coin.add_request
-    if lightning:  # pragma: no cover
-        try:
-            await coin.node_id  # check if works
-            method = coin.add_invoice
-        except errors.LightningUnsupportedError:
-            return
-    recommended_fee = (
-        await coin.server.recommended_fee(store.checkout_settings.recommended_fee_target_blocks) if not lightning else 0
+    method = await apply_filters(
+        "create_payment_method", None, wallet.currency, coin, request_price, invoice, product, store, lightning
     )
-    recommended_fee = 0 if recommended_fee is None else recommended_fee  # if no rate available, disable it
-    recommended_fee = truncate(Decimal(recommended_fee) / 1024, 2)  # convert to sat/byte, two decimal places
-    data_got = await method(request_price, description=product.name if product else "", expire=invoice.expiration)
-    address = data_got["address"] if not lightning else data_got["lightning_invoice"]
-    url = data_got["URI"] if not lightning else data_got["lightning_invoice"]
+    # set defaults
+    data = {
+        "currency": wallet.currency,
+        "metadata": {},
+        "rhash": None,
+        "node_id": None,
+        "recommended_fee": 0,
+        "lightning": lightning,
+    }
+    if method is not None:  # pragma: no cover
+        # Must set payment_address, payment_url, lookup_field
+        data.update(method)
+    else:
+        method = coin.add_request
+        if lightning:  # pragma: no cover
+            try:
+                await coin.node_id  # check if works
+                method = coin.add_invoice
+            except errors.LightningUnsupportedError:
+                return
+        recommended_fee = (
+            await coin.server.recommended_fee(store.checkout_settings.recommended_fee_target_blocks) if not lightning else 0
+        )
+        recommended_fee = 0 if recommended_fee is None else recommended_fee  # if no rate available, disable it
+        data["recommended_fee"] = truncate(Decimal(recommended_fee) / 1024, 2)  # convert to sat/byte, two decimal places
+        data_got = await method(request_price, description=product.name if product else "", expire=invoice.expiration)
+        data["payment_address"] = data_got["address"] if not lightning else data_got["lightning_invoice"]
+        data["payment_url"] = data_got["URI"] if not lightning else data_got["lightning_invoice"]
+        data["node_id"] = await coin.node_id if lightning else None
+        data["rhash"] = data_got["rhash"] if lightning else None
+        data["lookup_field"] = data_got["request_id"] if "request_id" in data_got else data["payment_address"]
     if store.checkout_settings.underpaid_percentage > 0:  # pragma: no cover
-        url = await coin.server.modifypaymenturl(url, price, divisibility)
-    node_id = await coin.node_id if lightning else None
-    rhash = data_got["rhash"] if lightning else None
-    lookup_field = data_got["request_id"] if "request_id" in data_got else address
+        data["payment_url"] = await coin.server.modifypaymenturl(data["payment_url"], price, divisibility)
     return await apply_filters(
-        "postcreate_payment_method",
+        "post_create_payment_method",
         dict(
             id=utils.common.unique_id(),
             invoice_id=invoice.id,
@@ -140,21 +156,13 @@ async def _create_payment_method(invoice, wallet, product, store, discounts, pro
             amount=price,
             rate=rate,
             discount=discount_id,
-            currency=wallet.currency,
-            payment_address=address,
-            payment_url=url,
-            lookup_field=lookup_field,
-            rhash=rhash,
-            lightning=lightning,
-            node_id=node_id,
-            recommended_fee=recommended_fee,
             confirmations=0,
             label=wallet.label,
             hint=wallet.hint,
             contract=wallet.contract,
             symbol=symbol,
             divisibility=divisibility,
-            metadata={},
+            **data,
         ),
         invoice,
         wallet,

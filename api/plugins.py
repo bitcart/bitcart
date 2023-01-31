@@ -74,6 +74,9 @@ class CoinServer:
     async def validateaddress(self, address):
         return True
 
+    async def modifypaymenturl(self, url, amount, divisibility=None):
+        return url
+
 
 class BaseCoin(metaclass=ABCMeta):
     coin_name: str

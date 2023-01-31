@@ -260,6 +260,10 @@ class Wallet(BaseModel):
 
         success, self.divisibility, self.balance = await utils.wallets.get_confirmed_wallet_balance(self)
         self.error = not success
+        try:
+            self.xpub_name = getattr(await settings.settings.get_coin(self.currency), "xpub_name", "Xpub")
+        except HTTPException:  # pragma: no cover
+            self.xpub_name = "Xpub"
 
     @classmethod
     def process_kwargs(cls, kwargs):

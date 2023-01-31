@@ -182,6 +182,7 @@ class Wallet(CreateWallet):
     user_id: str
     error: bool = False
     balance: Money
+    xpub_name: str
 
     @root_validator(pre=True)
     def set_balance(cls, values):
