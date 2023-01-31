@@ -38,6 +38,8 @@ github.com/ybbus/jsonrpc/v3 v3.1.1 h1:8xJu2oEz1vfDQq83QGQkK2fZqYDqIvE2j0iQpMbeCe
 github.com/ybbus/jsonrpc/v3 v3.1.1/go.mod h1:NJ8vURh8jndl+F1dVplHr538HNnwnV89sEhcDsZL/bw=
 golang.org/x/exp v0.0.0-20230127193734-31bee513bff7 h1:pXR8mGh4q8ooBT7HXruL4Xa2IxoL8XZ6lOgXY/0Ryg8=
 golang.org/x/exp v0.0.0-20230127193734-31bee513bff7/go.mod h1:CxIveKay+FTh1D0yPZemJVgC/95VzuuOLq5Qi4xnoYc=
+golang.org/x/exp v0.0.0-20230131120322-dfa7d7a641b0 h1:Fi9VR3JnhlA3HOMXAmw2ZY4zypNQvZq01MpVbIA7hY4=
+golang.org/x/exp v0.0.0-20230131120322-dfa7d7a641b0/go.mod h1:CxIveKay+FTh1D0yPZemJVgC/95VzuuOLq5Qi4xnoYc=
 golang.org/x/sys v0.0.0-20190222072716-a9d3bda3a223/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
 golang.org/x/sys v0.0.0-20201119102817-f84b799fce68/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/sys v0.0.0-20220422013727-9388b58f7150/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
