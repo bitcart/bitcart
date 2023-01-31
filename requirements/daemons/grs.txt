@@ -1,2 +1,2 @@
-https://github.com/Groestlcoin/electrum-grs/archive/d8a733d49a3a9d3bfd95bfb5af48eb53d5527191.zip#egg=electrum-grs[crypto]
+electrum-grs[crypto] @ https://github.com/Groestlcoin/electrum-grs/archive/d8a733d49a3a9d3bfd95bfb5af48eb53d5527191.zip
 protobuf<4

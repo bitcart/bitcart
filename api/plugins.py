@@ -50,8 +50,10 @@ class BasePlugin(metaclass=ABCMeta):
 
 
 class CoinServer:
-    def __init__(self, currency, *args, **kwargs):
+    def __init__(self, currency, xpub, **additional_data):
         self.currency = currency
+        self.xpub = xpub
+        self.additional_data = additional_data
 
     async def getinfo(self):
         return {"currency": self.currency, "synchronized": True}
@@ -87,7 +89,7 @@ class BaseCoin(metaclass=ABCMeta):
     def __init__(self, xpub=None, **additional_data):
         self.xpub = xpub
         server_cls = getattr(self, "server_cls", CoinServer)
-        self.server = server_cls(self.coin_name.capitalize())
+        self.server = server_cls(self.coin_name.capitalize(), xpub, **additional_data)
 
     @abstractmethod
     async def validate_key(self, key, *args, **kwargs):

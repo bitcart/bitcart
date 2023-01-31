@@ -1,2 +1,2 @@
-https://github.com/GlobalBoost/electrum/archive/fb94e1298ff6b20e626a254b817190142d0ad019.zip#egg=electrum-bsty[crypto]
+electrum-bsty[crypto] @ https://github.com/GlobalBoost/electrum/archive/fb94e1298ff6b20e626a254b817190142d0ad019.zip
 protobuf<4
