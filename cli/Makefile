@@ -3,7 +3,7 @@
 all: build
 
 build:
-	go build ${ARGS} bitcart-cli.go
+	go build ${ARGS} bitcart-cli
 
 dist:
 	go install github.com/mitchellh/gox@master
