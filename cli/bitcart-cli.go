@@ -278,6 +278,15 @@ func validateFrontend(componentType string, path string) {
 	}
 }
 
+func readManifest(path string) interface{} {
+	manifestPath := filepath.Join(path, "manifest.json")
+	data, err := ioutil.ReadFile(manifestPath)
+	checkErr(err)
+	var manifest interface{}
+	checkErr(json.Unmarshal(data, &manifest))
+	return manifest
+}
+
 func validatePlugin(c *cli.Context) error {
 	args := c.Args()
 	if args.Len() < 1 {
@@ -285,16 +294,8 @@ func validatePlugin(c *cli.Context) error {
 	}
 	path := args.Get(0)
 	sch := prepareSchema()
-	manifestPath := filepath.Join(path, "manifest.json")
-	data, err := ioutil.ReadFile(manifestPath)
-	if err != nil {
-		log.Fatal(err)
-	}
-	var manifest interface{}
-	if err := json.Unmarshal(data, &manifest); err != nil {
-		log.Fatal(err)
-	}
-	if err = sch.Validate(manifest); err != nil {
+	manifest := readManifest(path)
+	if err := sch.Validate(manifest); err != nil {
 		log.Fatalf("%#v", err)
 	}
 	for _, installData := range manifest.(map[string]interface{})["installs"].([]interface{}) {
@@ -328,6 +329,12 @@ func createZip(in string, out string) {
 		}
 		relPath, err := filepath.Rel(in, path)
 		checkErr(err)
+		if relPath == filepath.Base(out) {
+			return nil
+		}
+		if relPath == ".git" {
+			return filepath.SkipDir
+		}
 		fmt.Printf("Crawling: %#v\n", relPath)
 		if info.IsDir() {
 			return nil
@@ -335,10 +342,6 @@ func createZip(in string, out string) {
 		file, err := os.Open(path)
 		checkErr(err)
 		defer file.Close()
-		path, err = filepath.Rel(in, path)
-		if path == filepath.Base(out) {
-			return nil
-		}
 		checkErr(err)
 		f, err := w.Create(relPath)
 		checkErr(err)
@@ -355,6 +358,7 @@ func packagePlugin(c *cli.Context) error {
 		return cli.ShowSubcommandHelp(c)
 	}
 	path := args.Get(0)
+	manifest := readManifest(path).(map[string]interface{})
 	noStrip := c.Bool("no-strip")
 	if !noStrip {
 		walker := func(path string, info os.FileInfo, err error) error {
@@ -374,7 +378,7 @@ func packagePlugin(c *cli.Context) error {
 		}
 		checkErr(filepath.Walk(path, walker))
 	}
-	outPath := filepath.Join(path, filepath.Base(path)+".bitcartcc")
+	outPath := filepath.Join(path, manifest["name"].(string)+".bitcartcc")
 	createZip(path, outPath)
 	fmt.Println("Plugin packaged to", outPath)
 	return nil
@@ -392,19 +396,15 @@ func isBlank(str string) bool {
 func removeBlankLines(reader io.Reader, writer io.Writer) {
 	breader := bufio.NewReader(reader)
 	bwriter := bufio.NewWriter(writer)
-
 	for {
 		line, err := breader.ReadString('\n')
-
 		if !isBlank(line) {
 			bwriter.WriteString(line)
 		}
-
 		if err != nil {
 			break
 		}
 	}
-
 	bwriter.Flush()
 }
 
@@ -499,6 +499,8 @@ func initPlugin(c *cli.Context) error {
 		}
 	}
 	checkErr(ioutil.WriteFile(filepath.Join(path, "manifest.json"), executeTemplate("plugin/manifest.json.tmpl", answers, true), os.ModePerm))
+	checkErr(ioutil.WriteFile(filepath.Join(path, ".gitignore"), executeTemplate("plugin/.gitignore.tmpl", answers, true), os.ModePerm))
+	copyFileContents("plugin/.editorconfig", filepath.Join(path, ".editorconfig"))
 	fmt.Println("Plugin created successfully")
 	return nil
 }
