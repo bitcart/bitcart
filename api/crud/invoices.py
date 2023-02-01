@@ -109,7 +109,10 @@ async def _create_payment_method(invoice, wallet, product, store, discounts, pro
         except ValueError:  # no matched discounts
             pass
     request_price = price * (1 - (Decimal(store.checkout_settings.underpaid_percentage) / 100))
-    request_price = currency_table.normalize(wallet.currency, request_price / rate, divisibility=divisibility)
+    original_request_price = request_price
+    request_price = currency_table.normalize(wallet.currency, original_request_price / rate, divisibility=divisibility)
+    # adjust the rate to account for the normalization, otherwise clients won't be able to recover the actual sum
+    rate = original_request_price / request_price
     price = currency_table.normalize(wallet.currency, price / rate, divisibility=divisibility)
     method = await apply_filters(
         "create_payment_method", None, wallet.currency, coin, request_price, invoice, product, store, lightning
