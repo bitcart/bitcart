@@ -83,17 +83,20 @@ func getCacheDir() string {
 	return cacheDir
 }
 
-func prepareSchema() *jsonschema.Schema {
+func prepareSchema(url string) *jsonschema.Schema {
 	cacheDir := getCacheDir()
 	schemaPath := filepath.Join(cacheDir, "plugin.schema.json")
+	versionFile := filepath.Join(cacheDir, "schema.version")
+	version, versionErr := ioutil.ReadFile(versionFile)
 	if statResult, err := os.Stat(schemaPath); os.IsNotExist(err) ||
-		time.Since(statResult.ModTime().AddDate(0, 0, 7)) > time.Since(time.Now()) {
-		resp, err := http.Get(schemaURL)
+		time.Since(statResult.ModTime().AddDate(0, 0, 7)) > time.Since(time.Now()) || (versionErr == nil && string(version) != schemaVersion) {
+		resp, err := http.Get(url)
 		checkErr(err)
 		defer resp.Body.Close()
 		data, err := ioutil.ReadAll(resp.Body)
 		checkErr(err)
 		checkErr(ioutil.WriteFile(schemaPath, data, os.ModePerm))
+		checkErr(ioutil.WriteFile(filepath.Join(cacheDir, "schema.version"), []byte(schemaVersion), os.ModePerm))
 	}
 	sch, err := jsonschema.Compile(schemaPath)
 	checkErr(err)
@@ -109,14 +112,14 @@ func readManifest(path string) interface{} {
 	return manifest
 }
 
-func getOutputDirectory(componentType string, organization string, name string) string {
+func getOutputDirectory(componentType string, author string, name string) string {
 	if componentType == "docker" {
-		return filepath.Join("compose/plugins/docker", organization+"_"+name)
+		return filepath.Join("compose/plugins/docker", author+"_"+name)
 	}
 	if componentType != "backend" {
-		organization = "@" + organization
+		author = "@" + author
 	}
-	return filepath.Join("modules", organization, name)
+	return filepath.Join("modules", author, name)
 }
 
 type installationProcessor func(string, string, string)

@@ -271,6 +271,13 @@ func main() {
 					Action:    validatePlugin,
 					Usage:     "Validate plugin manifest and common checks",
 					UsageText: "bitcart-cli plugin validate <path>",
+					Flags: []cli.Flag{
+						&cli.StringFlag{
+							Name:  "schema",
+							Usage: "Supply custom schema URL",
+							Value: schemaURL,
+						},
+					},
 				},
 				{
 					Name:      "package",

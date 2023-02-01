@@ -711,7 +711,7 @@ class DisplayPayout(Payout):
 
 
 class UninstallPluginData(BaseModel):
-    organization: str
+    author: str
     name: str
 
 

@@ -19,7 +19,7 @@ type ComponentType struct {
 
 type BasicCreatePluginAnswers struct {
 	Name           string
-	Organization   string
+	Author         string
 	Description    string
 	ComponentTypes []string
 	FinalTypes     []ComponentType
@@ -79,7 +79,7 @@ func initPlugin(c *cli.Context) error {
 			internalPath,
 			filepath.Join(
 				backendPath,
-				getOutputDirectory("backend", answers.Organization, componentName),
+				getOutputDirectory("backend", answers.Author, componentName),
 			),
 		)
 	}
@@ -116,7 +116,7 @@ func initPlugin(c *cli.Context) error {
 			internalPath,
 			filepath.Join(
 				dockerPath,
-				getOutputDirectory("docker", answers.Organization, componentName),
+				getOutputDirectory("docker", answers.Author, componentName),
 			),
 		)
 	}
@@ -169,9 +169,9 @@ func initPlugin(c *cli.Context) error {
 				)
 			}
 			data := struct {
-				Organization string
-				Name         string
-			}{Organization: answers.Organization, Name: componentName}
+				Author string
+				Name   string
+			}{Author: answers.Author, Name: componentName}
 			checkErr(
 				ioutil.WriteFile(
 					filepath.Join(internalPath, "package.json"),
@@ -190,7 +190,7 @@ func initPlugin(c *cli.Context) error {
 				internalPath,
 				filepath.Join(
 					frontendPath,
-					getOutputDirectory(componentType, answers.Organization, componentName),
+					getOutputDirectory(componentType, answers.Author, componentName),
 				),
 			)
 		}
@@ -237,7 +237,7 @@ func pluginActionBase(path string, fn pluginMoveAction) {
 		}
 		finalPath := filepath.Join(
 			paths[installType].(string),
-			getOutputDirectory(installType, manifest["organization"].(string), componentName),
+			getOutputDirectory(installType, manifest["author"].(string), componentName),
 		)
 		fn(componentPath, finalPath)
 	})
@@ -279,7 +279,8 @@ func validatePlugin(c *cli.Context) error {
 		return cli.ShowSubcommandHelp(c)
 	}
 	path := args.Get(0)
-	sch := prepareSchema()
+	url := c.String("schema")
+	sch := prepareSchema(url)
 	manifest := readManifest(path)
 	if err := sch.Validate(manifest); err != nil {
 		log.Fatalf("%#v", err)

@@ -44,10 +44,10 @@ async def install_plugin(
     except ValueError as e:
         return {"status": "error", "message": str(e)}
     final_path = os.path.join(
-        settings.settings.plugins_dir, os.path.join(manifest["organization"].lower(), manifest["name"].lower())
+        settings.settings.plugins_dir, os.path.join(manifest["author"].lower(), manifest["name"].lower())
     )
     if os.path.exists(final_path):
-        shutil.rmtree(final_path)
+        utils.files.remove_tree(final_path)
     shutil.move(plugin_path, final_path)
     plugin_ext.process_installation_hooks(final_path, manifest)
     return {
@@ -59,7 +59,7 @@ async def install_plugin(
 @router.post("/uninstall")
 async def uninstall_plugin(data: schemes.UninstallPluginData):
     try:
-        plugin_ext.uninstall_plugin(data.organization, data.name)
+        plugin_ext.uninstall_plugin(data.author, data.name)
     except ValueError:
         return False
     return True

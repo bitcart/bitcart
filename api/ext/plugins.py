@@ -5,15 +5,15 @@ import shutil
 from jsonschema import validate
 from packaging.requirements import Requirement
 
-from api import settings
+from api import settings, utils
 from api.constants import VERSION
 
 
 def get_plugins():
     plugins = []
-    for organization in os.listdir(settings.settings.plugins_dir):
-        for plugin in os.listdir(os.path.join(settings.settings.plugins_dir, organization)):
-            manifest_path = os.path.join(settings.settings.plugins_dir, organization, plugin, "manifest.json")
+    for author in os.listdir(settings.settings.plugins_dir):
+        for plugin in os.listdir(os.path.join(settings.settings.plugins_dir, author)):
+            manifest_path = os.path.join(settings.settings.plugins_dir, author, plugin, "manifest.json")
             if not os.path.exists(manifest_path):
                 continue
             with open(manifest_path) as f:
@@ -51,7 +51,7 @@ def get_moved_name(manifest, install):
         "store": settings.settings.store_plugins_dir,
         "docker": settings.settings.docker_plugins_dir,
     }
-    org_name = manifest["organization"].lower()
+    org_name = manifest["author"].lower()
     if install["type"] in ("admin", "store"):
         org_name = "@" + org_name
     if install["type"] == "docker":
@@ -63,12 +63,12 @@ def process_installation_hooks(path, manifest):
     for install in manifest["installs"]:
         moved_name = get_moved_name(manifest, install)
         if os.path.exists(moved_name):
-            shutil.rmtree(moved_name)
+            utils.files.remove_tree(moved_name)
         shutil.move(os.path.join(path, install["path"]), moved_name)
 
 
-def uninstall_plugin(organization, name):
-    plugin_path = os.path.join(settings.settings.plugins_dir, organization.lower(), name.lower())
+def uninstall_plugin(author, name):
+    plugin_path = os.path.join(settings.settings.plugins_dir, author.lower(), name.lower())
     manifest_path = os.path.join(plugin_path, "manifest.json")
     if not os.path.exists(manifest_path):
         return
@@ -78,5 +78,5 @@ def uninstall_plugin(organization, name):
     for install in manifest["installs"]:
         path = get_moved_name(manifest, install)
         if os.path.exists(path):
-            shutil.rmtree(path)
-    shutil.rmtree(plugin_path)
+            utils.files.remove_tree(path)
+    utils.files.remove_tree(plugin_path)

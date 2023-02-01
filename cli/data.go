@@ -14,7 +14,8 @@ var pluginsData embed.FS
 
 var Version = "dev"
 var envFile = "../conf/.env"
-var schemaURL = "https://bitcartcc.com/schemas/plugin/1.0.0/plugin.schema.json"
+var schemaURL = "https://bitcartcc.com/schemas/plugin/1.1.0/plugin.schema.json"
+var schemaVersion = "1.1.0"
 
 var COINS = map[string]string{
 	"btc":   "5000",
@@ -57,8 +58,8 @@ var basicPluginCreate = []*survey.Question{
 		Validate: survey.Required,
 	},
 	{
-		Name:     "organization",
-		Prompt:   &survey.Input{Message: "Enter the organization name for your plugin"},
+		Name:     "author",
+		Prompt:   &survey.Input{Message: "Enter the author name for your plugin"},
 		Validate: survey.Required,
 	},
 	{
