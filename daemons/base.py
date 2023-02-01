@@ -10,9 +10,9 @@ from pkg_resources import parse_version
 from utils import JsonResponse, authenticate, load_spec, maybe_update_key, noop_cast, parse_params
 
 LEGACY_AIOHTTP = parse_version(aiohttp_version) < parse_version("4.0.0a0")
-os.environ[
-    "PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"
-] = "python"  # TODO: remove when all protobufs are re-generated for version 4 in electrums
+os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = (
+    "python"  # TODO: remove when all protobufs are re-generated for version 4 in electrums
+)
 
 
 class BaseDaemon:

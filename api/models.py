@@ -4,6 +4,7 @@ import sys
 from datetime import timedelta
 
 import pyotp
+from bitcart import COINS
 from bitcart.errors import BaseError as BitcartBaseError
 from fastapi import HTTPException
 from fastapi.encoders import jsonable_encoder
@@ -263,7 +264,7 @@ class Wallet(BaseModel):
         try:
             self.xpub_name = getattr(await settings.settings.get_coin(self.currency), "xpub_name", "Xpub")
         except HTTPException:  # pragma: no cover
-            self.xpub_name = "Xpub"
+            self.xpub_name = COINS[self.currency.upper()].xpub_name if self.currency.upper() in COINS else "Xpub"
 
     @classmethod
     def process_kwargs(cls, kwargs):
