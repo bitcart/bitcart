@@ -1,4 +1,5 @@
 aiohttp<4.0
+async-lru
 https://github.com/bitcartcc/tronpy/archive/a2d46aef6533a5852425f29064fa4217e6cfe020.zip
 https://github.com/ethereum/web3.py/archive/9940bdefb2015a36d56f823db4b87fdb52fe306c.zip # TODO: pin back to stable when available
 mnemonic

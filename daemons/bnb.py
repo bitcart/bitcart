@@ -15,7 +15,7 @@ class BNBDaemon(eth.ETHDaemon):
     DEFAULT_PORT = 5006
 
     EIP1559_SUPPORTED = False
-    DEFAULT_MAX_SYNC_BLOCKS = 1200  # (60/3)=20*60 (a block every 3 seconds, max normal expiry time 60 minutes)
+    DEFAULT_MAX_SYNC_BLOCKS = 300  # (60/3)=20*60 (a block every 3 seconds, keep up to 15 minutes of data)
     FIAT_NAME = "binancecoin"
     CONTRACT_FIAT_NAME = "binance-smart-chain"
 

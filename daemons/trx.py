@@ -1,9 +1,11 @@
 import asyncio
 import json
+import weakref
 from decimal import Decimal
 
 import httpx
 import trontxsize
+from async_lru import alru_cache
 from eth import ETHDaemon
 from eth import KeyStore as ETHKeyStore
 from eth import Transaction, daemon_ctx, from_wei, load_json_dict, str_to_bool, to_wei
@@ -185,7 +187,7 @@ class TRXDaemon(ETHDaemon):
     DIVISIBILITY = 6
     AMOUNTGEN_DIVISIBILITY = 6
     EIP1559_SUPPORTED = False
-    DEFAULT_MAX_SYNC_BLOCKS = 1200  # (60/3)=20*60 (a block every 3 seconds, max normal expiry time 60 minutes)
+    DEFAULT_MAX_SYNC_BLOCKS = 300  # (60/3)=20*60 (a block every 3 seconds, keep up to 15 minutes of data)
     FIAT_NAME = "tron"
 
     CONTRACT_TYPE = AsyncContract
@@ -198,7 +200,7 @@ class TRXDaemon(ETHDaemon):
 
     def __init__(self):
         super().__init__()
-        self.CONTRACTS_CACHE = {}
+        self.CONTRACTS_CACHE = weakref.WeakValueDictionary()
         self.DECIMALS_CACHE = {}
 
     def create_coin(self):
@@ -215,6 +217,7 @@ class TRXDaemon(ETHDaemon):
     async def check_contract_logs(self, contract, divisibility, from_block=None, to_block=None):
         pass  # we do it right during block processing
 
+    @alru_cache(maxsize=32)
     async def create_web3_contract(self, contract):
         try:
             value = self.CONTRACTS_CACHE.get(contract)

@@ -10,7 +10,7 @@ class MATICDaemon(eth.ETHDaemon):
     name = "MATIC"
     DEFAULT_PORT = 5008
 
-    DEFAULT_MAX_SYNC_BLOCKS = 1800  # (60/2)=30*60 (a block every 2 seconds, max normal expiry time 60 minutes)
+    DEFAULT_MAX_SYNC_BLOCKS = 450  # (60/2)=30*60 (a block every 2 seconds, keep up to 15 minutes of data)
     FIAT_NAME = "matic-network"
     CONTRACT_FIAT_NAME = "polygon-pos"
 
