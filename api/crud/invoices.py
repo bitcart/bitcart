@@ -108,7 +108,8 @@ async def _create_payment_method(invoice, wallet, product, store, discounts, pro
             price -= price * (Decimal(discount.percent) / Decimal(100))
         except ValueError:  # no matched discounts
             pass
-    request_price = price * (1 - (Decimal(store.checkout_settings.underpaid_percentage) / 100))
+    support_underpaid = getattr(coin, "support_underpaid", True)
+    request_price = price * (1 - (Decimal(store.checkout_settings.underpaid_percentage) / 100)) if support_underpaid else price
     original_request_price = request_price
     request_price = currency_table.normalize(wallet.currency, original_request_price / rate, divisibility=divisibility)
     # adjust the rate to account for the normalization, otherwise clients won't be able to recover the actual sum
