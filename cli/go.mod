@@ -5,10 +5,10 @@ go 1.18
 require (
 	github.com/AlecAivazis/survey/v2 v2.3.6
 	github.com/joho/godotenv v1.4.0
-	github.com/santhosh-tekuri/jsonschema/v5 v5.1.1
-	github.com/urfave/cli/v2 v2.23.7
+	github.com/santhosh-tekuri/jsonschema/v5 v5.2.0
+	github.com/urfave/cli/v2 v2.24.3
 	github.com/ybbus/jsonrpc/v3 v3.1.1
-	golang.org/x/exp v0.0.0-20230127193734-31bee513bff7
+	golang.org/x/exp v0.0.0-20230202163644-54bba9f4231b
 )
 
 require (
