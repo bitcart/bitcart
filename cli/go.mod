@@ -1,4 +1,4 @@
-module bitcart-cli
+module github.com/bitcartcc/bitcart/cli
 
 go 1.18
 
