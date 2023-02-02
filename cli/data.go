@@ -15,7 +15,6 @@ var pluginsData embed.FS
 var Version = "dev"
 var envFile = "../conf/.env"
 var schemaURL = "https://bitcartcc.com/schemas/plugin/1.1.0/plugin.schema.json"
-var schemaVersion = "1.1.0"
 
 var COINS = map[string]string{
 	"btc":   "5000",

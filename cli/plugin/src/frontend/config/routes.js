@@ -1,6 +1,6 @@
 // add pages in pages/ directory, then import them here
 
-//import Page from "@yourorg/yourmodule/pages/mypage"
+//import Page from "@yourorg-yourmodule/pages/mypage"
 //
 //export default [
 //  {

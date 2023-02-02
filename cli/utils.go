@@ -83,10 +83,19 @@ func getCacheDir() string {
 	return cacheDir
 }
 
+func parseVersionFromURL(url string) string {
+	parts := strings.Split(url, "/")
+	if len(parts) < 2 {
+		exitErr("Invalid version string provided. Only bitcartcc-hosted schema URLs are supported")
+	}
+	return parts[len(parts)-2]
+}
+
 func prepareSchema(url string) *jsonschema.Schema {
 	cacheDir := getCacheDir()
 	schemaPath := filepath.Join(cacheDir, "plugin.schema.json")
 	versionFile := filepath.Join(cacheDir, "schema.version")
+	schemaVersion := parseVersionFromURL(url)
 	version, versionErr := ioutil.ReadFile(versionFile)
 	if statResult, err := os.Stat(schemaPath); os.IsNotExist(err) ||
 		time.Since(statResult.ModTime().AddDate(0, 0, 7)) > time.Since(time.Now()) || (versionErr == nil && string(version) != schemaVersion) {

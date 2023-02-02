@@ -279,7 +279,10 @@ func validatePlugin(c *cli.Context) error {
 		return cli.ShowSubcommandHelp(c)
 	}
 	path := args.Get(0)
-	url := c.String("schema")
+	url := args.Get(2) // after --schema part
+	if url == "" {
+		url = c.String("schema")
+	}
 	sch := prepareSchema(url)
 	manifest := readManifest(path)
 	if err := sch.Validate(manifest); err != nil {
