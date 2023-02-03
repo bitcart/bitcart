@@ -58,3 +58,4 @@ repos:
           ^requirements/.*.txt$
         exclude: >-
           ^requirements/deterministic/.*.txt$
+        require_serial: true
