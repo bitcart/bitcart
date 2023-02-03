@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 
 import argparse
+import concurrent.futures
+import hashlib
 import os
 import re
 import subprocess
 import sys
+import tempfile
 import traceback
 from pathlib import Path
 
@@ -20,10 +23,21 @@ def get_root(script_path):
     return folder
 
 
-def pip_compile(root, req, failed):  # returns (success, skip)
+def sha256sum(filename):
+    h = hashlib.sha256()
+    b = bytearray(128 * 1024)
+    mv = memoryview(b)
+    with open(filename, "rb", buffering=0) as f:
+        while n := f.readinto(mv):
+            h.update(mv[:n])
+    return h.hexdigest()
+
+
+def pip_compile(root, req, failed, cache_dir):  # returns (success, skip)
     script_name = root / "scripts" / "compile-requirement.sh"
+    cache_dir = Path(cache_dir) / sha256sum(req)
     relative_name = str(req.relative_to(root)) if req.is_absolute() else req
-    proc = subprocess.run([script_name, relative_name], capture_output=True, text=True)
+    proc = subprocess.run([script_name, relative_name, "--cache-dir", cache_dir], capture_output=True, text=True)
     if proc.returncode:
         if "Please specify which python to use" in proc.stdout:
             return True, True
@@ -45,21 +59,29 @@ def main():
     root = get_root(Path(sys.argv[0]))
     requirements_dir = str(root / "requirements")
     failed = False
-    for req in args.files:
-        req = Path(req).absolute()
-        if not str(req).startswith(requirements_dir) or DETERMINISTIC_PATTERN.match(str(req)):
-            continue
-        try:
-            success, skip = pip_compile(root, req, failed)
-            if skip:
-                print("Skipping due to missing python required for compilation")
-                return 0
-            failed |= not success
-        except Exception:
-            if not failed:
-                print()
-            print(traceback.format_exc(), end="")
-            failed = True
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        futures = []
+        max_workers = (os.cpu_count() or 1) + 4
+        if os.getenv("CIRCLCI"):
+            max_workers = 2
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+            for req in args.files:
+                req = Path(req).absolute()
+                if not str(req).startswith(requirements_dir) or DETERMINISTIC_PATTERN.match(str(req)):
+                    continue
+                futures.append(executor.submit(pip_compile, root, req, failed, tmpdirname))
+        for f in futures:
+            try:
+                success, skip = f.result()
+                if skip:
+                    print("Skipping due to missing python required for compilation")
+                    return 0
+                failed |= not success
+            except Exception:
+                if not failed:
+                    print()
+                print(traceback.format_exc(), end="")
+                failed = True
     print("OK" if not failed else "Failed")
     return int(failed)
 
