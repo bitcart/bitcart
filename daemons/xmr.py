@@ -354,7 +354,7 @@ class XMRDaemon(BlockProcessorDaemon):
             json=as_json,
         )
 
-    async def process_mempool(self):  # noqa: C901
+    async def process_mempool(self):
         while self.running:
             try:
                 mempool = await self.coin.rpc.get_mempool()
