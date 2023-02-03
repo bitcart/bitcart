@@ -15,9 +15,9 @@ from api.plugins import apply_filters
 logger = get_logger(__name__)
 
 
-async def get_rate(wallet, currency, fallback_currency=None):
+async def get_rate(wallet, currency, fallback_currency=None, coin=None):
     try:
-        coin = await settings.settings.get_coin(
+        coin = coin or await settings.settings.get_coin(
             wallet.currency, {"xpub": wallet.xpub, "contract": wallet.contract, **wallet.additional_xpub_data}
         )
         symbol = await get_wallet_symbol(wallet, coin)

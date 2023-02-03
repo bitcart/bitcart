@@ -11,6 +11,7 @@ from starlette.datastructures import CommaSeparatedStrings
 
 from api import db, events, invoices, models, schemes, settings, utils
 from api.ext.moneyformat import currency_table, truncate
+from api.ext.payouts import prepare_tx
 from api.logger import get_exception_message, get_logger
 from api.plugins import SKIP_PAYMENT_METHOD, apply_filters
 from api.utils.database import safe_db_write
@@ -79,20 +80,26 @@ async def create_invoice(invoice: schemes.CreateInvoice, user: schemes.User):
     return await apply_filters("invoice_created", obj)
 
 
-async def _create_payment_method(invoice, wallet, product, store, discounts, promocode, lightning=False):
-    coin = await settings.settings.get_coin(
-        wallet.currency, {"xpub": wallet.xpub, "contract": wallet.contract, **wallet.additional_xpub_data}
-    )
-    method = await apply_filters(
-        "pre_create_payment_method", None, coin, invoice, wallet, product, store, discounts, promocode, lightning
-    )
-    if method is not None:  # pragma: no cover
-        return method
+async def determine_network_fee(coin, wallet, invoice, store, divisibility):  # pragma: no cover
+    if not coin.is_eth_based:
+        return Decimal(await coin.server.get_default_fee(100))  # 100 bytes
+    else:
+        address = await coin.server.getaddress()
+        tx = await prepare_tx(coin, wallet, address, 0, divisibility)
+        fee = Decimal(await coin.server.get_default_fee(tx))
+        if wallet.contract:
+            coin_no_contract = await settings.settings.get_coin(
+                wallet.currency, {"xpub": wallet.xpub, **wallet.additional_xpub_data}
+            )
+            rate_no_contract = await utils.wallets.get_rate(
+                wallet, invoice.currency, store.default_currency, coin=coin_no_contract
+            )
+            return fee * rate_no_contract
+        return fee
+
+
+def match_discount(price, wallet, invoice, discounts, promocode):
     discount_id = None
-    symbol = await utils.wallets.get_wallet_symbol(wallet, coin)
-    divisibility = await utils.wallets.get_divisibility(wallet, coin)
-    rate = await utils.wallets.get_rate(wallet, invoice.currency, store.default_currency)
-    price = invoice.price
     if discounts:
         try:
             discount = max(
@@ -108,13 +115,38 @@ async def _create_payment_method(invoice, wallet, product, store, discounts, pro
             price -= price * (Decimal(discount.percent) / Decimal(100))
         except ValueError:  # no matched discounts
             pass
+    return price, discount_id
+
+
+async def _create_payment_method(invoice, wallet, product, store, discounts, promocode, lightning=False):
+    coin = await settings.settings.get_coin(
+        wallet.currency, {"xpub": wallet.xpub, "contract": wallet.contract, **wallet.additional_xpub_data}
+    )
+    method = await apply_filters(
+        "pre_create_payment_method", None, coin, invoice, wallet, product, store, discounts, promocode, lightning
+    )
+    if method is not None:  # pragma: no cover
+        return method
+    symbol = await utils.wallets.get_wallet_symbol(wallet, coin)
+    divisibility = await utils.wallets.get_divisibility(wallet, coin)
+    rate = await utils.wallets.get_rate(wallet, invoice.currency, store.default_currency)
+    price, discount_id = match_discount(invoice.price, wallet, invoice, discounts, promocode)
     support_underpaid = getattr(coin, "support_underpaid", True)
     request_price = price * (1 - (Decimal(store.checkout_settings.underpaid_percentage) / 100)) if support_underpaid else price
     original_request_price = request_price
     request_price = currency_table.normalize(wallet.currency, original_request_price / rate, divisibility=divisibility)
     # adjust the rate to account for the normalization, otherwise clients won't be able to recover the actual sum
-    rate = original_request_price / request_price
+    rate = original_request_price / request_price if request_price else rate
     price = currency_table.normalize(wallet.currency, price / rate, divisibility=divisibility)
+    if request_price and store.checkout_settings.include_network_fee:  # pragma: no cover
+        try:
+            network_fee = await determine_network_fee(coin, wallet, invoice, store, divisibility)
+        except Exception:
+            network_fee = Decimal(0)
+        request_price += network_fee
+        price += network_fee
+        request_price = currency_table.normalize(wallet.currency, request_price, divisibility=divisibility)
+        price = currency_table.normalize(wallet.currency, price, divisibility=divisibility)
     method = await apply_filters(
         "create_payment_method", None, wallet.currency, coin, request_price, invoice, product, store, lightning
     )

@@ -30,7 +30,8 @@
             "email_required": true,
             "ask_address": false,
             "randomize_wallet_selection": false,
-            "allow_anonymous_invoice_creation": true
+            "allow_anonymous_invoice_creation": true,
+            "include_network_fee": false
         },
         "notifications": [],
         "templates": {},

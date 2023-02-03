@@ -176,8 +176,9 @@ class BCHDaemon(BTCDaemon):
         if currency is None:
             currency = self.DEFAULT_CURRENCY
         # For performance, disable this on coingecko because it provides all rates at once
-        if self.EXCHANGE.lower() != "coingecko" and self.fx.get_currency() != currency:
+        if not self._fetched_fx or (self.EXCHANGE.lower() != "coingecko" and self.fx.get_currency() != currency):
             self.fx.set_currency(currency)
+            self._fetched_fx = True
         rate = self.fx.exchange.quotes.get(currency)
         rate = Decimal(rate) if rate else Decimal("NaN")
         return str(rate)

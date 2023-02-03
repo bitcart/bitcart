@@ -35,6 +35,29 @@ async def update_status(payout, status):
     await run_hook("payout_status", payout, status)
 
 
+async def prepare_tx(coin, wallet, destination, amount, divisibility):
+    if not coin.is_eth_based:
+        if amount == SEND_ALL:
+            amount = "!"
+        raw_tx = await coin.pay_to(destination, amount, broadcast=False)
+    else:
+        if wallet.contract:
+            if amount == SEND_ALL:
+                amount = Decimal(await coin.server.readcontract(wallet.contract, "balanceOf", wallet.xpub)) / Decimal(
+                    10**divisibility
+                )
+            raw_tx = await coin.server.transfer(wallet.contract, destination, amount, unsigned=True)
+        else:
+            if amount == SEND_ALL:
+                request_amount = Decimal((await coin.balance())["confirmed"])
+                estimated_fee = Decimal(
+                    await coin.server.get_default_fee(await coin.server.payto(destination, amount, unsigned=True))
+                )
+                request_amount -= estimated_fee
+            raw_tx = await coin.server.payto(destination, amount, unsigned=True)
+    return raw_tx
+
+
 async def send_payout(payout, private_key=None):
     wallet = await utils.database.get_object(models.Wallet, payout.wallet_id, raise_exception=False)
     store = await utils.database.get_object(models.Store, payout.store_id, raise_exception=False)
@@ -46,28 +69,12 @@ async def send_payout(payout, private_key=None):
     )
     divisibility = await utils.wallets.get_divisibility(wallet, coin)
     rate = await utils.wallets.get_rate(wallet, payout.currency)
-    request_amount = currency_table.normalize(wallet.currency, payout.amount / rate, divisibility=divisibility)
-    if not coin.is_eth_based:
-        if payout.amount == SEND_ALL:
-            request_amount = "!"
-        raw_tx = await coin.pay_to(payout.destination, request_amount, broadcast=False)
-    else:
-        if wallet.contract:
-            if payout.amount == SEND_ALL:
-                request_amount = Decimal(await coin.server.readcontract(wallet.contract, "balanceOf", wallet.xpub)) / Decimal(
-                    10**divisibility
-                )
-            raw_tx = await coin.server.transfer(wallet.contract, payout.destination, request_amount, unsigned=True)
-        else:
-            if payout.amount == SEND_ALL:
-                request_amount = Decimal((await coin.balance())["confirmed"])
-                estimated_fee = Decimal(
-                    await coin.server.get_default_fee(
-                        await coin.server.payto(payout.destination, request_amount, unsigned=True)
-                    )
-                )
-                request_amount -= estimated_fee
-            raw_tx = await coin.server.payto(payout.destination, request_amount, unsigned=True)
+    request_amount = (
+        currency_table.normalize(wallet.currency, payout.amount / rate, divisibility=divisibility)
+        if payout.amount != SEND_ALL
+        else SEND_ALL
+    )
+    raw_tx = await prepare_tx(coin, wallet, payout.destination, request_amount, divisibility)
     predicted_fee = Decimal(await coin.server.get_default_fee(raw_tx))
     if payout.max_fee is not None:
         max_fee_amount = currency_table.normalize(wallet.currency, payout.max_fee / rate, divisibility=divisibility)

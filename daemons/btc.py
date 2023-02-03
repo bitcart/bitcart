@@ -62,6 +62,7 @@ class BTCDaemon(BaseDaemon):
         self.load_electrum()
         super().__init__()
         self.latest_height = -1  # to avoid duplicate block notifications
+        self._fetched_fx = False
         # activate network and configure logging
         activate_selected_network = self.NETWORK_MAPPING.get(self.NET.lower())
         if not activate_selected_network:
@@ -485,8 +486,9 @@ class BTCDaemon(BaseDaemon):
         if currency is None:
             currency = self.DEFAULT_CURRENCY
         # For performance, disable this on coingecko because it provides all rates at once
-        if self.EXCHANGE.lower() != "coingecko" and self.fx.get_currency() != currency:
+        if not self._fetched_fx or (self.EXCHANGE.lower() != "coingecko" and self.fx.get_currency() != currency):
             self.fx.set_currency(currency)
+            self._fetched_fx = True
         return str(self.fx.exchange.get_cached_spot_quote(currency))
 
     @rpc
