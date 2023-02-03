@@ -188,6 +188,8 @@ class PluginsManager:
 
 ### Public API
 
+SKIP_PAYMENT_METHOD = object()  # return this in your plugin if you want to skip current method creation
+
 
 async def run_hook(name, *args, **kwargs):
     for hook in settings.settings.plugins.callbacks[name]:

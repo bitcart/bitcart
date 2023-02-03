@@ -12,7 +12,7 @@ from starlette.datastructures import CommaSeparatedStrings
 from api import db, events, invoices, models, schemes, settings, utils
 from api.ext.moneyformat import currency_table, truncate
 from api.logger import get_exception_message, get_logger
-from api.plugins import apply_filters
+from api.plugins import SKIP_PAYMENT_METHOD, apply_filters
 from api.utils.database import safe_db_write
 
 logger = get_logger(__name__)
@@ -118,6 +118,8 @@ async def _create_payment_method(invoice, wallet, product, store, discounts, pro
     method = await apply_filters(
         "create_payment_method", None, wallet.currency, coin, request_price, invoice, product, store, lightning
     )
+    if method is SKIP_PAYMENT_METHOD:  # pragma: no cover
+        return method
     # set defaults
     data = {
         "currency": wallet.currency,
@@ -178,10 +180,15 @@ async def _create_payment_method(invoice, wallet, product, store, discounts, pro
 
 
 async def create_payment_method(invoice, wallet, product, store, discounts, promocode):
-    results = [await _create_payment_method(invoice, wallet, product, store, discounts, promocode)]
+    results = []
+    method = await _create_payment_method(invoice, wallet, product, store, discounts, promocode)
+    if method is not SKIP_PAYMENT_METHOD:
+        results.append(method)
     coin_settings = settings.settings.crypto_settings.get(wallet.currency.lower())
     if coin_settings and coin_settings["lightning"] and wallet.lightning_enabled:  # pragma: no cover
-        results.append(await _create_payment_method(invoice, wallet, product, store, discounts, promocode, lightning=True))
+        method = await _create_payment_method(invoice, wallet, product, store, discounts, promocode, lightning=True)
+        if method is not SKIP_PAYMENT_METHOD:
+            results.append(method)
     return results
 
 
