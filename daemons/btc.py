@@ -44,6 +44,7 @@ class BTCDaemon(BaseDaemon):
         "verified": "verified_tx",
     }
     ALIASES = {"getrequest": "get_request"}
+    QUOTES_KEY = "_quotes"  # where exchange rates are stored
     # override if your daemon has different networks than default electrum provides
     NETWORK_MAPPING: dict = {}
 
@@ -483,13 +484,14 @@ class BTCDaemon(BaseDaemon):
     def exchange_rate(self, currency=None, wallet=None) -> str:
         if currency is None:
             currency = self.DEFAULT_CURRENCY
-        if self.fx.get_currency() != currency:
+        # For performance, disable this on coingecko because it provides all rates at once
+        if self.EXCHANGE.lower() != "coingecko" and self.fx.get_currency() != currency:
             self.fx.set_currency(currency)
-        return str(self.fx.exchange_rate())
+        return str(self.fx.exchange.get_cached_spot_quote(currency))
 
     @rpc
     def list_currencies(self, wallet=None) -> list:
-        return self.fx.get_currencies(False)
+        return list(getattr(self.fx.exchange, self.QUOTES_KEY).keys())
 
     @rpc
     def get_tx_size(self, raw_tx: dict, wallet=None) -> int:
