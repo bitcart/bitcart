@@ -394,6 +394,7 @@ async def test_policies(client: TestClient, token: str):
         "check_updates": True,
         "staging_updates": False,
         "captcha_sitekey": "",
+        "admin_theme_url": "",
         "enable_captcha": False,
         "explorer_urls": {
             "btc": static_data.DEFAULT_EXPLORER,
@@ -417,6 +418,7 @@ async def test_policies(client: TestClient, token: str):
         "staging_updates": False,
         "captcha_sitekey": "",
         "captcha_secretkey": "",
+        "admin_theme_url": "",
         "enable_captcha": False,
         "explorer_urls": {
             "btc": static_data.DEFAULT_EXPLORER,
@@ -435,6 +437,7 @@ async def test_policies(client: TestClient, token: str):
         "check_updates": True,
         "staging_updates": False,
         "captcha_sitekey": "",
+        "admin_theme_url": "",
         "enable_captcha": False,
         "explorer_urls": {
             "btc": static_data.DEFAULT_EXPLORER,
@@ -457,6 +460,7 @@ async def test_policies(client: TestClient, token: str):
         "staging_updates": False,
         "captcha_sitekey": "",
         "captcha_secretkey": "",
+        "admin_theme_url": "",
         "enable_captcha": False,
         "explorer_urls": {
             "btc": static_data.DEFAULT_EXPLORER,
@@ -1110,11 +1114,11 @@ async def test_change_store_theme_settings(client: TestClient, token: str, store
     assert resp2.json() == resp.json()
     resp = await client.patch(
         f"/stores/{store_id}/theme_settings",
-        json={"admin_theme_url": "url2"},
+        json={"checkout_theme_url": "url2"},
         headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 200
-    assert resp.json()["theme_settings"] == {**default_values, "store_theme_url": "url", "admin_theme_url": "url2"}
+    assert resp.json()["theme_settings"] == {**default_values, "store_theme_url": "url", "checkout_theme_url": "url2"}
 
 
 async def test_products_list(client: TestClient):

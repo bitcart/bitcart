@@ -229,7 +229,7 @@ class StoreCheckoutSettings(BaseModel):
 
 class StoreThemeSettings(BaseModel):
     store_theme_url: str = ""
-    admin_theme_url: str = ""
+    checkout_theme_url: str = ""
 
 
 class StoreShopifySettings(BaseModel):
@@ -524,6 +524,7 @@ class Policy(BaseModel):
     allow_anonymous_configurator: bool = True
     captcha_sitekey: str = ""
     captcha_secretkey: str = ""
+    admin_theme_url: str = ""
     enable_captcha: bool = False
     explorer_urls: Dict[str, str] = {}
     rpc_urls: Dict[str, str] = {}
