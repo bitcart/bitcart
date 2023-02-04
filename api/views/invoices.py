@@ -16,7 +16,7 @@ async def get_invoice_noauth(model_id: str):
     return item
 
 
-@router.post("/order_id/{order_id}", response_model=schemes.DisplayInvoice)
+@router.post("/order_id/{order_id:path}", response_model=schemes.DisplayInvoice)
 async def get_or_create_invoice_by_order_id(request: Request, order_id: str, data: schemes.CreateInvoice):
     try:
         user = await utils.authorization.AuthDependency()(request, SecurityScopes(["invoice_management"]))
