@@ -4,7 +4,7 @@ from decimal import Decimal
 import bitcart
 from sqlalchemy import select
 
-from api import models, settings, utils
+from api import invoices, models, settings, utils
 from api.ext.moneyformat import currency_table
 from api.logger import get_logger
 from api.plugins import run_hook
@@ -33,6 +33,13 @@ async def update_status(payout, status):
     await payout.update(status=status).apply()
     await utils.notifications.send_ipn(payout, status)
     await run_hook("payout_status", payout, status)
+    if status == PayoutStatus.SENT:
+        # Refunds: mark invoice as refunded if there's a matching object
+        refund = await models.Refund.query.where(models.Refund.payout_id == payout.id).gino.first()
+        if refund:
+            invoice = await utils.database.get_object(models.Invoice, refund.invoice_id, raise_exception=False)
+            if invoice:
+                await invoices.update_status(invoice, invoices.InvoiceStatus.REFUNDED)
 
 
 async def prepare_tx(coin, wallet, destination, amount, divisibility):

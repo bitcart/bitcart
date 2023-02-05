@@ -16,6 +16,7 @@ from parametrization import Parametrization
 
 from api import invoices, models, schemes, settings, utils
 from api.constants import BACKUP_FREQUENCIES, BACKUP_PROVIDERS, DOCKER_REPO_URL, SUPPORTED_CRYPTOS
+from api.ext import payouts
 from api.ext import tor as tor_ext
 from api.invoices import InvoiceStatus
 from tests.fixtures import static_data
@@ -59,6 +60,17 @@ async def test_rate(client: TestClient):
     assert (await client.get("/cryptos/rate?fiat_currency=eur")).status_code == 200
     assert (await client.get("/cryptos/rate?fiat_currency=EUR")).status_code == 200
     assert (await client.get("/cryptos/rate?fiat_currency=test")).status_code == 422
+
+
+async def test_wallet_rate(client: TestClient, token: str, wallet):
+    resp = await client.get(f"/wallets/{wallet['id']}/rate")
+    data = resp.json()
+    assert resp.status_code == 200
+    assert isinstance(data, (int, float))
+    assert data > 0
+    assert (await client.get(f"/wallets/{wallet['id']}/rate?currency=eur")).status_code == 200
+    assert (await client.get(f"/wallets/{wallet['id']}/rate?currency=EUR")).status_code == 200
+    assert (await client.get(f"/wallets/{wallet['id']}/rate?currency=test")).status_code == 422
 
 
 async def test_wallet_history(client: TestClient, token: str, wallet):
@@ -1733,3 +1745,61 @@ async def test_generate_wallet(client: TestClient, token):
     assert len(resp1.json()["seed"].split()) == len(resp2.json()["seed"].split()) == 12
     assert resp1.json()["seed"] == resp1.json()["key"]
     assert resp2.json()["key"].startswith("vpub")
+
+
+async def test_refund_functionality(client: TestClient, user, token, mocker):
+    invoice = await create_invoice(client, user["id"], token, buyer_email="test@test.com")
+    invoice_id = invoice["id"]
+    assert (
+        await client.post(
+            f"/invoices/{invoice_id}/refunds",
+            json={"amount": 1, "currency": "USD", "send_email": True, "admin_host": "http://admin"},
+        )
+    ).status_code == 401
+    assert (
+        await client.post(
+            f"/invoices/{invoice_id}/refunds",
+            json={"amount": 1, "currency": "USD", "send_email": True, "admin_host": "http://admin"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+    ).status_code == 422  # invoice unpaid
+    await invoices.new_payment_handler(DummyInstance(), None, invoice["payments"][0]["lookup_field"], "complete", None)
+    full_url = ""
+
+    async def func(store, invoice, refund, refund_url):
+        nonlocal full_url
+        full_url = refund_url
+
+    mocker.patch("api.utils.email.check_ping", return_value=True)
+    mocker.patch("api.utils.email.send_mail", return_value=True)
+    mocker.patch("api.utils.templates.get_customer_refund_template", side_effect=func)
+    resp = await client.post(
+        f"/invoices/{invoice_id}/refunds",
+        json={"amount": 1, "currency": "USD", "send_email": True, "admin_host": "http://admin"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 200
+    refund_id = resp.json()["id"]
+    assert full_url == f"http://admin/refunds/{refund_id}"
+    assert (await client.get(f"/invoices/refunds/{refund_id}")).json() == resp.json()
+    # submit refund address
+    assert (
+        await client.post(f"/invoices/refunds/{refund_id}/submit", json={"destination": "test"})
+    ).status_code == 422  # address validation
+    resp2 = await client.post(f"/invoices/refunds/{refund_id}/submit", json={"destination": static_data.PAYOUT_DESTINATION})
+    assert resp2.status_code == 200
+    assert (
+        await client.post(f"/invoices/refunds/{refund_id}/submit", json={"destination": static_data.PAYOUT_DESTINATION})
+    ).status_code == 422  # already submitted
+    assert (await client.get(f"/invoices/refunds/{refund_id}")).json() == resp2.json()
+    assert resp2.json()["payout_status"] == "pending"
+    assert resp2.json()["tx_hash"] is None
+    assert resp2.json()["wallet_currency"] == "btc"
+    payout = await models.Payout.get((await models.Refund.get(refund_id)).payout_id)
+    await payout.update(tx_hash="test").apply()
+    await payouts.update_status(payout, payouts.PayoutStatus.SENT)
+    invoice = (await client.get(f"/invoices/{invoice_id}")).json()
+    assert invoice["status"] == "refunded"
+    resp2 = await client.get(f"/invoices/refunds/{refund_id}")
+    assert resp2.json()["payout_status"] == "sent"
+    assert resp2.json()["tx_hash"] == "test"

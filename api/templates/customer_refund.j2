@@ -1,0 +1,6 @@
+Hello {{ invoice.buyer_email }}!
+The merchant has initiated the refund process for your invoice {{ invoice.id }}
+
+The merchant will refund you the amount of {{ refund.amount }} {{ refund.currency }}.
+
+View the refund here and fill in your address: {{ refund_url }}

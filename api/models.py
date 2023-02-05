@@ -630,6 +630,7 @@ class Invoice(BaseModel):
         self.add_invoice_expiration()
         names = await select([Product.id, Product.name]).where(Product.id.in_(self.products)).gino.all()
         self.product_names = {name[0]: name[1] for name in names}
+        self.refund_id = await select([Refund.id]).where(Refund.invoice_id == self.id).gino.scalar()
 
 
 class Setting(BaseModel):
@@ -723,6 +724,20 @@ class Payout(BaseModel):
             self.wallet_currency = wallet.currency
         except HTTPException:
             self.wallet_currency = None
+
+
+class Refund(BaseModel):
+    __tablename__ = "refunds"
+
+    id = Column(Text, primary_key=True, index=True)
+    amount = Column(Numeric(36, 18), nullable=False)
+    currency = Column(Text)
+    wallet_id = Column(Text, ForeignKey("wallets.id", deferrable=True, initially="DEFERRED", ondelete="SET NULL"), index=True)
+    invoice_id = Column(Text, ForeignKey(Invoice.id, ondelete="SET NULL"), index=True)
+    payout_id = Column(Text, ForeignKey("payouts.id", ondelete="SET NULL"), index=True)
+    destination = Column(Text)
+    user_id = Column(Text, ForeignKey(User.id, ondelete="SET NULL"))
+    created = Column(DateTime(True), nullable=False)
 
 
 all_tables = {

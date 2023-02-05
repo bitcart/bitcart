@@ -48,3 +48,29 @@ def send_mail(
     server.login(user, password)
     server.sendmail(email, where, message)
     server.quit()
+
+
+def check_store_ping(store):
+    return check_ping(
+        store.email_host,
+        store.email_port,
+        store.email_user,
+        store.email_password,
+        store.email,
+        store.email_use_ssl,
+    )
+
+
+def send_store_email(store, where, text, subject="Thank you for your purchase"):  # pragma: no cover
+    return send_mail(
+        store.email_host,
+        store.email_port,
+        store.email_user,
+        store.email_password,
+        store.email,
+        store.email_use_ssl,
+        where,
+        text,
+        subject,
+        store.checkout_settings.use_html_templates,
+    )

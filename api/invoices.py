@@ -21,6 +21,7 @@ class InvoiceStatus:
     EXPIRED = "expired"
     INVALID = "invalid"
     COMPLETE = "complete"
+    REFUNDED = "refunded"
 
 
 class InvoiceExceptionStatus:
@@ -197,14 +198,7 @@ async def invoice_notification(invoice: models.Invoice, status: str):
         store = await utils.database.get_object(models.Store, invoice.store_id)
         await utils.notifications.notify(store, await utils.templates.get_notify_template(store, invoice))
         if invoice.products:
-            if utils.email.check_ping(
-                store.email_host,
-                store.email_port,
-                store.email_user,
-                store.email_password,
-                store.email,
-                store.email_use_ssl,
-            ):
+            if utils.email.check_store_ping(store):
                 messages = []
                 products = await utils.database.get_objects(models.Product, invoice.products)
                 for product in products:
@@ -232,17 +226,7 @@ async def invoice_notification(invoice: models.Invoice, status: str):
                 )
                 logger.debug(f"Invoice {invoice.id} email notification: rendered final template:\n{store_template}")
                 await run_hook("invoice_email", invoice, store_template)
-                utils.email.send_mail(
-                    store.email_host,
-                    store.email_port,
-                    store.email_user,
-                    store.email_password,
-                    store.email,
-                    store.email_use_ssl,
-                    invoice.buyer_email,
-                    store_template,
-                    use_html_templates=store.checkout_settings.use_html_templates,
-                )
+                utils.email.send_store_email(store, invoice.buyer_email, store_template)
 
 
 async def process_notifications(invoice):
@@ -292,7 +276,11 @@ async def update_status(invoice, status, method=None, tx_hashes=[], sent_amount=
             ).apply()
             await process_notifications(invoice)
 
-    if invoice.status != status and status != InvoiceStatus.PENDING and invoice.status != InvoiceStatus.COMPLETE:
+    if (
+        invoice.status != status
+        and status != InvoiceStatus.PENDING
+        and (invoice.status != InvoiceStatus.COMPLETE or status == InvoiceStatus.REFUNDED)
+    ):
         log_text = f"Updating status of invoice {invoice.id}"
         if method:
             full_method_name = method.get_name()

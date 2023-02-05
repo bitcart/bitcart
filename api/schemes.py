@@ -497,6 +497,7 @@ class DisplayInvoice(Invoice):
     expiration_seconds: int
     product_names: dict
     payments: list = []
+    refund_id: Optional[str]
 
 
 class TxResponse(BaseModel):
@@ -731,3 +732,33 @@ class File(CreateFile):
 class CreateWalletData(BaseModel):
     currency: str
     hot_wallet: bool
+
+
+class RefundData(BaseModel):
+    amount: Decimal
+    currency: str
+    admin_host: str
+    send_email: bool = True
+
+
+class SubmitRefundData(BaseModel):
+    destination: str
+
+
+class CreateRefund(CreatedMixin):
+    amount: Decimal
+    currency: str
+    wallet_id: str
+    invoice_id: str
+
+    class Config:
+        orm_mode = True
+
+
+class Refund(CreateRefund):
+    id: str
+    destination: Optional[str]
+    user_id: str
+    wallet_currency: Optional[str]
+    payout_status: Optional[str]
+    tx_hash: Optional[str]

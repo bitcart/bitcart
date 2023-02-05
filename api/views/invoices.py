@@ -1,12 +1,15 @@
+from urllib.parse import urljoin
+
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, Security
 from fastapi.responses import StreamingResponse
 from fastapi.security import SecurityScopes
 from sqlalchemy import select
 
-from api import crud, models, pagination, schemes, settings, utils
+from api import crud, db, events, models, pagination, schemes, settings, utils
 from api.ext import export as export_ext
+from api.ext.moneyformat import currency_table
 from api.invoices import InvoiceStatus
-from api.plugins import run_hook
+from api.plugins import apply_filters, run_hook
 
 router = APIRouter()
 
@@ -125,6 +128,91 @@ async def update_payment_details(
     await run_hook("invoice_payment_address_set", item, method, data.address)
     await method.update(user_address=data.address).apply()
     return True
+
+
+@router.post("/{model_id}/refunds", response_model=schemes.Refund)
+async def refund_invoice(
+    data: schemes.RefundData,
+    model_id: str,
+    user: models.User = Security(utils.authorization.AuthDependency(), scopes=["invoice_management", "payout_management"]),
+):
+    invoice = await utils.database.get_object(models.Invoice, model_id, user)
+    if not invoice.paid_currency:
+        raise HTTPException(422, "Can't refund unpaid invoice")
+    payment = crud.invoices.match_payment(invoice.payments, invoice.paid_currency)
+    refund = await utils.database.create_object(
+        models.Refund,
+        schemes.CreateRefund(
+            amount=data.amount, currency=data.currency, wallet_id=payment["wallet_id"], invoice_id=invoice.id
+        ),
+        user,
+    )
+    if data.send_email and invoice.buyer_email:
+        store = await utils.database.get_object(models.Store, invoice.store_id)
+        if utils.email.check_store_ping(store):
+            refund_url = urljoin(data.admin_host, f"/refunds/{refund.id}")
+            refund.amount = currency_table.normalize(refund.currency, refund.amount)
+            refund_template = await apply_filters(
+                "refund_customer_text",
+                await utils.templates.get_customer_refund_template(store, invoice, refund, refund_url),
+                store,
+                invoice,
+                refund,
+                refund_url,
+            )
+            utils.email.send_store_email(store, invoice.buyer_email, refund_template, f"Refund for invoice {invoice.id}")
+    return refund
+
+
+@router.get("/refunds/{refund_id}", response_model=schemes.Refund)
+async def get_refund(refund_id: str):
+    refund = await utils.database.get_object(models.Refund, refund_id)
+    payout_status = None
+    tx_hash = None
+    wallet_currency = None
+    if refund.payout_id:
+        payout = await utils.database.get_object(models.Payout, refund.payout_id)
+        payout_status = payout.status
+        tx_hash = payout.tx_hash
+        wallet_currency = payout.wallet_currency
+    refund.payout_status = payout_status
+    refund.tx_hash = tx_hash
+    refund.wallet_currency = wallet_currency
+    return refund
+
+
+@router.post("/refunds/{refund_id}/submit", response_model=schemes.Refund)
+async def submit_refund(refund_id: str, data: schemes.SubmitRefundData):
+    async with db.db.transaction():
+        refund = await utils.database.get_object(models.Refund, refund_id, atomic_update=True)
+        if refund.payout_id:
+            raise HTTPException(422, "Refund already submitted")
+        invoice = await utils.database.get_object(models.Invoice, refund.invoice_id)
+        payout = await utils.database.create_object(
+            models.Payout,
+            schemes.CreatePayout(
+                amount=refund.amount,
+                currency=refund.currency,
+                destination=data.destination,
+                store_id=invoice.store_id,
+                wallet_id=refund.wallet_id,
+            ),
+            user_id=refund.user_id,
+        )
+        await refund.update(payout_id=payout.id, destination=data.destination).apply()
+        refund.payout_status = payout.status
+        refund.tx_hash = payout.tx_hash
+        refund.wallet_currency = payout.wallet_currency
+        store = await utils.database.get_object(models.Store, invoice.store_id)
+        refund.amount = currency_table.normalize(refund.currency, refund.amount)
+        await events.event_handler.publish(
+            "send_notification",
+            {
+                "store_id": invoice.store_id,
+                "text": await utils.templates.get_merchant_refund_notify_template(store, invoice, refund),
+            },
+        )
+        return refund
 
 
 utils.routing.ModelView.register(

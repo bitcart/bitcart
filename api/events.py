@@ -87,5 +87,8 @@ event_handler = EventHandler(
         "invoice_status": {
             "params": {"id", "status"},
         },
+        "send_notification": {
+            "params": {"store_id", "text"},
+        },
     }
 )

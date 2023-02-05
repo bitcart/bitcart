@@ -43,3 +43,13 @@ async def get_store_template(store, products):
 async def get_notify_template(store, invoice):
     template = await get_template("notification", store.user_id, store)
     return template.render(store=store, invoice=invoice)
+
+
+async def get_customer_refund_template(store, invoice, refund, refund_url):  # pragma: no cover: patched in tests
+    template = await get_template("customer_refund", store.user_id, store)
+    return template.render(store=store, invoice=invoice, refund=refund, refund_url=refund_url)
+
+
+async def get_merchant_refund_notify_template(store, invoice, refund):
+    template = await get_template("merchant_refund_notify", store.user_id, store)
+    return template.render(store=store, invoice=invoice, refund=refund)

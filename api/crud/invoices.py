@@ -312,16 +312,21 @@ def get_methods_inds(methods: list):
         yield index, item
 
 
-def find_sent_amount_divisibility(obj_id, payments, paid_currency):  # pragma: no cover
-    if not paid_currency:
-        return None
-    # First, try matching by label
+def match_payment(payments, paid_currency):  # pragma: no cover
     for method in payments:
         if method["name"] == paid_currency:
-            return method["divisibility"]
+            return method
     # Else try matching by prefix (because of indexes like BTC (1), BTC (2))
     for method in payments:
         if method["name"].startswith(paid_currency):
-            return method["divisibility"]
+            return method
+
+
+def find_sent_amount_divisibility(obj_id, payments, paid_currency):  # pragma: no cover
+    if not paid_currency:
+        return None
+    method = match_payment(payments, paid_currency)
+    if method:
+        return method["divisibility"]
     logger.error(f"Could not find sent amount divisibility for invoice {obj_id}, paid_currency={paid_currency}")
     return None

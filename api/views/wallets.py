@@ -1,3 +1,4 @@
+import math
 from typing import List
 
 from bitcart.errors import BaseError as BitcartBaseError
@@ -147,6 +148,18 @@ async def create_wallet(
         coin = await settings.settings.get_coin(data.currency, {"xpub": seed, "diskless": True})
         key = await coin.server.getmpk() if not coin.is_eth_based else await coin.server.getaddress()
         return {"seed": seed, "key": key}
+
+
+@router.get("/{model_id}/rate")
+async def get_wallet_rate(
+    model_id: str,
+    currency: str = "USD",
+):
+    wallet = await utils.database.get_object(models.Wallet, model_id)
+    rate = await utils.wallets.get_rate(wallet, currency.upper(), extra_fallback=False)
+    if math.isnan(rate):
+        raise HTTPException(422, "Unsupported fiat currency")
+    return rate
 
 
 utils.routing.ModelView.register(

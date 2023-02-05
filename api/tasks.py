@@ -45,5 +45,13 @@ async def sync_wallet(event, event_data):
     )  # convert for json serialization
 
 
+@event_handler.on("send_notification")
+async def send_notification(event, event_data):
+    store = await utils.database.get_object(models.Store, event_data["store_id"], raise_exception=False)
+    if not store:
+        return
+    await utils.notifications.notify(store, event_data["text"])
+
+
 event_handler.add_handler("deploy_task", deploy_task)
 event_handler.add_handler("invoice_status", shopify_invoice_update)

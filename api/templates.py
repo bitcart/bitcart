@@ -36,6 +36,8 @@ BaseShopTemplate = Template("shop", applicable_to="store")
 NotificationTemplate = Template("notification", applicable_to="store")
 ForgotPasswordTemplate = Template("forgotpassword")
 VerifyEmailTemplate = Template("verifyemail")
+CustomerRefundTemplate = Template("customer_refund", applicable_to="store")
+MerchantRefundNotifyTemplate = Template("merchant_refund_notify", applicable_to="store")
 
 
 class TemplateManager:

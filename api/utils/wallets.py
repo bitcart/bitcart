@@ -15,7 +15,7 @@ from api.plugins import apply_filters
 logger = get_logger(__name__)
 
 
-async def get_rate(wallet, currency, fallback_currency=None, coin=None):
+async def get_rate(wallet, currency, fallback_currency=None, coin=None, extra_fallback=True):
     try:
         coin = coin or await settings.settings.get_coin(
             wallet.currency, {"xpub": wallet.xpub, "contract": wallet.contract, **wallet.additional_xpub_data}
@@ -26,9 +26,9 @@ async def get_rate(wallet, currency, fallback_currency=None, coin=None):
         rate = await coin.rate(currency)
         if math.isnan(rate) and fallback_currency:
             rate = await coin.rate(fallback_currency)
-        if math.isnan(rate):
+        if math.isnan(rate) and extra_fallback:
             rate = await coin.rate("USD")
-        if math.isnan(rate):
+        if math.isnan(rate) and extra_fallback:
             rate = Decimal(1)  # no rate available, no conversion
         rate = await apply_filters("get_rate", rate, coin, currency, fallback_currency)
     except (BitcartBaseError, HTTPException) as e:
