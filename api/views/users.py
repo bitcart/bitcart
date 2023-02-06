@@ -1,8 +1,8 @@
 import json
+from typing import Optional
 
 import pyotp
 from fastapi import APIRouter, HTTPException, Request, Security
-from fastapi.security import SecurityScopes
 from fido2.server import Fido2Server
 from fido2.webauthn import AttestedCredentialData, PublicKeyCredentialRpEntity, PublicKeyCredentialUserEntity
 from sqlalchemy import distinct, func, select
@@ -15,7 +15,7 @@ router = APIRouter()
 
 
 @router.get("/stats")
-async def get_stats(user: models.User = Security(utils.authorization.AuthDependency(), scopes=["full_control"])):
+async def get_stats(user: models.User = Security(utils.authorization.auth_dependency, scopes=["full_control"])):
     queries = []
     output_formats = []
     for index, orm_model in enumerate(utils.routing.ModelView.crud_models):
@@ -32,14 +32,14 @@ async def get_stats(user: models.User = Security(utils.authorization.AuthDepende
 
 
 @router.get("/me", response_model=schemes.DisplayUser)
-async def get_me(user: models.User = Security(utils.authorization.AuthDependency())):
+async def get_me(user: models.User = Security(utils.authorization.auth_dependency)):
     return user
 
 
 @router.post("/me/settings", response_model=schemes.User)
 async def set_settings(
     settings: schemes.UserPreferences,
-    user: models.User = Security(utils.authorization.AuthDependency(), scopes=["full_control"]),
+    user: models.User = Security(utils.authorization.auth_dependency, scopes=["full_control"]),
 ):
     await user.set_json_key("settings", settings)
     return user
@@ -72,11 +72,10 @@ async def finalize_password_reset(code: str, data: schemes.ResetPasswordFinalize
 
 
 @router.post("/verify")
-async def send_verification_email(request: Request, data: schemes.VerifyEmailData):
-    try:
-        auth_user = await utils.authorization.AuthDependency()(request, SecurityScopes(["token_management"]))
-    except HTTPException:
-        auth_user = None
+async def send_verification_email(
+    data: schemes.VerifyEmailData,
+    auth_user: Optional[models.User] = Security(utils.authorization.optional_auth_dependency, scopes=["token_management"]),
+):
     if not auth_user:
         await utils.authorization.captcha_flow(data.captcha_code)
     user = await utils.database.get_object(
@@ -107,11 +106,10 @@ class CreateUserWithToken(schemes.DisplayUser):
     token: str
 
 
-async def create_user(model: schemes.CreateUser, request: Request):
-    try:
-        auth_user = await utils.authorization.AuthDependency()(request, SecurityScopes([]))
-    except HTTPException:
-        auth_user = None
+async def create_user(
+    model: schemes.CreateUser,
+    auth_user: Optional[models.User] = Security(utils.authorization.optional_auth_dependency, scopes=[]),
+):
     user = await crud.users.create_user(model, auth_user)
     await events.event_handler.publish("send_verification_email", {"id": user.id, "next_url": model.verify_url})
     policies = await utils.policies.get_setting(schemes.Policy)
@@ -129,7 +127,7 @@ async def create_user(model: schemes.CreateUser, request: Request):
 @router.post("/password")
 async def change_password(
     data: schemes.ChangePassword,
-    user: models.User = Security(utils.authorization.AuthDependency(), scopes=["token_management"]),
+    user: models.User = Security(utils.authorization.auth_dependency, scopes=["token_management"]),
 ):
     if not utils.authorization.verify_password(data.old_password, user.hashed_password):
         raise HTTPException(422, "Invalid password")
@@ -140,7 +138,7 @@ async def change_password(
 @router.post("/2fa/totp/verify")
 async def verify_totp(
     token_data: schemes.VerifyTOTP,
-    user: models.User = Security(utils.authorization.AuthDependency(), scopes=["token_management"]),
+    user: models.User = Security(utils.authorization.auth_dependency, scopes=["token_management"]),
 ):
     if not pyotp.TOTP(user.totp_key).verify(token_data.code.replace(" ", "")):
         raise HTTPException(422, "Invalid code")
@@ -151,7 +149,7 @@ async def verify_totp(
 
 @router.post("/2fa/disable")
 async def disable_totp(
-    user: models.User = Security(utils.authorization.AuthDependency(), scopes=["token_management"]),
+    user: models.User = Security(utils.authorization.auth_dependency, scopes=["token_management"]),
 ):
     await user.update(tfa_enabled=False, totp_key=pyotp.random_base32()).apply()
     return True
@@ -160,7 +158,7 @@ async def disable_totp(
 @router.post("/2fa/fido2/register/begin")
 async def register_fido2(
     auth_data: schemes.LoginFIDOData,
-    user: models.User = Security(utils.authorization.AuthDependency(), scopes=["token_management"]),
+    user: models.User = Security(utils.authorization.auth_dependency, scopes=["token_management"]),
 ):  # pragma: no cover
     existing_credentials = list(map(lambda x: AttestedCredentialData(bytes.fromhex(x["device_data"])), user.fido2_devices))
     options, state = Fido2Server(PublicKeyCredentialRpEntity(name="BitcartCC", id=auth_data.auth_host)).register_begin(
@@ -181,7 +179,7 @@ async def register_fido2(
 @router.post("/2fa/fido2/register/complete")
 async def fido2_complete_registration(
     request: Request,
-    user: models.User = Security(utils.authorization.AuthDependency(), scopes=["token_management"]),
+    user: models.User = Security(utils.authorization.auth_dependency, scopes=["token_management"]),
 ):  # pragma: no cover
     data = await request.json()
     if "name" not in data or "auth_host" not in data:
@@ -206,7 +204,7 @@ async def fido2_complete_registration(
 @router.delete("/2fa/fido2/{device_id}")
 async def fido2_delete_device(
     device_id: str,
-    user: models.User = Security(utils.authorization.AuthDependency(), scopes=["token_management"]),
+    user: models.User = Security(utils.authorization.auth_dependency, scopes=["token_management"]),
 ):  # pragma: no cover
     for device in user.fido2_devices:
         if device["id"] == device_id:

@@ -587,6 +587,7 @@ class Invoice(BaseModel):
     tx_hashes = Column(ARRAY(Text))
     order_id = Column(Text)
     user_id = Column(Text, ForeignKey(User.id, ondelete="SET NULL"))
+    creation_time = Column(Numeric(36, 18))
     created = Column(DateTime(True), nullable=False)
 
     async def add_related(self):

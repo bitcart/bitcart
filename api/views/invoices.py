@@ -1,8 +1,8 @@
+from typing import Optional
 from urllib.parse import urljoin
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, Security
+from fastapi import APIRouter, Depends, HTTPException, Response, Security
 from fastapi.responses import StreamingResponse
-from fastapi.security import SecurityScopes
 from sqlalchemy import select
 
 from api import crud, db, events, models, pagination, schemes, settings, utils
@@ -20,11 +20,11 @@ async def get_invoice_noauth(model_id: str):
 
 
 @router.post("/order_id/{order_id:path}", response_model=schemes.DisplayInvoice)
-async def get_or_create_invoice_by_order_id(request: Request, order_id: str, data: schemes.CreateInvoice):
-    try:
-        user = await utils.authorization.AuthDependency()(request, SecurityScopes(["invoice_management"]))
-    except HTTPException:
-        user = None
+async def get_or_create_invoice_by_order_id(
+    order_id: str,
+    data: schemes.CreateInvoice,
+    user: Optional[models.User] = Security(utils.authorization.optional_auth_dependency, scopes=["invoice_management"]),
+):
     item = await utils.database.get_object(
         models.Invoice,
         order_id,
@@ -46,7 +46,7 @@ async def export_invoices(
     export_format: str = "json",
     add_payments: bool = False,
     all_users: bool = False,
-    user: models.User = Security(utils.authorization.AuthDependency(), scopes=["invoice_management"]),
+    user: models.User = Security(utils.authorization.auth_dependency, scopes=["invoice_management"]),
 ):
     if all_users and not user.is_superuser:
         raise HTTPException(403, "Not enough permissions")
@@ -134,7 +134,7 @@ async def update_payment_details(
 async def refund_invoice(
     data: schemes.RefundData,
     model_id: str,
-    user: models.User = Security(utils.authorization.AuthDependency(), scopes=["invoice_management", "payout_management"]),
+    user: models.User = Security(utils.authorization.auth_dependency, scopes=["invoice_management", "payout_management"]),
 ):
     invoice = await utils.database.get_object(models.Invoice, model_id, user)
     if not invoice.paid_currency:

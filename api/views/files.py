@@ -15,7 +15,7 @@ def get_file_path(item):
 
 async def create_file(
     file: UploadFile = File(...),
-    user: models.User = Security(utils.authorization.AuthDependency(), scopes=["file_management"]),
+    user: models.User = Security(utils.authorization.auth_dependency, scopes=["file_management"]),
 ):
     policy = await utils.policies.get_setting(schemes.Policy)
     if not user.is_superuser and not policy.allow_file_uploads:
@@ -30,7 +30,7 @@ async def create_file(
 async def patch_file(
     model_id: str,
     file: UploadFile = File(...),
-    user: models.User = Security(utils.authorization.AuthDependency(), scopes=["file_management"]),
+    user: models.User = Security(utils.authorization.auth_dependency, scopes=["file_management"]),
 ):
     policy = await utils.policies.get_setting(schemes.Policy)
     if not user.is_superuser and not policy.allow_file_uploads:

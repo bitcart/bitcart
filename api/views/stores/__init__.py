@@ -9,7 +9,7 @@ router = APIRouter()
 @router.get("/{model_id}/ping")
 async def ping_email(
     model_id: str,
-    user: models.User = Security(utils.authorization.AuthDependency(), scopes=["store_management"]),
+    user: models.User = Security(utils.authorization.auth_dependency, scopes=["store_management"]),
 ):
     model = await utils.database.get_object(models.Store, model_id, user)
     return utils.email.check_ping(
@@ -27,7 +27,7 @@ async def ping_email(
 async def set_store_checkout_settings(
     model_id: str,
     settings: schemes.StoreCheckoutSettings,
-    user: models.User = Security(utils.authorization.AuthDependency(), scopes=["store_management"]),
+    user: models.User = Security(utils.authorization.auth_dependency, scopes=["store_management"]),
 ):
     model = await utils.database.get_object(models.Store, model_id, user)
     await model.set_json_key("checkout_settings", settings)
@@ -38,7 +38,7 @@ async def set_store_checkout_settings(
 async def set_store_theme_settings(
     model_id: str,
     settings: schemes.StoreThemeSettings,
-    user: models.User = Security(utils.authorization.AuthDependency(), scopes=["store_management"]),
+    user: models.User = Security(utils.authorization.auth_dependency, scopes=["store_management"]),
 ):
     model = await utils.database.get_object(models.Store, model_id, user)
     await model.set_json_key("theme_settings", settings)
@@ -49,7 +49,7 @@ async def set_store_theme_settings(
 async def set_store_plugin_settings(
     model_id: str,
     settings: schemes.StorePluginSettings,
-    user: models.User = Security(utils.authorization.AuthDependency(), scopes=["store_management"]),
+    user: models.User = Security(utils.authorization.auth_dependency, scopes=["store_management"]),
 ):
     model = await utils.database.get_object(models.Store, model_id, user)
     await model.set_json_key("plugin_settings", settings)

@@ -5,13 +5,11 @@ from typing import Any, Callable, ClassVar, Dict, List, Optional, Type, Union
 from urllib import parse as urlparse
 
 from fastapi import APIRouter, Depends, HTTPException, Security
-from fastapi.security import SecurityScopes
 from pydantic import BaseModel
 from pydantic import create_model as create_pydantic_model
 from starlette.requests import Request
 
 from api import db, events, models, pagination, utils
-from api.utils.authorization import AuthDependency
 
 HTTP_METHODS: List[str] = ["GET", "POST", "PATCH", "DELETE"]
 ENDPOINTS: List[str] = ["get_all", "get_one", "get_count", "post", "patch", "delete", "batch_action"]
@@ -34,7 +32,6 @@ class ModelView:
     custom_methods: Dict[str, Callable]
     background_tasks_mapping: Dict[str, Callable]
     request_handlers: Dict[str, Callable]
-    auth_dependency: AuthDependency
     get_one_auth: bool
     post_auth: bool
     get_one_model: bool
@@ -56,7 +53,6 @@ class ModelView:
         custom_methods: Dict[str, Callable] = {},
         background_tasks_mapping: Dict[str, Callable] = {},
         request_handlers: Dict[str, Callable] = {},
-        auth=True,
         get_one_auth=True,
         post_auth=True,
         get_one_model=True,
@@ -88,7 +84,6 @@ class ModelView:
             custom_methods=custom_methods,
             background_tasks_mapping=background_tasks_mapping,
             request_handlers=request_handlers,
-            auth_dependency=AuthDependency(auth),
             get_one_auth=get_one_auth,
             post_auth=post_auth,
             get_one_model=get_one_model,
@@ -101,6 +96,7 @@ class ModelView:
     def register_routes(self):
         response_models = self.get_response_models()
         paths = self.get_paths()
+        names = self.get_names()
         for method in self.allowed_methods:
             method_name = method.lower()
             self.router.add_api_route(
@@ -108,6 +104,7 @@ class ModelView:
                 self.request_handlers.get(method_name)
                 or getattr(self, method_name, None)
                 or getattr(self, f"_{method_name}")(),
+                name=names.get(method_name),
                 methods=[method_name if method in HTTP_METHODS else CUSTOM_HTTP_METHODS.get(method_name, "get")],
                 response_model=self.response_models.get(method_name, response_models.get(method_name)),
             )
@@ -129,6 +126,17 @@ class ModelView:
             "batch_action": batch_path,
         }
 
+    def get_names(self) -> Dict[str, str]:
+        return {
+            "get": f"Get {self.orm_model.__name__}s",
+            "get_count": f"Get number of {self.orm_model.__name__}s",
+            "get_one": f"Get {self.orm_model.__name__} by id",
+            "post": f"Create {self.orm_model.__name__}",
+            "patch": f"Modify {self.orm_model.__name__}",
+            "delete": f"Delete {self.orm_model.__name__}",
+            "batch_action": f"Batch actions on {self.orm_model.__name__}s",
+        }
+
     def get_response_models(self) -> Dict[str, Type]:
         display_model = self.pydantic_model if not self.display_model else self.display_model
         pagination_response = get_pagination_model(display_model)
@@ -141,7 +149,7 @@ class ModelView:
             "delete": display_model,
         }
 
-    async def _get_one(self, model_id: str, user: schemes.User, internal: bool = False):
+    async def _get_one_internal(self, model_id: str, user: schemes.User, internal: bool = False):
         item = await utils.database.get_object(self.orm_model, model_id, user if self.get_one_auth else None)
         if self.custom_methods.get("get_one"):
             item = await self.custom_methods["get_one"](model_id, user, item, internal)
@@ -151,7 +159,7 @@ class ModelView:
         async def get(
             request: Request,
             pagination: pagination.Pagination = Depends(),
-            user: Union[None, ModelView.schemes.User] = Security(self.auth_dependency, scopes=self.scopes["get_all"]),
+            user: ModelView.schemes.User = Security(utils.authorization.auth_dependency, scopes=self.scopes["get_all"]),
         ):
             params = utils.common.prepare_query_params(request)
             if self.custom_methods.get("get"):
@@ -163,7 +171,7 @@ class ModelView:
 
     def _get_count(self):
         async def get_count(
-            user: Union[None, ModelView.schemes.User] = Security(self.auth_dependency, scopes=self.scopes["get_count"])
+            user: ModelView.schemes.User = Security(utils.authorization.auth_dependency, scopes=self.scopes["get_count"])
         ):
             return await utils.database.get_scalar(
                 (
@@ -177,23 +185,26 @@ class ModelView:
 
         return get_count
 
-    async def get_one(self, model_id: str, request: Request):
-        try:
-            user = await self.auth_dependency(request, SecurityScopes(self.scopes["get_one"]))
-        except HTTPException:
-            if self.get_one_auth:
-                raise
-            user = None
-        return await self._get_one(model_id, user)
+    def _get_one(self):
+        async def get_one(
+            model_id: str,
+            user: Union[None, ModelView.schemes.User] = Security(
+                (utils.authorization.auth_dependency if self.get_one_auth else utils.authorization.optional_auth_dependency),
+                scopes=self.scopes["get_one"],
+            ),
+        ):
+            return await self._get_one_internal(model_id, user)
+
+        return get_one
 
     def _post(self):
-        async def post(model: self.create_model, request: Request):
-            try:
-                user = await self.auth_dependency(request, SecurityScopes(self.scopes["post"]))
-            except HTTPException:
-                if self.post_auth:
-                    raise
-                user = None
+        async def post(
+            model: self.create_model,
+            user: Union[None, ModelView.schemes.User] = Security(
+                (utils.authorization.auth_dependency if self.post_auth else utils.authorization.optional_auth_dependency),
+                scopes=self.scopes["post"],
+            ),
+        ):
             if self.custom_methods.get("post"):
                 obj = await self.custom_methods["post"](model, user)
             else:
@@ -208,9 +219,9 @@ class ModelView:
         async def patch(
             model_id: str,
             model: utils.schemes.to_optional(self.pydantic_model),
-            user: Union[None, ModelView.schemes.User] = Security(self.auth_dependency, scopes=self.scopes["patch"]),
+            user: ModelView.schemes.User = Security(utils.authorization.auth_dependency, scopes=self.scopes["patch"]),
         ):
-            item = await self._get_one(model_id, user, True)
+            item = await self._get_one_internal(model_id, user, True)
             if self.custom_methods.get("patch"):
                 await self.custom_methods["patch"](item, model, user)  # pragma: no cover
             else:
@@ -222,9 +233,9 @@ class ModelView:
     def _delete(self):
         async def delete(
             model_id: str,
-            user: Union[None, ModelView.schemes.User] = Security(self.auth_dependency, scopes=self.scopes["delete"]),
+            user: ModelView.schemes.User = Security(utils.authorization.auth_dependency, scopes=self.scopes["delete"]),
         ):
-            item = await self._get_one(model_id, user, True)
+            item = await self._get_one_internal(model_id, user, True)
             if self.custom_methods.get("delete"):
                 await self.custom_methods["delete"](item, user)
             else:
@@ -242,7 +253,7 @@ class ModelView:
     def _batch_action(self):
         async def batch_action(
             settings: ModelView.schemes.BatchSettings,
-            user: Union[None, ModelView.schemes.User] = Security(self.auth_dependency, scopes=self.scopes["batch_action"]),
+            user: ModelView.schemes.User = Security(utils.authorization.auth_dependency, scopes=self.scopes["batch_action"]),
         ):
             query = self.process_command(settings.command)
             if query is None:

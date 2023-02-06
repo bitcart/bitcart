@@ -1,10 +1,13 @@
+import os
 import re
 
 from aiohttp import ClientSession
+from sqlalchemy import distinct, select
 
-from api import settings
+from api import db, models, settings, utils
 from api.constants import VERSION
-from api.logger import get_logger
+from api.ext.plugins import get_plugins
+from api.logger import get_exception_message, get_logger
 from api.plugins import apply_filters
 
 logger = get_logger(__name__)
@@ -13,16 +16,55 @@ RELEASE_REGEX = r"^([0-9]+(.[0-9]+)*(-[0-9]+)?)$"
 REDIS_KEY = "bitcartcc_update_ext"
 
 
+async def collect_stats():
+    total_invoices = await utils.database.get_scalar(models.Invoice.query, db.db.func.count, models.Invoice.id)
+    complete_invoices = await utils.database.get_scalar(
+        models.Invoice.query.where(models.Invoice.status == "complete"), db.db.func.count, models.Invoice.id
+    )
+    total_users = await utils.database.get_scalar(models.User.query, db.db.func.count, models.User.id)
+    total_price = await utils.database.get_scalar(
+        models.Invoice.query.where(models.Invoice.currency == "USD"), db.db.func.sum, models.Invoice.price
+    )
+    subquery = (
+        models.PaymentMethod.query.where(models.PaymentMethod.invoice_id == models.Invoice.id)
+        .with_only_columns([db.db.func.count(distinct(models.PaymentMethod.id)).label("count")])
+        .group_by(models.Invoice.id)
+        .alias("table")
+    )
+    average_number_of_methods_per_invoice = int(
+        await select([db.db.func.avg(subquery.c.count)]).select_from(subquery).gino.scalar()
+    )
+    average_creation_time = await utils.database.get_scalar(models.Invoice.query, db.db.func.avg, models.Invoice.creation_time)
+    plugins = [{"name": plugin["name"], "author": plugin["author"], "version": plugin["version"]} for plugin in get_plugins()]
+    return {
+        "version": VERSION,
+        "hostname": os.getenv("BITCART_HOST", ""),
+        "plugins": plugins,
+        "total_invoices": total_invoices,
+        "complete_invoices": complete_invoices,
+        "total_users": total_users,
+        "total_price": str(total_price),
+        "average_invoice_creation_time": str(average_creation_time),
+        "number_of_methods": average_number_of_methods_per_invoice,
+        "currencies": list(settings.settings.cryptos.keys()),
+    }
+
+
 async def get_update_data():
     try:
         async with ClientSession() as session:
-            async with session.get(settings.settings.update_url) as resp:
-                data = await resp.json()
-                tag = data["tag_name"]
-                if re.match(RELEASE_REGEX, tag):
-                    return tag
+            if settings.settings.update_url.startswith("https://api.github.com"):
+                resp = await session.get(settings.settings.update_url)
+            else:
+                resp = await session.post(settings.settings.update_url, json=await collect_stats())
+            data = await resp.json()
+            resp.release()
+            tag = data["tag_name"]
+            if re.match(RELEASE_REGEX, tag):
+                return tag
+
     except Exception as e:
-        logger.error(f"Update check failed: {e}")
+        logger.error(f"Update check failed: {get_exception_message(e)}")
 
 
 async def refresh():

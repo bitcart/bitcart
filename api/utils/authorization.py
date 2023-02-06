@@ -42,9 +42,9 @@ async def authenticate_user(email: str, password: str):
     return user, 200
 
 
-oauth2_scheme = OAuth2PasswordBearer(
-    tokenUrl="/token",
-    scopes={
+oauth_kwargs = {
+    "tokenUrl": "/token/oauth2",
+    "scopes": {
         "server_management": "Edit server settings",
         "token_management": "Create, list or edit tokens",
         "wallet_management": "Create, list or edit wallets",
@@ -58,7 +58,14 @@ oauth2_scheme = OAuth2PasswordBearer(
         "file_management": "Create, list or edit files",
         "full_control": "Full control over what current user has",
     },
-)
+}
+
+bearer_description = """Token authorization. Get a token by sending a POST request to `/token` endpoint (JSON-mode, preferred)
+or `/token/oauth2` OAuth2-compatible endpoint.
+Ensure to use only those permissions that your app actually needs. `full_control` gives access to all permissions of a user
+To authorize, send an `Authorization` header with value of `Bearer <token>` (replace `<token>` with your token)
+"""
+optional_bearer_description = "Same as Bearer, but not required. Logic for unauthorized users depends on current endpoint"
 
 
 def check_selective_scopes(request, scope, token):
@@ -68,19 +75,28 @@ def check_selective_scopes(request, scope, token):
     return f"{scope}:{model_id}" in token.permissions
 
 
-class AuthDependency:
-    def __init__(self, enabled: bool = True, token: Optional[str] = None):
+class AuthDependency(OAuth2PasswordBearer):
+    def __init__(self, enabled: bool = True, token_required: bool = True, token: Optional[str] = None, return_token=False):
         self.enabled = enabled
+        self.return_token = return_token
         self.token = token
+        super().__init__(
+            **oauth_kwargs,
+            auto_error=token_required,
+            scheme_name="Bearer" if token_required else "BearerOptional",
+            description=bearer_description if token_required else optional_bearer_description,
+        )
 
-    async def __call__(self, request: Request, security_scopes: SecurityScopes, return_token=False):
+    async def __call__(self, request: Request, security_scopes: SecurityScopes):
         if not self.enabled:
             return None
         if security_scopes.scopes:
             authenticate_value = f'Bearer scope="{security_scopes.scope_str}"'
         else:
             authenticate_value = "Bearer"
-        token: str = await oauth2_scheme(request) if not self.token else self.token
+        token: str = self.token if self.token else await super().__call__(request)
+        if not token and not self.auto_error:
+            return None
         data = (
             await models.User.join(models.Token)
             .select(models.Token.id == token)
@@ -111,9 +127,13 @@ class AuthDependency:
             await run_hook("permission_denied", user, token, "server_management")
             raise forbidden_exception
         await run_hook("permission_granted", user, token, security_scopes.scopes)
-        if return_token:
+        if self.return_token:
             return user, token
         return user
+
+
+auth_dependency = AuthDependency()
+optional_auth_dependency = AuthDependency(token_required=False)
 
 
 # TODO: add tests for captcha

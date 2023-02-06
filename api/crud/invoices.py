@@ -1,5 +1,6 @@
 import asyncio
 import secrets
+import time
 from collections import defaultdict
 from decimal import Decimal
 from operator import attrgetter
@@ -40,6 +41,7 @@ async def validate_stock_levels(products):
 
 async def create_invoice(invoice: schemes.CreateInvoice, user: schemes.User):
     d = invoice.dict()
+    start_time = time.time()
     store = await utils.database.get_object(models.Store, d["store_id"], user)
     if not store.checkout_settings.allow_anonymous_invoice_creation and not user:
         raise HTTPException(403, "Anonymous invoice creation is disabled")
@@ -76,7 +78,7 @@ async def create_invoice(invoice: schemes.CreateInvoice, user: schemes.User):
         discounts = await utils.database.get_objects(models.Discount, product.discounts)
     discounts = list(filter(lambda x: current_date <= x.end_date, discounts))
     with safe_db_write():
-        await update_invoice_payments(obj, store.wallets, discounts, store, product, promocode)
+        await update_invoice_payments(obj, store.wallets, discounts, store, product, promocode, start_time)
     return await apply_filters("invoice_created", obj)
 
 
@@ -233,7 +235,7 @@ async def create_method_for_wallet(invoice, wallet, discounts, store, product, p
         )
 
 
-async def update_invoice_payments(invoice, wallets_ids, discounts, store, product, promocode):
+async def update_invoice_payments(invoice, wallets_ids, discounts, store, product, promocode, start_time):
     logger.info(f"Started adding invoice payments for invoice {invoice.id}")
     query = text(
         """SELECT wallets.*
@@ -265,7 +267,9 @@ async def update_invoice_payments(invoice, wallets_ids, discounts, store, produc
     if db_data:
         await models.PaymentMethod.insert().gino.all(db_data)
     await invoice.load_data()  # add payment methods with correct names and other related objects
-    logger.info(f"Successfully added {len(invoice.payments)} payment methods to invoice {invoice.id}")
+    creation_time = time.time() - start_time
+    logger.info(f"Successfully added {len(invoice.payments)} payment methods to invoice {invoice.id} in {creation_time:.2f}s")
+    await invoice.update(creation_time=creation_time).apply()
     await events.event_handler.publish("expired_task", {"id": invoice.id})
 
 

@@ -6,6 +6,7 @@ import sys
 sys.path.insert(0, ".")
 
 from alembic.config import CommandLine, Config  # noqa: E402: sys.path imports
+from api import settings  # noqa: E402, F401
 from api.plugins import PluginsManager  # noqa: E402: sys.path imports
 
 if len(sys.argv) < 3:

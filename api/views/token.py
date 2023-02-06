@@ -1,9 +1,9 @@
 import json
-from typing import List, Optional
+from typing import List, Optional, Tuple, Union
 
 import pyotp
 from fastapi import APIRouter, Depends, HTTPException, Query, Security
-from fastapi.security import SecurityScopes
+from fastapi.security import OAuth2PasswordRequestForm
 from fido2.server import Fido2Server
 from fido2.webauthn import AttestedCredentialData, PublicKeyCredentialRpEntity
 from starlette.requests import Request
@@ -19,7 +19,7 @@ TFA_REDIS_KEY = "users_tfa"
 
 @router.get("", response_model=utils.routing.get_pagination_model(schemes.Token))
 async def get_tokens(
-    user: models.User = Security(utils.authorization.AuthDependency(), scopes=["token_management"]),
+    user: models.User = Security(utils.authorization.auth_dependency, scopes=["token_management"]),
     pagination: pagination.Pagination = Depends(),
     app_id: Optional[str] = None,
     redirect_url: Optional[str] = None,
@@ -31,14 +31,15 @@ async def get_tokens(
 
 
 @router.get("/current", response_model=schemes.Token)
-async def get_current_token(request: Request):
-    _, token = await utils.authorization.AuthDependency()(request, SecurityScopes(), return_token=True)
-    return token
+async def get_current_token(
+    auth_data: Tuple[models.User, str] = Security(utils.authorization.AuthDependency(return_token=True))
+):
+    return auth_data[1]
 
 
 @router.get("/count", response_model=int)
 async def get_token_count(
-    user: models.User = Security(utils.authorization.AuthDependency(), scopes=["token_management"]),
+    user: models.User = Security(utils.authorization.auth_dependency, scopes=["token_management"]),
     pagination: pagination.Pagination = Depends(),
     app_id: Optional[str] = None,
     redirect_url: Optional[str] = None,
@@ -53,7 +54,7 @@ async def get_token_count(
 async def patch_token(
     model_id: str,
     model: schemes.EditToken,
-    user: models.User = Security(utils.authorization.AuthDependency(), scopes=["token_management"]),
+    user: models.User = Security(utils.authorization.auth_dependency, scopes=["token_management"]),
 ):
     item = await utils.database.get_object(
         models.Token,
@@ -67,7 +68,7 @@ async def patch_token(
 @router.delete("/{model_id}", response_model=schemes.Token)
 async def delete_token(
     model_id: str,
-    user: models.User = Security(utils.authorization.AuthDependency(), scopes=["token_management"]),
+    user: models.User = Security(utils.authorization.auth_dependency, scopes=["token_management"]),
 ):
     item = await utils.database.get_object(
         models.Token,
@@ -78,25 +79,40 @@ async def delete_token(
     return item
 
 
-async def validate_credentials(request, token_data):
-    token = None
-    try:
-        user, token = await utils.authorization.AuthDependency()(request, SecurityScopes(), return_token=True)
-    except HTTPException:
+async def validate_credentials(user, token_data):
+    if not user:
         user, status = await utils.authorization.authenticate_user(token_data.email, token_data.password)
         if not user:
             raise HTTPException(401, {"message": "Unauthorized", "status": status})
-    if not token:
         await utils.authorization.captcha_flow(token_data.captcha_code)
-    return user, token
+    return user
+
+
+@router.post("/oauth2")
+async def create_oauth2_token(
+    request: Request,
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    auth_data: Union[None, Tuple[Optional[models.User], str]] = Security(
+        utils.authorization.AuthDependency(token_required=False, return_token=True), scopes=["token_management"]
+    ),
+):  # pragma: no cover
+    token_data = schemes.HTTPCreateLoginToken(
+        email=form_data.username, password=form_data.password, permissions=form_data.scopes
+    )
+    return await create_token(token_data, auth_data)
 
 
 @router.post("")
 async def create_token(
-    request: Request,
     token_data: Optional[schemes.HTTPCreateLoginToken] = schemes.HTTPCreateLoginToken(),
+    auth_data: Union[None, Tuple[Optional[models.User], str]] = Security(
+        utils.authorization.AuthDependency(token_required=False, return_token=True), scopes=["token_management"]
+    ),
 ):
-    user, token = await validate_credentials(request, token_data)
+    user, token = None, None
+    if auth_data:
+        user, token = auth_data
+    user = await validate_credentials(user, token_data)
     token_data = token_data.dict()
     strict = token_data.pop("strict")
     if "server_management" in token_data["permissions"] and not user.is_superuser:

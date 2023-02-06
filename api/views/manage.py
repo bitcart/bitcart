@@ -1,11 +1,11 @@
 import asyncio
 import os
+from typing import Optional
 
 import aiofiles
 from bitcart.errors import BaseError as BitcartBaseError
-from fastapi import APIRouter, File, HTTPException, Request, Security, UploadFile
+from fastapi import APIRouter, File, HTTPException, Security, UploadFile
 from fastapi.responses import FileResponse
-from fastapi.security import SecurityScopes
 
 from api import constants, models, schemes, settings, utils
 from api.ext import backups as backups_ext
@@ -17,7 +17,7 @@ router = APIRouter()
 
 
 @router.post("/restart")
-async def restart_server(user: models.User = Security(utils.authorization.AuthDependency(), scopes=["server_management"])):
+async def restart_server(user: models.User = Security(utils.authorization.auth_dependency, scopes=["server_management"])):
     if settings.settings.docker_env:  # pragma: no cover
         await run_hook("server_restart")
         return utils.host.run_host_output("./restart.sh", "Successfully started restart process!")
@@ -25,7 +25,7 @@ async def restart_server(user: models.User = Security(utils.authorization.AuthDe
 
 
 @router.post("/update")
-async def update_server(user: models.User = Security(utils.authorization.AuthDependency(), scopes=["server_management"])):
+async def update_server(user: models.User = Security(utils.authorization.auth_dependency, scopes=["server_management"])):
     if settings.settings.docker_env:  # pragma: no cover
         await run_hook("server_update")
         policy = await utils.policies.get_setting(schemes.Policy)
@@ -35,7 +35,7 @@ async def update_server(user: models.User = Security(utils.authorization.AuthDep
 
 
 @router.post("/cleanup/images")
-async def cleanup_images(user: models.User = Security(utils.authorization.AuthDependency(), scopes=["server_management"])):
+async def cleanup_images(user: models.User = Security(utils.authorization.auth_dependency, scopes=["server_management"])):
     if settings.settings.docker_env:  # pragma: no cover
         await run_hook("server_cleanup_images")
         return utils.host.run_host_output("./cleanup.sh", "Successfully started cleanup process!")
@@ -43,7 +43,7 @@ async def cleanup_images(user: models.User = Security(utils.authorization.AuthDe
 
 
 @router.post("/cleanup/logs")
-async def cleanup_logs(user: models.User = Security(utils.authorization.AuthDependency(), scopes=["server_management"])):
+async def cleanup_logs(user: models.User = Security(utils.authorization.auth_dependency, scopes=["server_management"])):
     if not settings.settings.log_file:
         return {"status": "error", "message": "Log file unconfigured"}
     for f in os.listdir(settings.settings.log_dir):
@@ -56,7 +56,7 @@ async def cleanup_logs(user: models.User = Security(utils.authorization.AuthDepe
 
 
 @router.post("/cleanup")
-async def cleanup_server(user: models.User = Security(utils.authorization.AuthDependency(), scopes=["server_management"])):
+async def cleanup_server(user: models.User = Security(utils.authorization.auth_dependency, scopes=["server_management"])):
     data = [await cleanup_images(), await cleanup_logs()]
     message = ""
     for result in data:
@@ -68,17 +68,17 @@ async def cleanup_server(user: models.User = Security(utils.authorization.AuthDe
 
 
 @router.get("/daemons")
-async def get_daemons(user: models.User = Security(utils.authorization.AuthDependency(), scopes=["server_management"])):
+async def get_daemons(user: models.User = Security(utils.authorization.auth_dependency, scopes=["server_management"])):
     return settings.settings.crypto_settings
 
 
 @router.get("/policies")
-async def get_policies(request: Request):
+async def get_policies(
+    user: Optional[models.User] = Security(utils.authorization.optional_auth_dependency, scopes=["server_management"]),
+):
     data = await utils.policies.get_setting(schemes.Policy)
     exclude = set()
-    try:
-        await utils.authorization.AuthDependency()(request, SecurityScopes(["server_management"]))
-    except HTTPException:
+    if not user:
         exclude = data._SECRET_FIELDS
     return data.dict(exclude=exclude)
 
@@ -86,7 +86,7 @@ async def get_policies(request: Request):
 @router.post("/policies", response_model=schemes.Policy)
 async def set_policies(
     settings: schemes.Policy,
-    user: models.User = Security(utils.authorization.AuthDependency(), scopes=["server_management"]),
+    user: models.User = Security(utils.authorization.auth_dependency, scopes=["server_management"]),
 ):
     return await utils.policies.set_setting(settings)
 
@@ -99,13 +99,13 @@ async def get_store_policies():
 @router.post("/stores", response_model=schemes.GlobalStorePolicy)
 async def set_store_policies(
     settings: schemes.GlobalStorePolicy,
-    user: models.User = Security(utils.authorization.AuthDependency(), scopes=["server_management"]),
+    user: models.User = Security(utils.authorization.auth_dependency, scopes=["server_management"]),
 ):
     return await utils.policies.set_setting(settings)
 
 
 @router.get("/logs")
-async def get_logs_list(user: models.User = Security(utils.authorization.AuthDependency(), scopes=["server_management"])):
+async def get_logs_list(user: models.User = Security(utils.authorization.auth_dependency, scopes=["server_management"])):
     if not settings.settings.log_file:
         return []
     data = sorted((f for f in os.listdir(settings.settings.log_dir) if utils.logging.log_filter(f)), reverse=True)
@@ -116,7 +116,7 @@ async def get_logs_list(user: models.User = Security(utils.authorization.AuthDep
 
 @router.get("/logs/{log}")
 async def get_log_contents(
-    log: str, user: models.User = Security(utils.authorization.AuthDependency(), scopes=["server_management"])
+    log: str, user: models.User = Security(utils.authorization.auth_dependency, scopes=["server_management"])
 ):
     if not settings.settings.log_file:
         raise HTTPException(400, "Log file unconfigured")
@@ -130,7 +130,7 @@ async def get_log_contents(
 
 @router.delete("/logs/{log}")
 async def delete_log(
-    log: str, user: models.User = Security(utils.authorization.AuthDependency(), scopes=["server_management"])
+    log: str, user: models.User = Security(utils.authorization.auth_dependency, scopes=["server_management"])
 ):
     if not settings.settings.log_file:
         raise HTTPException(400, "Log file unconfigured")
@@ -144,16 +144,14 @@ async def delete_log(
 
 
 @router.get("/backups", response_model=schemes.BackupsPolicy)
-async def get_backup_policies(
-    user: models.User = Security(utils.authorization.AuthDependency(), scopes=["server_management"])
-):
+async def get_backup_policies(user: models.User = Security(utils.authorization.auth_dependency, scopes=["server_management"])):
     return await utils.policies.get_setting(schemes.BackupsPolicy)
 
 
 @router.post("/backups", response_model=schemes.BackupsPolicy)
 async def set_backup_policies(
     settings: schemes.BackupsPolicy,
-    user: models.User = Security(utils.authorization.AuthDependency(), scopes=["server_management"]),
+    user: models.User = Security(utils.authorization.auth_dependency, scopes=["server_management"]),
 ):
     async with backups_ext.manager.lock:
         old_settings = await utils.policies.get_setting(schemes.BackupsPolicy)
@@ -173,7 +171,7 @@ async def get_backup_frequencies():
 
 
 @router.post("/backups/backup")
-async def perform_backup(user: models.User = Security(utils.authorization.AuthDependency(), scopes=["server_management"])):
+async def perform_backup(user: models.User = Security(utils.authorization.auth_dependency, scopes=["server_management"])):
     if settings.settings.docker_env:  # pragma: no cover
         output = await backups_ext.manager.perform_backup()
         message = output["message"]
@@ -193,7 +191,7 @@ async def perform_backup(user: models.User = Security(utils.authorization.AuthDe
 
 @router.get("/backups/download/{file_id}")
 async def download_backup(
-    file_id: str, user: models.User = Security(utils.authorization.AuthDependency(), scopes=["server_management"])
+    file_id: str, user: models.User = Security(utils.authorization.auth_dependency, scopes=["server_management"])
 ):
     if settings.settings.docker_env:  # pragma: no cover
         async with utils.redis.wait_for_redis():
@@ -208,7 +206,7 @@ async def download_backup(
 @router.post("/backups/restore")
 async def restore_backup(
     backup: UploadFile = File(...),
-    user: models.User = Security(utils.authorization.AuthDependency(), scopes=["server_management"]),
+    user: models.User = Security(utils.authorization.auth_dependency, scopes=["server_management"]),
 ):
     if settings.settings.docker_env:  # pragma: no cover
         path = os.path.join(settings.settings.datadir, "backup.tar.gz")
@@ -235,13 +233,13 @@ async def fetch_currency_info(coin):
 
 
 @router.get("/syncinfo")
-async def get_syncinfo(user: models.User = Security(utils.authorization.AuthDependency(), scopes=["server_management"])):
+async def get_syncinfo(user: models.User = Security(utils.authorization.auth_dependency, scopes=["server_management"])):
     coros = [fetch_currency_info(coin) for coin in settings.settings.cryptos]
     return await asyncio.gather(*coros)
 
 
 @router.get("/testping")
-async def test_email_ping(user: models.User = Security(utils.authorization.AuthDependency(), scopes=["server_management"])):
+async def test_email_ping(user: models.User = Security(utils.authorization.auth_dependency, scopes=["server_management"])):
     policy = await utils.policies.get_setting(schemes.Policy)
     email_settings = policy.email_settings
     return utils.email.check_ping(

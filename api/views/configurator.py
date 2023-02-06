@@ -1,11 +1,10 @@
 import socket
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException
-from fastapi.security import SecurityScopes
+from fastapi import APIRouter, HTTPException, Security
 from starlette.requests import Request
 
-from api import schemes, settings, utils
+from api import models, schemes, settings, utils
 from api.ext import configurator
 from api.ext import ssh as ssh_ext
 from api.plugins import run_hook
@@ -35,9 +34,13 @@ async def get_deploy_result(deploy_id: str, request: Request):
 
 
 @router.post("/server-settings")
-async def get_server_settings(request: Request, ssh_settings: Optional[schemes.SSHSettings] = None):
+async def get_server_settings(
+    ssh_settings: Optional[schemes.SSHSettings] = None,
+    user: Optional[models.User] = Security(utils.authorization.optional_auth_dependency, scopes=["server_management"]),
+):
     if not ssh_settings:
-        await utils.authorization.AuthDependency()(request, SecurityScopes(["server_management"]))
+        if not user:
+            raise HTTPException(401, "Unauthorized")
         ssh_settings = settings.settings.ssh_settings
     server_settings = ssh_ext.collect_server_settings(ssh_settings)
     await run_hook("configurator_server_settings", server_settings)

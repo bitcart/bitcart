@@ -166,7 +166,7 @@ async def deploy_task(event, event_data):
 
 async def authenticate_request(request, scopes=[]):
     try:
-        await utils.authorization.AuthDependency()(request, SecurityScopes(scopes))
+        await utils.authorization.auth_dependency(request, SecurityScopes(scopes))
     except HTTPException:
         if scopes:
             raise

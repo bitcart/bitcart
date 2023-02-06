@@ -13,7 +13,7 @@ router = APIRouter()
 
 @router.get("/history/all", response_model=List[schemes.TxResponse])
 async def all_wallet_history(
-    user: models.User = Security(utils.authorization.AuthDependency(), scopes=["wallet_management"]),
+    user: models.User = Security(utils.authorization.auth_dependency, scopes=["wallet_management"]),
 ):
     response: List[schemes.TxResponse] = []
     for model in await models.Wallet.query.where(models.Wallet.user_id == user.id).gino.all():
@@ -24,7 +24,7 @@ async def all_wallet_history(
 @router.get("/history/{model_id}", response_model=List[schemes.TxResponse])
 async def wallet_history(
     model_id: str,
-    user: models.User = Security(utils.authorization.AuthDependency(), scopes=["wallet_management"]),
+    user: models.User = Security(utils.authorization.auth_dependency, scopes=["wallet_management"]),
 ):
     response: List[schemes.TxResponse] = []
     model = await utils.database.get_object(models.Wallet, model_id, user)
@@ -33,13 +33,13 @@ async def wallet_history(
 
 
 @router.get("/balance", response_model=Money)
-async def get_balances(user: models.User = Security(utils.authorization.AuthDependency(), scopes=["wallet_management"])):
+async def get_balances(user: models.User = Security(utils.authorization.auth_dependency, scopes=["wallet_management"])):
     return await utils.wallets.get_wallet_balances(user)
 
 
 @router.get("/{model_id}/balance", response_model=schemes.BalanceResponse)
 async def get_wallet_balance(
-    model_id: str, user: models.User = Security(utils.authorization.AuthDependency(), scopes=["wallet_management"])
+    model_id: str, user: models.User = Security(utils.authorization.auth_dependency, scopes=["wallet_management"])
 ):
     wallet = await utils.database.get_object(models.Wallet, model_id, user)
     got = await utils.wallets.get_wallet_balance(wallet)
@@ -53,7 +53,7 @@ async def get_wallet_balance(
 @router.get("/{model_id}/checkln")
 async def check_wallet_lightning(
     model_id: str,
-    user: models.User = Security(utils.authorization.AuthDependency(), scopes=["wallet_management"]),
+    user: models.User = Security(utils.authorization.auth_dependency, scopes=["wallet_management"]),
 ):
     try:
         coin = await crud.wallets.get_wallet_coin_by_id(model_id, user)
@@ -67,7 +67,7 @@ async def check_wallet_lightning(
 @router.get("/{model_id}/channels")
 async def get_wallet_channels(
     model_id: str,
-    user: models.User = Security(utils.authorization.AuthDependency(), scopes=["wallet_management"]),
+    user: models.User = Security(utils.authorization.auth_dependency, scopes=["wallet_management"]),
 ):
     try:
         coin = await crud.wallets.get_wallet_coin_by_id(model_id, user)
@@ -82,7 +82,7 @@ async def get_wallet_channels(
 async def open_wallet_channel(
     model_id: str,
     params: schemes.OpenChannelScheme,
-    user: models.User = Security(utils.authorization.AuthDependency(), scopes=["wallet_management"]),
+    user: models.User = Security(utils.authorization.auth_dependency, scopes=["wallet_management"]),
 ):
     try:
         coin = await crud.wallets.get_wallet_coin_by_id(model_id, user)
@@ -97,7 +97,7 @@ async def open_wallet_channel(
 async def close_wallet_channel(
     model_id: str,
     params: schemes.CloseChannelScheme,
-    user: models.User = Security(utils.authorization.AuthDependency(), scopes=["wallet_management"]),
+    user: models.User = Security(utils.authorization.auth_dependency, scopes=["wallet_management"]),
 ):
     try:
         coin = await crud.wallets.get_wallet_coin_by_id(model_id, user)
@@ -112,7 +112,7 @@ async def close_wallet_channel(
 async def wallet_lnpay(
     model_id: str,
     params: schemes.LNPayScheme,
-    user: models.User = Security(utils.authorization.AuthDependency(), scopes=["wallet_management"]),
+    user: models.User = Security(utils.authorization.auth_dependency, scopes=["wallet_management"]),
 ):
     try:
         coin = await crud.wallets.get_wallet_coin_by_id(model_id, user)
@@ -138,7 +138,7 @@ async def get_wallets_schema():
 @router.post("/create")
 async def create_wallet(
     data: schemes.CreateWalletData,
-    user: models.User = Security(utils.authorization.AuthDependency(), scopes=["wallet_management"]),
+    user: models.User = Security(utils.authorization.auth_dependency, scopes=["wallet_management"]),
 ):
     coin = await settings.settings.get_coin(data.currency)
     seed = await coin.server.make_seed()

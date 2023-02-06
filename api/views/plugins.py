@@ -13,7 +13,7 @@ router = APIRouter()
 
 @router.get("")
 async def get_plugins(
-    user: models.User = Security(utils.authorization.AuthDependency(), scopes=["server_management"]),
+    user: models.User = Security(utils.authorization.auth_dependency, scopes=["server_management"]),
 ):
     failed_path = os.path.join(settings.settings.datadir, ".plugins-failed")
     is_error = os.path.exists(failed_path)
@@ -23,7 +23,7 @@ async def get_plugins(
 @router.post("/install")
 async def install_plugin(
     plugin: UploadFile = File(...),
-    user: models.User = Security(utils.authorization.AuthDependency(), scopes=["server_management"]),
+    user: models.User = Security(utils.authorization.auth_dependency, scopes=["server_management"]),
 ):
     filename = plugin.filename
     if not filename.endswith(".bitcartcc"):

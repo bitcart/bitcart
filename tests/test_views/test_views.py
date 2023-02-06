@@ -331,6 +331,16 @@ async def test_token_permissions_control(client: TestClient, token: str, limited
         headers={"Authorization": f"Bearer {limited_token}"},
     )
     assert resp.status_code == 403
+    token_management_only_token = (
+        await client.post("/token", json={"permissions": ["token_management"]}, headers={"Authorization": f"Bearer {token}"})
+    ).json()["id"]
+    assert (
+        await client.post(
+            "/token",
+            json={"permissions": ["store_management"]},
+            headers={"Authorization": f"Bearer {token_management_only_token}"},
+        )
+    ).status_code == 403
     # Strict mode: non-superuser user can't create superuser token
     resp = await client.post(
         "/token",

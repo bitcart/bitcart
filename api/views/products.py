@@ -4,7 +4,6 @@ from decimal import Decimal
 from typing import Optional
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Security, UploadFile
-from fastapi.security import SecurityScopes
 from pydantic import ValidationError
 from sqlalchemy import select
 from starlette.requests import Request
@@ -45,7 +44,7 @@ def parse_data(data, scheme):
 async def create_product(
     data: str = Form(...),
     image: UploadFile = File(None),
-    user: models.User = Security(utils.authorization.AuthDependency(), scopes=["product_management"]),
+    user: models.User = Security(utils.authorization.auth_dependency, scopes=["product_management"]),
 ):
     data = parse_data(data, schemes.CreateProduct)
     kwargs = utils.database.prepare_create_kwargs(models.Product, data, user)
@@ -68,7 +67,7 @@ async def patch_product(
     model_id: str,
     data: str = Form(...),
     image: UploadFile = File(None),
-    user: models.User = Security(utils.authorization.AuthDependency(), scopes=["product_management"]),
+    user: models.User = Security(utils.authorization.auth_dependency, scopes=["product_management"]),
 ):
     data = parse_data(data, OptionalProductScheme)
     item = await utils.database.get_object(models.Product, model_id, user)
@@ -98,13 +97,10 @@ async def get_products(
     min_price: Optional[Decimal] = None,
     max_price: Optional[Decimal] = None,
     sale: Optional[bool] = False,
+    user: Optional[models.User] = Security(utils.authorization.optional_auth_dependency, scopes=["product_management"]),
 ):
-    try:
-        user = await utils.authorization.AuthDependency()(request, SecurityScopes(["product_management"]))
-    except HTTPException:
-        if store is None:
-            raise
-        user = None
+    if not user and store is None:
+        raise HTTPException(401, "Unauthorized")
     params = utils.common.prepare_query_params(request, custom_params=("store", "category", "min_price", "max_price", "sale"))
     return await utils.database.paginate_object(
         models.Product, pagination, user, store, category, min_price, max_price, sale, **params
@@ -126,10 +122,10 @@ async def products_count(
     min_price: Optional[Decimal] = None,
     max_price: Optional[Decimal] = None,
     sale: Optional[bool] = False,
+    user: Optional[models.User] = Security(utils.authorization.optional_auth_dependency, scopes=["product_management"]),
 ):
-    user = None
-    if store is None:
-        user = await utils.authorization.AuthDependency()(request, SecurityScopes(["product_management"]))
+    if store is None and not user:
+        raise HTTPException(401, "Unauthorized")
     return await utils.database.paginate_object(
         models.Product, pagination, user, store, category, min_price, max_price, sale, count_only=True
     )
