@@ -87,16 +87,23 @@ class AuthDependency(OAuth2PasswordBearer):
             description=bearer_description if token_required else optional_bearer_description,
         )
 
-    async def __call__(self, request: Request, security_scopes: SecurityScopes):
+    async def _process_request(self, request: Request, security_scopes: SecurityScopes):
         if not self.enabled:
+            if self.return_token:
+                return None, None
             return None
         if security_scopes.scopes:
             authenticate_value = f'Bearer scope="{security_scopes.scope_str}"'
         else:
             authenticate_value = "Bearer"
         token: str = self.token if self.token else await super().__call__(request)
-        if not token and not self.auto_error:
-            return None
+        exc = HTTPException(
+            status_code=HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+            headers={"WWW-Authenticate": authenticate_value},
+        )
+        if not token:
+            raise exc
         data = (
             await models.User.join(models.Token)
             .select(models.Token.id == token)
@@ -104,11 +111,7 @@ class AuthDependency(OAuth2PasswordBearer):
             .first()
         )
         if data is None:
-            raise HTTPException(
-                status_code=HTTP_401_UNAUTHORIZED,
-                detail="Could not validate credentials",
-                headers={"WWW-Authenticate": authenticate_value},
-            )
+            raise exc
         user, token = data  # first validate data, then unpack
         await user.load_data()
         if not user.is_enabled:
@@ -130,6 +133,16 @@ class AuthDependency(OAuth2PasswordBearer):
         if self.return_token:
             return user, token
         return user
+
+    async def __call__(self, request: Request, security_scopes: SecurityScopes):
+        try:
+            return await self._process_request(request, security_scopes)
+        except HTTPException:
+            if self.auto_error:
+                raise
+            if self.return_token:
+                return None, None
+            return None
 
 
 auth_dependency = AuthDependency()

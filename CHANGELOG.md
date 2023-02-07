@@ -2,6 +2,10 @@
 
 ## Latest changes
 
+## 0.7.2.1
+
+Fix `/manage/policies` endpoint for non-superusers
+
 ## 0.7.2.0
 
 This releases a ton of improvements and fixes in many different aspects of BitcartCC
