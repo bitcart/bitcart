@@ -23,7 +23,10 @@ async def collect_stats():
     )
     total_users = await utils.database.get_scalar(models.User.query, db.db.func.count, models.User.id)
     total_price = await utils.database.get_scalar(
-        models.Invoice.query.where(models.Invoice.currency == "USD"), db.db.func.sum, models.Invoice.price
+        models.Invoice.query.where(models.Invoice.currency == "USD").where(models.Invoice.status == "complete"),
+        db.db.func.sum,
+        models.Invoice.price,
+        use_distinct=False,
     )
     subquery = (
         models.PaymentMethod.query.where(models.PaymentMethod.invoice_id == models.Invoice.id)
@@ -34,7 +37,9 @@ async def collect_stats():
     average_number_of_methods_per_invoice = int(
         await select([db.db.func.avg(subquery.c.count)]).select_from(subquery).gino.scalar()
     )
-    average_creation_time = await utils.database.get_scalar(models.Invoice.query, db.db.func.avg, models.Invoice.creation_time)
+    average_creation_time = await utils.database.get_scalar(
+        models.Invoice.query, db.db.func.avg, models.Invoice.creation_time, use_distinct=False
+    )
     plugins = [{"name": plugin["name"], "author": plugin["author"], "version": plugin["version"]} for plugin in get_plugins()]
     return {
         "version": VERSION,

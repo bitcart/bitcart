@@ -91,8 +91,9 @@ async def get_object(
     return item
 
 
-async def get_scalar(query, func, column):
-    return await query.with_only_columns([func(distinct(column))]).order_by(None).gino.scalar() or 0
+async def get_scalar(query, func, column, use_distinct=True):
+    column = distinct(column) if use_distinct else column
+    return await query.with_only_columns([func(column)]).order_by(None).gino.scalar() or 0
 
 
 async def postprocess_func(items):

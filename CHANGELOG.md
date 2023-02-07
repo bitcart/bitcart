@@ -2,6 +2,10 @@
 
 ## Latest changes
 
+## 0.7.2.2
+
+Fix incorrect use of `distinct()` when calculating some functions in database
+
 ## 0.7.2.1
 
 Fix `/manage/policies` endpoint for non-superusers
