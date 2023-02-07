@@ -804,7 +804,7 @@ async def test_get_or_create_invoice_by_order_id(client: TestClient, token: str,
         "id"
     ]
     await invoices.new_payment_handler(DummyInstance(), None, resp.json()["payments"][0]["lookup_field"], "complete", None)
-    assert (await client.post("/invoices/order_id/1", json={"price": 5, "store_id": store_id})).json()["id"] != resp.json()[
+    assert (await client.post("/invoices/order_id/1", json={"price": 5, "store_id": store_id})).json()["id"] == resp.json()[
         "id"
     ]
 

@@ -2,6 +2,12 @@
 
 ## Latest changes
 
+## 0.7.2.3
+
+Fix excessive memory usage of Lightning gossip and CLI not working
+
+Make order id endpoint return invoice with any status other than expired. If it's expired, a new invoice is created
+
 ## 0.7.2.2
 
 Fix incorrect use of `distinct()` when calculating some functions in database
