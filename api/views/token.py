@@ -93,7 +93,7 @@ async def create_oauth2_token(
     request: Request,
     form_data: OAuth2PasswordRequestForm = Depends(),
     auth_data: Union[None, Tuple[Optional[models.User], str]] = Security(
-        utils.authorization.AuthDependency(token_required=False, return_token=True), scopes=["token_management"]
+        utils.authorization.AuthDependency(token_required=False, return_token=True)
     ),
 ):  # pragma: no cover
     token_data = schemes.HTTPCreateLoginToken(
@@ -106,7 +106,7 @@ async def create_oauth2_token(
 async def create_token(
     token_data: Optional[schemes.HTTPCreateLoginToken] = schemes.HTTPCreateLoginToken(),
     auth_data: Union[None, Tuple[Optional[models.User], str]] = Security(
-        utils.authorization.AuthDependency(token_required=False, return_token=True), scopes=["token_management"]
+        utils.authorization.AuthDependency(token_required=False, return_token=True)
     ),
 ):
     user, token = None, None

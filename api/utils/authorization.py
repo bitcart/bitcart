@@ -89,7 +89,7 @@ class AuthDependency(OAuth2PasswordBearer):
 
     async def _process_request(self, request: Request, security_scopes: SecurityScopes):
         if not self.enabled:
-            if self.return_token:
+            if self.return_token:  # pragma: no cover
                 return None, None
             return None
         if security_scopes.scopes:
