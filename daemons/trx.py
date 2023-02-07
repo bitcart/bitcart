@@ -25,7 +25,7 @@ mnemonic = Mnemonic("english")
 
 TRX_ACCOUNT_PATH = "m/44'/195'/0'/0/0"
 
-DEFAULT_FEE_LIMIT = 20_000_000  # 20 TRX
+DEFAULT_FEE_LIMIT = 30_000_000  # 30 TRX
 
 
 class TRXFeatures(BlockchainFeatures):
