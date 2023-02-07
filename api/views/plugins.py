@@ -57,7 +57,10 @@ async def install_plugin(
 
 
 @router.post("/uninstall")
-async def uninstall_plugin(data: schemes.UninstallPluginData):
+async def uninstall_plugin(
+    data: schemes.UninstallPluginData,
+    user: models.User = Security(utils.authorization.auth_dependency, scopes=["server_management"]),
+):
     try:
         plugin_ext.uninstall_plugin(data.author, data.name)
     except ValueError:
