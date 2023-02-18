@@ -310,9 +310,9 @@ pytest-mock==3.10.0 \
 pytest-parametrization==2022.2.1 \
     --hash=sha256:057229ad7e284fe3435a717a8a58dc5f169b3d1e5aa946d94ec591d31bd78445
     # via -r requirements/test.txt
-pytest-xdist==3.1.0 \
-    --hash=sha256:40fdb8f3544921c5dfcd486ac080ce22870e71d82ced6d2e78fa97c2addd480c \
-    --hash=sha256:70a76f191d8a1d2d6be69fc440cdf85f3e4c03c08b520fd5dc5d338d6cf07d89
+pytest-xdist==3.2.0 \
+    --hash=sha256:336098e3bbd8193276867cc87db8b22903c3927665dff9d1ac8684c02f597b68 \
+    --hash=sha256:fa10f95a2564cd91652f2d132725183c3b590d9fdcdec09d3677386ecf4c1ce9
     # via -r requirements/test.txt
 requests==2.28.2 \
     --hash=sha256:64299f4909223da747622c030b781c0d7811e359c37124b4bd368fb8c6518baa \
