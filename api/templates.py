@@ -1,9 +1,14 @@
 from collections import defaultdict
 
-from jinja2 import Template as JinjaTemplate
 from jinja2 import TemplateError
+from jinja2.sandbox import SandboxedEnvironment
 
 from api.exceptions import TemplateLoadError
+from api.logger import get_exception_message, get_logger
+
+sandbox = SandboxedEnvironment(trim_blocks=True)
+
+logger = get_logger(__name__)
 
 
 class Template:
@@ -15,7 +20,7 @@ class Template:
             self.template_text = text
         else:
             self.load_from_file(name)
-        self.template = JinjaTemplate(self.template_text, trim_blocks=True)
+        self.template = sandbox.from_string(self.template_text)
 
     def load_from_file(self, name):
         try:
@@ -27,7 +32,8 @@ class Template:
     def render(self, *args, **kwargs):
         try:
             return self.template.render(*args, **kwargs)
-        except TemplateError:
+        except TemplateError as e:
+            logger.error(f"Failed to render template {self.name}: {get_exception_message(e)}")
             return ""
 
 

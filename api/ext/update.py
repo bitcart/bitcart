@@ -22,12 +22,13 @@ async def collect_stats():
         models.Invoice.query.where(models.Invoice.status == "complete"), db.db.func.count, models.Invoice.id
     )
     total_users = await utils.database.get_scalar(models.User.query, db.db.func.count, models.User.id)
-    total_price = await utils.database.get_scalar(
-        models.Invoice.query.where(models.Invoice.currency == "USD").where(models.Invoice.status == "complete"),
-        db.db.func.sum,
-        models.Invoice.price,
-        use_distinct=False,
+    total_price = (
+        await select([models.Invoice.currency, db.db.func.sum(models.Invoice.price)])
+        .where(models.Invoice.status == "complete")
+        .group_by(models.Invoice.currency)
+        .gino.all()
     )
+    total_price = {currency: str(price) for currency, price in total_price}
     subquery = (
         models.PaymentMethod.query.where(models.PaymentMethod.invoice_id == models.Invoice.id)
         .with_only_columns([db.db.func.count(distinct(models.PaymentMethod.id)).label("count")])
@@ -48,7 +49,7 @@ async def collect_stats():
         "total_invoices": total_invoices,
         "complete_invoices": complete_invoices,
         "total_users": total_users,
-        "total_price": str(total_price),
+        "total_price": total_price,
         "average_invoice_creation_time": str(average_creation_time),
         "number_of_methods": average_number_of_methods_per_invoice,
         "currencies": list(settings.settings.cryptos.keys()),
