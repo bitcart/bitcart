@@ -378,6 +378,14 @@ class BTCDaemon(BaseDaemon):
     def get_tx_hashes_for_invoice(self, wallet, invoice):
         return wallet._is_onchain_invoice_paid(invoice)[2]
 
+    def is_paid_via_lightning(self, wallet, invoice):
+        return (
+            self.LIGHTNING_SUPPORTED
+            and invoice.is_lightning()
+            and wallet.lnworker
+            and wallet.lnworker.get_invoice_status(invoice) == self.electrum.invoices.PR_PAID
+        )
+
     def process_events(self, event, *args):
         """Override in your subclass if needed"""
         wallet = None
@@ -392,13 +400,19 @@ class BTCDaemon(BaseDaemon):
         elif event == "new_payment":
             wallet, address, status = args
             request = self._get_request(wallet, address)
-            tx_hashes = self.get_tx_hashes_for_invoice(wallet, request)
+            paid_via_lightning = self.is_paid_via_lightning(wallet, request)
+            tx_hashes = self.get_tx_hashes_for_invoice(wallet, request) if not paid_via_lightning else [request.rhash]
+            sent_amount = (
+                self.get_sent_amount(wallet, self._get_request_address(request), tx_hashes)
+                if not paid_via_lightning
+                else format_satoshis(request.get_amount_sat())
+            )
             data = {
                 "address": str(address),
                 "status": status,
                 "status_str": self.get_status_str(status),
                 "tx_hashes": tx_hashes,
-                "sent_amount": self.get_sent_amount(wallet, self._get_request_address(request), tx_hashes),
+                "sent_amount": sent_amount,
             }
         elif event == "verified_tx":
             data, wallet = self.process_verified_tx(args)
@@ -415,8 +429,17 @@ class BTCDaemon(BaseDaemon):
     @rpc(requires_wallet=True)
     async def get_request(self, *args, **kwargs):
         wallet = kwargs.pop("wallet", None)
-        result = await self.wallets[wallet]["cmd"].get_request(*args, **kwargs, wallet=self.wallets[wallet]["wallet"])
-        result["sent_amount"] = self.get_sent_amount(self.wallets[wallet]["wallet"], result["address"], result["tx_hashes"])
+        wallet_obj = self.wallets[wallet]["wallet"]
+        request = self._get_request(wallet_obj, *args, **kwargs)
+        result = wallet_obj.export_request(request)
+        paid_via_lightning = self.is_paid_via_lightning(wallet_obj, request)
+        if paid_via_lightning:
+            result["tx_hashes"] = [request.rhash]
+        result["sent_amount"] = (
+            self.get_sent_amount(wallet_obj, result["address"], result["tx_hashes"])
+            if not paid_via_lightning
+            else format_satoshis(request.get_amount_sat())
+        )
         return result
 
     @rpc

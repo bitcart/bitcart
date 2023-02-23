@@ -25,6 +25,7 @@ async def collect_stats():
     total_price = (
         await select([models.Invoice.currency, db.db.func.sum(models.Invoice.price)])
         .where(models.Invoice.status == "complete")
+        .where(db.db.func.cardinality(models.Invoice.tx_hashes) > 0)
         .group_by(models.Invoice.currency)
         .gino.all()
     )

@@ -242,7 +242,7 @@ async def test_lightning_pay_flow(
     pay_details = invoice["payments"][1]  # lightning methods are always created after onchain ones
     await regtest_lnnode.lnpay(pay_details["payment_address"])
     invoice_id = invoice["id"]
-    await check_invoice_status(ws_client, invoice_id, "complete", exception_status="none")
+    await check_invoice_status(ws_client, invoice_id, "complete", exception_status="none", sent_amount=pay_details["amount"])
     assert queue.qsize() == 1
     check_status(queue, {"id": invoice["id"], "status": "complete"})
     # check that it was paid with lightning actually

@@ -23,7 +23,7 @@ def noop_cast(v):
 
 
 def format_satoshis(x):
-    return str(Decimal(x) / CONVERT_RATE)
+    return f"{(Decimal(x) / CONVERT_RATE):.08f}"
 
 
 def load_spec(spec_file, exit_on_error=True):
