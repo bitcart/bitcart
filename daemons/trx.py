@@ -2,9 +2,12 @@ import asyncio
 import json
 import weakref
 from decimal import Decimal
+from urllib.parse import urljoin
 
 import httpx
 import trontxsize
+from aiohttp import ClientError as AsyncClientError
+from aiohttp import ClientSession
 from async_lru import alru_cache
 from eth import ETHDaemon
 from eth import KeyStore as ETHKeyStore
@@ -14,7 +17,7 @@ from genericprocessor import BlockchainFeatures
 from mnemonic import Mnemonic
 from tronpy import AsyncTron, keys
 from tronpy.abi import trx_abi
-from tronpy.async_tron import AsyncContract, AsyncHTTPProvider, AsyncTransaction
+from tronpy.async_tron import AsyncContract, AsyncTransaction
 from tronpy.exceptions import AddressNotFound
 from utils import exception_retry_middleware, rpc
 
@@ -26,6 +29,28 @@ mnemonic = Mnemonic("english")
 TRX_ACCOUNT_PATH = "m/44'/195'/0'/0/0"
 
 DEFAULT_FEE_LIMIT = 30_000_000  # 30 TRX
+
+
+# For testing with aiohttp client (might be more stable)
+class AsyncHTTPProvider:
+    def __init__(
+        self,
+        endpoint_uri=None,
+        timeout=10,
+    ):
+        self.endpoint_uri = endpoint_uri
+        self.headers = {"User-Agent": "Tronpy/0.2"}
+        self.client = None
+
+    async def make_request(self, method, params=None):
+        if self.client is None:
+            self.client = ClientSession(headers=self.headers)
+        if params is None:
+            params = {}
+        url = urljoin(self.endpoint_uri, method)
+        async with self.client.post(url, json=params) as resp:
+            resp.raise_for_status()
+            return await resp.json()
 
 
 class TRXFeatures(BlockchainFeatures):
@@ -209,7 +234,7 @@ class TRXDaemon(ETHDaemon):
         provider = AsyncHTTPProvider(self.SERVER)
         provider.make_request = exception_retry_middleware(
             provider.make_request,
-            (httpx.HTTPError, TimeoutError, asyncio.TimeoutError),
+            (httpx.HTTPError, AsyncClientError, TimeoutError, asyncio.TimeoutError),
             self.VERBOSE,
         )
         self.coin = TRXFeatures(AsyncTron(provider, conf={"fee_limit": DEFAULT_FEE_LIMIT}))
