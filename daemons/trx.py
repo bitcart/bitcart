@@ -15,7 +15,7 @@ from eth import Transaction, daemon_ctx, from_wei, load_json_dict, str_to_bool, 
 from eth_account import Account
 from genericprocessor import BlockchainFeatures
 from mnemonic import Mnemonic
-from tronpy import AsyncTron, keys
+from tronpy import AsyncTron, async_tron, keys
 from tronpy.abi import trx_abi
 from tronpy.async_tron import AsyncContract, AsyncTransaction
 from tronpy.exceptions import AddressNotFound
@@ -51,6 +51,9 @@ class AsyncHTTPProvider:
         async with self.client.post(url, json=params) as resp:
             resp.raise_for_status()
             return await resp.json()
+
+
+async_tron.AsyncHTTPProvider = AsyncHTTPProvider  # monkey patch
 
 
 class TRXFeatures(BlockchainFeatures):
