@@ -37,7 +37,7 @@ async def collect_stats():
         .alias("table")
     )
     average_number_of_methods_per_invoice = int(
-        await select([db.db.func.avg(subquery.c.count)]).select_from(subquery).gino.scalar()
+        await select([db.db.func.avg(subquery.c.count)]).select_from(subquery).gino.scalar() or 0
     )
     average_creation_time = await utils.database.get_scalar(
         models.Invoice.query, db.db.func.avg, models.Invoice.creation_time, use_distinct=False
