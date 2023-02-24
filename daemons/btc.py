@@ -658,6 +658,14 @@ class BTCDaemon(BaseDaemon):
         else:
             raise Exception("Procedure not found")
 
+    @rpc(requires_wallet=True, requires_network=True)
+    async def close_wallet(self, wallet):
+        method = self.wallets[wallet]["cmd"].close_wallet
+        await method() if self.ASYNC_CLIENT else method()
+        del self.wallets_updates[wallet]
+        del self.wallets[wallet]
+        return True
+
 
 if __name__ == "__main__":
     daemon = BTCDaemon()

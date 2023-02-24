@@ -74,26 +74,29 @@ async def send_payout(payout, private_key=None):
         wallet.currency,
         {"xpub": private_key or wallet.xpub, "contract": wallet.contract, "diskless": True, **wallet.additional_xpub_data},
     )
-    divisibility = await utils.wallets.get_divisibility(wallet, coin)
-    rate = await utils.wallets.get_rate(wallet, payout.currency)
-    request_amount = (
-        currency_table.normalize(wallet.currency, payout.amount / rate, divisibility=divisibility)
-        if payout.amount != SEND_ALL
-        else SEND_ALL
-    )
-    raw_tx = await prepare_tx(coin, wallet, payout.destination, request_amount, divisibility)
-    predicted_fee = Decimal(await coin.server.get_default_fee(raw_tx))
-    if payout.max_fee is not None:
-        max_fee_amount = currency_table.normalize(wallet.currency, payout.max_fee / rate, divisibility=divisibility)
-        if predicted_fee > max_fee_amount:
-            return
-    if coin.is_eth_based:
-        raw_tx = await coin.server.signtransaction(raw_tx)
-    else:
-        await coin.server.addtransaction(raw_tx)
-    tx_hash = await coin.server.broadcast(raw_tx)
-    await payout.update(tx_hash=tx_hash).apply()
-    await update_status(payout, PayoutStatus.SENT)
+    try:
+        divisibility = await utils.wallets.get_divisibility(wallet, coin)
+        rate = await utils.wallets.get_rate(wallet, payout.currency)
+        request_amount = (
+            currency_table.normalize(wallet.currency, payout.amount / rate, divisibility=divisibility)
+            if payout.amount != SEND_ALL
+            else SEND_ALL
+        )
+        raw_tx = await prepare_tx(coin, wallet, payout.destination, request_amount, divisibility)
+        predicted_fee = Decimal(await coin.server.get_default_fee(raw_tx))
+        if payout.max_fee is not None:
+            max_fee_amount = currency_table.normalize(wallet.currency, payout.max_fee / rate, divisibility=divisibility)
+            if predicted_fee > max_fee_amount:
+                return
+        if coin.is_eth_based:
+            raw_tx = await coin.server.signtransaction(raw_tx)
+        else:
+            await coin.server.addtransaction(raw_tx)
+        tx_hash = await coin.server.broadcast(raw_tx)
+        await payout.update(tx_hash=tx_hash).apply()
+        await update_status(payout, PayoutStatus.SENT)
+    finally:
+        await coin.server.close_wallet()
 
 
 async def process_new_block(currency):
