@@ -315,12 +315,14 @@ class Wallet:
                 await daemon_ctx.get().process_transaction(tx)
 
     async def start(self, blocks):
+        first_start = self.latest_height == -1
         await self._start_init_vars()
 
         self.running = True
         # process onchain transactions
         current_height = await self.coin.get_block_number()
-        await self._start_process_pending(blocks, current_height)
+        if not first_start:
+            await self._start_process_pending(blocks, current_height)
 
         self.latest_height = current_height
         for req in self.get_sorted_requests():

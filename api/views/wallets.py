@@ -143,11 +143,15 @@ async def create_wallet(
     coin = await settings.settings.get_coin(data.currency)
     seed = await coin.server.make_seed()
     if data.hot_wallet:
-        return {"seed": seed, "key": seed}
+        return {"seed": seed, "key": seed, "additional_data": {}}
     else:
         coin = await settings.settings.get_coin(data.currency, {"xpub": seed, "diskless": True})
         key = await coin.server.getmpk() if not coin.is_eth_based else await coin.server.getaddress()
-        return {"seed": seed, "key": key}
+        additional_data = {}
+        if data.currency.lower() == "xmr":  # pragma: no cover
+            additional_data = {"address": key}
+            key = await coin.server.getpubkeys()
+        return {"seed": seed, "key": key, "additional_data": additional_data}
 
 
 @router.get("/{model_id}/rate")
