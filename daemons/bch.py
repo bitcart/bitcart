@@ -1,5 +1,3 @@
-from decimal import Decimal
-
 from btc import BTCDaemon
 from utils import format_satoshis, get_exception_message, modify_payment_url, rpc
 
@@ -7,7 +5,6 @@ from utils import format_satoshis, get_exception_message, modify_payment_url, rp
 class BCHDaemon(BTCDaemon):
     name = "BCH"
     ASYNC_CLIENT = False
-    QUOTES_KEY = "quotes"
     LIGHTNING_SUPPORTED = False
     DEFAULT_PORT = 5004
 
@@ -170,18 +167,6 @@ class BCHDaemon(BTCDaemon):
         data = self.create_commands(config=self.electrum_config).getinfo()
         data["synchronized"] = not self.is_still_syncing()
         return data
-
-    @rpc
-    def exchange_rate(self, currency=None, wallet=None) -> str:
-        if currency is None:
-            currency = self.DEFAULT_CURRENCY
-        # For performance, disable this on coingecko because it provides all rates at once
-        if not self._fetched_fx or (self.EXCHANGE.lower() != "coingecko" and self.fx.get_currency() != currency):
-            self.fx.set_currency(currency)
-            self._fetched_fx = True
-        rate = self.fx.exchange.quotes.get(currency)
-        rate = Decimal(rate) if rate else Decimal("NaN")
-        return str(rate)
 
     async def get_commands_list(self, commands):
         return commands.help()
