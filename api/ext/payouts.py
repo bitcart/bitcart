@@ -98,7 +98,8 @@ async def send_payout(payout, private_key=None):
     try:
         raw_tx = await prepare_tx(coin, wallet, destination, request_amount, divisibility)
         tx_hash = await broadcast_tx_flow(coin, wallet, raw_tx, payout.max_fee, divisibility, rate)
-        await mark_payout_sent(payout, tx_hash)
+        if tx_hash is not None:
+            await mark_payout_sent(payout, tx_hash)
     except Exception:
         await coin.server.close_wallet()
         raise
@@ -135,8 +136,9 @@ async def send_batch_payouts(payouts, private_key=None):
         if any(payout.max_fee is not None for payout in payouts):
             max_fee = min(payout.max_fee for payout in payouts)
         tx_hash = await broadcast_tx_flow(coin, wallet, raw_tx, max_fee, divisibility, rate)
-        coros = [mark_payout_sent(payout, tx_hash) for payout in payouts]
-        await asyncio.gather(*coros)
+        if tx_hash is not None:
+            coros = [mark_payout_sent(payout, tx_hash) for payout in payouts]
+            await asyncio.gather(*coros)
     finally:
         await coin.server.close_wallet()
 
