@@ -113,7 +113,8 @@ async def iterate_helper():
             yield
 
 
-async def get_objects(model, ids):  # TODO: maybe use iterate instead?
+async def get_objects(model, ids, postprocess=True):  # TODO: maybe use iterate instead?
     data = await model.query.where(model.id.in_(ids)).gino.all()
-    await postprocess_func(data)
+    if postprocess:
+        await postprocess_func(data)
     return data

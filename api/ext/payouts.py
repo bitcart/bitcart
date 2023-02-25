@@ -65,7 +65,7 @@ async def prepare_tx(coin, wallet, destination, amount, divisibility):
     return raw_tx
 
 
-async def send_payout(payout, private_key=None):
+async def prepare_payout_details(payout, private_key=None):
     wallet = await utils.database.get_object(models.Wallet, payout.wallet_id, raise_exception=False)
     store = await utils.database.get_object(models.Store, payout.store_id, raise_exception=False)
     if not wallet or not store or payout.status in SENT_STATUSES:
@@ -82,19 +82,61 @@ async def send_payout(payout, private_key=None):
             if payout.amount != SEND_ALL
             else SEND_ALL
         )
-        raw_tx = await prepare_tx(coin, wallet, payout.destination, request_amount, divisibility)
+        return coin, wallet, payout.destination, request_amount, rate, divisibility
+    except Exception:
+        await coin.server.close_wallet()
+        raise
+
+
+async def mark_payout_sent(payout, tx_hash):
+    await payout.update(tx_hash=tx_hash).apply()
+    await update_status(payout, PayoutStatus.SENT)
+
+
+async def send_payout(payout, private_key=None):
+    coin, wallet, destination, request_amount, rate, divisibility = await prepare_payout_details(payout, private_key)
+    try:
+        raw_tx = await prepare_tx(coin, wallet, destination, request_amount, divisibility)
+        tx_hash = await broadcast_tx_flow(coin, wallet, raw_tx, payout.max_fee, divisibility, rate)
+        await mark_payout_sent(payout, tx_hash)
+    except Exception:
+        await coin.server.close_wallet()
+        raise
+
+
+async def broadcast_tx_flow(coin, wallet, raw_tx, max_fee, divisibility, rate):
+    try:
         predicted_fee = Decimal(await coin.server.get_default_fee(raw_tx))
-        if payout.max_fee is not None:
-            max_fee_amount = currency_table.normalize(wallet.currency, payout.max_fee / rate, divisibility=divisibility)
+        if max_fee is not None:
+            max_fee_amount = currency_table.normalize(wallet.currency, max_fee / rate, divisibility=divisibility)
             if predicted_fee > max_fee_amount:
                 return
         if coin.is_eth_based:
             raw_tx = await coin.server.signtransaction(raw_tx)
         else:
             await coin.server.addtransaction(raw_tx)
-        tx_hash = await coin.server.broadcast(raw_tx)
-        await payout.update(tx_hash=tx_hash).apply()
-        await update_status(payout, PayoutStatus.SENT)
+        return await coin.server.broadcast(raw_tx)
+    finally:
+        await coin.server.close_wallet()
+
+
+async def send_batch_payouts(payouts, private_key=None):
+    coros = [prepare_payout_details(payout, private_key) for payout in payouts]
+    results = await asyncio.gather(*coros)
+    if results[0] is None:
+        return
+    coin, wallet, divisibility, rate = results[0][0], results[0][1], results[0][5], results[0][4]
+    outputs = [(result[2], result[3]) for result in results]
+    if any(output[1] == SEND_ALL for output in outputs):
+        raise Exception("Cannot send batch payout with SEND_ALL")
+    try:
+        raw_tx = await coin.pay_to_many(outputs, broadcast=False)
+        max_fee = None
+        if any(payout.max_fee is not None for payout in payouts):
+            max_fee = min(payout.max_fee for payout in payouts)
+        tx_hash = await broadcast_tx_flow(coin, wallet, raw_tx, max_fee, divisibility, rate)
+        coros = [mark_payout_sent(payout, tx_hash) for payout in payouts]
+        await asyncio.gather(*coros)
     finally:
         await coin.server.close_wallet()
 
