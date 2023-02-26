@@ -2,6 +2,37 @@
 
 ## Latest changes
 
+## 0.7.3.0
+
+### Admin panel UI revamp
+
+Admin panel has got a revamped UI - the datatables now display 10 items at a time in full screen mode. Also you will see horizontal scrollbars in less cases.
+
+Navigation is now performed via a toolbar at the left. This allows us to expand the dashboard in future releases with new graphs and statistics
+
+Zero-amount invoices have better formatting now
+
+### Important: fixes for template rendering
+
+In case your server is a public instance with many users, update is recommended. In short: in some cases template rendering could allow executing commands inside the worker containers
+
+### Batch payouts
+
+It is now possible to batch payouts in one transaction to save on costs, for btc-based coins only for now
+
+### Lightning network send amount support
+
+Lightning network now displays sent amount correctly, and payment hash is filled in transaction hashes value
+
+### Important: fix memory leaks in daemons
+
+After a large investigation, we've found the issues of the leak to be located in `malloc()` linux function. To resolve this complex issue, all our python docker images now include and use jemalloc memory allocator for better performance and to avoid memory fragmentation.
+
+### Misc changes
+
+- Don't process pending blocks for fresh created wallets to speed up some operations.
+- Close wallet after performing diskless methods to avoid it being loaded in memory
+
 ## 0.7.2.3
 
 Fix excessive memory usage of Lightning gossip and CLI not working
