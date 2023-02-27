@@ -94,7 +94,10 @@ async def mark_payout_sent(payout, tx_hash):
 
 
 async def send_payout(payout, private_key=None):
-    coin, wallet, destination, request_amount, rate, divisibility = await prepare_payout_details(payout, private_key)
+    result = await prepare_payout_details(payout, private_key)
+    if result is None:
+        return
+    coin, wallet, destination, request_amount, rate, divisibility = result
     try:
         raw_tx = await prepare_tx(coin, wallet, destination, request_amount, divisibility)
         tx_hash = await broadcast_tx_flow(coin, wallet, raw_tx, payout.max_fee, divisibility, rate)
