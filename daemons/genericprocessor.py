@@ -625,7 +625,9 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
             wallet_contract = self.wallets[wallet].contract.address if self.wallets[wallet].contract else None
             if tx.contract != wallet_contract:
                 continue
-            await self.trigger_event({"event": "new_transaction", "tx": tx.hash}, wallet)
+            await self.trigger_event(
+                {"event": "new_transaction", "tx": tx.hash, "amount": decimal_to_string(amount, tx.divisibility)}, wallet
+            )
             if tx.from_addr in self.wallets[wallet].request_addresses:
                 self.loop.create_task(self.wallets[wallet].process_new_payment(tx.from_addr, tx, amount, wallet))
 
