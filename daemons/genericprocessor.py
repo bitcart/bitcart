@@ -693,13 +693,13 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
             await asyncio.sleep(self.BLOCK_TIME)
 
     async def trigger_event(self, data, wallet):
-        if not wallet:
-            await self.notify_websockets(data, None, notify_all=True)
-        for key in self.wallets.copy():
-            if not wallet or wallet == key:
-                if wallet == key:
-                    await self.notify_websockets(data, key, notify_all=True)
-                await self.notify_websockets(data, key)
+        await self.notify_websockets(data, wallet)
+        if self.POLLING_CAP == 0:
+            return
+        if wallet:
+            self.wallets_updates[wallet].append(data)
+        else:
+            for key in self.wallets.copy():
                 self.wallets_updates[key].append(data)
 
     async def on_shutdown(self, app):
@@ -891,7 +891,7 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
     @rpc(requires_wallet=True, requires_network=True)
     def get_updates(self, wallet):
         updates = self.wallets_updates[wallet]
-        self.wallets_updates[wallet] = []
+        self.wallets_updates[wallet] = deque(maxlen=self.POLLING_CAP)
         return updates
 
     @rpc(requires_network=True)

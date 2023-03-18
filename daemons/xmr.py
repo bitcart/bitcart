@@ -4,6 +4,7 @@ import json
 import os
 import secrets
 import traceback
+from collections import deque
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
@@ -403,7 +404,7 @@ class XMRDaemon(BlockProcessorDaemon):
             db = WalletDB(storage.read())
             wallet = Wallet(self.coin, db, storage)
         self.wallets[wallet_key] = wallet
-        self.wallets_updates[wallet_key] = []
+        self.wallets_updates[wallet_key] = deque(maxlen=self.POLLING_CAP)
         self.addresses[wallet.address].add(wallet_key)
         await wallet.start(self.latest_blocks.copy())
         return wallet

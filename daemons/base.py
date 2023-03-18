@@ -141,12 +141,14 @@ class BaseDaemon:
     def build_notification(self, data, xpub):
         return {"updates": [data], "wallet": xpub, "currency": self.name}
 
-    async def notify_websockets(self, data, xpub, notify_all=False):
+    async def notify_websockets(self, data, xpub):
         notification = self.build_notification(data, xpub)
+        # If xpub is None, send global notification to all wallets regardless of notification settings
+        # If xpub is not None (scoped to a specific wallet), we follow the notification settings
         coros = [
             ws.send_json(notification)
             for ws in self.app["websockets"]
-            if not ws.closed and ((notify_all and not ws.config["xpub"]) or ws.config["xpub"] == xpub)
+            if not ws.closed and (not xpub or not ws.config["xpub"] or ws.config["xpub"] == xpub)
         ]
         await asyncio.gather(*coros)
         return True
@@ -166,6 +168,7 @@ class BaseDaemon:
         self.VERBOSE = self.env("DEBUG", cast=bool, default=False)
         self.NET = self.env("NETWORK", default="mainnet")
         self.DEFAULT_CURRENCY = self.env("FIAT_CURRENCY", default="USD")
+        self.POLLING_CAP = self.env("POLLING_CAP", cast=int, default=100)
 
     async def on_startup(self, app):
         """Create essential objects for daemon operation here

@@ -2,6 +2,7 @@ import asyncio
 import json
 import os
 import traceback
+from collections import deque
 from decimal import Decimal
 
 from aiohttp import ClientError as AsyncClientError
@@ -365,7 +366,7 @@ class ETHDaemon(BlockProcessorDaemon):
             db = WalletDB(storage.read())
             wallet = Wallet(self.coin, db, storage)
         self.wallets[wallet_key] = wallet
-        self.wallets_updates[wallet_key] = []
+        self.wallets_updates[wallet_key] = deque(maxlen=self.POLLING_CAP)
         self.addresses[wallet.address].add(wallet_key)
         await self.add_contract(contract, wallet_key)
         await wallet.start(self.latest_blocks.copy())

@@ -5,6 +5,7 @@ import inspect
 import os
 import sys
 import traceback
+from collections import deque
 from decimal import Decimal
 from types import ModuleType
 from typing import Union
@@ -231,7 +232,7 @@ class BTCDaemon(BaseDaemon):
         self.init_wallet(wallet)
         self.load_cmd_wallet(command_runner, wallet)
         self.wallets[xpub] = {"wallet": wallet, "cmd": command_runner}
-        self.wallets_updates[xpub] = []
+        self.wallets_updates[xpub] = deque(maxlen=self.POLLING_CAP)
         return wallet, command_runner
 
     def add_wallet_to_command(self, wallet, req_method, exec_method, **kwargs):
@@ -331,12 +332,13 @@ class BTCDaemon(BaseDaemon):
             return
         data.update(data_got)
         if not wallet:
-            await self.notify_websockets(data, None, notify_all=True)
+            await self.notify_websockets(data, None)
+            if self.POLLING_CAP == 0:
+                return
         for i in self.wallets:
             if not wallet or wallet == self.wallets[i]["wallet"]:
                 if wallet == self.wallets[i]["wallet"]:
-                    await self.notify_websockets(data, i, notify_all=True)
-                await self.notify_websockets(data, i)
+                    await self.notify_websockets(data, i)
                 self.wallets_updates[i].append(data)
 
     def _process_events_sync(self, event, *args):
@@ -447,7 +449,7 @@ class BTCDaemon(BaseDaemon):
     @rpc(requires_wallet=True)
     def get_updates(self, wallet):
         updates = self.wallets_updates[wallet]
-        self.wallets_updates[wallet] = []
+        self.wallets_updates[wallet] = deque(maxlen=self.POLLING_CAP)
         return updates
 
     async def _verify_transaction(self, tx_hash, tx_height):
