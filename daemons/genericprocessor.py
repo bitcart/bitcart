@@ -321,7 +321,7 @@ class Wallet:
         self.running = True
         # process onchain transactions
         current_height = await self.coin.get_block_number()
-        if not first_start:
+        if not first_start and not daemon_ctx.get().NO_DOWNTIME_PROCESSING:
             await self._start_process_pending(blocks, current_height)
 
         self.latest_height = current_height
@@ -579,6 +579,7 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
         self.TX_SPEED = self.env("TX_SPEED", cast=str, default="network").lower()
         if self.TX_SPEED not in self.SPEED_MULTIPLIERS:
             raise ValueError(f"Invalid TX_SPEED: {self.TX_SPEED}. Valid values: {', '.join(self.SPEED_MULTIPLIERS.keys())}")
+        self.NO_DOWNTIME_PROCESSING = self.env("NO_DOWNTIME_PROCESSING", cast=bool, default=False)
 
     async def on_startup(self, app):
         await super().on_startup(app)
