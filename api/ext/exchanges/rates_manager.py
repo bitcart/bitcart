@@ -69,12 +69,14 @@ class RatesManager:
             self.exchanges["coingecko"] = self._exchange_classes["coingecko"](coins, final_contracts)
             return
         for name, exchange_cls in self._exchange_classes.items():
-            self.exchanges[name] = exchange_cls(coins, final_contracts)
+            self.exchanges[name] = exchange_cls(coins.copy(), final_contracts.copy())
         try:
             coingecko_exchanges = await utils.common.send_request("GET", "https://api.coingecko.com/api/v3/exchanges/list")
             for exchange in coingecko_exchanges:
                 if exchange["id"] not in self.exchanges:
-                    self.exchanges[exchange["id"]] = coingecko_based_exchange(exchange["id"])(coins, final_contracts)
+                    self.exchanges[exchange["id"]] = coingecko_based_exchange(exchange["id"])(
+                        coins.copy(), final_contracts.copy()
+                    )
         except Exception as e:
             logger.error(f"Error while fetching coingecko exchanges:\n{get_exception_message(e)}")
 
@@ -94,5 +96,6 @@ class RatesManager:
     async def add_contract(self, contract, currency):
         for key, exchange in self.exchanges.copy().items():
             if contract not in exchange.contracts[currency]:
+                print("ADDING CONTRACT", contract, currency, key)
                 self.exchanges[key].contracts[currency].append(contract)
                 self.exchanges[key].last_refresh = 0
