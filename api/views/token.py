@@ -80,6 +80,21 @@ async def delete_token(
     return item
 
 
+@router.post("/batch")
+async def batch_action(
+    settings: schemes.BatchSettings,
+    user: models.User = Security(utils.authorization.auth_dependency, scopes=["token_management"]),
+):  # pragma: no cover
+    query = None
+    if settings.command == "delete":
+        query = models.Token.delete
+    if query is None:
+        raise HTTPException(status_code=404, detail="Batch command not found")
+    query = query.where(models.Token.user_id == user.id).where(models.Token.id.in_(settings.ids))
+    await query.gino.status()
+    return True
+
+
 async def validate_credentials(user, token_data):
     if not user:
         user, status = await utils.authorization.authenticate_user(token_data.email, token_data.password)
