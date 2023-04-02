@@ -93,9 +93,11 @@ def get_pending_invoices_query(currency, statuses=None):
 async def iterate_pending_invoices(currency, statuses=None):
     with log_errors():  # connection issues
         async with utils.database.iterate_helper():
-            async for method, invoice, wallet in get_pending_invoices_query(currency, statuses=statuses).gino.load(
-                (models.PaymentMethod, models.Invoice, models.Wallet)
-            ).iterate():
+            async for method, invoice, wallet in (
+                get_pending_invoices_query(currency, statuses=statuses)
+                .gino.load((models.PaymentMethod, models.Invoice, models.Wallet))
+                .iterate()
+            ):
                 await invoice.load_data()
                 yield method, invoice, wallet
 
