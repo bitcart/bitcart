@@ -161,10 +161,8 @@ async def test_fiatlist(client: TestClient):
 
 async def test_fiatlist_multi_coins(client: TestClient, mocker):
     mocker.patch.object(settings.settings, "cryptos", {"btc": BTC(), "ltc": LTC()})
-    mocker.patch("bitcart.BTC.list_fiat", return_value=get_future_return_value(["USD", "RMB", "JPY"]))
-    mocker.patch("bitcart.LTC.list_fiat", return_value=get_future_return_value(["USD", "RUA", "AUD"]))
     resp = await client.get("/cryptos/fiatlist")
-    assert resp.json() == ["AUD", "JPY", "RMB", "RUA", "USD"]
+    assert len(resp.json()) > 30
 
 
 async def check_ws_response(ws, sent_amount):
