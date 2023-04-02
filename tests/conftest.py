@@ -81,7 +81,7 @@ async def ws_client(app, anyio_backend):
 @pytest.fixture
 def service_dir():
     directory = "test-1"
-    os.mkdir(directory)
+    os.makedirs(directory, exist_ok=True)
     with open(f"{directory}/hostname", "w") as f:
         f.write("test.onion\n\n\n")
     yield directory
