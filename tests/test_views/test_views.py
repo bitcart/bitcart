@@ -863,7 +863,10 @@ async def test_create_invoice_without_coin_rate(client, token: str, mocker, stor
     store_id = store["id"]
     price = 9.9
     # mock coin rate missing
-    mocker.patch("api.settings.settings.exchange_rates.get_rate", return_value=get_future_return_value(Decimal("nan")))
+    mocker.patch(
+        "api.settings.settings.exchange_rates.get_rate",
+        side_effect=lambda exchange, pair=None: {} if pair is None else Decimal("NaN"),
+    )
     # create invoice
     r = await client.post(
         "/invoices",
@@ -872,10 +875,8 @@ async def test_create_invoice_without_coin_rate(client, token: str, mocker, stor
     )
     assert r.status_code == 200
     result = r.json()
-    invoice_id = result["id"]
     assert float(result["price"]) == price
     assert result["price"] == "9.90"
-    await client.delete(f"/invoices/{invoice_id}", headers={"Authorization": f"Bearer {token}"})
 
 
 async def test_create_invoice_and_pay(client, token: str, store):
