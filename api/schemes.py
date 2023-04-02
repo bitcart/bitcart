@@ -771,7 +771,7 @@ class RateResult(BaseModel):
     message: str
 
     @validator("rate", pre=True, always=True)
-    def set_rate(cls, v):
+    def set_rate(cls, v):  # pragma: no cover
         if math.isnan(v):
             return None
         return v

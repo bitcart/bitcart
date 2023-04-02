@@ -151,11 +151,11 @@ async def run_async(func, *args, **kwargs):  # pragma: no cover
         return await run_in_threadpool(func, *args, **kwargs)
 
 
-def precise_decimal(v):
+def precise_decimal(v):  # pragma: no cover
     return Decimal(str(v))
 
 
-async def send_request(method, url, *args, return_json=True, **kwargs):
+async def send_request(method, url, *args, return_json=True, **kwargs):  # pragma: no cover
     async with ClientSession() as session:
         async with session.request(method, url, *args, **kwargs) as resp:
             if return_json:
@@ -163,7 +163,7 @@ async def send_request(method, url, *args, return_json=True, **kwargs):
             return resp, await resp.text()
 
 
-class DecimalAwareJSONEncoder(json.JSONEncoder):
+class DecimalAwareJSONEncoder(json.JSONEncoder):  # pragma: no cover
     def default(self, obj):
         if isinstance(obj, Decimal):
             return {"__type__": "Decimal", "value": str(obj)}

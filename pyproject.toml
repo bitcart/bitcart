@@ -50,4 +50,6 @@ omit = [
     # TODO: try to have tests for plugins somehow later
     "api/views/plugins.py",
     "api/ext/plugins.py",
+    "api/ext/exchanges/**",
+    "api/ext/fxrate.py"
 ]

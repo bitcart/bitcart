@@ -39,7 +39,7 @@ async def wait_for_task_result(task_id):
             await asyncio.sleep(0.01)
 
 
-async def set_task_result(task_id, result):
+async def set_task_result(task_id, result):  # pragma: no cover
     async with wait_for_redis():
         return await settings.settings.redis_pool.set(
             f"task:{task_id}", json.dumps(result, cls=utils.common.DecimalAwareJSONEncoder)

@@ -16,7 +16,7 @@ logger = get_logger(__name__)
 
 def worker_result(func):
     async def wrapper(self, *args, **kwargs):
-        if settings.settings.is_worker:
+        if settings.settings.is_worker or settings.settings.functional_tests:
             return await func(self, *args, **kwargs)
         async with utils.redis.wait_for_redis():
             task_id = utils.common.unique_id()
@@ -64,6 +64,9 @@ class RatesManager:
             if currency not in settings.settings.cryptos:
                 continue
             final_contracts[currency] = list(filter(None, tokens))
+        if settings.settings.functional_tests:
+            self.exchanges["coingecko"] = self._exchange_classes["coingecko"](coins, final_contracts)
+            return
         for name, exchange_cls in self._exchange_classes.items():
             self.exchanges[name] = exchange_cls(coins, final_contracts)
         try:
