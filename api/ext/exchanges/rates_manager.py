@@ -92,7 +92,7 @@ class RatesManager:
 
     @worker_result
     async def add_contract(self, contract, currency):
-        for exchange in self.exchanges.values():
+        for key, exchange in self.exchanges.copy().items():
             if contract not in exchange.contracts[currency]:
-                exchange.contracts[currency].append(contract)
-                exchange.last_refresh = 0
+                self.exchanges[key].contracts[currency].append(contract)
+                self.exchanges[key].last_refresh = 0

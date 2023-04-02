@@ -24,9 +24,9 @@ async def get_rate(wallet, currency, coin=None, extra_fallback=True, *, store=No
         symbol = await get_wallet_symbol(wallet, coin)
         if symbol.lower() == currency.lower():
             return Decimal(1)
+        if wallet.contract:  # pragma: no cover
+            await settings.settings.exchange_rates.add_contract(wallet.contract, wallet.currency)
         if store:
-            if wallet.contract:  # pragma: no cover
-                await settings.settings.exchange_rates.add_contract(wallet.contract, wallet.currency)
             rules = store.checkout_settings.rate_rules or fxrate.get_default_rules()
             rate, _ = await fxrate.calculate_rules(rules, symbol.upper(), currency.upper())
         else:
