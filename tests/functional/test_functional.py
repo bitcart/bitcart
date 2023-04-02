@@ -19,6 +19,8 @@ REGTEST_XPUB2 = "hungry ordinary similar more spread math general wire jealous v
 LIGHTNING_CHANNEL_AMOUNT = Decimal("0.1")
 LNPAY_AMOUNT = LIGHTNING_CHANNEL_AMOUNT / 10
 
+INVOICE_AMOUNT = "0.00018"  # as of 2 Apr 2023, we do this to avoid calling coingecko
+
 pytestmark = pytest.mark.anyio
 
 
@@ -184,7 +186,12 @@ async def test_onchain_pay_flow(client, ws_client, regtest_api_store, token, wor
     )
     assert resp.status_code == 200
     assert resp.json()["checkout_settings"]["transaction_speed"] == speed
-    invoice = (await client.post("/invoices", json={"price": 5, "store_id": store_id, "notification_url": ipn_server})).json()
+    invoice = (
+        await client.post(
+            "/invoices",
+            json={"price": INVOICE_AMOUNT, "currency": "BTC", "store_id": store_id, "notification_url": ipn_server},
+        )
+    ).json()
     assert invoice["status"] == "pending"
     pay_details = invoice["payments"][0]
     address = pay_details["payment_address"]
@@ -200,7 +207,7 @@ async def test_onchain_pay_flow(client, ws_client, regtest_api_store, token, wor
 
 async def test_exception_statuses(client, ws_client, regtest_api_store, token, worker, ipn_server):
     store_id = regtest_api_store["id"]
-    invoice = (await client.post("/invoices", json={"price": 5, "store_id": store_id})).json()
+    invoice = (await client.post("/invoices", json={"price": INVOICE_AMOUNT, "currency": "BTC", "store_id": store_id})).json()
     pay_details = invoice["payments"][0]
     address = pay_details["payment_address"]
     amount = Decimal(pay_details["amount"])
@@ -237,7 +244,12 @@ async def test_lightning_pay_flow(
     )
     assert resp.status_code == 200
     assert resp.json()["lightning_enabled"]
-    invoice = (await client.post("/invoices", json={"price": 5, "store_id": store_id, "notification_url": ipn_server})).json()
+    invoice = (
+        await client.post(
+            "/invoices",
+            json={"price": INVOICE_AMOUNT, "currency": "BTC", "store_id": store_id, "notification_url": ipn_server},
+        )
+    ).json()
     assert invoice["status"] == "pending"
     pay_details = invoice["payments"][1]  # lightning methods are always created after onchain ones
     await regtest_lnnode.lnpay(pay_details["payment_address"])
