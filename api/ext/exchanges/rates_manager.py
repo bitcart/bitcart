@@ -16,7 +16,7 @@ logger = get_logger(__name__)
 
 def worker_result(func):
     async def wrapper(self, *args, **kwargs):
-        if settings.settings.test or settings.settings.is_worker:
+        if settings.settings.is_worker:
             return await func(self, *args, **kwargs)
         async with utils.redis.wait_for_redis():
             task_id = utils.common.unique_id()

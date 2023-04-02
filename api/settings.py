@@ -296,7 +296,7 @@ class Settings(BaseSettings):
         self.redis_pool = aioredis.from_url(self.redis_host, decode_responses=True)
         await self.redis_pool.ping()
         await self.create_db_engine()
-        if self.test or self.is_worker:
+        if self.is_worker:
             await self.exchange_rates.init()
 
     async def post_plugin_init(self):

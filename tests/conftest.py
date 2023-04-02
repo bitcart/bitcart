@@ -54,8 +54,8 @@ async def init_db(request, app, anyio_backend):
     db_name = settings.settings.db_name
     template_db = f"{db_name}_template"
     xdist_suffix = getattr(request.config, "workerinput", {}).get("workerid")
-    if xdist_suffix:
-        db_name += f"_{xdist_suffix}"
+    xdist_suffix = xdist_suffix or "functional"
+    db_name += f"_{xdist_suffix}"
     settings.settings.db_name = "postgres"
     async with settings.settings.with_db():
         await db.status(f"DROP DATABASE IF EXISTS {db_name}")
