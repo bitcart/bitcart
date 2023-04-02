@@ -32,7 +32,6 @@ class RatesManager:
         self.exchanges = {}
         self._exchange_classes = {}
         self.contracts = {}
-        self.lock = asyncio.Lock()
         for filename in os.listdir(os.path.dirname(__file__)):
             if filename.endswith(".py") and filename not in ("__init__.py", "base.py", "rates_manager.py", "coinrules.py"):
                 module_name = os.path.splitext(filename)[0]
@@ -57,6 +56,7 @@ class RatesManager:
                 self.default_rules += coin.rate_rules + "\n"
 
     async def init(self):
+        self.lock = asyncio.Lock()
         coins = list(settings.settings.cryptos.values())
         contracts = (
             await select([db.func.array_agg(distinct(models.Wallet.contract)), models.Wallet.currency])
