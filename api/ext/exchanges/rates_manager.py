@@ -43,14 +43,15 @@ class RatesManager:
         self.default_rules = ""
         self.coingecko_ids = {}
         coin_rules = importlib.import_module("api.ext.exchanges.coinrules")
-        for currency in settings_obj.cryptos.keys():
+        for currency, coin in settings_obj.cryptos.items():
             if hasattr(coin_rules, currency.upper()):
                 rules_obj = getattr(coin_rules, currency.upper())
                 if hasattr(rules_obj, "default_rule"):
                     self.default_rules += rules_obj.default_rule + "\n"
                 if hasattr(rules_obj, "coingecko_id"):
                     self.coingecko_ids[currency] = rules_obj.coingecko_id
-                # If we need it in the future, coins can register custom exchanges for their needs
+            if hasattr(coin, "rate_rules"):
+                self.default_rules += coin.rate_rules + "\n"
 
     async def init(self):
         coins = list(settings.settings.cryptos.values())

@@ -6,6 +6,7 @@ from typing import Dict, List
 
 from bitcart.coin import Coin
 
+from api.ext.fxrate import ExchangePair
 from api.logger import get_exception_message, get_logger
 
 logger = get_logger(__name__)
@@ -15,6 +16,10 @@ EXCHANGE_ACTIVE_TIME = 12 * 60 * 60
 
 # Adaptive system: avoid refresh on call except for first time, then refresh in background
 # If exchange wasn't used for 12 hours, stop refreshing in background
+
+
+def get_inverse_dict(d):
+    return {str(ExchangePair(k).inverse()): 1 / v for k, v in d.items()}
 
 
 class BaseExchange(metaclass=ABCMeta):
@@ -35,6 +40,7 @@ class BaseExchange(metaclass=ABCMeta):
             ):
                 try:
                     await self.refresh()
+                    self.quotes.update(get_inverse_dict(self.quotes))
                 except Exception as e:
                     logger.error(f"Failed refreshing exchange rates:\n{get_exception_message(e)}")
                 self.last_refresh = cur_time
