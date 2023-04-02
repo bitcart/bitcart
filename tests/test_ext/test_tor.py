@@ -1,4 +1,5 @@
 import ipaddress
+import os
 
 from api.ext.tor import (
     HiddenService,
@@ -54,13 +55,13 @@ def test_get_service_name():
     assert get_service_name("BitcartCC-Merchants-API") == "BitcartCC Merchants API"
 
 
-def test_parse_torrc(torrc):
+def test_parse_torrc(torrc, service_dir):
     assert not parse_torrc(None)
     assert not parse_torrc("test")
     assert parse_torrc(torrc) == [
         HiddenService(
-            "test 1",
-            "test-1",
+            os.path.basename(service_dir),
+            service_dir,
             "http://test.onion",
             PortDefinition(80, str(ipaddress.ip_address("127.0.0.1")), 80),
         )

@@ -1,5 +1,5 @@
 import os
-import shutil
+import tempfile
 
 import anyio
 import pytest
@@ -80,24 +80,20 @@ async def ws_client(app, anyio_backend):
 
 @pytest.fixture
 def service_dir():
-    directory = "test-1"
-    shutil.rmtree(directory, ignore_errors=True)
-    os.makedirs(directory, exist_ok=True)
-    with open(f"{directory}/hostname", "w") as f:
-        f.write("test.onion\n\n\n")
-    yield directory
-    shutil.rmtree(directory)
+    with tempfile.TemporaryDirectory() as directory:
+        with open(f"{directory}/hostname", "w") as f:
+            f.write("test.onion\n\n\n")
+        yield directory
 
 
 @pytest.fixture
 def torrc(service_dir):
-    filename = "torrc"
+    filename = f"{service_dir}/torrc"
     with open(filename, "w") as f:
-        f.write("""
-HiddenServiceDir test-1
+        f.write(f"""
+HiddenServiceDir {service_dir}
 HiddenServicePort 80 127.0.0.1:80""")
     yield filename
-    os.remove(filename)
 
 
 def deleting_file_base(filename):
