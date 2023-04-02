@@ -15,6 +15,7 @@ executors:
       - image: circleci/postgres:12-alpine-ram
         environment:
           POSTGRES_DB: bitcart_test
+          DB_DATABASE: bitcart_test
           POSTGRES_HOST_AUTH_METHOD: trust
     environment:
       TEST_ARGS: "-o junit_family=xunit1 --junitxml test-results/pytest/coverage.xml --cov-report html:coverage"
@@ -46,7 +47,6 @@ commands:
       - run:
           name: prepare worker
           command: |
-            createdb bitcart
             make migrate
             python3 worker.py
           background: true
