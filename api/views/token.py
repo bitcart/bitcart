@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Security
 from fastapi.security import OAuth2PasswordRequestForm
 from fido2.server import Fido2Server
 from fido2.webauthn import AttestedCredentialData, PublicKeyCredentialRpEntity
+from pydantic import ValidationError
 from starlette.requests import Request
 
 from api import models, pagination, schemes, settings, utils
@@ -96,9 +97,12 @@ async def create_oauth2_token(
         utils.authorization.AuthDependency(token_required=False, return_token=True)
     ),
 ):  # pragma: no cover
-    token_data = schemes.HTTPCreateLoginToken(
-        email=form_data.username, password=form_data.password, permissions=form_data.scopes
-    )
+    try:
+        token_data = schemes.HTTPCreateLoginToken(
+            email=form_data.username, password=form_data.password, permissions=form_data.scopes
+        )
+    except ValidationError as e:
+        raise HTTPException(422, e.errors())
     return await create_token(token_data, auth_data)
 
 
