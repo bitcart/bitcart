@@ -1,3 +1,4 @@
+import asyncio
 import importlib
 import inspect
 import os
@@ -30,6 +31,8 @@ class RatesManager:
     def __init__(self, settings_obj):
         self.exchanges = {}
         self._exchange_classes = {}
+        self.contracts = {}
+        self.lock = asyncio.Lock()
         for filename in os.listdir(os.path.dirname(__file__)):
             if filename.endswith(".py") and filename not in ("__init__.py", "base.py", "rates_manager.py", "coinrules.py"):
                 module_name = os.path.splitext(filename)[0]
@@ -65,18 +68,17 @@ class RatesManager:
             if currency not in settings.settings.cryptos:
                 continue
             final_contracts[currency] = list(filter(None, tokens))
+        self.contracts = final_contracts
         if settings.settings.functional_tests:
             self.exchanges["coingecko"] = self._exchange_classes["coingecko"](coins, final_contracts)
             return
         for name, exchange_cls in self._exchange_classes.items():
-            self.exchanges[name] = exchange_cls(coins.copy(), final_contracts.copy())
+            self.exchanges[name] = exchange_cls(coins, final_contracts)
         try:
             coingecko_exchanges = await utils.common.send_request("GET", "https://api.coingecko.com/api/v3/exchanges/list")
             for exchange in coingecko_exchanges:
                 if exchange["id"] not in self.exchanges:
-                    self.exchanges[exchange["id"]] = coingecko_based_exchange(exchange["id"])(
-                        coins.copy(), final_contracts.copy()
-                    )
+                    self.exchanges[exchange["id"]] = coingecko_based_exchange(exchange["id"])(coins, final_contracts)
         except Exception as e:
             logger.error(f"Error while fetching coingecko exchanges:\n{get_exception_message(e)}")
 
@@ -94,8 +96,8 @@ class RatesManager:
 
     @worker_result
     async def add_contract(self, contract, currency):
-        for key, exchange in self.exchanges.copy().items():
-            if contract not in exchange.contracts[currency]:
-                print("ADDING CONTRACT", contract, currency, key)
-                self.exchanges[key].contracts[currency].append(contract)
-                self.exchanges[key].last_refresh = 0
+        async with self.lock:
+            if contract not in self.contracts[currency]:
+                self.contracts[currency].append(contract)
+                for key in self.exchanges.copy().keys():
+                    self.exchanges[key].last_refresh = 0
