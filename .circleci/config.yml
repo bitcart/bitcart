@@ -43,13 +43,6 @@ commands:
             - ~/venv
           key: v6-dependencies-{{ .Branch }}-{{ checksum "~/.pyenv/version" }}-{{ checksum "requirements/web.txt" }}-{{ checksum "requirements/test.txt" }}-{{ checksum "requirements/daemons/btc.txt" }}
 
-      - run:
-          name: prepare worker
-          command: |
-            TEST=true make migrate
-            TEST=true python3 worker.py
-          background: true
-
   install-lint-dependencies:
     steps:
       - checkout
@@ -132,6 +125,13 @@ jobs:
       - checkout
 
       - install_dependencies
+
+      - run:
+          name: prepare worker
+          command: |
+            TEST=true make migrate
+            TEST=true python3 worker.py
+          background: true
 
       - run:
           name: prepare daemon
