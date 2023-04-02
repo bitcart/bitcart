@@ -18,7 +18,8 @@ async def send_ipn(obj, status):  # pragma: no cover
         try:
             await run_hook("send_ipn", obj, status, data)
             async with ClientSession() as session:
-                await session.post(obj.notification_url, json=data)
+                async with session.post(obj.notification_url, json=data) as resp:  # noqa: F841
+                    pass
             logger.info(f"{base_log_message}: success")
         except Exception:
             logger.info(f"{base_log_message}: error\n{traceback.format_exc()}")

@@ -61,11 +61,11 @@ async def get_update_data():
     try:
         async with ClientSession() as session:
             if settings.settings.update_url.startswith("https://api.github.com"):
-                resp = await session.get(settings.settings.update_url)
+                async with session.get(settings.settings.update_url) as resp:
+                    data = await resp.json()
             else:
-                resp = await session.post(settings.settings.update_url, json=await collect_stats())
-            data = await resp.json()
-            resp.release()
+                async with session.post(settings.settings.update_url, json=await collect_stats()) as resp:
+                    data = await resp.json()
             tag = data["tag_name"]
             if re.match(RELEASE_REGEX, tag):
                 return tag
