@@ -161,10 +161,8 @@ async def test_fiatlist(client: TestClient):
 
 async def test_fiatlist_multi_coins(client: TestClient, mocker):
     mocker.patch.object(settings.settings, "cryptos", {"btc": BTC(), "ltc": LTC()})
-    mocker.patch("bitcart.BTC.list_fiat", return_value=get_future_return_value(["USD", "RMB", "JPY"]))
-    mocker.patch("bitcart.LTC.list_fiat", return_value=get_future_return_value(["USD", "RUA", "AUD"]))
     resp = await client.get("/cryptos/fiatlist")
-    assert resp.json() == ["AUD", "JPY", "RMB", "RUA", "USD"]
+    assert len(resp.json()) > 30
 
 
 async def check_ws_response(ws, sent_amount):
@@ -865,7 +863,10 @@ async def test_create_invoice_without_coin_rate(client, token: str, mocker, stor
     store_id = store["id"]
     price = 9.9
     # mock coin rate missing
-    mocker.patch("bitcart.BTC.rate", return_value=get_future_return_value(Decimal("nan")))
+    mocker.patch(
+        "api.settings.settings.exchange_rates.get_rate",
+        side_effect=lambda exchange, pair=None: {} if pair is None else Decimal("NaN"),
+    )
     # create invoice
     r = await client.post(
         "/invoices",
@@ -874,10 +875,8 @@ async def test_create_invoice_without_coin_rate(client, token: str, mocker, stor
     )
     assert r.status_code == 200
     result = r.json()
-    invoice_id = result["id"]
     assert float(result["price"]) == price
     assert result["price"] == "9.90"
-    await client.delete(f"/invoices/{invoice_id}", headers={"Authorization": f"Bearer {token}"})
 
 
 async def test_create_invoice_and_pay(client, token: str, store):

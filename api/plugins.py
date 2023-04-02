@@ -85,6 +85,7 @@ class BaseCoin(metaclass=ABCMeta):
     friendly_name: str
     is_eth_based = False
     additional_xpub_fields = []
+    rate_rules: str
 
     def __init__(self, xpub=None, **additional_data):
         self.xpub = xpub
@@ -97,14 +98,6 @@ class BaseCoin(metaclass=ABCMeta):
 
     @abstractmethod
     async def balance(self):
-        pass
-
-    @abstractmethod
-    async def rate(self, currency):
-        pass
-
-    @abstractmethod
-    async def list_fiat(self):
         pass
 
     @property

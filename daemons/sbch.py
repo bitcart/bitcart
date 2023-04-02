@@ -14,7 +14,6 @@ class SBCHDaemon(eth.ETHDaemon):
     DEFAULT_PORT = 5007
 
     EIP1559_SUPPORTED = False
-    FIAT_NAME = "bitcoin-cash"
 
     ABI = SEP20_ABI
     TOKENS = SEP20_TOKENS

@@ -84,10 +84,6 @@ class BTCDaemon(BaseDaemon):
         self.LIGHTNING = self.env("LIGHTNING", cast=bool, default=False) if self.LIGHTNING_SUPPORTED else False
         self.LIGHTNING_LISTEN = self.env("LIGHTNING_LISTEN", cast=str, default="") if self.LIGHTNING_SUPPORTED else ""
         self.LIGHTNING_GOSSIP = self.env("LIGHTNING_GOSSIP", cast=bool, default=False) if self.LIGHTNING_SUPPORTED else False
-        self.EXCHANGE = self.env(
-            "FIAT_EXCHANGE",
-            default=self.electrum.exchange_rate.DEFAULT_EXCHANGE,
-        )
         self.SERVER = self.env("SERVER", default="")
         self.ONESERVER = self.env("ONESERVER", cast=bool, default=False)
         self.PROXY_URL = self.env("PROXY_URL", default=None)
@@ -129,10 +125,9 @@ class BTCDaemon(BaseDaemon):
             "lightning": self.LIGHTNING,  # used by SDK to query whether lightning is enabled
             "lightning_listen": self.LIGHTNING_LISTEN,
             "use_gossip": self.LIGHTNING_GOSSIP,
-            "use_exchange": self.EXCHANGE,
             "server": self.SERVER,
             "oneserver": self.ONESERVER,
-            "use_exchange_rate": True,
+            "use_exchange_rate": False,
             "forget_config": True,
             "electrum_path": self.DATA_PATH,
             self.NET.lower(): True,
@@ -503,18 +498,6 @@ class BTCDaemon(BaseDaemon):
     @rpc
     async def get_transaction(self, tx_hash, use_spv=False, wallet=None):
         return await self._get_transaction_spv(tx_hash) if use_spv else await self._get_transaction_verbose(tx_hash)
-
-    @rpc
-    def exchange_rate(self, currency=None, wallet=None) -> str:
-        if currency is None:
-            currency = self.DEFAULT_CURRENCY
-        if self.fx.get_currency() != currency:
-            self.fx.set_currency(currency)
-        return str(self.fx.exchange_rate())
-
-    @rpc
-    def list_currencies(self, wallet=None) -> list:
-        return self.fx.get_currencies(False)
 
     @rpc
     def get_tx_size(self, raw_tx: dict, wallet=None) -> int:

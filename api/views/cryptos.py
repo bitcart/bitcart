@@ -1,13 +1,11 @@
 import math
 import re
-from decimal import Decimal
 from typing import Optional
 
-from bitcart.errors import BaseError as BitcartBaseError
 from fastapi import APIRouter, HTTPException
 
 from api import constants, settings
-from api.logger import get_exception_message, get_logger
+from api.logger import get_logger
 from api.plugins import apply_filters
 from api.utils.common import prepare_compliant_response
 
@@ -29,7 +27,13 @@ async def get_supported_cryptos():
 @router.get("/rate")
 async def rate(currency: str = "btc", fiat_currency: str = "USD"):
     coin = await settings.settings.get_coin(currency)
-    rate = await apply_filters("get_rate", await coin.rate(fiat_currency.upper()), coin, fiat_currency.upper(), None)
+    rate = await apply_filters(
+        "get_rate",
+        await settings.settings.exchange_rates.get_rate("coingecko", f"{currency.upper()}_{fiat_currency.upper()}"),
+        coin,
+        fiat_currency.upper(),
+        None,
+    )
     if math.isnan(rate):
         raise HTTPException(422, "Unsupported fiat currency")
     return rate
@@ -37,22 +41,7 @@ async def rate(currency: str = "btc", fiat_currency: str = "USD"):
 
 @router.get("/fiatlist")
 async def get_fiatlist(query: Optional[str] = None):
-    s = None
-    for coin in settings.settings.cryptos:
-        try:
-            fiat_list = await settings.settings.cryptos[coin].list_fiat()
-        except BitcartBaseError as e:
-            logger.error(
-                f"Failed fetching supported currencies for coin {settings.settings.cryptos[coin].coin_name}. Daemon not"
-                f" running?\n{get_exception_message(e)}"
-            )
-            continue
-        if not s:
-            s = set(fiat_list)
-        else:
-            s = s.union(fiat_list)
-    if not s:
-        s = set()
+    s = set(await settings.settings.exchange_rates.get_fiatlist())
     s = await apply_filters("get_fiatlist", s)
     if query is not None:
         pattern = re.compile(query, re.IGNORECASE)
@@ -81,10 +70,3 @@ async def get_default_explorer(currency: str):
 @router.get("/rpc/{currency}")
 async def get_default_rpc(currency: str):
     return await apply_filters("get_default_rpc", settings.settings.get_default_rpc(currency), currency)
-
-
-# SATS is useful for lightning network
-async def get_sats_rate(rate, coin, currency, fallback_currency):  # pragma: no cover
-    if currency == "SATS":
-        return await coin.rate("BTC") * Decimal(10**8)
-    return rate

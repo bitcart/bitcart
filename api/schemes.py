@@ -1,3 +1,4 @@
+import math
 from datetime import datetime
 from decimal import Decimal
 from typing import Any, Dict, List, Optional, Union
@@ -207,6 +208,7 @@ class StoreCheckoutSettings(BaseModel):
     randomize_wallet_selection: bool = False
     allow_anonymous_invoice_creation: bool = True
     include_network_fee: bool = False
+    rate_rules: str = ""
 
     @validator("recommended_fee_target_blocks")
     def validate_recommended_fee_target_blocks(cls, v):
@@ -762,3 +764,18 @@ class Refund(CreateRefund):
     wallet_currency: Optional[str]
     payout_status: Optional[str]
     tx_hash: Optional[str]
+
+
+class RateResult(BaseModel):
+    rate: Optional[Decimal]
+    message: str
+
+    @validator("rate", pre=True, always=True)
+    def set_rate(cls, v):  # pragma: no cover
+        if math.isnan(v):
+            return None
+        return v
+
+
+class RatesResponse(BaseModel):
+    rates: List[RateResult]

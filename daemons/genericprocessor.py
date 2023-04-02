@@ -521,14 +521,12 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
         "getunusedaddress": "getaddress",
         "list_invoices": "list_requests",
     }
-    SKIP_NETWORK = ["getinfo", "exchange_rate", "list_currencies"]
+    SKIP_NETWORK = ["getinfo"]
 
     DIVISIBILITY: int
     BLOCK_TIME: int
     DEFAULT_MAX_SYNC_BLOCKS: int
-    FIAT_NAME: str  # from coingecko API
     AMOUNTGEN_DIVISIBILITY = 8  # Max number of decimal places to use for amounts generation
-    FX_FETCH_TIME = 150
 
     SPEED_MULTIPLIERS = {"network": 1, "regular": 1.25, "fast": 1.5}
 
@@ -546,9 +544,6 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
     def __init__(self):
         super().__init__()
         daemon_ctx.set(self)
-        if not hasattr(self, "CONTRACT_FIAT_NAME"):
-            self.CONTRACT_FIAT_NAME = self.FIAT_NAME
-        self.exchange_rates = defaultdict(dict)
         self.latest_blocks = deque(maxlen=self.MAX_SYNC_BLOCKS)
         self.config_path = os.path.join(self.get_datadir(), "config")
         self.config = ConfigDB(self.config_path)
@@ -587,33 +582,9 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
         if self.latest_height == -1:
             self.latest_height = await self.coin.get_block_number()
         self.loop.create_task(self.process_pending())
-        self.loop.create_task(self.fetch_exchange_rates())
 
     def get_fx_contract(self, contract):
         return contract.lower()
-
-    async def get_rates(self, contract=None):
-        url = (
-            f"https://api.coingecko.com/api/v3/coins/{self.FIAT_NAME}?localization=false&sparkline=false"
-            if not contract
-            else f"https://api.coingecko.com/api/v3/coins/{self.CONTRACT_FIAT_NAME}/contract/{self.get_fx_contract(contract)}"
-        )
-        async with self.client_session.get(url) as response:
-            got = await response.json()
-        prices = got["market_data"]["current_price"]
-        return {price[0].upper(): Decimal(str(price[1])) for price in prices.items()}
-
-    async def fetch_exchange_rates(self, currency=None, contract=None):
-        if currency is None:
-            currency = self.name
-        while self.running:
-            try:
-                self.exchange_rates[currency] = await self.get_rates(contract)
-            except Exception:
-                if self.VERBOSE:
-                    print(f"Error fetching exchange rates for {currency}:")
-                    print(traceback.format_exc())
-            await asyncio.sleep(self.FX_FETCH_TIME)
 
     async def process_transaction(self, tx):
         if tx.divisibility is None:
@@ -861,13 +832,6 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
     async def createnewaddress(self, *args, **kwargs):
         raise NotImplementedError(ONE_ADDRESS_MESSAGE)
 
-    @rpc
-    def exchange_rate(self, currency=None, wallet=None):
-        origin_currency = self.wallets[wallet].symbol if wallet and wallet in self.wallets else self.name
-        if not currency:
-            currency = self.DEFAULT_CURRENCY
-        return str(self.exchange_rates[origin_currency].get(currency, Decimal("NaN")))
-
     @rpc(requires_network=True)
     @abstractmethod
     async def get_default_fee(self, tx, wallet=None):
@@ -1017,11 +981,6 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
     @rpc(requires_wallet=True)
     def ismine(self, address, wallet):
         return address == self.wallets[wallet].address
-
-    @rpc
-    def list_currencies(self, wallet=None):
-        origin_currency = self.wallets[wallet].symbol if wallet else self.name
-        return list(self.exchange_rates[origin_currency].keys())
 
     @rpc(requires_network=True)
     async def list_peers(self, wallet=None):

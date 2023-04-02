@@ -81,7 +81,8 @@ async def ws_client(app, anyio_backend):
 @pytest.fixture
 def service_dir():
     directory = "test-1"
-    os.mkdir(directory)
+    shutil.rmtree(directory, ignore_errors=True)
+    os.makedirs(directory, exist_ok=True)
     with open(f"{directory}/hostname", "w") as f:
         f.write("test.onion\n\n\n")
     yield directory
@@ -92,11 +93,9 @@ def service_dir():
 def torrc(service_dir):
     filename = "torrc"
     with open(filename, "w") as f:
-        f.write(
-            """
+        f.write("""
 HiddenServiceDir test-1
-HiddenServicePort 80 127.0.0.1:80"""
-        )
+HiddenServicePort 80 127.0.0.1:80""")
     yield filename
     os.remove(filename)
 

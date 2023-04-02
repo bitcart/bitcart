@@ -1,9 +1,12 @@
 import asyncio
 import inspect
+import json
 import secrets
 from collections import defaultdict
 from datetime import timedelta
+from decimal import Decimal
 
+from aiohttp import ClientSession
 from anyio import Semaphore
 from dateutil.parser import isoparse
 from fastapi import HTTPException
@@ -146,3 +149,28 @@ MAX_THREADS_GUARD = Semaphore(MAX_CONCURRENT_THREADS)
 async def run_async(func, *args, **kwargs):  # pragma: no cover
     async with MAX_THREADS_GUARD:
         return await run_in_threadpool(func, *args, **kwargs)
+
+
+def precise_decimal(v):  # pragma: no cover
+    return Decimal(str(v))
+
+
+async def send_request(method, url, *args, return_json=True, **kwargs):  # pragma: no cover
+    async with ClientSession() as session:
+        async with session.request(method, url, *args, **kwargs) as resp:
+            if return_json:
+                return await resp.json()
+            return resp, await resp.text()
+
+
+class DecimalAwareJSONEncoder(json.JSONEncoder):  # pragma: no cover
+    def default(self, obj):
+        if isinstance(obj, Decimal):
+            return {"__type__": "Decimal", "value": str(obj)}
+        return super().default(obj)
+
+
+def decimal_aware_object_hook(obj):
+    if isinstance(obj, dict) and obj.get("__type__") == "Decimal":
+        return Decimal(obj["value"])
+    return obj

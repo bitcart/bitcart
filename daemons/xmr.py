@@ -318,8 +318,6 @@ class XMRDaemon(BlockProcessorDaemon):
     MEMPOOL_TIME = 5
 
     DEFAULT_MAX_SYNC_BLOCKS = 300  # 10 hours
-    # from coingecko API
-    FIAT_NAME = "monero"
 
     UNIT = "piconero"
 

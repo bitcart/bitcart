@@ -93,9 +93,7 @@ async def determine_network_fee(coin, wallet, invoice, store, divisibility):  # 
             coin_no_contract = await settings.settings.get_coin(
                 wallet.currency, {"xpub": wallet.xpub, **wallet.additional_xpub_data}
             )
-            rate_no_contract = await utils.wallets.get_rate(
-                wallet, invoice.currency, store.default_currency, coin=coin_no_contract
-            )
+            rate_no_contract = await utils.wallets.get_rate(wallet, invoice.currency, coin=coin_no_contract)
             return fee * rate_no_contract
         return fee
 
@@ -131,7 +129,7 @@ async def _create_payment_method(invoice, wallet, product, store, discounts, pro
         return method
     symbol = await utils.wallets.get_wallet_symbol(wallet, coin)
     divisibility = await utils.wallets.get_divisibility(wallet, coin)
-    rate = await utils.wallets.get_rate(wallet, invoice.currency, store.default_currency)
+    rate = await utils.wallets.get_rate(wallet, invoice.currency, store=store)
     price, discount_id = match_discount(invoice.price, wallet, invoice, discounts, promocode)
     support_underpaid = getattr(coin, "support_underpaid", True)
     request_price = price * (1 - (Decimal(store.checkout_settings.underpaid_percentage) / 100)) if support_underpaid else price
@@ -237,12 +235,10 @@ async def create_method_for_wallet(invoice, wallet, discounts, store, product, p
 
 async def update_invoice_payments(invoice, wallets_ids, discounts, store, product, promocode, start_time):
     logger.info(f"Started adding invoice payments for invoice {invoice.id}")
-    query = text(
-        """SELECT wallets.*
+    query = text("""SELECT wallets.*
     FROM   wallets
     JOIN   unnest((:wallets_ids)::varchar[]) WITH ORDINALITY t(id, ord) USING (id)
-    ORDER  BY t.ord;"""
-    )
+    ORDER  BY t.ord;""")
     wallets = await db.db.all(query, wallets_ids=wallets_ids)
     randomize_selection = store.checkout_settings.randomize_wallet_selection
     if randomize_selection:

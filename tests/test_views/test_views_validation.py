@@ -182,16 +182,15 @@ class MockBTC:
         raise BitcartBaseError("Broken")
 
 
-async def test_edge_fiatlist_cases(client: TestClient, token, mocker, caplog):
+async def test_edge_fiatlist_cases(client: TestClient, token, mocker):
     mocker.patch("api.settings.settings.cryptos", {})
     resp = await client.get("/cryptos/fiatlist")
     assert resp.status_code == 200
-    assert resp.json() == []
+    assert len(resp.json()) > 30  # no longer dependent on cryptos
     mocker.patch("api.settings.settings.cryptos", {"btc": MockBTC()})
     resp = await client.get("/cryptos/fiatlist")
     assert resp.status_code == 200
-    assert resp.json() == []
-    assert "Failed fetching supported currencies for coin BTC" in caplog.text
+    assert len(resp.json()) > 30
 
 
 async def test_edge_invoice_cases(client: TestClient, token, store, mocker, caplog):

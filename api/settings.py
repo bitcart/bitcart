@@ -25,6 +25,7 @@ from starlette.datastructures import CommaSeparatedStrings
 from api import db
 from api.constants import GIT_REPO_URL, PLUGINS_SCHEMA_URL, VERSION, WEBSITE
 from api.ext.blockexplorer import EXPLORERS
+from api.ext.exchanges.rates_manager import RatesManager
 from api.ext.notifiers import parse_notifier_schema
 from api.ext.rpc import RPC
 from api.ext.ssh import load_ssh_settings
@@ -40,6 +41,7 @@ class Settings(BaseSettings):
     enabled_cryptos: CommaSeparatedStrings = Field("btc", env="BITCART_CRYPTOS")
     redis_host: str = Field("redis://localhost", env="REDIS_HOST")
     test: bool = Field("pytest" in sys.modules, env="TEST")
+    functional_tests: bool = Field(False, env="FUNCTIONAL_TESTS")
     docker_env: bool = Field(False, env="IN_DOCKER")
     root_path: str = Field("", env="BITCART_BACKEND_ROOTPATH")
     db_name: str = Field("bitcart", env="DB_DATABASE")
@@ -69,8 +71,10 @@ class Settings(BaseSettings):
     config: Config = None
     logger: logging.Logger = None
     template_manager: TemplateManager = None
+    exchange_rates: RatesManager = None
     plugins: list = None
     plugins_schema: dict = {}
+    is_worker: bool = False
 
     class Config:
         env_file = "conf/.env"
@@ -180,6 +184,7 @@ class Settings(BaseSettings):
         self.load_cryptos()
         self.load_notification_providers()
         self.template_manager = TemplateManager()
+        self.exchange_rates = RatesManager(self)
 
     def load_plugins(self):
         from api.plugins import PluginsManager
@@ -292,14 +297,14 @@ class Settings(BaseSettings):
         self.redis_pool = aioredis.from_url(self.redis_host, decode_responses=True)
         await self.redis_pool.ping()
         await self.create_db_engine()
+        if self.is_worker or self.functional_tests:
+            await self.exchange_rates.init()
 
     async def post_plugin_init(self):
         from api.plugins import apply_filters, register_filter
-        from api.views.cryptos import get_sats_rate
 
         self.cryptos = await apply_filters("get_cryptos", self.cryptos)
         register_filter("get_fiatlist", lambda s: s.union({"SATS"}))
-        register_filter("get_rate", get_sats_rate)
 
     async def shutdown(self):
         if self.redis_pool:

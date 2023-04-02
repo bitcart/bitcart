@@ -31,7 +31,8 @@
             "ask_address": false,
             "randomize_wallet_selection": false,
             "allow_anonymous_invoice_creation": true,
-            "include_network_fee": false
+            "include_network_fee": false,
+            "rate_rules": ""
         },
         "notifications": [],
         "templates": {},

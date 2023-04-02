@@ -53,5 +53,13 @@ async def send_notification(event, event_data):
     await utils.notifications.notify(store, event_data["text"])
 
 
+@event_handler.on("rates_action")
+async def rates_action(event, event_data):
+    func = getattr(settings.settings.exchange_rates, event_data["func"])
+    result = await func(*event_data["args"])
+    async with utils.redis.wait_for_redis():
+        await utils.redis.set_task_result(event_data["task_id"], result)
+
+
 event_handler.add_handler("deploy_task", deploy_task)
 event_handler.add_handler("invoice_status", shopify_invoice_update)
