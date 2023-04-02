@@ -90,7 +90,7 @@ class ExchangeTransformer(ast.NodeTransformer):
         if candidate == NO_RATE:
             return NO_RATE
         if self.depth == MAX_DEPTH:
-            return "ERR_TOO_MUCH_NESTED_CALLS"
+            return NO_RATE
         transformer = ExchangeTransformer(self.expressions, left=left, right=right, depth=self.depth + 1, rates=self.rates)
         result = transformer.visit(candidate["expression"])
         self.exchanges.update(transformer.exchanges)
