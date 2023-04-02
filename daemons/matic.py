@@ -11,8 +11,6 @@ class MATICDaemon(eth.ETHDaemon):
     DEFAULT_PORT = 5008
 
     DEFAULT_MAX_SYNC_BLOCKS = 450  # (60/2)=30*60 (a block every 2 seconds, keep up to 15 minutes of data)
-    FIAT_NAME = "matic-network"
-    CONTRACT_FIAT_NAME = "polygon-pos"
 
     TOKENS = ERC20_TOKENS
 

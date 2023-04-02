@@ -93,9 +93,7 @@ async def determine_network_fee(coin, wallet, invoice, store, divisibility):  # 
             coin_no_contract = await settings.settings.get_coin(
                 wallet.currency, {"xpub": wallet.xpub, **wallet.additional_xpub_data}
             )
-            rate_no_contract = await utils.wallets.get_rate(
-                wallet, invoice.currency, store.default_currency, coin=coin_no_contract
-            )
+            rate_no_contract = await utils.wallets.get_rate(wallet, invoice.currency, coin=coin_no_contract)
             return fee * rate_no_contract
         return fee
 
@@ -131,7 +129,7 @@ async def _create_payment_method(invoice, wallet, product, store, discounts, pro
         return method
     symbol = await utils.wallets.get_wallet_symbol(wallet, coin)
     divisibility = await utils.wallets.get_divisibility(wallet, coin)
-    rate = await utils.wallets.get_rate(wallet, invoice.currency, store.default_currency)
+    rate = await utils.wallets.get_rate(wallet, invoice.currency, store=store)
     price, discount_id = match_discount(invoice.price, wallet, invoice, discounts, promocode)
     support_underpaid = getattr(coin, "support_underpaid", True)
     request_price = price * (1 - (Decimal(store.checkout_settings.underpaid_percentage) / 100)) if support_underpaid else price

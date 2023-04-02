@@ -253,8 +253,6 @@ class ETHDaemon(BlockProcessorDaemon):
     # Disabled for now due to unpredictable gasPrice
     EIP1559_SUPPORTED = False
     DEFAULT_MAX_SYNC_BLOCKS = 300  # (60/12)=5*60 (a block every 12 seconds, max normal expiry time 60 minutes)
-    # from coingecko API
-    FIAT_NAME = "ethereum"
 
     UNIT = "wei"
 
@@ -315,7 +313,6 @@ class ETHDaemon(BlockProcessorDaemon):
         self.contracts[contract] = await self.start_contract_listening(contract)
         self.wallets[wallet].contract = self.contracts[contract]
         await self.wallets[wallet].fetch_token_info()
-        self.loop.create_task(self.fetch_exchange_rates(self.wallets[wallet].symbol, contract))
 
     async def start_contract_listening(self, contract):
         contract_obj = await self.create_web3_contract(contract)

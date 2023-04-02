@@ -90,5 +90,8 @@ event_handler = EventHandler(
         "send_notification": {
             "params": {"store_id", "text"},
         },
+        "rates_action": {
+            "params": {"func", "args", "task_id"},
+        },
     }
 )

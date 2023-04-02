@@ -40,6 +40,7 @@ def check_db():
 
 async def main():
     settings = settings_module.settings_ctx.get()
+    settings.is_worker = True
     try:
         settings.init_logging()
         await settings.init()

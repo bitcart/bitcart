@@ -135,6 +135,8 @@ class TRXFeatures(BlockchainFeatures):
             divisibility = daemon_ctx.get().DECIMALS_CACHE[contract_address]
             data = bytes.fromhex(value["data"])
             function = contract.get_function_by_selector(data[:4])
+            if not function:
+                return
             try:
                 params = trx_abi.decode(["address", "uint256"], data[4:])
             except Exception:
@@ -216,7 +218,6 @@ class TRXDaemon(ETHDaemon):
     AMOUNTGEN_DIVISIBILITY = 6
     EIP1559_SUPPORTED = False
     DEFAULT_MAX_SYNC_BLOCKS = 300  # (60/3)=20*60 (a block every 3 seconds, keep up to 15 minutes of data)
-    FIAT_NAME = "tron"
 
     CONTRACT_TYPE = AsyncContract
 

@@ -8,6 +8,7 @@ from fastapi import HTTPException
 
 from api import models, settings, utils
 from api.constants import MAX_CONTRACT_DIVISIBILITY
+from api.ext import fxrate
 from api.ext.moneyformat import currency_table
 from api.logger import get_exception_message, get_logger
 from api.plugins import apply_filters
@@ -15,7 +16,7 @@ from api.plugins import apply_filters
 logger = get_logger(__name__)
 
 
-async def get_rate(wallet, currency, fallback_currency=None, coin=None, extra_fallback=True):
+async def get_rate(wallet, currency, coin=None, extra_fallback=True, *, store=None):
     try:
         coin = coin or await settings.settings.get_coin(
             wallet.currency, {"xpub": wallet.xpub, "contract": wallet.contract, **wallet.additional_xpub_data}
@@ -23,14 +24,16 @@ async def get_rate(wallet, currency, fallback_currency=None, coin=None, extra_fa
         symbol = await get_wallet_symbol(wallet, coin)
         if symbol.lower() == currency.lower():
             return Decimal(1)
-        rate = await coin.rate(currency)
-        if math.isnan(rate) and fallback_currency:
-            rate = await coin.rate(fallback_currency)
-        if math.isnan(rate) and extra_fallback:
-            rate = await coin.rate("USD")
+        if store:
+            if wallet.contract:
+                await settings.settings.exchange_rates.add_contract(wallet.contract, wallet.currency)
+            rules = store.checkout_settings.rate_rules or fxrate.get_default_rules()
+            rate, _ = await fxrate.calculate_rules(rules, symbol.upper(), currency.upper())
+        else:
+            rate = await settings.settings.exchange_rates.get_rate("coingecko", f"{symbol.upper()}_{currency.upper()}")
         if math.isnan(rate) and extra_fallback:
             rate = Decimal(1)  # no rate available, no conversion
-        rate = await apply_filters("get_rate", rate, coin, currency, fallback_currency)
+        rate = await apply_filters("get_rate", rate, coin, currency)
     except (BitcartBaseError, HTTPException) as e:
         logger.error(
             f"Error fetching rates of coin {wallet.currency.upper()} for currency {currency}, falling back to 1:\n"
