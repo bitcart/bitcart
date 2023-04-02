@@ -46,6 +46,7 @@ commands:
       - run:
           name: prepare worker
           command: |
+            make migrate
             python3 worker.py
           background: true
 
