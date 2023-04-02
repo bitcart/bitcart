@@ -863,7 +863,7 @@ async def test_create_invoice_without_coin_rate(client, token: str, mocker, stor
     store_id = store["id"]
     price = 9.9
     # mock coin rate missing
-    mocker.patch("bitcart.BTC.rate", return_value=get_future_return_value(Decimal("nan")))
+    mocker.patch("api.settings.settings.exchange_rates.get_rate", return_value=get_future_return_value(Decimal("nan")))
     # create invoice
     r = await client.post(
         "/invoices",
