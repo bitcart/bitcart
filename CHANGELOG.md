@@ -2,6 +2,44 @@
 
 ## Latest changes
 
+## 0.7.4.0
+
+### New exchange rates engine
+
+Because of recent issues of coingecko, as well of lack of some local currencies and other issues, our rate engine has been improved.
+
+The exchange rates functionality have been moved from the daemon one layer up, to the Merchants API. If you use `exchange_rate` or `list_fiat` functions from daemons RPC protocol, please either use Merchants API directly (some usecases of SDK can completely be replaced by the Merchants API), or fetch exchange rates manually. This already gives you more control over how to do the fetching.
+
+For the rest of the users, no breaking changes are made. In fact, the system is more reliable. It is now possible to add custom rate rules in store settings.
+
+If your local currency is not supported, you can do something like
+
+`X_MYCUR = X_USD * fiat(USD_MYCUR)`
+
+You can use a variety of exchanges. Most of them are added via coingecko exchanges API, but `kraken` and `fiat` are added natively. fiat refers to currency API hosted by github pages, updated daily list of USD to other fiat currencies rates.
+
+You can also use functions like `mean` or `median` to gather rate off multiple exchanges. In case one fails, others will be still counted in.
+
+### Optimizations in daemons
+
+We continue to optimize the performance and memory usage of the daemons. An issue with infinitely growing list of events for polling has been fixed, it's now capped by 100 events per wallet max. Polling is not used by merchants API, so it was a useless use of memory and performance.
+
+### Store POS improvements
+
+The store POS has received numerous improvements in this release.
+
+An initial prototype of a keypad UI is now accessible. It is useful for in-person checkouts for example.
+
+Also, store POS now uses admin panel's checkout page, which means there is now only one reference universal checkout page.
+
+### Misc changes
+
+- Fix order_id endpoint in large instances
+- Fix issues in payouts sending
+- Add batch delete for API tokens
+- Handle ValidationError in OAuth2 endpoint
+- Improve UX of admin panel's autocompletes
+
 ## 0.7.3.0
 
 ### Admin panel UI revamp
