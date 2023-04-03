@@ -1,3 +1,7 @@
+from api import utils
+from api.ext.exchanges.base import BaseExchange
+
+
 class BTC:
     coingecko_id = "bitcoin"
 
@@ -14,8 +18,16 @@ class BSTY:
     coingecko_id = "globalboost"
 
 
+class XRGExchange(BaseExchange):
+    async def refresh(self):
+        result = await utils.common.send_request("GET", "https://explorer.ergon.network/ext/summary")
+        self.quotes = {"XRG_USDT": utils.common.precise_decimal(result["data"][0]["lastPrice"])}
+
+
 class XRG:
-    coingecko_id = "bitcoin"  # not working
+    coingecko_id = "tether"
+    default_rule = "XRG_X = xrgexchange(XRG_USDT) * USDT_X"
+    provides_exchange = {"name": "xrgexchange", "class": XRGExchange}
 
 
 class ETH:

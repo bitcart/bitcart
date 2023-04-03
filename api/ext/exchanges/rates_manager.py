@@ -28,7 +28,7 @@ def worker_result(func):
 
 
 class RatesManager:
-    def __init__(self, settings_obj):
+    def __init__(self, settings_obj):  # noqa: C901
         self.exchanges = {}
         self._exchange_classes = {}
         self.contracts = {}
@@ -52,6 +52,9 @@ class RatesManager:
                     self.default_rules += rules_obj.default_rule + "\n"
                 if hasattr(rules_obj, "coingecko_id"):
                     self.coingecko_ids[currency] = rules_obj.coingecko_id
+                if hasattr(rules_obj, "provides_exchange"):
+                    result = rules_obj.provides_exchange
+                    self._exchange_classes[result["name"]] = result["class"]
             if hasattr(coin, "rate_rules"):
                 self.default_rules += coin.rate_rules + "\n"
 

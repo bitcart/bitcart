@@ -1,5 +1,6 @@
 import ast
 import operator
+import statistics
 from collections import defaultdict
 from decimal import Decimal
 
@@ -38,7 +39,7 @@ class ExchangeTransformer(ast.NodeTransformer):
         self.left = left
         self.right = right
         self.depth = depth
-        self.functions = {"mean": self.calc_mean, "normalize": self.normalize}
+        self.functions = {"mean": self.calc_mean, "median": self.calc_median, "normalize": self.normalize}
         self.operators = {
             ast.Add: operator.add,
             ast.Sub: operator.sub,
@@ -52,7 +53,15 @@ class ExchangeTransformer(ast.NodeTransformer):
 
     def calc_mean(self, *args):
         args = [arg for arg in args if not isinstance(arg, str)]
+        if not args:
+            return NO_RATE
         return sum(args) / len(args)
+
+    def calc_median(self, *args):
+        args = [arg for arg in args if not isinstance(arg, str)]
+        if not args:
+            return NO_RATE
+        return statistics.median(args)
 
     def normalize(self, arg, decimals):
         if isinstance(arg, str):
@@ -112,6 +121,10 @@ class ExchangeTransformer(ast.NodeTransformer):
             return self.functions[node.func.id](*args)
         else:
             self.exchanges.add(node.func.id)
+            if len(args) == 1:
+                pair = ExchangePair(args[0])
+                if pair.left == pair.right:
+                    return Decimal(1)
             return self.rates[node.func.id].get(*args, NO_RATE)
 
     def visit_BinOp(self, node):
