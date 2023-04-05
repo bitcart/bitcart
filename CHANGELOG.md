@@ -2,6 +2,12 @@
 
 ## Latest changes
 
+## 0.7.4.1
+
+Fix an issue with new store POS checkout for tor onedomain mode
+
+Allow to disable POS calculator screen
+
 ## 0.7.4.0
 
 ### New exchange rates engine

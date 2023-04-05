@@ -209,6 +209,7 @@ class StoreCheckoutSettings(BaseModel):
     allow_anonymous_invoice_creation: bool = True
     include_network_fee: bool = False
     rate_rules: str = ""
+    pos_screen_enabled: bool = True
 
     @validator("recommended_fee_target_blocks")
     def validate_recommended_fee_target_blocks(cls, v):
