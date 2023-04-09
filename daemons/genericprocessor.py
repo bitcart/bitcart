@@ -601,6 +601,8 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
                 {
                     "event": "new_transaction",
                     "tx": tx.hash,
+                    "from_address": tx.from_addr,
+                    "to": tx.to,
                     "amount": decimal_to_string(amount, tx.divisibility),
                     "contract": tx.contract,
                 },
