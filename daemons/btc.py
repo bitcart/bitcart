@@ -445,7 +445,7 @@ class BTCDaemon(BaseDaemon):
     def get_updates(self, wallet):
         updates = self.wallets_updates[wallet]
         self.wallets_updates[wallet] = deque(maxlen=self.POLLING_CAP)
-        return updates
+        return list(updates)
 
     async def _verify_transaction(self, tx_hash, tx_height):
         merkle = await self.network.get_merkle_for_transaction(tx_hash, tx_height)

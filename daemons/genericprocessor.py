@@ -857,7 +857,7 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
     def get_updates(self, wallet):
         updates = self.wallets_updates[wallet]
         self.wallets_updates[wallet] = deque(maxlen=self.POLLING_CAP)
-        return updates
+        return list(updates)
 
     @rpc(requires_network=True)
     @abstractmethod
