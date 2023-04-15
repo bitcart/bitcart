@@ -2,6 +2,7 @@ version: 2.1
 
 orbs:
   bitcartcc: bitcartcc/bitcartcc-shared@1
+  codecov: codecov/codecov@3
 
 executors:
   main-executor:
@@ -144,7 +145,10 @@ jobs:
           command: |
             TEST_FILES=$(find -name "test_*.py" -not -name "test_functional.py" | sed 's/.\///' | circleci tests split --split-by=timings)
             pytest -n 2 $TEST_ARGS $TEST_FILES
-            codecov -F tests -e PYTHON
+
+      - codecov/upload:
+          flags: tests
+          xtra_args: -e PYTHON
 
       - upload-results
 

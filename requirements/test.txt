@@ -1,6 +1,5 @@
 async-asgi-testclient
 async-timeout
-codecov
 httpx
 pytest
 pytest-cov
