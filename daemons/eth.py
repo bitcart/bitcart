@@ -484,7 +484,7 @@ class ETHDaemon(BlockProcessorDaemon):
             max_priority_fee = await self.coin.web3.eth.max_priority_fee
             max_fee = block.baseFeePerGas * 2 + max_priority_fee
             return {"maxFeePerGas": max_fee, "maxPriorityFeePerGas": max_priority_fee}
-        return {"gasPrice": await self.coin.get_gas_price()}
+        return {"gasPrice": await self.getfeerate()}
 
     async def load_contract_exec_function(self, address, function, *args, **kwargs):
         kwargs.pop("wallet", None)

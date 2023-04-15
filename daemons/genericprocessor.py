@@ -905,7 +905,7 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
         return {
             "blockchain_height": self.latest_height,
             "connected": await self.coin.is_connected(),
-            "gas_price": await self.coin.get_gas_price(),
+            "gas_price": await self.getfeerate(),
             "path": path,
             "server": self.SERVER,
             "server_height": numblocks,
