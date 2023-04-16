@@ -448,8 +448,8 @@ class ETHDaemon(BlockProcessorDaemon):
     def make_seed(self, nbits=128, language="english", wallet=None):
         return Mnemonic(language).generate(nbits)
 
-    async def get_common_payto_params(self, address):
-        nonce = await self.coin.web3.eth.get_transaction_count(address, block_identifier="pending")
+    async def get_common_payto_params(self, address, nonce=None):
+        nonce = nonce or await self.coin.web3.eth.get_transaction_count(address, block_identifier="pending")
         return {
             "nonce": nonce,
             "chainId": await self.coin.chain_id(),
@@ -463,7 +463,7 @@ class ETHDaemon(BlockProcessorDaemon):
         tx_dict = {
             "to": destination,
             "value": Web3.to_wei(amount, "ether"),
-            **(await self.get_common_payto_params(address)),
+            **(await self.get_common_payto_params(address, nonce=kwargs.get("nonce", None))),
         }
         if self.EIP1559_SUPPORTED:
             tx_dict["type"] = "0x2"
@@ -568,7 +568,10 @@ class ETHDaemon(BlockProcessorDaemon):
         exec_function = await self.load_contract_exec_function(address, function, *args, **kwargs)
         # pass gas here to avoid calling estimate_gas on an incomplete tx
         tx = await exec_function.build_transaction(
-            {**await self.get_common_payto_params(self.wallets[wallet].address), "gas": TX_DEFAULT_GAS}
+            {
+                **await self.get_common_payto_params(self.wallets[wallet].address, nonce=kwargs.pop("nonce", None)),
+                "gas": TX_DEFAULT_GAS,
+            }
         )
         tx["gas"] = int(gas) if gas else await self.get_default_gas(tx)
         if unsigned:
