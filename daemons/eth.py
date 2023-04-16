@@ -452,13 +452,13 @@ class ETHDaemon(BlockProcessorDaemon):
     def make_seed(self, nbits=128, language="english", wallet=None):
         return Mnemonic(language).generate(nbits)
 
-    async def get_common_payto_params(self, address, nonce=None):
+    async def get_common_payto_params(self, address, nonce=None, gas_price=None):
         nonce = nonce or await self.coin.web3.eth.get_transaction_count(address, block_identifier="pending")
         return {
             "nonce": nonce,
             "chainId": await self.coin.chain_id(),
             "from": address,
-            **(await self.get_fee_params()),
+            **(await self.get_fee_params(gas_price=gas_price)),
         }
 
     @rpc(requires_wallet=True, requires_network=True)
@@ -467,7 +467,11 @@ class ETHDaemon(BlockProcessorDaemon):
         tx_dict = {
             "to": destination,
             "value": Web3.to_wei(amount, "ether"),
-            **(await self.get_common_payto_params(address, nonce=kwargs.get("nonce", None))),
+            **(
+                await self.get_common_payto_params(
+                    address, nonce=kwargs.get("nonce", None), gas_price=kwargs.get("gas_price", None)
+                )
+            ),
         }
         if self.EIP1559_SUPPORTED:
             tx_dict["type"] = "0x2"
@@ -482,13 +486,13 @@ class ETHDaemon(BlockProcessorDaemon):
             raise Exception("This is a watching-only wallet")
         return self._sign_transaction(tx_dict, self.wallets[wallet].keystore.private_key)
 
-    async def get_fee_params(self):
+    async def get_fee_params(self, gas_price=None):
         if self.EIP1559_SUPPORTED:
             block = await self.coin.get_block_safe("latest")
             max_priority_fee = await self.coin.web3.eth.max_priority_fee
             max_fee = block.baseFeePerGas * 2 + max_priority_fee
             return {"maxFeePerGas": max_fee, "maxPriorityFeePerGas": max_priority_fee}
-        return {"gasPrice": await self.getfeerate()}
+        return {"gasPrice": gas_price or await self.getfeerate()}
 
     async def load_contract_exec_function(self, address, function, *args, **kwargs):
         kwargs.pop("wallet", None)
@@ -542,13 +546,15 @@ class ETHDaemon(BlockProcessorDaemon):
         return self.coin.to_dict(Account.sign_transaction(tx_dict, private_key=private_key).rawTransaction)
 
     @rpc(requires_wallet=True, requires_network=True)
-    async def transfer(self, address, to, value, gas=None, unsigned=False, wallet=None):
+    async def transfer(self, address, to, value, gas=None, unsigned=False, gas_price=None, wallet=None):
         try:
             divisibility = await self.readcontract(address, "decimals")
             value = to_wei(Decimal(value), divisibility)
         except Exception:
             raise Exception("Invalid arguments for transfer function")
-        return await self.writecontract(address, "transfer", to, value, gas=gas, unsigned=unsigned, wallet=wallet)
+        return await self.writecontract(
+            address, "transfer", to, value, gas=gas, unsigned=unsigned, gas_price=gas_price, wallet=wallet
+        )
 
     @rpc
     async def validatecontract(self, address, wallet=None):
@@ -573,7 +579,9 @@ class ETHDaemon(BlockProcessorDaemon):
         # pass gas here to avoid calling estimate_gas on an incomplete tx
         tx = await exec_function.build_transaction(
             {
-                **await self.get_common_payto_params(self.wallets[wallet].address, nonce=kwargs.pop("nonce", None)),
+                **await self.get_common_payto_params(
+                    self.wallets[wallet].address, nonce=kwargs.pop("nonce", None), gas_price=kwargs.pop("gas_price", None)
+                ),
                 "gas": TX_DEFAULT_GAS,
             }
         )
