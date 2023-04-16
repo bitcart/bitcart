@@ -426,6 +426,10 @@ class ETHDaemon(BlockProcessorDaemon):
         return self.ABI
 
     @rpc(requires_network=True)
+    async def getnonce(self, address, pending=True, wallet=None):
+        return await self.coin.web3.eth.get_transaction_count(address, block_identifier="pending" if pending else "latest")
+
+    @rpc(requires_network=True)
     async def gettransaction(self, tx, wallet=None):
         data = self.coin.to_dict(await self.coin.get_transaction(tx))
         data["confirmations"] = await self.coin.get_confirmations(tx, data)
