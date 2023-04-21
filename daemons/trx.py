@@ -342,6 +342,7 @@ class TRXDaemon(ETHDaemon):
         kwargs.pop("gas", None)
         wallet = kwargs.pop("wallet")
         unsigned = kwargs.pop("unsigned", False)
+        kwargs.pop("gas_price", None)  # not used in tron
         fee = kwargs.pop("fee", None)
         exec_function = await self.load_contract_exec_function(address, function, *args, **kwargs)
         tx = (await exec_function).with_owner(self.wallets[wallet].address)

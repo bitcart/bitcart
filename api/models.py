@@ -721,7 +721,7 @@ class Payout(BaseModel):
 
         await super().add_related()
         try:
-            wallet = await utils.database.get_object(Wallet, self.wallet_id)
+            wallet = await utils.database.get_object(Wallet, self.wallet_id, load_data=False)
             self.wallet_currency = wallet.currency
         except HTTPException:
             self.wallet_currency = None
