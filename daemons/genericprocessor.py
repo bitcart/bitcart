@@ -110,6 +110,9 @@ class BlockchainFeatures(metaclass=ABCMeta):
     def get_gas_price(self) -> int:
         pass
 
+    async def debug_trace_tx(self, tx_hash):
+        return None
+
     def get_wallet_key(self, xpub, *args, **kwargs):
         return xpub
 
