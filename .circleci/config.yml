@@ -96,7 +96,7 @@ commands:
     steps:
       - checkout
       - setup-bitcart-docker
-      - bitcartcc/login-to-dockerhub
+      - bitcartcc/login-to-registries
       - bitcartcc/enable-buildx
       - run:
           name: Publish docker images
