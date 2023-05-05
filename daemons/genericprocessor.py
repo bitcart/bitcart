@@ -575,8 +575,14 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
         self.MAX_SYNC_BLOCKS = max_sync_hours * self.DEFAULT_MAX_SYNC_BLOCKS
         self.NO_SYNC_WAIT = self.env("EXPERIMENTAL_NOSYNC", cast=bool, default=False)
         self.TX_SPEED = self.env("TX_SPEED", cast=str, default="network").lower()
-        if self.TX_SPEED not in self.SPEED_MULTIPLIERS:
-            raise ValueError(f"Invalid TX_SPEED: {self.TX_SPEED}. Valid values: {', '.join(self.SPEED_MULTIPLIERS.keys())}")
+        try:
+            self.SPEED_MULTIPLIER = float(self.TX_SPEED)
+        except ValueError:
+            if self.TX_SPEED not in self.SPEED_MULTIPLIERS:
+                raise ValueError(
+                    f"Invalid TX_SPEED: {self.TX_SPEED}. Valid values: {', '.join(self.SPEED_MULTIPLIERS.keys())}"
+                )
+            self.SPEED_MULTIPLIER = self.SPEED_MULTIPLIERS[self.TX_SPEED]
         self.NO_DOWNTIME_PROCESSING = self.env("NO_DOWNTIME_PROCESSING", cast=bool, default=False)
 
     async def on_startup(self, app):
@@ -893,7 +899,7 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
 
     @rpc(requires_network=True)
     async def getfeerate(self, wallet=None):
-        return int(await self.coin.get_gas_price() * self.SPEED_MULTIPLIERS[self.TX_SPEED])
+        return int(await self.coin.get_gas_price() * self.SPEED_MULTIPLIER)
 
     @rpc
     async def getinfo(self, wallet=None):
