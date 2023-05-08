@@ -898,8 +898,8 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
         return self.config.get(key)
 
     @rpc(requires_network=True)
-    async def getfeerate(self, wallet=None):
-        return int(await self.coin.get_gas_price() * self.SPEED_MULTIPLIER)
+    async def getfeerate(self, multiplier=None, wallet=None):
+        return int(await self.coin.get_gas_price() * (multiplier or self.SPEED_MULTIPLIER))
 
     @rpc
     async def getinfo(self, wallet=None):
