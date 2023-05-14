@@ -18,7 +18,7 @@ def check_ping(host, port, user, password, email, ssl=True):  # pragma: no cover
         logger.debug("Checking ping failed: some parameters empty")
         return False
     try:
-        server = smtplib.SMTP(host=host, port=port, timeout=2)
+        server = smtplib.SMTP(host=host, port=port, timeout=5)
         if ssl:
             server.starttls()
         server.login(user, password)
@@ -42,7 +42,7 @@ def send_mail(
     message_obj["To"] = where
     message_obj.attach(MIMEText(text, "html" if use_html_templates else "plain"))
     message = message_obj.as_string()
-    server = smtplib.SMTP(host=host, port=port, timeout=2)
+    server = smtplib.SMTP(host=host, port=port, timeout=5)
     if ssl:
         server.starttls()
     server.login(user, password)
