@@ -296,13 +296,16 @@ async def update_status(invoice, status, method=None, tx_hashes=[], sent_amount=
                     if sent_amount == method.amount or method.lightning
                     else InvoiceExceptionStatus.PAID_OVER
                 )
-                await invoice.update(
+                kwargs = dict(
                     paid_currency=full_method_name,
                     discount=method.discount,
                     tx_hashes=tx_hashes,
                     sent_amount=sent_amount,
                     exception_status=exception_status,
-                ).apply()
+                )
+                if not invoice.paid_date:
+                    kwargs["paid_date"] = utils.time.now()
+                await invoice.update(**kwargs).apply()
             log_text += f" with payment method {full_method_name}"
         logger.info(f"{log_text} to {status}")
         await invoice.update(status=status).apply()

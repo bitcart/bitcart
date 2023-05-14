@@ -42,6 +42,12 @@ async def collect_stats():
     average_creation_time = await utils.database.get_scalar(
         models.Invoice.query, db.db.func.avg, models.Invoice.creation_time, use_distinct=False
     )
+    average_paid_time = (
+        await select(
+            [db.db.func.avg(db.db.func.extract("epoch", (models.Invoice.paid_date - models.Invoice.created)))]
+        ).gino.scalar()
+        or 0
+    ) / 60
     plugins = [{"name": plugin["name"], "author": plugin["author"], "version": plugin["version"]} for plugin in get_plugins()]
     return {
         "version": VERSION,
@@ -54,6 +60,7 @@ async def collect_stats():
         "average_invoice_creation_time": str(average_creation_time),
         "number_of_methods": average_number_of_methods_per_invoice,
         "currencies": list(settings.settings.cryptos.keys()),
+        "average_paid_time": average_paid_time,
     }
 
 

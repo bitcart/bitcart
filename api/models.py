@@ -588,6 +588,7 @@ class Invoice(BaseModel):
     order_id = Column(Text)
     user_id = Column(Text, ForeignKey(User.id, ondelete="SET NULL"))
     creation_time = Column(Numeric(36, 18))
+    paid_date = Column(DateTime(True))
     created = Column(DateTime(True), nullable=False)
 
     async def add_related(self):

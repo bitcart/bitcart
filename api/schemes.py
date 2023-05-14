@@ -499,6 +499,7 @@ class DisplayInvoice(Invoice):
     expiration: int
     expiration_seconds: int
     product_names: dict
+    paid_date: Optional[datetime]
     payments: list = []
     refund_id: Optional[str]
 
