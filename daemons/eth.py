@@ -607,7 +607,9 @@ class ETHDaemon(BlockProcessorDaemon):
         return self.coin.to_dict(Account.sign_transaction(tx_dict, private_key=private_key).rawTransaction)
 
     @rpc(requires_wallet=True, requires_network=True)
-    async def transfer(self, address, to, value, gas=None, unsigned=False, gas_price=None, speed_multiplier=None, wallet=None):
+    async def transfer(
+        self, address, to, value, gas=None, unsigned=False, nonce=None, gas_price=None, speed_multiplier=None, wallet=None
+    ):
         try:
             divisibility = await self.readcontract(address, "decimals")
             value = to_wei(Decimal(value), divisibility)
@@ -620,6 +622,7 @@ class ETHDaemon(BlockProcessorDaemon):
             value,
             gas=gas,
             unsigned=unsigned,
+            nonce=nonce,
             gas_price=gas_price,
             speed_multiplier=speed_multiplier,
             wallet=wallet,
@@ -644,15 +647,18 @@ class ETHDaemon(BlockProcessorDaemon):
         wallet = kwargs.pop("wallet")
         unsigned = kwargs.pop("unsigned", False)
         gas = kwargs.pop("gas", None)
+        nonce = kwargs.pop("nonce", None)
+        gas_price = kwargs.pop("gas_price", None)
+        multiplier = kwargs.pop("speed_multiplier", None)
         exec_function = await self.load_contract_exec_function(address, function, *args, **kwargs)
         # pass gas here to avoid calling estimate_gas on an incomplete tx
         tx = await exec_function.build_transaction(
             {
                 **await self.get_common_payto_params(
                     self.wallets[wallet].address,
-                    nonce=kwargs.pop("nonce", None),
-                    gas_price=kwargs.pop("gas_price", None),
-                    multiplier=kwargs.pop("speed_multiplier", None),
+                    nonce=nonce,
+                    gas_price=gas_price,
+                    multiplier=multiplier,
                 ),
                 "gas": TX_DEFAULT_GAS,
             }
