@@ -1,7 +1,7 @@
 version: 2.1
 
 orbs:
-  bitcartcc: bitcartcc/bitcartcc-shared@1
+  bitcart: bitcart/bitcart-shared@1
 
 executors:
   main-executor:
@@ -88,7 +88,7 @@ commands:
       - run:
           name: Prepare bitcart-docker
           command: |
-            git clone https://github.com/bitcartcc/bitcart-docker
+            git clone https://github.com/bitcart/bitcart-docker
             cd bitcart-docker
             ./dev-setup.sh $CIRCLE_BRANCH
 
@@ -96,8 +96,8 @@ commands:
     steps:
       - checkout
       - setup-bitcart-docker
-      - bitcartcc/login-to-registries
-      - bitcartcc/enable-buildx
+      - bitcart/login-to-registries
+      - bitcart/enable-buildx
       - run:
           name: Publish docker images
           command: |
@@ -145,12 +145,12 @@ jobs:
             TEST_FILES=$(find -name "test_*.py" -not -name "test_functional.py" | sed 's/.\///' | circleci tests split --split-by=timings)
             pytest -n 2 $TEST_ARGS $TEST_FILES
 
-      - bitcartcc/codecov
+      - bitcart/codecov
 
       - upload-results
 
   deploy-amd64:
-    executor: bitcartcc/build-ubuntu
+    executor: bitcart/build-ubuntu
 
     working_directory: ~/repo
 
@@ -161,7 +161,7 @@ jobs:
       - build-bitcart-images
 
   deploy-arm:
-    executor: bitcartcc/build-ubuntu-arm
+    executor: bitcart/build-ubuntu-arm
 
     working_directory: ~/repo
 
@@ -172,7 +172,7 @@ jobs:
       - build-bitcart-images
 
   deploy:
-    executor: bitcartcc/build-ubuntu
+    executor: bitcart/build-ubuntu
 
     working_directory: ~/repo
 
@@ -186,7 +186,7 @@ workflows:
   version: 2
   build_and_test:
     jobs:
-      - bitcartcc/lint:
+      - bitcart/lint:
           name: lint
           pre-steps:
             - install-lint-dependencies
@@ -203,7 +203,7 @@ workflows:
                 - "3.9"
                 - "3.10"
                 - "3.11"
-      - bitcartcc/functional-tests:
+      - bitcart/functional-tests:
           name: functional-tests
           executor: main-executor
           dependency-steps:
