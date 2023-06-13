@@ -1,7 +1,7 @@
 version: 2.1
 
 orbs:
-  bitcart: bitcart/bitcart-shared@1
+  bitcart: bitcart/bitcart-shared@2
 
 executors:
   main-executor:
