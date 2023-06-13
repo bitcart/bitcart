@@ -20,7 +20,8 @@ filterwarnings = [
     "error::PendingDeprecationWarning",
     "ignore:.*'cgi' is deprecated.*:DeprecationWarning:httpx", # TODO: remove when a new httpx release is out
     "ignore:.*'crypt' is deprecated.*:DeprecationWarning:passlib", # TODO: passlib is no longer maintained?
-    "ignore:Deprecated call to `pkg_resources.declare_namespace:DeprecationWarning"
+    "ignore:Deprecated call to `pkg_resources.declare_namespace:DeprecationWarning",
+    "ignore:pkg_resources is deprecated as an API:DeprecationWarning" # sqlalchemy
 ]
 norecursedirs = ["tests/functional"]
 
