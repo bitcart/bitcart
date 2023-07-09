@@ -9,13 +9,17 @@ from decimal import Decimal
 
 import pytest
 from bitcart.errors import BaseError as BitcartBaseError
+from fastapi import HTTPException
 from notifiers.exceptions import BadArguments
 from redis.asyncio.client import PubSub
 
 from api import exceptions, models, schemes, settings, utils
 from api.constants import TFA_RECOVERY_ALPHABET
-from api.utils.authorization import verify_captcha
+from api.utils.authorization import captcha_flow, verify_captcha
 from tests.helper import create_notification, create_store
+
+_VALID_CAPTCHA_CODE = "20000000-aaaa-bbbb-cccc-000000000002"
+_VALID_CAPTCHA_SECRET = "0x0000000000000000000000000000000000000000"
 
 
 def test_verify_password():
@@ -368,10 +372,26 @@ def test_gen_recovery_code():
 async def test_verify_captcha():
     # Test with valid code & secret
     # https://docs.hcaptcha.com/#integration-testing-test-keys
-    assert await verify_captcha(
-        code="20000000-aaaa-bbbb-cccc-000000000002", secret="0x0000000000000000000000000000000000000000"
-    )
+    assert await verify_captcha(code=_VALID_CAPTCHA_CODE, secret=_VALID_CAPTCHA_SECRET)
 
     # Test with invalid code/secret
-    assert not await verify_captcha(code="non-valid-code", secret="0x0000000000000000000000000000000000000000")
-    assert not await verify_captcha(code="20000000-aaaa-bbbb-cccc-000000000002", secret="non-valid-secret")
+    assert not await verify_captcha(code="non-valid-code", secret=_VALID_CAPTCHA_SECRET)
+    assert not await verify_captcha(code=_VALID_CAPTCHA_CODE, secret="non-valid-secret")
+
+
+@pytest.mark.anyio
+async def test_captcha_flow(mocker):
+    fake_run_hook = mocker.patch("api.utils.authorization.run_hook")
+
+    fake_policy = mocker.Mock()
+    fake_policy.captcha_secretkey = _VALID_CAPTCHA_SECRET
+    fake_policy.enable_captcha = True
+    mocker.patch("api.utils.policies.get_setting", return_value=fake_policy)
+
+    await captcha_flow(_VALID_CAPTCHA_CODE)
+    fake_run_hook.assert_called_once_with("captcha_passed")
+
+    fake_run_hook.reset_mock()
+    with pytest.raises(HTTPException):
+        await captcha_flow("invalid-code")
+    fake_run_hook.assert_called_once_with("captcha_failed")
