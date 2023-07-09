@@ -14,6 +14,7 @@ from redis.asyncio.client import PubSub
 
 from api import exceptions, models, schemes, settings, utils
 from api.constants import TFA_RECOVERY_ALPHABET
+from api.utils.authorization import verify_captcha
 from tests.helper import create_notification, create_store
 
 
@@ -361,3 +362,16 @@ def test_gen_recovery_code():
     assert code[5] == "-"
     assert all(x in TFA_RECOVERY_ALPHABET for x in code[:5])
     assert all(x in TFA_RECOVERY_ALPHABET for x in code[6:])
+
+
+@pytest.mark.anyio
+async def test_verify_captcha():
+    # Test with valid code & secret
+    # https://docs.hcaptcha.com/#integration-testing-test-keys
+    assert await verify_captcha(
+        code="20000000-aaaa-bbbb-cccc-000000000002", secret="0x0000000000000000000000000000000000000000"
+    )
+
+    # Test with invalid code/secret
+    assert not await verify_captcha(code="non-valid-code", secret="0x0000000000000000000000000000000000000000")
+    assert not await verify_captcha(code="20000000-aaaa-bbbb-cccc-000000000002", secret="non-valid-secret")

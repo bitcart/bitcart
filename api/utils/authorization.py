@@ -149,7 +149,6 @@ auth_dependency = AuthDependency()
 optional_auth_dependency = AuthDependency(token_required=False)
 
 
-# TODO: add tests for captcha
 async def verify_captcha(code, secret):  # pragma: no cover
     try:
         async with ClientSession() as session:
