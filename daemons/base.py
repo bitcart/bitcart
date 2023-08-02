@@ -27,6 +27,7 @@ class BaseDaemon:
 
     def __init__(self):
         self.env_name = self.name.upper()
+        self.env_names = set()
         self.config_getter = AutoConfig(search_path="conf")
         self.load_env()
         self.load_spec()
@@ -44,6 +45,7 @@ class BaseDaemon:
             self.supported_methods[alias] = self.supported_methods[func]
 
     def env(self, name, *, default, cast=noop_cast):
+        self.env_names.add(name.lower())
         return self.config_getter(f"{self.env_name}_{name}", default=default, cast=cast)
 
     ### Spec support ###

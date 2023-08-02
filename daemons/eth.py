@@ -485,7 +485,9 @@ class ETHDaemon(BlockProcessorDaemon):
 
     @rpc(requires_network=True)
     async def getnonce(self, address, pending=True, wallet=None):
-        return await self.coin.web3.eth.get_transaction_count(address, block_identifier="pending" if pending else "latest")
+        return await self.coin.web3.eth.get_transaction_count(
+            address, block_identifier="pending" if str_to_bool(pending) else "latest"
+        )
 
     @rpc(requires_network=True)
     async def gettransaction(self, tx, wallet=None):

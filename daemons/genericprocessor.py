@@ -551,6 +551,7 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
         self.config_path = os.path.join(self.get_datadir(), "config")
         self.config = ConfigDB(self.config_path)
         self.create_coin()
+        self.env_update_hooks = {"server": self.update_server}  # TODO: add a way to extend
         # initialize wallet storages
         self.wallets = {}
         self.addresses = defaultdict(set)
@@ -559,6 +560,9 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
         self.running = True
         self.loop = None
         self.synchronized = False
+
+    def update_server(self):
+        self.create_coin()
 
     @abstractmethod
     def create_coin(self):
@@ -921,6 +925,7 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
             "server_height": numblocks,
             "spv_nodes": nodes,
             "synchronized": not await self.coin.is_syncing() and self.synchronized,
+            "total_wallets": len(self.wallets),
             "version": self.VERSION,
         }
 
@@ -1078,6 +1083,13 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
 
     @rpc
     def setconfig(self, key, value, wallet=None):
+        if key.startswith("env_"):
+            key = key[4:]
+            if key in self.env_names and hasattr(self, key.upper()):
+                setattr(self, key.upper(), value)
+                if key in self.env_update_hooks:
+                    self.env_update_hooks[key]()
+            return True
         self.config.set_config(key, value)
         return True
 
