@@ -815,13 +815,16 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
         self.wallets[wallet].clear_requests()
         return True
 
-    @rpc(requires_wallet=True, requires_network=True)
-    async def close_wallet(self, wallet):
+    @rpc(requires_network=True)
+    async def close_wallet(self, key=None, wallet=None):
+        key = wallet or key
+        if key not in self.wallets:
+            return False
         block_number = await self.coin.get_block_number()
-        self.wallets[wallet].stop(block_number)
-        del self.wallets_updates[wallet]
-        del self.addresses[self.wallets[wallet].address]
-        del self.wallets[wallet]
+        self.wallets[key].stop(block_number)
+        del self.wallets_updates[key]
+        del self.addresses[self.wallets[key].address]
+        del self.wallets[key]
         return True
 
     @rpc
