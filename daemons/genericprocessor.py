@@ -824,7 +824,8 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
         if key in self.wallets:
             self.wallets[key].stop(block_number)
         self.wallets_updates.pop(key, None)
-        self.addresses.pop(self.wallets[key].address, None)
+        if key in self.wallets:
+            self.addresses.pop(self.wallets[key].address, None)
         self.wallets.pop(key, None)
         return True
 
