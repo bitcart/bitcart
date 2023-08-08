@@ -214,10 +214,8 @@ async def restore_backup(
             await f.write(await backup.read())
         await run_hook("restore_backup", path)
         return utils.host.run_host_output(
-            (
-                '. helpers.sh; load_env; ./restore.sh --delete-backup "/var/lib/docker/volumes/$(volume_name'
-                ' bitcart_datadir)/_data/backup.tar.gz" '
-            ),
+            '. helpers.sh; load_env; ./restore.sh --delete-backup "/var/lib/docker/volumes/$(volume_name'
+            ' bitcart_datadir)/_data/backup.tar.gz" ',
             "Successfully started restore process!",
         )
     return {"status": "error", "message": "Not running in docker"}

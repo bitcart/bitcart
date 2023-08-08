@@ -32,10 +32,8 @@ async def validate_stock_levels(products):
         if quantity < products[product_id]:
             raise HTTPException(
                 422,
-                (
-                    f"Product {product_name} only has {quantity} items left in stock, requested {products[product_id]}."
-                    " Please refresh your page and re-fill your cart from scratch"
-                ),
+                f"Product {product_name} only has {quantity} items left in stock, requested {products[product_id]}."
+                " Please refresh your page and re-fill your cart from scratch",
             )
 
 

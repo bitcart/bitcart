@@ -65,10 +65,8 @@ class CoingeckoExchange(BaseExchange):
                     coins.append(currency["id"])
         data = await fetch_delayed(
             "GET",
-            (
-                f"https://api.coingecko.com/api/v3/simple/price?ids={','.join(coins)}"
-                f"&vs_currencies={','.join(vs_currencies)}&precision=full"
-            ),
+            f"https://api.coingecko.com/api/v3/simple/price?ids={','.join(coins)}"
+            f"&vs_currencies={','.join(vs_currencies)}&precision=full",
         )
         self.quotes = {
             f"{find_id(self.coins_cache, k).upper()}_{k2.upper()}": utils.common.precise_decimal(v2)

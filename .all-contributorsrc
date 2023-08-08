@@ -1,195 +1,146 @@
 {
-  "files": [
-    "README.md"
-  ],
-  "imageSize": 100,
-  "commit": false,
-  "contributors": [
-    {
-      "login": "MrNaif2018",
-      "name": "MrNaif2018",
-      "avatar_url": "https://avatars3.githubusercontent.com/u/39452697?v=4",
-      "profile": "https://github.com/MrNaif2018",
-      "contributions": [
-        "maintenance",
-        "code",
-        "doc",
-        "design"
-      ]
-    },
-    {
-      "login": "tomasmor42",
-      "name": "tomasmor42",
-      "avatar_url": "https://avatars2.githubusercontent.com/u/42064734?v=4",
-      "profile": "https://github.com/tomasmor42",
-      "contributions": [
-        "code"
-      ]
-    },
-    {
-      "login": "yagicandegirmenci",
-      "name": "Yağız Değirmenci",
-      "avatar_url": "https://avatars3.githubusercontent.com/u/62724709?v=4",
-      "profile": "https://github.com/yagicandegirmenci",
-      "contributions": [
-        "code"
-      ]
-    },
-    {
-      "login": "xiaoxianma",
-      "name": "Weidong Sun",
-      "avatar_url": "https://avatars0.githubusercontent.com/u/3086064?v=4",
-      "profile": "https://github.com/xiaoxianma",
-      "contributions": [
-        "code"
-      ]
-    },
-    {
-      "login": "kartecianos",
-      "name": "kartecianos",
-      "avatar_url": "https://avatars2.githubusercontent.com/u/43797783?v=4",
-      "profile": "https://github.com/kartecianos",
-      "contributions": [
-        "code"
-      ]
-    },
-    {
-      "login": "arynn-gupta",
-      "name": "CYBORG",
-      "avatar_url": "https://avatars0.githubusercontent.com/u/61794851?v=4",
-      "profile": "https://github.com/arynn-gupta",
-      "contributions": [
-        "design"
-      ]
-    },
-    {
-      "login": "SakshamSingh-v2",
-      "name": "Saksham Singh",
-      "avatar_url": "https://avatars1.githubusercontent.com/u/55451173?v=4",
-      "profile": "https://github.com/SakshamSingh-v2",
-      "contributions": [
-        "design"
-      ]
-    },
-    {
-      "login": "orestischaral",
-      "name": "Orestis Charalampakos",
-      "avatar_url": "https://avatars1.githubusercontent.com/u/33599092?v=4",
-      "profile": "https://github.com/orestischaral",
-      "contributions": [
-        "design",
-        "code"
-      ]
-    },
-    {
-      "login": "TobyAsE",
-      "name": "TobyAsE",
-      "avatar_url": "https://avatars0.githubusercontent.com/u/6002167?v=4",
-      "profile": "http://tobyase.de/",
-      "contributions": [
-        "code",
-        "design"
-      ]
-    },
-    {
-      "login": "Shadman-Ahmed-Chowdhury",
-      "name": "Shadman Ahmed",
-      "avatar_url": "https://avatars3.githubusercontent.com/u/46925021?v=4",
-      "profile": "https://github.com/Shadman-Ahmed-Chowdhury",
-      "contributions": [
-        "design"
-      ]
-    },
-    {
-      "login": "KarolTrzeszczkowski",
-      "name": "Karol Trzeszczkowski",
-      "avatar_url": "https://avatars.githubusercontent.com/u/11697819?v=4",
-      "profile": "https://github.com/KarolTrzeszczkowski",
-      "contributions": [
-        "code"
-      ]
-    },
-    {
-      "login": "MaximeKoitsalu",
-      "name": "Maxime Koitsalu",
-      "avatar_url": "https://avatars.githubusercontent.com/u/8655862?v=4",
-      "profile": "https://github.com/MaximeKoitsalu",
-      "contributions": [
-        "code",
-        "design"
-      ]
-    },
-    {
-      "login": "shubham-singh-748",
-      "name": "Shubham-Singh-Rajput",
-      "avatar_url": "https://avatars.githubusercontent.com/u/88304238?v=4",
-      "profile": "https://git.io/JuT7Z",
-      "contributions": [
-        "translation"
-      ]
-    },
-    {
-      "login": "Xaconi",
-      "name": "Nicolás Giacconi",
-      "avatar_url": "https://avatars.githubusercontent.com/u/1944438?v=4",
-      "profile": "https://github.com/Xaconi",
-      "contributions": [
-        "code",
-        "design"
-      ]
-    },
-    {
-      "login": "leovoon",
-      "name": "leovoon",
-      "avatar_url": "https://avatars.githubusercontent.com/u/16155802?v=4",
-      "profile": "https://github.com/leovoon",
-      "contributions": [
-        "code",
-        "design",
-        "a11y"
-      ]
-    },
-    {
-      "login": "MawsFr",
-      "name": "Mustapha Nezzari",
-      "avatar_url": "https://avatars.githubusercontent.com/u/4595534?v=4",
-      "profile": "https://twitter.com/mustaphanezzari",
-      "contributions": [
-        "translation"
-      ]
-    },
-    {
-      "login": "surfer190",
-      "name": "surfer190",
-      "avatar_url": "https://avatars.githubusercontent.com/u/3285222?v=4",
-      "profile": "https://github.com/surfer190",
-      "contributions": [
-        "doc"
-      ]
-    },
-    {
-      "login": "restyler",
-      "name": "restyler",
-      "avatar_url": "https://avatars.githubusercontent.com/u/775507?v=4",
-      "profile": "https://github.com/restyler",
-      "contributions": [
-        "doc"
-      ]
-    },
-    {
-      "login": "gruve-p",
-      "name": "gruve-p",
-      "avatar_url": "https://avatars.githubusercontent.com/u/11212268?v=4",
-      "profile": "https://www.groestlcoin.org/",
-      "contributions": [
-        "code"
-      ]
-    }
-  ],
-  "contributorsPerLine": 7,
-  "projectName": "bitcart",
-  "projectOwner": "bitcartcc",
-  "repoType": "github",
-  "repoHost": "https://github.com",
-  "commitConvention": "none"
+    "files": ["README.md"],
+    "imageSize": 100,
+    "commit": false,
+    "contributors": [
+        {
+            "login": "MrNaif2018",
+            "name": "MrNaif2018",
+            "avatar_url": "https://avatars3.githubusercontent.com/u/39452697?v=4",
+            "profile": "https://github.com/MrNaif2018",
+            "contributions": ["maintenance", "code", "doc", "design"]
+        },
+        {
+            "login": "tomasmor42",
+            "name": "tomasmor42",
+            "avatar_url": "https://avatars2.githubusercontent.com/u/42064734?v=4",
+            "profile": "https://github.com/tomasmor42",
+            "contributions": ["code"]
+        },
+        {
+            "login": "yagicandegirmenci",
+            "name": "Yağız Değirmenci",
+            "avatar_url": "https://avatars3.githubusercontent.com/u/62724709?v=4",
+            "profile": "https://github.com/yagicandegirmenci",
+            "contributions": ["code"]
+        },
+        {
+            "login": "xiaoxianma",
+            "name": "Weidong Sun",
+            "avatar_url": "https://avatars0.githubusercontent.com/u/3086064?v=4",
+            "profile": "https://github.com/xiaoxianma",
+            "contributions": ["code"]
+        },
+        {
+            "login": "kartecianos",
+            "name": "kartecianos",
+            "avatar_url": "https://avatars2.githubusercontent.com/u/43797783?v=4",
+            "profile": "https://github.com/kartecianos",
+            "contributions": ["code"]
+        },
+        {
+            "login": "arynn-gupta",
+            "name": "CYBORG",
+            "avatar_url": "https://avatars0.githubusercontent.com/u/61794851?v=4",
+            "profile": "https://github.com/arynn-gupta",
+            "contributions": ["design"]
+        },
+        {
+            "login": "SakshamSingh-v2",
+            "name": "Saksham Singh",
+            "avatar_url": "https://avatars1.githubusercontent.com/u/55451173?v=4",
+            "profile": "https://github.com/SakshamSingh-v2",
+            "contributions": ["design"]
+        },
+        {
+            "login": "orestischaral",
+            "name": "Orestis Charalampakos",
+            "avatar_url": "https://avatars1.githubusercontent.com/u/33599092?v=4",
+            "profile": "https://github.com/orestischaral",
+            "contributions": ["design", "code"]
+        },
+        {
+            "login": "TobyAsE",
+            "name": "TobyAsE",
+            "avatar_url": "https://avatars0.githubusercontent.com/u/6002167?v=4",
+            "profile": "http://tobyase.de/",
+            "contributions": ["code", "design"]
+        },
+        {
+            "login": "Shadman-Ahmed-Chowdhury",
+            "name": "Shadman Ahmed",
+            "avatar_url": "https://avatars3.githubusercontent.com/u/46925021?v=4",
+            "profile": "https://github.com/Shadman-Ahmed-Chowdhury",
+            "contributions": ["design"]
+        },
+        {
+            "login": "KarolTrzeszczkowski",
+            "name": "Karol Trzeszczkowski",
+            "avatar_url": "https://avatars.githubusercontent.com/u/11697819?v=4",
+            "profile": "https://github.com/KarolTrzeszczkowski",
+            "contributions": ["code"]
+        },
+        {
+            "login": "MaximeKoitsalu",
+            "name": "Maxime Koitsalu",
+            "avatar_url": "https://avatars.githubusercontent.com/u/8655862?v=4",
+            "profile": "https://github.com/MaximeKoitsalu",
+            "contributions": ["code", "design"]
+        },
+        {
+            "login": "shubham-singh-748",
+            "name": "Shubham-Singh-Rajput",
+            "avatar_url": "https://avatars.githubusercontent.com/u/88304238?v=4",
+            "profile": "https://git.io/JuT7Z",
+            "contributions": ["translation"]
+        },
+        {
+            "login": "Xaconi",
+            "name": "Nicolás Giacconi",
+            "avatar_url": "https://avatars.githubusercontent.com/u/1944438?v=4",
+            "profile": "https://github.com/Xaconi",
+            "contributions": ["code", "design"]
+        },
+        {
+            "login": "leovoon",
+            "name": "leovoon",
+            "avatar_url": "https://avatars.githubusercontent.com/u/16155802?v=4",
+            "profile": "https://github.com/leovoon",
+            "contributions": ["code", "design", "a11y"]
+        },
+        {
+            "login": "MawsFr",
+            "name": "Mustapha Nezzari",
+            "avatar_url": "https://avatars.githubusercontent.com/u/4595534?v=4",
+            "profile": "https://twitter.com/mustaphanezzari",
+            "contributions": ["translation"]
+        },
+        {
+            "login": "surfer190",
+            "name": "surfer190",
+            "avatar_url": "https://avatars.githubusercontent.com/u/3285222?v=4",
+            "profile": "https://github.com/surfer190",
+            "contributions": ["doc"]
+        },
+        {
+            "login": "restyler",
+            "name": "restyler",
+            "avatar_url": "https://avatars.githubusercontent.com/u/775507?v=4",
+            "profile": "https://github.com/restyler",
+            "contributions": ["doc"]
+        },
+        {
+            "login": "gruve-p",
+            "name": "gruve-p",
+            "avatar_url": "https://avatars.githubusercontent.com/u/11212268?v=4",
+            "profile": "https://www.groestlcoin.org/",
+            "contributions": ["code"]
+        }
+    ],
+    "contributorsPerLine": 7,
+    "projectName": "bitcart",
+    "projectOwner": "bitcartcc",
+    "repoType": "github",
+    "repoHost": "https://github.com",
+    "commitConvention": "none"
 }

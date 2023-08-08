@@ -41,10 +41,8 @@ class ShopifyClient:
         return (
             await self.request(
                 "GET",
-                (
-                    f"orders/{order_id}.json?fields=id,total_price,total_outstanding,currency"
-                    ",presentment_currency,transactions,financial_status"
-                ),
+                f"orders/{order_id}.json?fields=id,total_price,total_outstanding,currency"
+                ",presentment_currency,transactions,financial_status",
             )
         ).get("order", {})
 

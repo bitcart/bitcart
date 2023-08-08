@@ -22,4 +22,4 @@ fi
 
 ${SYSTEM_PYTHON} -m piptools --help >/dev/null 2>&1 || { ${SYSTEM_PYTHON} -m pip install pip-tools; }
 out_file=${1/requirements\//requirements/deterministic/}
-$SYSTEM_PYTHON -m piptools compile --generate-hashes --allow-unsafe -o $out_file $@
+$SYSTEM_PYTHON -m piptools compile --generate-hashes --allow-unsafe --resolver=legacy -o $out_file $@
