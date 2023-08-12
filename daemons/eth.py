@@ -19,12 +19,13 @@ from mnemonic import Mnemonic
 from storage import JSONEncoder as StorageJSONEncoder
 from storage import Storage
 from utils import exception_retry_middleware, load_json_dict, modify_payment_url, rpc, try_cast_num
-from web3 import Web3
+from web3 import AsyncWeb3
 from web3.contract import AsyncContract
 from web3.datastructures import AttributeDict
 from web3.exceptions import ABIFunctionNotFound, BlockNotFound, MethodUnavailable, TransactionNotFound
 from web3.exceptions import ValidationError as Web3ValidationError
 from web3.exceptions import Web3Exception
+from web3.middleware import async_simple_cache_middleware
 from web3.middleware.geth_poa import async_geth_poa_middleware
 from web3.providers.rpc import get_default_http_endpoint
 
@@ -47,7 +48,7 @@ class JSONEncoder(StorageJSONEncoder):
 
 
 class ETHFeatures(BlockchainFeatures):
-    web3: Web3
+    web3: AsyncWeb3
     MAX_TRACE_DEPTH = 8
 
     def __init__(self, web3):
@@ -91,10 +92,10 @@ class ETHFeatures(BlockchainFeatures):
         return await self.web3.eth.chain_id
 
     def is_address(self, address):
-        return Web3.is_address(address) or Web3.is_checksum_address(address)
+        return AsyncWeb3.is_address(address) or AsyncWeb3.is_checksum_address(address)
 
     def normalize_address(self, address):
-        return Web3.to_checksum_address(address)
+        return AsyncWeb3.to_checksum_address(address)
 
     async def get_peer_list(self):
         return await self.web3.geth.admin.peers()
@@ -197,7 +198,7 @@ class KeyStore(BaseKeyStore):
                 self.account = Account.from_key(self.key)
             except Exception:
                 try:
-                    self.public_key = PublicKey.from_compressed_bytes(Web3.to_bytes(hexstr=self.key))
+                    self.public_key = PublicKey.from_compressed_bytes(AsyncWeb3.to_bytes(hexstr=self.key))
                     self.address = self.public_key.to_checksum_address()
                 except Exception:
                     if not daemon_ctx.get().coin.is_address(self.key):
@@ -206,9 +207,9 @@ class KeyStore(BaseKeyStore):
         if self.account:
             self.address = self.account.address
             self.private_key = self.account.key.hex()
-            self.public_key = PublicKey.from_private(PrivateKey(Web3.to_bytes(hexstr=self.private_key)))
+            self.public_key = PublicKey.from_private(PrivateKey(AsyncWeb3.to_bytes(hexstr=self.private_key)))
         if self.public_key:
-            self.public_key = Web3.to_hex(self.public_key.to_compressed_bytes())
+            self.public_key = AsyncWeb3.to_hex(self.public_key.to_compressed_bytes())
 
     def add_privkey(self, privkey):
         try:
@@ -349,12 +350,14 @@ class ETHDaemon(BlockProcessorDaemon):
 
     def create_coin(self):
         self.coin = ETHFeatures(
-            Web3(
-                Web3.AsyncHTTPProvider(self.SERVER, request_kwargs={"timeout": 5 * 60}),
+            AsyncWeb3(
+                AsyncWeb3.AsyncHTTPProvider(self.SERVER, request_kwargs={"timeout": 5 * 60}),
             )
         )
+        self.coin.web3.provider.middlewares = []
         self.coin.web3.middleware_onion.inject(async_geth_poa_middleware, layer=0)
         self.coin.web3.middleware_onion.inject(async_http_retry_request_middleware, layer=0)
+        self.coin.web3.middleware_onion.add(async_simple_cache_middleware)
 
     def get_default_server_url(self):
         return get_default_http_endpoint()
@@ -468,11 +471,11 @@ class ETHDaemon(BlockProcessorDaemon):
 
     @rpc
     def get_tx_hash(self, tx_data, wallet=None):
-        return self.coin.to_dict(Web3.keccak(hexstr=tx_data))
+        return self.coin.to_dict(AsyncWeb3.keccak(hexstr=tx_data))
 
     @rpc
     def get_tx_size(self, tx_data, wallet=None):
-        return len(Web3.to_bytes(hexstr=tx_data))
+        return len(AsyncWeb3.to_bytes(hexstr=tx_data))
 
     @rpc(requires_network=True)
     async def get_used_fee(self, tx_hash, wallet=None):
@@ -526,7 +529,7 @@ class ETHDaemon(BlockProcessorDaemon):
         address = self.wallets[wallet].address
         tx_dict = {
             "to": destination,
-            "value": Web3.to_wei(amount, "ether"),
+            "value": AsyncWeb3.to_wei(amount, "ether"),
             **(
                 await self.get_common_payto_params(
                     address,
@@ -539,9 +542,9 @@ class ETHDaemon(BlockProcessorDaemon):
         if self.EIP1559_SUPPORTED:
             tx_dict["type"] = "0x2"
         if fee:
-            tx_dict["maxFeePerGas"] = Web3.to_wei(fee, "ether")
+            tx_dict["maxFeePerGas"] = AsyncWeb3.to_wei(fee, "ether")
         if feerate:
-            tx_dict["maxPriorityFeePerGas"] = Web3.to_wei(feerate, "gwei")
+            tx_dict["maxPriorityFeePerGas"] = AsyncWeb3.to_wei(feerate, "gwei")
         tx_dict["gas"] = int(gas) if gas else await self.get_default_gas(tx_dict)
         if unsigned:
             return tx_dict

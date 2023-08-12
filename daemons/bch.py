@@ -135,7 +135,7 @@ class BCHDaemon(BTCDaemon):
         if tx_hashes:
             received, _ = wallet.get_addr_io(address)
             for txo, x in received.items():
-                _, v, _ = x
+                _, v, *_ = x
                 txid, _ = txo.split(":")
                 if txid in tx_hashes:
                     sent_amount += v
@@ -166,6 +166,7 @@ class BCHDaemon(BTCDaemon):
     async def getinfo(self, wallet=None):
         data = self.create_commands(config=self.electrum_config).getinfo()
         data["synchronized"] = not self.is_still_syncing()
+        data["total_wallets"] = len(self.wallets)
         return data
 
     async def get_commands_list(self, commands):

@@ -701,9 +701,7 @@ multidict==6.0.4 \
     #   yarl
 parsimonious==0.9.0 \
     --hash=sha256:b2ad1ae63a2f65bd78f5e0a8ac510a98f3607a43f1db2a8d46636a5d9e4a30c1
-    # via
-    #   eth-abi
-    #   web3
+    # via eth-abi
 pkgutil-resolve-name==1.3.10 \
     --hash=sha256:357d6c9e6a755653cfd78893817c0853af365dd51ec97f3d358a819373bbd174 \
     --hash=sha256:ca27cc078d25c5ad71a9de0a7a330146c4e014c2462d9af19c6b828280649c5e
@@ -759,6 +757,9 @@ pycryptodome==3.18.0 \
     # via
     #   eth-hash
     #   eth-keyfile
+pyunormalize==15.0.0 \
+    --hash=sha256:e63fdba0d85ea04579dde2fc29a072dba773dcae600b04faf6cc90714c8b1302
+    # via web3
 referencing==0.30.2 \
     --hash=sha256:449b6669b6121a9e96a7f9e410b245d471e8d48964c67113ce9afe50c8dd7bdf \
     --hash=sha256:794ad8003c65938edcdbc027f1933215e0d0ccc0291e3ce20a4d87432b59efc0
@@ -970,12 +971,17 @@ toolz==0.12.0 \
     --hash=sha256:2059bd4148deb1884bb0eb770a3cde70e7f954cfbbdc2285f1f2de01fd21eb6f \
     --hash=sha256:88c570861c440ee3f2f6037c4654613228ff40c93a6c25e0eba70d17282c6194
     # via cytoolz
+typing-extensions==4.7.1 \
+    --hash=sha256:440d5dd3af93b060174bf433bccd69b0babc3b15b1a8dca43789fd7f61514b36 \
+    --hash=sha256:b75ddc264f0ba5615db7ba217daeb99701ad295353c45f9e95963337ceeeffb2
+    # via web3
 urllib3==2.0.4 \
     --hash=sha256:8d22f86aae8ef5e410d4f539fde9ce6b2113a001bb4d189e0aed70642d602b11 \
     --hash=sha256:de7df1803967d2c2a98e4b11bb7d6bd9210474c46e8a0401514e3a42a75ebde4
     # via requests
-web3 @ https://github.com/ethereum/web3.py/archive/9940bdefb2015a36d56f823db4b87fdb52fe306c.zip \
-    --hash=sha256:8d51d874beadfad905013e868deefd1ed96d2e7611415a97a2a611dc77864791
+web3==6.8.0 \
+    --hash=sha256:5db6ed63bca526a5542d9a84778c8b549199009b9f71079ff53a7b82dadf0d0b \
+    --hash=sha256:cc383afaf4cfde9fd6c8934ec23c47035520129ee93e4e068520e565d31dee9e
     # via -r requirements/daemons/bnb.txt
 websockets==11.0.3 \
     --hash=sha256:01f5567d9cf6f502d655151645d4e8b72b453413d3819d2b6f1185abc23e82dd \

@@ -299,8 +299,8 @@ dnspython==2.4.1 \
     --hash=sha256:5b7488477388b8c0b70a8ce93b227c5603bc7b77f1565afe8e729c36c51447d7 \
     --hash=sha256:c33971c79af5be968bb897e95c2448e11a645ee84d93b265ce0b7aabe5dfdca8
     # via electrum-grs
-electrum-grs @ https://github.com/Groestlcoin/electrum-grs/archive/d8a733d49a3a9d3bfd95bfb5af48eb53d5527191.zip \
-    --hash=sha256:2b76d78364294a59b4fbf1616d2a9a1b5732300ae1cb6881f880e95c6c4c1a85
+electrum-grs @ https://github.com/Groestlcoin/electrum-grs/archive/c26925007deb2cdae1975fe4be84b28ab8a429e0.zip \
+    --hash=sha256:c8dc5fc6f4b182c7852cd1c2a4f7bce220b2edc561f5da335fa7f0c9598d7ef6
     # via -r requirements/daemons/grs.txt
 frozenlist==1.4.0 \
     --hash=sha256:007df07a6e3eb3e33e9a1fe6a9db7af152bbd8a185f9aaa6ece10a3529e3e1c6 \

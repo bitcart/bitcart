@@ -554,6 +554,7 @@ class BTCDaemon(BaseDaemon):
     async def getinfo(self, wallet=None):
         data = await self.create_commands(config=self.electrum_config).getinfo()
         data["synchronized"] = not self.is_still_syncing()
+        data["total_wallets"] = len(self.wallets)
         return data
 
     @rpc(requires_wallet=True, requires_network=True)

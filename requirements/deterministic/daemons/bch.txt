@@ -198,8 +198,8 @@ ecdsa==0.18.0 \
     --hash=sha256:190348041559e21b22a1d65cee485282ca11a6f81d503fddb84d5017e9ed1e49 \
     --hash=sha256:80600258e7ed2f16b9aa1d7c295bd70194109ad5a30fdee0eaeefef1d4c559dd
     # via electron-cash
-electron-cash @ https://github.com/Electron-Cash/Electron-Cash/archive/e8bbf8280ccaef95c10cdb1c1cb182cd4b504937.zip \
-    --hash=sha256:7b9aaa90afc6aa24b071916397713601ac2907f9fa7abe156d5ecec3929d9409
+electron-cash @ https://github.com/Electron-Cash/Electron-Cash/archive/397f43c848e270a7405795c4643a2805d872675f.zip \
+    --hash=sha256:e3013b342fd4262c1f981ea85bc22b9bc13e6759a47774c957a582699028d4a1
     # via -r requirements/daemons/bch.txt
 frozenlist==1.4.0 \
     --hash=sha256:007df07a6e3eb3e33e9a1fe6a9db7af152bbd8a185f9aaa6ece10a3529e3e1c6 \
