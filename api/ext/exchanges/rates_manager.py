@@ -71,6 +71,9 @@ class RatesManager:
             if currency not in settings.settings.cryptos:
                 continue
             final_contracts[currency] = list(filter(None, tokens))
+        for currency in settings.settings.cryptos:
+            if currency not in final_contracts:
+                final_contracts[currency] = []
         self.contracts = final_contracts
         if settings.settings.functional_tests:
             self.exchanges["coingecko"] = self._exchange_classes["coingecko"](coins, final_contracts)
