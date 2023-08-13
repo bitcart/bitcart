@@ -628,12 +628,12 @@ async def test_export_invoices(client: TestClient, token: str, limited_user):
     assert json_resp.status_code == 200
     assert isinstance(json_resp.json(), list)
     assert len(json_resp.json()) == 0
-    assert "bitcartcc-export" in json_resp.headers["content-disposition"]
+    assert "bitcart-export" in json_resp.headers["content-disposition"]
     resp2 = await client.get("/invoices/export?export_format=json", headers={"Authorization": f"Bearer {token}"})
     assert resp2.json() == json_resp.json()
     csv_resp = await client.get("/invoices/export?export_format=csv", headers={"Authorization": f"Bearer {token}"})
     assert csv_resp.status_code == 200
-    assert "bitcartcc-export" in csv_resp.headers["content-disposition"]
+    assert "bitcart-export" in csv_resp.headers["content-disposition"]
     assert csv_resp.text.endswith("\r\n")
     json_resp = await client.get("/invoices/export?all_users=true", headers={"Authorization": f"Bearer {token}"})
     data = json_resp.json()
@@ -1174,7 +1174,7 @@ async def test_configurator(client: TestClient, token: str):
     assert "sudo su -" in script
     assert f"git clone {DOCKER_REPO_URL} bitcart-docker" in script
     assert "BITCART_CRYPTOS=btc" in script
-    assert "BITCART_HOST=bitcartcc.com" in script
+    assert "BITCART_HOST=bitcart.ai" in script
     assert "BTC_NETWORK=testnet" in script
     assert "BTC_LIGHTNING=True" in script
     assert "BITCART_ADDITIONAL_COMPONENTS=custom,tor" in script

@@ -35,11 +35,11 @@ def parse_manifest(manifest):
     except Exception as e:
         raise ValueError(f"Invalid manifest.json: {e}")
     # validate version constraints
-    version_constraint = manifest["constraints"]["bitcartcc"]
-    req = Requirement(f"bitcartcc{version_constraint}")
+    version_constraint = manifest["constraints"]["bitcart"]
+    req = Requirement(f"bitcart{version_constraint}")
     if VERSION not in req.specifier:
         raise ValueError(
-            f"Invalid manifest.json: plugin requires BitcartCC version{version_constraint}, but current version is {VERSION}"
+            f"Invalid manifest.json: plugin requires Bitcart version{version_constraint}, but current version is {VERSION}"
         )
     return manifest
 

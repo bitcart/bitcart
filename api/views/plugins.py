@@ -26,7 +26,7 @@ async def install_plugin(
     user: models.User = Security(utils.authorization.auth_dependency, scopes=["server_management"]),
 ):
     filename = plugin.filename
-    if not filename.endswith(".bitcartcc"):
+    if not filename.endswith(".bitcart"):
         return {"status": "error", "message": "Invalid file extension"}
     temp_dir = tempfile.mkdtemp()
     path = os.path.join(temp_dir, filename)

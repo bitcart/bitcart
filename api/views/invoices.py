@@ -60,7 +60,7 @@ async def export_invoices(
     await utils.database.postprocess_func(data)
     data = list(export_ext.db_to_json(data, add_payments))
     now = utils.time.now()
-    filename = now.strftime(f"bitcartcc-export-%Y%m%d-%H%M%S.{export_format}")
+    filename = now.strftime(f"bitcart-export-%Y%m%d-%H%M%S.{export_format}")
     headers = {"Content-Disposition": f"attachment; filename={filename}"}
     response.headers.update(headers)
     if export_format == "json":

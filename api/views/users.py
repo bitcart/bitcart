@@ -161,7 +161,7 @@ async def register_fido2(
     user: models.User = Security(utils.authorization.auth_dependency, scopes=["token_management"]),
 ):  # pragma: no cover
     existing_credentials = list(map(lambda x: AttestedCredentialData(bytes.fromhex(x["device_data"])), user.fido2_devices))
-    options, state = Fido2Server(PublicKeyCredentialRpEntity(name="BitcartCC", id=auth_data.auth_host)).register_begin(
+    options, state = Fido2Server(PublicKeyCredentialRpEntity(name="Bitcart", id=auth_data.auth_host)).register_begin(
         PublicKeyCredentialUserEntity(
             id=user.id.encode(),
             name=user.email,
@@ -189,7 +189,7 @@ async def fido2_complete_registration(
         state = await settings.settings.redis_pool.get(f"{FIDO2_REGISTER_KEY}:{user.id}")
         state = json.loads(state) if state else None
     try:
-        auth_data = Fido2Server(PublicKeyCredentialRpEntity(name="BitcartCC", id=auth_host)).register_complete(state, data)
+        auth_data = Fido2Server(PublicKeyCredentialRpEntity(name="Bitcart", id=auth_host)).register_complete(state, data)
     except Exception as e:
         raise HTTPException(422, str(e))
     async with utils.redis.wait_for_redis():

@@ -3,9 +3,9 @@ import string
 from bitcart import COINS as _COINS
 
 VERSION = "0.7.4.1"  # Version, used for openapi schemas and update checks
-WEBSITE = "https://bitcartcc.com"  # BitcartCC official site
-GIT_REPO_URL = "https://github.com/bitcartcc/bitcart"  # BitcartCC github repository
-DOCKER_REPO_URL = "https://github.com/bitcartcc/bitcart-docker"  # BitcartCC Docker Packaging repository
+WEBSITE = "https://bitcart.ai"  # Bitcart official site
+GIT_REPO_URL = "https://github.com/bitcart/bitcart"  # Bitcart github repository
+DOCKER_REPO_URL = "https://github.com/bitcart/bitcart-docker"  # Bitcart Docker Packaging repository
 MAX_CONFIRMATION_WATCH = 6  # maximum number of confirmations to save
 FEE_ETA_TARGETS = [25, 10, 5, 2, 1]  # supported target blocks confirmation ETA fee
 EVENTS_CHANNEL = "events"  # default redis channel for event system (inter-process communication)
@@ -30,7 +30,7 @@ STR_TO_BOOL_MAPPING = {
 }  # common str -> bool conversions
 # due to many exchanges lacking more than 8 digits, we limit eth-based divisibility for invoices to 8
 MAX_CONTRACT_DIVISIBILITY = 8
-PLUGINS_SCHEMA_URL = "https://bitcartcc.com/schemas/plugin/1.1.0/plugin.schema.json"
+PLUGINS_SCHEMA_URL = "https://bitcart.ai/schemas/plugin/1.2.0/plugin.schema.json"
 SHORT_EXPIRATION = 60 * 60  # used for temporary codes
 TFA_RECOVERY_ALPHABET = "23456789BCDFGHJKMNPQRTVWXY".lower()  # avoid confusing chars
 TFA_RECOVERY_LENGTH = 5  # each part has 5 chars

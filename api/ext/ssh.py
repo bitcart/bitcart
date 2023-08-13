@@ -13,7 +13,7 @@ def load_ssh_settings(config):
     settings.key_file = config("SSH_KEY_FILE", default="")
     settings.key_file_password = config("SSH_KEY_FILE_PASSWORD", default="")
     settings.authorized_keys_file = config("SSH_AUTHORIZED_KEYS", default="")
-    settings.bash_profile_script = config("BASH_PROFILE_SCRIPT", default="/etc/profile.d/bitcartcc-env.sh")
+    settings.bash_profile_script = config("BASH_PROFILE_SCRIPT", default="/etc/profile.d/bitcart-env.sh")
     return settings
 
 
@@ -72,7 +72,7 @@ class ServerEnv:  # pragma: no cover: no valid SSH configuration in CI environme
         return result
 
     def preload_env(self):
-        self.env = self._read_remote_file("/etc/profile.d/bitcartcc-env.sh")
+        self.env = self._read_remote_file("/etc/profile.d/bitcart-env.sh")
         env_file = self.get("BITCART_ENV_FILE", "")
         if env_file:
             self.env.update(self._read_remote_file(env_file, require_export=False))

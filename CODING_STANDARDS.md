@@ -1,6 +1,6 @@
 # Coding guidelines for python code
 
-Those guidelines apply to all python code across BitcartCC repositories, and to all further opened pull requests.
+Those guidelines apply to all python code across Bitcart repositories, and to all further opened pull requests.
 Your pull request might be rejected if it doesn't follow coding guidelines.
 
 ## Formatting
@@ -55,7 +55,7 @@ Also we use `snake_case` style, which is following PEP8.
 
 # Coding guidelines for vue/javascript code
 
-Those guidelines apply to all vue or javascript code across BitcartCC repositories, and to all further opened pull requests.
+Those guidelines apply to all vue or javascript code across Bitcart repositories, and to all further opened pull requests.
 Your pull request might be rejected if it doesn't follow coding guidelines.
 
 ## Formatting

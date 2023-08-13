@@ -21,7 +21,7 @@ MAX_OUTPUT_WAIT = 10
 OUTPUT_INTERVAL = 0.5
 BUFFER_SIZE = 17640
 
-REDIS_KEY = "bitcartcc_configurator_ext"
+REDIS_KEY = "bitcart_configurator_ext"
 KEY_TTL = 60 * 60 * 24  # 1 day
 
 logger = get_logger(__name__)
@@ -52,7 +52,7 @@ def create_bash_script(settings):
     )
     script += f'if [ ! -d "bitcart-docker" ]; then echo "cloning bitcart-docker"; git clone {git_repo} bitcart-docker; fi\n'
     if git_repo != DOCKER_REPO_URL:
-        script += 'export BITCARTGEN_DOCKER_IMAGE="bitcartcc/docker-compose-generator:local"\n'
+        script += 'export BITCARTGEN_DOCKER_IMAGE="bitcart/docker-compose-generator:local"\n'
     script += f"export BITCART_HOST={domain}\n"
     if reverseproxy != "nginx-https":
         script += f"export BITCART_REVERSEPROXY={reverseproxy}\n"

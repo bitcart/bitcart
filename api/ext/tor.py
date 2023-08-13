@@ -10,7 +10,7 @@ from api.logger import get_logger
 
 logger = get_logger(__name__)
 
-REDIS_KEY = "bitcartcc_tor_ext"
+REDIS_KEY = "bitcart_tor_ext"
 
 
 @dataclass(frozen=True)
@@ -106,7 +106,7 @@ async def refresh(log=True):  # pragma: no cover: used in production only
         services = parse_torrc(settings.settings.torrc_file, log=log)
         services_dict = {service.name: dataclass_asdict(service) for service in services}
         anonymous_services_dict = {service.name: {"name": service.name, "hostname": service.hostname} for service in services}
-        onion_host = services_dict.get("BitcartCC Merchants API", "")
+        onion_host = services_dict.get("Bitcart Merchants API", "")
         if onion_host:
             onion_host = onion_host["hostname"] or ""
         await settings.settings.redis_pool.hset(

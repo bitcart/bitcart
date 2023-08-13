@@ -82,7 +82,7 @@
         },
         "-32013": {
             "exc_name": "WalletVersionMismatchError",
-            "docstring": "Wallet file was opened in a newer electrum version than BitcartCC is using. Delete the wallet file to fix this issue"
+            "docstring": "Wallet file was opened in a newer electrum version than Bitcart is using. Delete the wallet file to fix this issue"
         }
     }
 }

@@ -1,12 +1,12 @@
-# Contributing to BitcartCC
+# Contributing to Bitcart
 
-Welcome, and thank you for your interest in contributing to BitcartCC!
+Welcome, and thank you for your interest in contributing to Bitcart!
 
 There are many ways in which you can contribute, beyond writing code. The goal of this document is to provide a high-level overview of how you can get involved.
 
 ## Asking Questions
 
-Have a question? Rather than opening an issue, please ask away in our [communities](https://bitcartcc.com#community)
+Have a question? Rather than opening an issue, please ask away in our [communities](https://bitcart.ai#community)
 
 The active community will be eager to assist you. Your well-worded question will serve as a resource to others searching for help.
 
@@ -14,23 +14,23 @@ The active community will be eager to assist you. Your well-worded question will
 
 Your comments and feedback are welcome, and the development team is available via a handful of different channels.
 
-Join our [communities](https://bitcartcc.com#community) to share your thoughts.
+Join our [communities](https://bitcart.ai#community) to share your thoughts.
 
 ## Reporting Issues
 
-Have you identified a reproducible problem in BitcartCC? Have a feature request? We want to hear about it! Here's how you can make reporting your issue as effective as possible.
+Have you identified a reproducible problem in Bitcart? Have a feature request? We want to hear about it! Here's how you can make reporting your issue as effective as possible.
 
 ### Identify Where to Report
 
-The BitcartCC project is distributed across multiple repositories. Try to file the issue against the correct repository. Check the list of [Linked repositories](https://github.com/bitcartcc/bitcart/blob/master/README.md#linked-repositories) if you aren't sure which repo is correct.
+The Bitcart project is distributed across multiple repositories. Try to file the issue against the correct repository. Check the list of [Linked repositories](https://github.com/bitcart/bitcart/blob/master/README.md#linked-repositories) if you aren't sure which repo is correct.
 
-If the issue is related to BitcartCC deployment and not to some individual components, or you are not sure, you can open an issue on our [central repository](https://github.com/bitcartcc/bitcart)
+If the issue is related to Bitcart deployment and not to some individual components, or you are not sure, you can open an issue on our [central repository](https://github.com/bitcart/bitcart)
 
 ### Look For an Existing Issue
 
-Before you create a new issue, please do a search in [open issues](https://github.com/bitcartcc/bitcart/issues) to see if the issue or feature request has already been filed.
+Before you create a new issue, please do a search in [open issues](https://github.com/bitcart/bitcart/issues) to see if the issue or feature request has already been filed.
 
-Be sure to scan through the [most popular](https://github.com/bitcartcc/bitcart/issues?q=is%3Aopen+is%3Aissue+label%3Afeature-request+sort%3Areactions-%2B1-desc) feature requests.
+Be sure to scan through the [most popular](https://github.com/bitcart/bitcart/issues?q=is%3Aopen+is%3Aissue+label%3Afeature-request+sort%3Areactions-%2B1-desc) feature requests.
 
 If you find your issue already exists, make relevant comments and add your [reaction](https://github.com/blog/2119-add-reactions-to-pull-requests-issues-and-comments). Use a reaction in place of a "+1" comment:
 
@@ -49,7 +49,7 @@ The more information you can provide, the more likely someone will be successful
 
 Please include the following with each issue:
 
-- Version of BitcartCC
+- Version of Bitcart
 
 - Your operating system
 
@@ -77,24 +77,24 @@ Don't feel bad if the developers can't reproduce the issue right away. They will
 
 ## Contributing Fixes
 
-There are many ways to contribute to the BitcartCC project:
+There are many ways to contribute to the Bitcart project:
 
 - finding bugs
 - submitting pull requests
 - reporting issues
 - creating feature requests
 
-After cloning and setting up environment, check out the [issues list](https://github.com/bitcartcc/bitcart/issues?utf8=%E2%9C%93&q=is%3Aopen+is%3Aissue). Issues labeled [`help wanted`](https://github.com/bitcartcc/bitcart/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22) are good issues to submit a PR for. Issues labeled [`good first issue`](https://github.com/bitcartcc/bitcart/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) are great candidates to pick up if you are in the code for the first time. If you are contributing significant changes, please discuss with the assignee of the issue first before starting to work on the issue.
+After cloning and setting up environment, check out the [issues list](https://github.com/bitcart/bitcart/issues?utf8=%E2%9C%93&q=is%3Aopen+is%3Aissue). Issues labeled [`help wanted`](https://github.com/bitcart/bitcart/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22) are good issues to submit a PR for. Issues labeled [`good first issue`](https://github.com/bitcart/bitcart/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) are great candidates to pick up if you are in the code for the first time. If you are contributing significant changes, please discuss with the assignee of the issue first before starting to work on the issue.
 
 ### Setting up development environment
 
-If you want to understand how BitcartCC works or want to debug an issue, you'll want to get the source, and set up dependencies.
+If you want to understand how Bitcart works or want to debug an issue, you'll want to get the source, and set up dependencies.
 
-As BitcartCC ecosystem consists of many repositories, installation instructions will differ. This file contains coding guidelines for all repositories, plus instructions how to setup the environment in central repository.
+As Bitcart ecosystem consists of many repositories, installation instructions will differ. This file contains coding guidelines for all repositories, plus instructions how to setup the environment in central repository.
 
 ### Getting the sources
 
-First, fork the BitcartCC repository you want to contribute to so that you can make a pull request. Then, clone your fork locally:
+First, fork the Bitcart repository you want to contribute to so that you can make a pull request. Then, clone your fork locally:
 
 ```
 git clone https://github.com/<<<your-github-account>>>/bitcart.git
@@ -105,14 +105,14 @@ Occassionally you will want to merge changes in the upstream repository (the off
 ```
 cd bitcart
 git checkout master
-git pull https://github.com/bitcartcc/bitcart.git master
+git pull https://github.com/bitcart/bitcart.git master
 ```
 
 Manage any merge conflicts, commit them, and then commit them to your fork.
 
 ### Development Prerequisites for Python repositories
 
-You'll need the following tools to develop BitcartCC locally:
+You'll need the following tools to develop Bitcart locally:
 
 - [Git](https://git-scm.com)
 - [Python](https://www.python.org/downloads) at least version 3.8 (version 2 is **_not_** supported)
@@ -146,7 +146,7 @@ pip3 install -r requirements.txt
 pip3 install -r requirements/dev.txt
 ```
 
-To use BitcartCC you'll need to run at least one BitcartCC daemon. For each daemon you want to run, install it's requirements like so:
+To use Bitcart you'll need to run at least one Bitcart daemon. For each daemon you want to run, install it's requirements like so:
 
 ```
 pip3 install -r requirements/daemons/coin.txt
@@ -154,7 +154,7 @@ pip3 install -r requirements/daemons/coin.txt
 
 Where coin is coin symbol, for example, btc.
 
-Make sure to install the infrastructure parts of BitcartCC, refer to [Manual Installation Instuctions](https://docs.bitcartcc.com/deployment/manual#typical-manual-installation) and install needed requirements for the repository you are contributing to.
+Make sure to install the infrastructure parts of Bitcart, refer to [Manual Installation Instuctions](https://docs.bitcart.ai/deployment/manual#typical-manual-installation) and install needed requirements for the repository you are contributing to.
 
 Install development packages:
 
@@ -221,7 +221,7 @@ Make sure to read our [coding guidelines for python code](CODING_STANDARDS.md#co
 
 ### Work Branches
 
-Even if you have push rights on the bitcartcc/bitcart repository, you should create a personal fork and create feature branches there when you need them. This keeps the main repository clean and your personal workflow cruft out of sight.
+Even if you have push rights on the bitcart/bitcart repository, you should create a personal fork and create feature branches there when you need them. This keeps the main repository clean and your personal workflow cruft out of sight.
 
 ### Pull Requests
 
@@ -229,21 +229,21 @@ To enable us to quickly review and accept your pull requests, always create one 
 
 ### Where to Contribute
 
-Check out the [full issues list](https://github.com/bitcartcc/bitcart/issues?utf8=%E2%9C%93&q=is%3Aopen+is%3Aissue) for a list of all potential areas for contributions.
+Check out the [full issues list](https://github.com/bitcart/bitcart/issues?utf8=%E2%9C%93&q=is%3Aopen+is%3Aissue) for a list of all potential areas for contributions.
 
-To improve the chances to get a pull request merged you should select an issue that is labelled with the [`help-wanted`](https://github.com/bitcartcc/bitcart/issues?q=is%3Aopen+is%3Aissue+label%3A%22help+wanted%22) or [`bug`](https://github.com/bitcartcc/bitcart/issues?q=is%3Aopen+is%3Aissue+label%3A%22bug%22) labels. If the issue you want to work on is not labelled with `help-wanted` or `bug`, you can start a conversation with the issue owner asking whether an external contribution will be considered.
+To improve the chances to get a pull request merged you should select an issue that is labelled with the [`help-wanted`](https://github.com/bitcart/bitcart/issues?q=is%3Aopen+is%3Aissue+label%3A%22help+wanted%22) or [`bug`](https://github.com/bitcart/bitcart/issues?q=is%3Aopen+is%3Aissue+label%3A%22bug%22) labels. If the issue you want to work on is not labelled with `help-wanted` or `bug`, you can start a conversation with the issue owner asking whether an external contribution will be considered.
 
 To avoid multiple pull requests resolving the same issue, let others know you are working on it by saying so in a comment.
 
 ### Packaging
 
-BitcartCC can be packaged for all the platforms docker supports, and for all the platforms python supports.
+Bitcart can be packaged for all the platforms docker supports, and for all the platforms python supports.
 
-For packaging we usually use docker images, refer to [Docker packaging repository](https://github.com/bitcartcc/bitcart-docker) for more details.
+For packaging we usually use docker images, refer to [Docker packaging repository](https://github.com/bitcart/bitcart-docker) for more details.
 
 ### Suggestions
 
-We're also interested in your feedback for the future of BitcartCC. You can submit a suggestion or feature request through the issue tracker. To make this process more effective, we're asking that these include more information to help define them more clearly.
+We're also interested in your feedback for the future of Bitcart. You can submit a suggestion or feature request through the issue tracker. To make this process more effective, we're asking that these include more information to help define them more clearly.
 
 ### Discussion Etiquette
 

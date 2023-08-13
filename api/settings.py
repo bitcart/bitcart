@@ -62,7 +62,7 @@ class Settings(BaseSettings):
     update_url: str = Field(None, env="UPDATE_URL")
     torrc_file: str = Field(None, env="TORRC_FILE")
     openapi_path: str = Field(None, env="OPENAPI_PATH")
-    api_title: str = Field("BitcartCC", env="API_TITLE")
+    api_title: str = Field("Bitcart", env="API_TITLE")
     cryptos: Dict[str, Coin] = None
     crypto_settings: dict = None
     manager: APIManager = None
@@ -336,7 +336,7 @@ def handle_exception(settings, loop, context):
 
 def log_startup_info():
     settings = settings_ctx.get()
-    settings.logger.info(f"BitcartCC version: {VERSION} - {WEBSITE} - {GIT_REPO_URL}")
+    settings.logger.info(f"Bitcart version: {VERSION} - {WEBSITE} - {GIT_REPO_URL}")
     settings.logger.info(f"Python version: {sys.version}. On platform: {platform.platform()}")
     settings.logger.info(
         f"BITCART_CRYPTOS={','.join([item for item in settings.enabled_cryptos])}; IN_DOCKER={settings.docker_env}; "

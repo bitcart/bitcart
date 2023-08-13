@@ -52,7 +52,7 @@ def test_get_hostname(service_dir):
 
 def test_get_service_name():
     assert get_service_name("test-1") == "test 1"
-    assert get_service_name("BitcartCC-Merchants-API") == "BitcartCC Merchants API"
+    assert get_service_name("Bitcart-Merchants-API") == "Bitcart Merchants API"
 
 
 def test_parse_torrc(torrc, service_dir):

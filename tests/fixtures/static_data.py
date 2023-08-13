@@ -16,7 +16,7 @@ POLICY_USER = {
 }
 SCRIPT_SETTINGS = {
     "mode": "Manual",
-    "domain_settings": {"domain": "bitcartcc.com", "https": True},
+    "domain_settings": {"domain": "bitcart.ai", "https": True},
     "coins": {"btc": {"network": "testnet", "lightning": True}},
     "additional_services": ["tor"],
     "advanced_settings": {"additional_components": ["custom"]},

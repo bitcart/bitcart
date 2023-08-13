@@ -321,7 +321,7 @@ class WalletDB(JsonDB):
             version = self.STORAGE_VERSION
         if version > self.STORAGE_VERSION:
             raise DBFileException(
-                f"This version of BitcartCC ETH daemon is too old to open this {self.NAME}.\n"
+                f"This version of Bitcart ETH daemon is too old to open this {self.NAME}.\n"
                 f"(highest supported storage version: {self.STORAGE_VERSION}, version of this file: {version})"
             )
         return version

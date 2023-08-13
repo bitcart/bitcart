@@ -1,4 +1,4 @@
-# BitcartCC Daemons Spec
+# Bitcart Daemons Spec
 
 This directory contains a JSON-RPC specification for error codes and related messages.
 
@@ -24,7 +24,7 @@ To work with the spec, all SDK's must:
 
 - If error code isn't in the spec, raise `UnknownError` and pass server response as error message. This should also be done when spec is invalid, it works because of fallback spec.
 
-Reference implementation can be found in [SDK repo](https://github.com/bitcartcc/bitcart-sdk)
+Reference implementation can be found in [SDK repo](https://github.com/bitcart/bitcart-sdk)
 
 ## Spec schema
 

@@ -13,7 +13,7 @@ from api.plugins import apply_filters
 logger = get_logger(__name__)
 
 RELEASE_REGEX = r"^([0-9]+(.[0-9]+)*(-[0-9]+)?)$"
-REDIS_KEY = "bitcartcc_update_ext"
+REDIS_KEY = "bitcart_update_ext"
 
 
 async def collect_stats():

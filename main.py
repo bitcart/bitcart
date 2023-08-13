@@ -44,7 +44,7 @@ def get_app():
         docs_url="/",
         redoc_url="/redoc",
         root_path=settings.root_path,
-        description="BitcartCC Merchants API",
+        description="Bitcart Merchants API",
     )
     app.settings = settings
     app.mount("/images", StaticFiles(directory=settings.images_dir), name="images")

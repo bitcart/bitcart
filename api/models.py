@@ -212,7 +212,7 @@ class User(BaseModel):
         if not self.totp_key:  # pragma: no cover # TODO: remove a few releases later
             self.totp_key = pyotp.random_base32()
             await self.update(totp_key=self.totp_key).apply()
-        self.totp_url = pyotp.TOTP(self.totp_key).provisioning_uri(self.email, issuer_name="BitcartCC")
+        self.totp_url = pyotp.TOTP(self.totp_key).provisioning_uri(self.email, issuer_name="Bitcart")
 
     @classmethod
     def prepare_create(cls, kwargs):
