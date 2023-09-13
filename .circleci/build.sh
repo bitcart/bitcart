@@ -11,12 +11,10 @@ create_manifest() {
 if [ -z ${MANIFEST+x} ]; then
     docker buildx build --progress plain --push --platform ${BUILD_PLATFORMS} --tag bitcart/$1:$CIRCLE_TAG-$ARCH --tag bitcart/$1:stable-$ARCH \
         --tag ghcr.io/bitcart/$1:$CIRCLE_TAG-$ARCH --tag ghcr.io/bitcart/$1:stable-$ARCH \
-        --tag harbor.nirvati.org/bitcart/$1:$CIRCLE_TAG-$ARCH --tag harbor.nirvati.org/bitcart/$1:stable-$ARCH \
         -f $2 .
 else
     create_manifest $1 ""
     create_manifest $1 "ghcr.io/"
-    create_manifest $1 "harbor.nirvati.org/"
 fi
 cd ../../.circleci
 set +e
