@@ -2,6 +2,54 @@
 
 ## Latest changes
 
+## 0.8.0.0
+
+### Name change: from BitcartCC to Bitcart
+
+It is an important milestone in our project. Initially we couldn't take that name because it was already filled by some other projects
+Now, after years there is only one bitcart: ours. In fact, it was used as bitcart in code before, and now the UI naming will catch up too
+It is more consistent. Also from the community polls it is easier and many people used Bitcart instead of BitcartCC even before.
+
+Together with a new name, we've got a new professional-made logo redesign
+
+This release has breaking changes in docker deployment mostly due to changing of some files.
+
+In order to do the update, run:
+
+```bash
+./update.sh
+./setup.sh
+contrib/upgrades/upgrade-to-0800.sh
+```
+
+The env vars are now stored in /etc/profile.d/bitcart-env.sh, and systemd file is also named bitcart.service now.
+
+All plugins have been updated with new naming and logos
+
+### Electrums upgrade
+
+With the new electrums and other daemons update, it fixed a rare but possible bug when BTC or LTC wallets got stuck forever. More robustness, more performance!
+
+### Tracing internal ETH transactions
+
+If your RPC supports debug_traceTransaction method, then bitcart will also automatically detect internal transactions to your wallet! Unfortunately for now the default RPC doesn't support it, but bitcart is ready
+
+### Publish to multiple container registries
+
+Now Bitcart docker image is published to dockerhub, ghcr.io and nirvati registries for better reliability!
+
+### Bug fixing
+
+- A bug with metamask button in admin panel have been fixed
+- Also, before when you added a new wallet with contract in a new blockchain, it broke the exchange rates system and everything was stuck until a reboot. This is now fixed
+- `get_updates` method now no longer crashes in eth-based daemons
+- Speed-up payouts loading, fix tron payouts
+- Add more data to `new_transaction` event in eth-based coins
+- Allow passing nonce directly and add `getnonce` method in eth-based coins
+- Add ability to customize gas price by a multiplier globally or by call in eth-based coins
+- Store time it takes for customer to pay for an invoice
+- Fix store POS for non-global store
+
 ## 0.7.4.1
 
 Fix an issue with new store POS checkout for tor onedomain mode
