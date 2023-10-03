@@ -473,9 +473,9 @@ universalasync==0.3.0.0 \
     --hash=sha256:55f622e5a14d018e36d776e55f4454d1c887603765a895fcb8b89547e70d4d10 \
     --hash=sha256:edd67ea2cfb6e5fc9cead6d3f1ff71bcf537fa06af6c67be23c2d9d9ce1f84c0
     # via -r requirements/daemons/xmr.txt
-urllib3==2.0.4 \
-    --hash=sha256:8d22f86aae8ef5e410d4f539fde9ce6b2113a001bb4d189e0aed70642d602b11 \
-    --hash=sha256:de7df1803967d2c2a98e4b11bb7d6bd9210474c46e8a0401514e3a42a75ebde4
+urllib3==2.0.6 \
+    --hash=sha256:7a7c7003b000adf9e7ca2a377c9688bbc54ed41b985789ed576570342a375cd2 \
+    --hash=sha256:b19e1a85d206b56d7df1d5e683df4a7725252a964e3993648dd0fb5a1c157564
     # via requests
 varint==1.0.2 \
     --hash=sha256:a6ecc02377ac5ee9d65a6a8ad45c9ff1dac8ccee19400a5950fb51d594214ca5
