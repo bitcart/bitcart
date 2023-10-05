@@ -764,6 +764,7 @@ class Refund(CreateRefund):
     destination: Optional[str]
     user_id: str
     wallet_currency: Optional[str]
+    payout_id: Optional[str]
     payout_status: Optional[str]
     tx_hash: Optional[str]
 
