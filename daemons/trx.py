@@ -340,6 +340,8 @@ class TRXDaemon(ETHDaemon):
     @rpc(requires_wallet=True, requires_network=True)
     async def writecontract(self, address, function, *args, **kwargs):
         kwargs.pop("gas", None)
+        kwargs.pop("nonce", None)
+        kwargs.pop("speed_multiplier", None)
         wallet = kwargs.pop("wallet")
         unsigned = kwargs.pop("unsigned", False)
         kwargs.pop("gas_price", None)  # not used in tron
