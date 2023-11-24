@@ -392,9 +392,9 @@ cytoolz==0.12.2 \
     --hash=sha256:fa44215bc31675a6380cd896dadb7f2054a7b94cfb87e53e52af844c65406a54 \
     --hash=sha256:ff451d614ca1d4227db0ffa627fb51df71968cf0d9baf0210528dad10fdbc3ab
     # via eth-utils
-eth-abi==4.1.0 \
-    --hash=sha256:15f9870ca054c09a8e474d2d7e81aff0c32421aebdac896193183fc143e31b50 \
-    --hash=sha256:fe738cdb24983adfe89abf727c723c288f8d0029e97fb08160b20bb5290ab475
+eth-abi==4.2.0 \
+    --hash=sha256:0d50469de2f9948bacd764fc3f8f337a090bbb6ac3a759ef22c094bf56c1e6d9 \
+    --hash=sha256:a9adae5e0c2b9a35703b76856d6db3a0498effdf1243011b2d56280165db1cdd
     # via
     #   eth-account
     #   web3
