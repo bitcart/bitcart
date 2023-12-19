@@ -843,9 +843,9 @@ packaging==23.1 \
     --hash=sha256:994793af429502c4ea2ebf6bf664629d07c1a9fe974af92966e4b8d2df7edc61 \
     --hash=sha256:a392980d2b6cffa644431898be54b0045151319d1e7ec34f0cfed48767dd334f
     # via -r requirements/web.txt
-paramiko==3.3.1 \
-    --hash=sha256:6a3777a961ac86dbef375c5f5b8d50014a1a96d0fd7f054a43bc880134b0ff77 \
-    --hash=sha256:b7bc5340a43de4287bbe22fe6de728aa2c22468b2a849615498dd944c2f275eb
+paramiko==3.4.0 \
+    --hash=sha256:43f0b51115a896f9c00f59618023484cb3a14b98bbceab43394a39c6739b7ee7 \
+    --hash=sha256:aac08f26a31dc4dffd92821527d1682d99d52f9ef6851968114a8728f3c274d3
     # via -r requirements/web.txt
 passlib[bcrypt]==1.7.4 \
     --hash=sha256:aa6bca462b8d8bda89c70b382f0c298a20b5560af6cbfa2dce410c0a2fb669f1 \
