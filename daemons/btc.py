@@ -426,6 +426,8 @@ class BTCDaemon(BaseDaemon):
         wallet = kwargs.pop("wallet", None)
         wallet_obj = self.wallets[wallet]["wallet"]
         request = self._get_request(wallet_obj, *args, **kwargs)
+        if not request:
+            raise Exception("Request not found")
         result = wallet_obj.export_request(request)
         paid_via_lightning = self.is_paid_via_lightning(wallet_obj, request)
         if paid_via_lightning:

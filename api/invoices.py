@@ -1,6 +1,7 @@
 import asyncio
 from decimal import Decimal
 
+from bitcart import errors
 from sqlalchemy import or_, select
 
 from api import constants, crud, events, models, settings, utils
@@ -28,6 +29,7 @@ class InvoiceExceptionStatus:
     NONE = "none"
     PAID_PARTIAL = "paid_partial"
     PAID_OVER = "paid_over"
+    FAILED_CONFIRM = "failed_confirm"
 
 
 # TODO: move it to daemon somehow
@@ -265,7 +267,7 @@ async def update_stock_levels(invoice):
             ).gino.status()
 
 
-async def update_status(invoice, status, method=None, tx_hashes=[], sent_amount=Decimal(0)):
+async def update_status(invoice, status, method=None, tx_hashes=[], sent_amount=Decimal(0), set_exception_status=None):
     if status == InvoiceStatus.PENDING and invoice.status == InvoiceStatus.PENDING and method and sent_amount > 0:
         full_method_name = method.get_name()
         if not invoice.paid_currency or invoice.paid_currency == full_method_name:
@@ -308,7 +310,10 @@ async def update_status(invoice, status, method=None, tx_hashes=[], sent_amount=
                 await invoice.update(**kwargs).apply()
             log_text += f" with payment method {full_method_name}"
         logger.info(f"{log_text} to {status}")
-        await invoice.update(status=status).apply()
+        kwargs = {"status": status}
+        if set_exception_status:
+            kwargs["exception_status"] = set_exception_status
+        await invoice.update(**kwargs).apply()
         if status == InvoiceStatus.COMPLETE:
             await update_stock_levels(invoice)
         await process_notifications(invoice)
@@ -333,10 +338,14 @@ async def check_pending(currency, process_func=process_electrum_status):
             coin = await settings.settings.get_coin(
                 method.currency, {"xpub": wallet.xpub, "contract": method.contract, **wallet.additional_xpub_data}
             )
-            if method.lightning:
-                invoice_data = await coin.get_invoice(method.lookup_field)
-            else:
-                invoice_data = await coin.get_request(method.lookup_field)
+            try:
+                if method.lightning:
+                    invoice_data = await coin.get_invoice(method.lookup_field)
+                else:
+                    invoice_data = await coin.get_request(method.lookup_field)
+            except errors.RequestNotFoundError:  # invoice dropped from mempool
+                await update_status(invoice, InvoiceStatus.INVALID, set_exception_status=InvoiceExceptionStatus.FAILED_CONFIRM)
+                continue
             coros.append(
                 process_func(
                     invoice,
