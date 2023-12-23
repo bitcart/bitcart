@@ -18,3 +18,4 @@ htmlcov/
 modules/*
 !modules/.gitkeep
 venv
+.prettiercache

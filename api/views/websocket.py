@@ -71,20 +71,18 @@ class InvoiceNotify(GenericWebsocketEndpoint):
 
     async def maybe_exit_early(self, websocket):
         if self.object.status in [InvoiceStatus.EXPIRED, InvoiceStatus.COMPLETE]:
-            await websocket.send_json(
-                {
-                    "status": self.object.status,
-                    "exception_status": self.object.exception_status,
-                    "sent_amount": currency_table.format_decimal(
-                        "",
-                        self.object.sent_amount,
-                        divisibility=crud.invoices.find_sent_amount_divisibility(
-                            self.object.id, self.object.payments, self.object.paid_currency
-                        ),
+            await websocket.send_json({
+                "status": self.object.status,
+                "exception_status": self.object.exception_status,
+                "sent_amount": currency_table.format_decimal(
+                    "",
+                    self.object.sent_amount,
+                    divisibility=crud.invoices.find_sent_amount_divisibility(
+                        self.object.id, self.object.payments, self.object.paid_currency
                     ),
-                    "paid_currency": self.object.paid_currency,
-                }
-            )
+                ),
+                "paid_currency": self.object.paid_currency,
+            })
             await websocket.close()
             return True
         return False

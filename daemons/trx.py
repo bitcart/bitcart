@@ -201,11 +201,9 @@ class KeyStore(ETHKeyStore):
 
 
 TRON_ALIASES = ETHDaemon.ALIASES
-TRON_ALIASES.update(
-    {
-        "get_default_energy": "get_default_gas",
-    }
-)
+TRON_ALIASES.update({
+    "get_default_energy": "get_default_gas",
+})
 
 
 class TRXDaemon(ETHDaemon):

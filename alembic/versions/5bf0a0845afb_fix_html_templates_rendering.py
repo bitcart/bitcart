@@ -5,6 +5,7 @@ Revises: e027e56adb58
 Create Date: 2021-01-03 21:45:14.779772
 
 """
+
 import sqlalchemy as sa
 from sqlalchemy.sql import expression
 

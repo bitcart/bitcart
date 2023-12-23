@@ -5,6 +5,7 @@ Revises: 5bf0a0845afb
 Create Date: 2021-01-19 22:55:25.013299
 
 """
+
 import sqlalchemy as sa
 from sqlalchemy.schema import CreateSequence, DropSequence, Sequence
 
