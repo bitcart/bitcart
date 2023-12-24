@@ -4,10 +4,12 @@
 #
 #    pip-compile --allow-unsafe --generate-hashes --output-file=requirements/deterministic/test.txt --resolver=legacy requirements/test.txt
 #
-anyio==4.2.0 \
-    --hash=sha256:745843b39e829e108e518c489b31dc757de7d2131d53fac32bd8df268227bfee \
-    --hash=sha256:e1875bb4b4e2de1669f4bc7869b6d3f54231cdced71605e6e64c9be77e3be50f
-    # via httpx
+anyio==3.7.1 \
+    --hash=sha256:44a3c9aba0f5defa43261a8b3efb97891f2bd7d804e0e1f56419befa1adfc780 \
+    --hash=sha256:91dee416e570e92c64041bd18b900d1d6fa78dff7048769ce5ac5ddad004fbb5
+    # via
+    #   -r requirements/test.txt
+    #   httpx
 async-asgi-testclient==1.4.11 \
     --hash=sha256:4449ac85d512d661998ec61f91c9ae01851639611d748d81ae7f816736551792
     # via -r requirements/test.txt
@@ -329,10 +331,6 @@ tomli==2.0.1 \
     # via
     #   coverage
     #   pytest
-typing-extensions==4.9.0 \
-    --hash=sha256:23478f88c37f27d76ac8aee6c905017a143b0b1b886c3c9f66bc2fd94f9f5783 \
-    --hash=sha256:af72aea155e91adfc61c3ae9e0e342dbc0cba726d6cba4b6c72c1f34e47291cd
-    # via anyio
 urllib3==2.1.0 \
     --hash=sha256:55901e917a5896a349ff771be919f8bd99aff50b79fe58fec595eb37bbc56bb3 \
     --hash=sha256:df7aa8afb0148fa78488e7899b2c59b5f4ffcfa82e6c54ccb9dd37c1d7b52d54

@@ -1,5 +1,6 @@
 import json
 import traceback
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.requests import HTTPConnection
@@ -38,6 +39,17 @@ class RawContextMiddleware:
 
 def get_app():
     settings = Settings()
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        app.ctx_token = settings_module.settings_ctx.set(app.settings)  # for events context
+        await settings.init()
+        await settings.plugins.startup()
+        yield
+        await app.settings.shutdown()
+        await settings.plugins.shutdown()
+        settings_module.settings_ctx.reset(app.ctx_token)
+
     app = FastAPI(
         title=settings.api_title,
         version=VERSION,
@@ -45,6 +57,7 @@ def get_app():
         redoc_url="/redoc",
         root_path=settings.root_path,
         description="Bitcart Merchants API",
+        lifespan=lifespan,
     )
     app.settings = settings
     app.mount("/images", StaticFiles(directory=settings.images_dir), name="images")
@@ -71,18 +84,6 @@ def get_app():
             if onion_host and not tor_ext.is_onion(host):
                 response.headers["Onion-Location"] = onion_host + request.url.path
             return response
-
-    @app.on_event("startup")
-    async def startup():
-        app.ctx_token = settings_module.settings_ctx.set(app.settings)  # for events context
-        await settings.init()
-        await settings.plugins.startup()
-
-    @app.on_event("shutdown")
-    async def shutdown():
-        await app.settings.shutdown()
-        await settings.plugins.shutdown()
-        settings_module.settings_ctx.reset(app.ctx_token)
 
     @app.exception_handler(500)
     async def exception_handler(request, exc):

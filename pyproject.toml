@@ -8,20 +8,13 @@ line_length = 127
 known_third_party = ["bitcart"]
 
 [tool.pytest.ini_options]
-addopts = [
-    "-n",
-    "auto",
-    "--cov=.",
-    "--cov-report",
-    "term-missing"
-]
+addopts = ["-n", "auto", "--cov=.", "--cov-report", "term-missing"]
 filterwarnings = [
     "error::DeprecationWarning",
     "error::PendingDeprecationWarning",
-    "ignore:.*'cgi' is deprecated.*:DeprecationWarning:httpx", # TODO: remove when a new httpx release is out
-    "ignore:.*'crypt' is deprecated.*:DeprecationWarning:passlib", # TODO: passlib is no longer maintained?
+    "ignore:.*'crypt' is deprecated.*:DeprecationWarning:passlib",                   # TODO: passlib is no longer maintained?
     "ignore:Deprecated call to `pkg_resources.declare_namespace:DeprecationWarning",
-    "ignore:pkg_resources is deprecated as an API:DeprecationWarning" # sqlalchemy
+    "ignore:pkg_resources is deprecated as an API:DeprecationWarning",               # sqlalchemy
 ]
 norecursedirs = ["tests/functional"]
 
@@ -53,5 +46,5 @@ omit = [
     "api/views/plugins.py",
     "api/ext/plugins.py",
     "api/ext/exchanges/**",
-    "api/ext/fxrate.py"
+    "api/ext/fxrate.py",
 ]
