@@ -1,4 +1,3 @@
-anyio<4
 async-asgi-testclient
 async-timeout
 httpx

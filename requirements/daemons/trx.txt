@@ -1,5 +1,4 @@
 aiohttp<4.0
-anyio<4
 async-lru
 mnemonic
 tronpy
