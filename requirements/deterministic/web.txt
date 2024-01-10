@@ -183,9 +183,9 @@ bcrypt==4.0.1 \
     #   -r requirements/web.txt
     #   paramiko
     #   passlib
-bitcart==1.12.1.1 \
-    --hash=sha256:8924a05b4231dcc3f2e1513d5a8e3a5280b076df1d82d8c46074fe32084e93cb \
-    --hash=sha256:fdd8b04186a2e044a00eb97764543c012fc7265ab9240311abf7166b132440ae
+bitcart==1.14.0.1 \
+    --hash=sha256:665e9c74664bd90dc4c92ccf604bd2827c935cec6b18512069273ef3a79e091c \
+    --hash=sha256:737508deab88e59c89acaf1e8ac7f5c5548427dc8e9133e67fc3f3c89c559633
     # via -r requirements/web.txt
 certifi==2023.11.17 \
     --hash=sha256:9b469f3a900bf28dc19b8cfbf8019bf47f7fdd1a65a1d4ffb98fc14166beb4d1 \
@@ -1096,9 +1096,9 @@ redis==5.0.1 \
     --hash=sha256:0dab495cd5753069d3bc650a0dde8a8f9edde16fc5691b689a566eda58100d0f \
     --hash=sha256:ed4802971884ae19d640775ba3b03aa2e7bd5e8fb8dfaed2decce4d0fc48391f
     # via -r requirements/web.txt
-referencing==0.32.0 \
-    --hash=sha256:689e64fe121843dcfd57b71933318ef1f91188ffb45367332700a86ac8fd6161 \
-    --hash=sha256:bdcd3efb936f82ff86f993093f6da7435c7de69a3b3a5a06678a6050184bee99
+referencing==0.32.1 \
+    --hash=sha256:3c57da0513e9563eb7e203ebe9bb3a1b509b042016433bd1e45a2853466c3dd3 \
+    --hash=sha256:7e4dc12271d8e15612bfe35792f5ea1c40970dadf8624602e33db2758f7ee554
     # via
     #   jsonschema
     #   jsonschema-specifications
@@ -1270,9 +1270,9 @@ typing-extensions==4.9.0 \
     #   pydantic
     #   starlette
     #   uvicorn
-universalasync==0.3.1.0 \
-    --hash=sha256:6d3f8477afe917f0ce37869d955ab51d127bdfe0a7344b642c9613315e148ac8 \
-    --hash=sha256:a680cee5d8bcee7ad24ac654d5ca34be5074f76b9b3cf39e4573a76a11b27506
+universalasync==0.3.1.1 \
+    --hash=sha256:596cbfce58c36e084e67581cd670c2e56ad1c1c3fac93d52998fc926a4dd6fd4 \
+    --hash=sha256:e808da418ca4296acb547be5e45eb70d672ea70ffaa561720da6c763f839ff42
     # via bitcart
 urllib3==2.1.0 \
     --hash=sha256:55901e917a5896a349ff771be919f8bd99aff50b79fe58fec595eb37bbc56bb3 \

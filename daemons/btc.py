@@ -76,7 +76,6 @@ class BTCDaemon(BaseDaemon):
         # initialize not yet created network
         self.loop = None
         self.network = None
-        self.fx = None
         self.daemon = None
 
     def load_env(self):
@@ -111,6 +110,9 @@ class BTCDaemon(BaseDaemon):
             except Exception:
                 sys.exit(f"Invalid proxy URL. Original traceback:\n{traceback.format_exc()}")
         return {"proxy": proxy}
+
+    def set_dynamic_spec(self):
+        self.spec["capabilities"] = {"lightning": self.LIGHTNING}
 
     @property
     @cached
@@ -161,13 +163,16 @@ class BTCDaemon(BaseDaemon):
         self.network = self.daemon.network
         callback_function = self._process_events if self.ASYNC_CLIENT else self._process_events_sync
         self.register_callbacks(callback_function)
-        self.fx = self.daemon.fx
 
     async def shutdown_daemon(self):
         if self.daemon:
             await self.daemon.stop()
 
     async def on_shutdown(self, app):
+        coros = []
+        for wallet in list(self.wallets.keys()):
+            coros.append(self.close_wallet(wallet=wallet))
+        await asyncio.gather(*coros)
         await self.shutdown_daemon()
         await super().on_shutdown(app)
 
@@ -182,8 +187,8 @@ class BTCDaemon(BaseDaemon):
             self.daemon.add_wallet(wallet)
 
     def create_wallet(self, storage, config):
-        db = self.electrum.wallet_db.WalletDB(storage.read(), manual_upgrades=False)
-        return self.electrum.wallet.Wallet(db=db, storage=storage, config=config)
+        db = self.electrum.wallet_db.WalletDB(storage.read(), storage=storage, upgrade=True)
+        return self.electrum.wallet.Wallet(db=db, config=config)
 
     def init_wallet(self, wallet):
         if self.LIGHTNING:
@@ -362,7 +367,7 @@ class BTCDaemon(BaseDaemon):
         return data, wallet
 
     def get_status_str(self, status):
-        return self.electrum.invoices.pr_tooltips[status]
+        return self.electrum.invoices.pr_tooltips()[status]
 
     def _get_request(self, wallet, address):
         return wallet.get_request(address)
@@ -642,12 +647,21 @@ class BTCDaemon(BaseDaemon):
         else:
             raise Exception("Procedure not found")
 
-    @rpc(requires_wallet=True, requires_network=True)
-    async def close_wallet(self, wallet):
-        method = self.wallets[wallet]["cmd"].close_wallet
-        await method() if self.ASYNC_CLIENT else method()
-        del self.wallets_updates[wallet]
-        del self.wallets[wallet]
+    @rpc(requires_network=True)
+    async def close_wallet(self, key=None, wallet=None):
+        key = wallet or key
+        if key not in self.wallets:
+            return False
+        if self.wallets[key]["wallet"].storage:
+            path = self.wallets[key]["wallet"].storage.path
+            if self.ASYNC_CLIENT:
+                await self.wallets[key]["cmd"].close_wallet(wallet_path=path)
+            else:  # NOTE: we assume that non-async clients are BCH-based coins there
+                self.daemon.stop_wallet(path)
+        else:
+            await self.wallets[key]["wallet"].stop() if self.ASYNC_CLIENT else self.wallets[key]["wallet"].stop_threads()
+        del self.wallets_updates[key]
+        del self.wallets[key]
         return True
 
 

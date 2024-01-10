@@ -533,7 +533,7 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
 
     SPEED_MULTIPLIERS = {"network": 1, "regular": 1.25, "fast": 1.5}
 
-    VERSION = "4.4.5"  # version of electrum API with which we are "compatible"
+    VERSION = "4.5.0"  # version of electrum API with which we are "compatible"
 
     KEYSTORE_CLASS = KeyStore
     WALLET_CLASS = Wallet
