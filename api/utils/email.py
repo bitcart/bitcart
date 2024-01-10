@@ -1,5 +1,6 @@
 import smtplib
 import traceback
+from email import utils as email_utils
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
@@ -40,6 +41,7 @@ def send_mail(
     message_obj["Subject"] = subject
     message_obj["From"] = email
     message_obj["To"] = where
+    message_obj["Date"] = email_utils.formatdate()
     message_obj.attach(MIMEText(text, "html" if use_html_templates else "plain"))
     message = message_obj.as_string()
     server = smtplib.SMTP(host=host, port=port, timeout=5)
