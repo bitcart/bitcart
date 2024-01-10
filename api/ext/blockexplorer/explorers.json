@@ -8,8 +8,8 @@
         "testnet": "https://chain.so/tx/LTCTEST/{}"
     },
     "bch": {
-        "mainnet": "https://www.blockchain.com/bch/tx/{}",
-        "testnet": "https://www.blockchain.com/bch-testnet/tx/{}"
+        "mainnet": "https://blockexplorer.one/bitcoin-cash/mainnet/tx/{}",
+        "testnet": "https://blockexplorer.one/bitcoin-cash/testnet/tx/{}"
     },
     "xmr": {
         "mainnet": "",
