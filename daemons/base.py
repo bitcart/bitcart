@@ -50,6 +50,9 @@ class BaseDaemon:
 
     ### Spec support ###
 
+    def set_dynamic_spec(self):
+        pass
+
     def load_spec(self):
         self.spec = load_spec(self.BASE_SPEC_FILE)
         custom_spec_file = f"daemons/spec/{self.name.lower()}.json"
@@ -57,6 +60,7 @@ class BaseDaemon:
             custom_spec = load_spec(custom_spec_file, exit_on_error=False)
             maybe_update_key(self.spec, custom_spec, "electrum_map")
             maybe_update_key(self.spec, custom_spec, "exceptions")
+        self.set_dynamic_spec()
 
     def get_error_code(self, error, fallback_code=-32603):
         """Get jsonrpc error code returned to client

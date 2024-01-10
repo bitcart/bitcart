@@ -1,5 +1,5 @@
 {
-    "version": "4.4.5",
+    "version": "4.5.0",
     "electrum_map": {
         "Procedure not found": -32601,
         "wallet not loaded": -32000,
@@ -21,7 +21,8 @@
         "No path found": -32010,
         "Lightning not supported in this wallet type": -32011,
         "Invoice not found": -32012,
-        "This version of Electrum is too old to open this wallet": -32013
+        "This version of Electrum is too old to open this wallet": -32013,
+        "No ConfigVar with key": -32014
     },
     "exceptions": {
         "-32601": {
@@ -83,6 +84,10 @@
         "-32013": {
             "exc_name": "WalletVersionMismatchError",
             "docstring": "Wallet file was opened in a newer electrum version than Bitcart is using. Delete the wallet file to fix this issue"
+        },
+        "-32014": {
+            "exc_name": "NoConfigKeyError",
+            "docstring": "No config key found"
         }
     }
 }
