@@ -34,7 +34,7 @@ def find_by_coin(all_coins, coin):
 
 def find_by_contract(all_coins, contract):
     for currency in all_coins:
-        if contract.lower() in currency.get("platforms", {}).values():
+        if contract.lower() in map(lambda x: x.lower(), currency.get("platforms", {}).values()):
             return currency
 
 
