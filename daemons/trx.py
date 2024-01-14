@@ -413,7 +413,10 @@ class TRXDaemon(ETHDaemon):
             except AddressNotFound:
                 is_account_create = True
         address = value["owner_address"]
-        resources = await self.coin.web3.get_account_resource(address)
+        try:
+            resources = await self.coin.web3.get_account_resource(address)
+        except AddressNotFound:
+            resources = {}
         chain_params = await self.coin.web3.get_chain_parameters()
         bandwidth_cost = self.coin.find_chain_param(chain_params, "getTransactionFee", 1000)
         energy_cost = self.coin.find_chain_param(chain_params, "getEnergyFee", 1)
