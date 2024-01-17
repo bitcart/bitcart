@@ -24,7 +24,7 @@ async def get_rate(wallet, currency, coin=None, extra_fallback=True, *, store=No
         symbol = await get_wallet_symbol(wallet, coin)
         if symbol.lower() == currency.lower():
             return Decimal(1)
-        if contract := coin.xpub.get("contract"):  # pragma: no cover
+        if contract := get_coin_contract(coin):  # pragma: no cover
             await settings.settings.exchange_rates.add_contract(contract, wallet.currency)
         if store:
             rules = store.checkout_settings.rate_rules or fxrate.get_default_rules()
@@ -94,9 +94,13 @@ async def get_divisibility(wallet, coin):
     return await apply_filters("get_divisibility", divisibility, wallet, coin)
 
 
+def get_coin_contract(coin):
+    return coin.xpub.get("contract") if isinstance(coin.xpub, dict) else None
+
+
 async def get_wallet_symbol(wallet, coin=None):
     coin = coin or await settings.settings.get_coin(
         wallet.currency, {"xpub": wallet.xpub, "contract": wallet.contract, **wallet.additional_xpub_data}
     )
-    data = await coin.server.readcontract(contract, "symbol") if (contract := coin.xpub.get("contract")) else wallet.currency
+    data = await coin.server.readcontract(contract, "symbol") if (contract := get_coin_contract(coin)) else wallet.currency
     return await apply_filters("get_wallet_symbol", data, wallet, coin)
