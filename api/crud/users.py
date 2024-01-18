@@ -48,8 +48,8 @@ async def generic_email_code_flow(
         email_settings.get("email"),
         email_settings.get("email_use_ssl"),
     )
-    if not utils.email.check_ping(*args):  # pragma: no cover
-        return True
+    if not utils.email.email_enabled(*args):  # pragma: no cover
+        return
     code = utils.common.unique_id()
     async with utils.redis.wait_for_redis():
         await settings.settings.redis_pool.set(f"{redis_key}:{code}", user.id, ex=expire_time)

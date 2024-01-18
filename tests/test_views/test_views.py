@@ -1540,7 +1540,7 @@ async def test_password_reset(client: TestClient, user, token, mocker):
         nonlocal auth_code
         auth_code = code
 
-    mocker.patch("api.utils.email.check_ping", return_value=True)
+    mocker.patch("api.utils.email.email_enabled", return_value=True)
     mocker.patch("api.utils.email.send_mail", return_value=True)
     mocker.patch("api.utils.routing.get_redirect_url", side_effect=func)
     assert (
@@ -1630,7 +1630,7 @@ async def test_verify_email(client: TestClient, user, token, mocker):
         nonlocal auth_code
         auth_code = code
 
-    mocker.patch("api.utils.email.check_ping", return_value=True)
+    mocker.patch("api.utils.email.email_enabled", return_value=True)
     mocker.patch("api.utils.email.send_mail", return_value=True)
     mocker.patch("api.utils.routing.get_redirect_url", side_effect=func)
     assert (
@@ -1779,7 +1779,7 @@ async def test_refund_functionality(client: TestClient, user, token, mocker):
         nonlocal full_url
         full_url = refund_url
 
-    mocker.patch("api.utils.email.check_ping", return_value=True)
+    mocker.patch("api.utils.email.email_enabled", return_value=True)
     mocker.patch("api.utils.email.send_mail", return_value=True)
     mocker.patch("api.utils.templates.get_customer_refund_template", side_effect=func)
     resp = await client.post(

@@ -13,6 +13,10 @@ def get_email_dsn(host, port, user, password, email, ssl=True):
     return f"{user}:{password}@{host}:{port}?email={email}&ssl={ssl}"
 
 
+def email_enabled(host, port, user, password, email, ssl=True):
+    return host and port and user and password and email
+
+
 def check_ping(host, port, user, password, email, ssl=True):  # pragma: no cover
     dsn = get_email_dsn(host, port, user, password, email, ssl)
     if not (host and port and user and password and email):
@@ -59,7 +63,7 @@ def send_mail(
 
 
 def check_store_ping(store):
-    return check_ping(
+    return email_enabled(
         store.email_host,
         store.email_port,
         store.email_user,
