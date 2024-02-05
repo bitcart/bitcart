@@ -1256,9 +1256,9 @@ sqlalchemy==1.3.24 \
     #   -r requirements/web.txt
     #   alembic
     #   gino
-starlette==0.32.0.post1 \
-    --hash=sha256:cd0cb10ddb49313f609cedfac62c8c12e56c7314b66d89bb077ba228bada1b09 \
-    --hash=sha256:e54e2b7e2fb06dff9eac40133583f10dfa05913f5a85bf26f427c7a40a9a3d02
+starlette==0.36.2 \
+    --hash=sha256:4134757b950f027c8f16028ec81787751bb44145df17c8b0fa84087b9851b42d \
+    --hash=sha256:e53e086e620ba715f0c187daca92927b722484d148e70921f0de075936119536
     # via fastapi
 typing-extensions==4.9.0 \
     --hash=sha256:23478f88c37f27d76ac8aee6c905017a143b0b1b886c3c9f66bc2fd94f9f5783 \
