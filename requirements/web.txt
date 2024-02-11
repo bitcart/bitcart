@@ -4,7 +4,7 @@ alembic
 bcrypt==4.0.1 # TODO: remove when passlib is updated
 bitcart
 email-validator
-fastapi
+fastapi==0.109.1 # TODO: starlette 0.37.1 support in fastapi
 fido2
 gino
 hiredis
