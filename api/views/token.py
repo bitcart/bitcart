@@ -33,7 +33,7 @@ async def get_tokens(
 
 @router.get("/current", response_model=schemes.Token)
 async def get_current_token(
-    auth_data: Tuple[models.User, str] = Security(utils.authorization.AuthDependency(return_token=True))
+    auth_data: Tuple[models.User, str] = Security(utils.authorization.AuthDependency(return_token=True)),
 ):
     return auth_data[1]
 
