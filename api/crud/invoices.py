@@ -233,10 +233,12 @@ async def create_method_for_wallet(invoice, wallet, discounts, store, product, p
 
 async def update_invoice_payments(invoice, wallets_ids, discounts, store, product, promocode, start_time):
     logger.info(f"Started adding invoice payments for invoice {invoice.id}")
-    query = text("""SELECT wallets.*
+    query = text(
+        """SELECT wallets.*
     FROM   wallets
     JOIN   unnest((:wallets_ids)::varchar[]) WITH ORDINALITY t(id, ord) USING (id)
-    ORDER  BY t.ord;""")
+    ORDER  BY t.ord;"""
+    )
     wallets = await db.db.all(query, wallets_ids=wallets_ids)
     randomize_selection = store.checkout_settings.randomize_wallet_selection
     if randomize_selection:

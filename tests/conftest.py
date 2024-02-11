@@ -90,9 +90,11 @@ def service_dir():
 def torrc(service_dir):
     filename = f"{service_dir}/torrc"
     with open(filename, "w") as f:
-        f.write(f"""
+        f.write(
+            f"""
 HiddenServiceDir {service_dir}
-HiddenServicePort 80 127.0.0.1:80""")
+HiddenServicePort 80 127.0.0.1:80"""
+        )
     yield filename
 
 

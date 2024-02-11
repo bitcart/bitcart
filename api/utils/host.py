@@ -15,8 +15,7 @@ def run_host(command, env={}, disown=True):
         output = execute_ssh_command(
             client,
             f'. {settings.settings.ssh_settings.bash_profile_script}; cd "$BITCART_BASE_DIRECTORY"; {env_vars} nohup'
-            f" {prepare_shell_command(command)}"
-            + (" > /dev/null 2>&1 & disown" if disown else ""),
+            f" {prepare_shell_command(command)}" + (" > /dev/null 2>&1 & disown" if disown else ""),
         )
         if not disown:  # pragma: no cover
             final_out = output[1].read().decode() + "\n" + output[2].read().decode()
