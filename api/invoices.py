@@ -76,11 +76,13 @@ def get_pending_invoice_statuses(statuses=None):
 
 def get_pending_invoices_query(currency, statuses=None):
     return (
-        select([
-            models.PaymentMethod,
-            models.Invoice,
-            models.Wallet,
-        ])
+        select(
+            [
+                models.PaymentMethod,
+                models.Invoice,
+                models.Wallet,
+            ]
+        )
         .where(models.PaymentMethod.invoice_id == models.Invoice.id)
         .where(models.PaymentMethod.wallet_id == models.Wallet.id)
         .where(get_pending_invoice_statuses(statuses=statuses))

@@ -657,15 +657,17 @@ class ETHDaemon(BlockProcessorDaemon):
         multiplier = kwargs.pop("speed_multiplier", None)
         exec_function = await self.load_contract_exec_function(address, function, *args, **kwargs)
         # pass gas here to avoid calling estimate_gas on an incomplete tx
-        tx = await exec_function.build_transaction({
-            **await self.get_common_payto_params(
-                self.wallets[wallet].address,
-                nonce=nonce,
-                gas_price=gas_price,
-                multiplier=multiplier,
-            ),
-            "gas": TX_DEFAULT_GAS,
-        })
+        tx = await exec_function.build_transaction(
+            {
+                **await self.get_common_payto_params(
+                    self.wallets[wallet].address,
+                    nonce=nonce,
+                    gas_price=gas_price,
+                    multiplier=multiplier,
+                ),
+                "gas": TX_DEFAULT_GAS,
+            }
+        )
         tx["gas"] = int(gas) if gas else await self.get_default_gas(tx)
         if unsigned:
             return tx
