@@ -783,7 +783,7 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
             result = await self.get_exec_result(self.coin.get_wallet_key(xpub, contract), req_args, req_kwargs, exec_method)
             return JsonResponse(result=result, id=id).send()
         except BaseException as e:
-            if self.VERBOSE:
+            if self.VERBOSE and not extra_params.get("quiet_mode"):
                 print(traceback.format_exc())
             error_message = self.get_exception_message(e)
             return JsonResponse(code=self.get_error_code(error_message), error=error_message, id=id).send()
