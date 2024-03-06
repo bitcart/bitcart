@@ -545,9 +545,9 @@ cytoolz==0.12.3 \
     --hash=sha256:fe8c6267caa7ec67bcc37e360f0d8a26bc3bdce510b15b97f2f2e0143bdd3673 \
     --hash=sha256:fea649f979def23150680de1bd1d09682da3b54932800a0f90f29fc2a6c98ba8
     # via eth-utils
-eth-abi==4.2.1 \
-    --hash=sha256:60d88788d53725794cdb07c0f0bb0df2a31a6e1ad19644313fe6117ac24eeeb0 \
-    --hash=sha256:abd83410a5326145bf178675c276de0ed154f6dc695dcad1beafaa44d97f44ae
+eth-abi==5.0.1 \
+    --hash=sha256:521960d8b4beee514958e1774951dc6b48176aa274e3bd8b166f6921453047ef \
+    --hash=sha256:e9425110c6120c585c9f0db2e8a33d76c4b886b148a65e68fc0035d3917a3b9c
     # via
     #   eth-account
     #   tronpy
