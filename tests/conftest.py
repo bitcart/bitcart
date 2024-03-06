@@ -4,7 +4,7 @@ import tempfile
 import anyio
 import pytest
 from async_asgi_testclient import TestClient as WSClient
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
 
 from api import settings
 from api.db import db
@@ -67,7 +67,7 @@ async def init_db(request, app, anyio_backend):
 
 @pytest.fixture
 async def client(app, anyio_backend):
-    async with AsyncClient(app=app, base_url="http://testserver") as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver") as client:
         yield client
 
 

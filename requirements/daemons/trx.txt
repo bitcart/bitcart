@@ -1,5 +1,6 @@
 aiohttp<4.0
 async-lru
+eth-rlp<2.0 # web3 forgot to pin this
 mnemonic
 tronpy
 trontxsize

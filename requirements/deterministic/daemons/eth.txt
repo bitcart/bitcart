@@ -425,9 +425,9 @@ cytoolz==0.12.3 \
     --hash=sha256:fe8c6267caa7ec67bcc37e360f0d8a26bc3bdce510b15b97f2f2e0143bdd3673 \
     --hash=sha256:fea649f979def23150680de1bd1d09682da3b54932800a0f90f29fc2a6c98ba8
     # via eth-utils
-eth-abi==5.0.0 \
-    --hash=sha256:89c4454d794d9ed92ad5cb2794698c5cee6b7b3ca6009187d0e282adc7f9b6dc \
-    --hash=sha256:936a715d7366ac13cac665cbdaf01cc4aabbe8c2d810d716287a9634f9665e01
+eth-abi==5.0.1 \
+    --hash=sha256:521960d8b4beee514958e1774951dc6b48176aa274e3bd8b166f6921453047ef \
+    --hash=sha256:e9425110c6120c585c9f0db2e8a33d76c4b886b148a65e68fc0035d3917a3b9c
     # via
     #   eth-account
     #   web3
@@ -435,15 +435,15 @@ eth-account==0.11.0 \
     --hash=sha256:2ffc7a0c7538053a06a7d11495c16c7ad9897dd42be0f64ca7551e9f6e0738c3 \
     --hash=sha256:76dd261ea096ee09e51455b0a4c99f22185516fdc062f63df0817c28f605e430
     # via web3
-eth-hash[pycryptodome]==0.6.0 \
-    --hash=sha256:9f8daaa345764f8871dc461855049ac54ae4291d780279bce6fce7f24e3f17d3 \
-    --hash=sha256:ae72889e60db6acbb3872c288cfa02ed157f4c27630fcd7f9c8442302c31e478
+eth-hash[pycryptodome]==0.7.0 \
+    --hash=sha256:b8d5a230a2b251f4a291e3164a23a14057c4a6de4b0aa4a16fa4dc9161b57e2f \
+    --hash=sha256:bacdc705bfd85dadd055ecd35fd1b4f846b671add101427e089a4ca2e8db310a
     # via
     #   eth-utils
     #   web3
-eth-keyfile==0.7.0 \
-    --hash=sha256:6a89b231a2fe250c3a8f924f2695bb9cce33ddd0d6f7ebbcdacd183d7f83d537 \
-    --hash=sha256:6bdb8110c3a50439deb68a04c93c9d5ddd5402353bfae1bf4cfca1d6dff14fcf
+eth-keyfile==0.8.0 \
+    --hash=sha256:02e3c2e564c7403b92db3fef8ecae3d21123b15787daecd5b643a57369c530f9 \
+    --hash=sha256:9e09f5bc97c8309876c06bdea7a94f0051c25ba3109b5df37afb815418322efe
     # via eth-account
 eth-keys==0.5.0 \
     --hash=sha256:a0abccb83f3d84322591a2c047a1e3aa52ea86b185fa3e82ce311d120ca2791e \
@@ -454,7 +454,9 @@ eth-keys==0.5.0 \
 eth-rlp==1.0.1 \
     --hash=sha256:d61dbda892ee1220f28fb3663c08f6383c305db9f1f5624dc585c9cd05115027 \
     --hash=sha256:dd76515d71654277377d48876b88e839d61553aaf56952e580bb7cebef2b1517
-    # via eth-account
+    # via
+    #   -r requirements/daemons/eth.txt
+    #   eth-account
 eth-typing==4.0.0 \
     --hash=sha256:7e556bea322b6e8c0a231547b736c258e10ce9eed5ddc254f51031b12af66a16 \
     --hash=sha256:9af0b6beafbc5c2e18daf19da5f5a68315023172c4e79d149e12ad10a3d3f731
@@ -463,9 +465,9 @@ eth-typing==4.0.0 \
     #   eth-keys
     #   eth-utils
     #   web3
-eth-utils==3.0.0 \
-    --hash=sha256:8721869568448349bceae63c277b75758d11e0dc190e7ef31e161b89619458f1 \
-    --hash=sha256:9a284106acf6f6ce91ddf792489cf8bd4c681fd5ae7653d2f3d5d100be5c3905
+eth-utils==4.0.0 \
+    --hash=sha256:38d0a5a4b5bb8f2e583f040ede678c47d9eae57a058a11895271a947853947a0 \
+    --hash=sha256:58f9c57900e0f430be728a5e976dc6ed51f493a61e8a4ff1f73c043832cd4f2f
     # via
     #   eth-abi
     #   eth-account
@@ -568,9 +570,9 @@ idna==3.6 \
     # via
     #   requests
     #   yarl
-importlib-resources==6.1.1 \
-    --hash=sha256:3893a00122eafde6894c59914446a512f728a0c1a45f9bb9b63721b6bacf0b4a \
-    --hash=sha256:e8bf90d8213b486f428c9c39714b920041cb02c184686a3dee24905aaa8105d6
+importlib-resources==6.1.2 \
+    --hash=sha256:308abf8474e2dba5f867d279237cd4076482c3de7104a40b41426370e891549b \
+    --hash=sha256:9a0a862501dc38b68adebc82970140c9e4209fc99601782925178f8386339938
     # via
     #   jsonschema
     #   jsonschema-specifications
@@ -1041,9 +1043,9 @@ toolz==0.12.1 \
     --hash=sha256:d22731364c07d72eea0a0ad45bafb2c2937ab6fd38a3507bf55eae8744aa7d85 \
     --hash=sha256:ecca342664893f177a13dac0e6b41cbd8ac25a358e5f215316d43e2100224f4d
     # via cytoolz
-typing-extensions==4.9.0 \
-    --hash=sha256:23478f88c37f27d76ac8aee6c905017a143b0b1b886c3c9f66bc2fd94f9f5783 \
-    --hash=sha256:af72aea155e91adfc61c3ae9e0e342dbc0cba726d6cba4b6c72c1f34e47291cd
+typing-extensions==4.10.0 \
+    --hash=sha256:69b1a937c3a517342112fb4c6df7e72fc39a38e7891a5730ed4985b5214b5475 \
+    --hash=sha256:b0abd7c89e8fb96f98db18d86106ff1d90ab692004eb746cf6eda2682f91b3cb
     # via
     #   eth-rlp
     #   web3
