@@ -39,16 +39,9 @@ async def generic_email_code_flow(
     redis_key, template_name, email_title, hook_name, user, next_url, expire_time=SHORT_EXPIRATION
 ):
     policy = await utils.policies.get_setting(schemes.Policy)
-    email_settings = policy.email_settings
-    args = (
-        email_settings.get("email_host"),
-        email_settings.get("email_port"),
-        email_settings.get("email_user"),
-        email_settings.get("email_password"),
-        email_settings.get("email"),
-        email_settings.get("email_use_ssl"),
-    )
-    if not utils.email.email_enabled(*args):  # pragma: no cover
+    email_obj = utils.email.Email.get_email(policy)
+
+    if not email_obj.is_enabled():  # pragma: no cover
         return
     code = utils.common.unique_id()
     async with utils.redis.wait_for_redis():
@@ -56,8 +49,8 @@ async def generic_email_code_flow(
     reset_url = utils.routing.get_redirect_url(next_url, code=code)
     # TODO: switch to get_template and allow customizing for server admins only
     template = settings.settings.template_manager.templates[template_name]
-    email_text = template.render(email=user.email, link=reset_url)
-    utils.email.send_mail(*args, user.email, email_text, email_title)
+    text = template.render(email=user.email, link=reset_url)
+    email_obj.send_mail(user.email, text, email_title)
     await run_hook(f"{hook_name}_requested", user, code)
 
 

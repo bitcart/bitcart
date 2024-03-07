@@ -372,6 +372,7 @@ class Store(BaseModel):
     _update_request_cls = StoreUpdateRequest
 
     JSON_KEYS = {
+        "email_settings": schemes.EmailSettings,
         "checkout_settings": schemes.StoreCheckoutSettings,
         "theme_settings": schemes.StoreThemeSettings,
         "plugin_settings": schemes.StorePluginSettings,
@@ -380,12 +381,7 @@ class Store(BaseModel):
     id = Column(Text, primary_key=True, index=True)
     name = Column(Text, index=True)
     default_currency = Column(Text)
-    email = Column(Text, index=True)
-    email_host = Column(Text)
-    email_password = Column(Text)
-    email_port = Column(Integer)
-    email_use_ssl = Column(Boolean)
-    email_user = Column(Text)
+    email_settings = Column(JSON)
     checkout_settings = Column(JSON)
     theme_settings = Column(JSON)
     plugin_settings = Column(JSON)

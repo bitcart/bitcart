@@ -15,14 +15,7 @@ async def ping_email(
     user: models.User = Security(utils.authorization.auth_dependency, scopes=["store_management"]),
 ):
     model = await utils.database.get_object(models.Store, model_id, user)
-    return utils.email.check_ping(
-        model.email_host,
-        model.email_port,
-        model.email_user,
-        model.email_password,
-        model.email,
-        model.email_use_ssl,
-    )
+    return utils.email.Email.get_email(model).check_ping()
 
 
 # NOTE: to_optional not required here because settings have default values set everywhere

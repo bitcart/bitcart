@@ -201,36 +201,35 @@ async def invoice_notification(invoice: models.Invoice, status: str):
         await run_hook("invoice_complete", invoice)
         store = await utils.database.get_object(models.Store, invoice.store_id)
         await utils.notifications.notify(store, await utils.templates.get_notify_template(store, invoice))
-        if invoice.products:
-            if utils.email.check_store_ping(store):
-                messages = []
-                products = await utils.database.get_objects(models.Product, invoice.products)
-                for product in products:
-                    product.price = currency_table.normalize(
-                        invoice.currency, product.price
-                    )  # to be formatted correctly in emails
-                    relation = (
-                        await models.ProductxInvoice.query.where(models.ProductxInvoice.invoice_id == invoice.id)
-                        .where(models.ProductxInvoice.product_id == product.id)
-                        .gino.first()
-                    )
-                    quantity = relation.count
-                    product_template = await utils.templates.get_product_template(store, product, quantity)
-                    messages.append(product_template)
-                    logger.debug(
-                        f"Invoice {invoice.id} email notification: rendered product template for product {product.id}:\n"
-                        f"{product_template}"
-                    )
-                store_template = await apply_filters(
-                    "email_notification_text",
-                    await utils.templates.get_store_template(store, messages),
-                    invoice,
-                    store,
-                    products,
+        if invoice.products and utils.email.Email.get_email(store).is_enabled():
+            messages = []
+            products = await utils.database.get_objects(models.Product, invoice.products)
+            for product in products:
+                product.price = currency_table.normalize(
+                    invoice.currency, product.price
+                )  # to be formatted correctly in emails
+                relation = (
+                    await models.ProductxInvoice.query.where(models.ProductxInvoice.invoice_id == invoice.id)
+                    .where(models.ProductxInvoice.product_id == product.id)
+                    .gino.first()
                 )
-                logger.debug(f"Invoice {invoice.id} email notification: rendered final template:\n{store_template}")
-                await run_hook("invoice_email", invoice, store_template)
-                utils.email.send_store_email(store, invoice.buyer_email, store_template)
+                quantity = relation.count
+                product_template = await utils.templates.get_product_template(store, product, quantity)
+                messages.append(product_template)
+                logger.debug(
+                    f"Invoice {invoice.id} email notification: rendered product template for product {product.id}:\n"
+                    f"{product_template}"
+                )
+            store_template = await apply_filters(
+                "email_notification_text",
+                await utils.templates.get_store_template(store, messages),
+                invoice,
+                store,
+                products,
+            )
+            logger.debug(f"Invoice {invoice.id} email notification: rendered final template:\n{store_template}")
+            await run_hook("invoice_email", invoice, store_template)
+            utils.email.Email.get_email(store).send_mail(invoice.buyer_email, store_template)
 
 
 async def process_notifications(invoice):

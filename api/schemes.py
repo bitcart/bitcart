@@ -11,7 +11,7 @@ from pydantic.utils import GetterDict as PydanticGetterDict
 
 from api.constants import BACKUP_FREQUENCIES, BACKUP_PROVIDERS, FEE_ETA_TARGETS, MAX_CONFIRMATION_WATCH
 from api.ext.moneyformat import currency_table
-from api.types import Money
+from api.types import Money, StrEnum
 
 
 class GetterDict(PydanticGetterDict):  # for some reason, by default adding keys is not allowed
@@ -194,6 +194,28 @@ class Wallet(CreateWallet):
         return values
 
 
+class SMTPAuthMode(StrEnum):
+    NONE = "none"
+    SSL_TLS = "ssl/tls"
+    STARTTLS = "starttls"
+
+
+class EmailSettings(BaseModel):
+    address: str = ""
+    host: str = ""
+    port: int = 25
+    user: str = ""
+    password: str = ""
+    auth_mode: str = SMTPAuthMode.STARTTLS
+
+    @validator("auth_mode")
+    def validate_auth_mode(cls, v):
+        print(v, list(SMTPAuthMode))
+        if v not in SMTPAuthMode:
+            raise HTTPException(422, f"Invalid auth_mode. Expected either of {list(SMTPAuthMode)}.")
+        return v
+
+
 class StoreCheckoutSettings(BaseModel):
     expiration: int = 15
     transaction_speed: int = 0
@@ -248,26 +270,15 @@ class StorePluginSettings(BaseModel):
 class BaseStore(CreatedMixin):
     name: str
     default_currency: str = "USD"
-    email: Optional[EmailStr] = ""
+    email_settings: EmailSettings = EmailSettings()
     checkout_settings: StoreCheckoutSettings = StoreCheckoutSettings()
     theme_settings: StoreThemeSettings = StoreThemeSettings()
-
-    @validator("email", pre=True, always=False)
-    def validate_email(cls, val):
-        if val == "":
-            return None
-        return val
 
     class Config:
         orm_mode = True
 
 
 class CreateStore(BaseStore):
-    email_host: str = ""
-    email_port: int = 25
-    email_user: str = ""
-    email_password: str = ""
-    email_use_ssl: bool = True
     wallets: List[str]
     notifications: Optional[List[str]] = []
     templates: Optional[Dict[str, str]] = {}
@@ -533,7 +544,7 @@ class Policy(BaseModel):
     enable_captcha: bool = False
     explorer_urls: Dict[str, str] = {}
     rpc_urls: Dict[str, str] = {}
-    email_settings: dict = {}
+    email_settings: EmailSettings = EmailSettings()
 
     @validator("explorer_urls", pre=True, always=True)
     def set_explorer_urls(cls, v):
