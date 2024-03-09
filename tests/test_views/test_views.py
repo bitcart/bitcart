@@ -444,7 +444,7 @@ async def test_policies(client: TestClient, token: str):
             "btc": static_data.DEFAULT_EXPLORER,
         },
         "rpc_urls": {},
-        "email_settings": {},
+        "email_settings": schemes.EmailSettings(),
     }
     assert (await client.post("/users", json=static_data.POLICY_USER)).status_code == 422  # registration is off
     # Test for loading data from db instead of loading scheme's defaults
@@ -486,7 +486,7 @@ async def test_policies(client: TestClient, token: str):
             "btc": static_data.DEFAULT_EXPLORER,
         },
         "rpc_urls": {},
-        "email_settings": {},
+        "email_settings": schemes.EmailSettings(),
     }
     assert (await client.post("/users", json=static_data.POLICY_USER)).status_code == 200  # registration is on again
     resp = await client.get("/manage/stores")
@@ -914,7 +914,6 @@ async def test_get_public_store(client: TestClient, store):
         "created",
         "name",
         "default_currency",
-        "email",
         "id",
         "user_id",
         "checkout_settings",
@@ -1540,8 +1539,8 @@ async def test_password_reset(client: TestClient, user, token, mocker):
         nonlocal auth_code
         auth_code = code
 
-    mocker.patch("api.utils.email.email_enabled", return_value=True)
-    mocker.patch("api.utils.email.send_mail", return_value=True)
+    mocker.patch("api.utils.email.Email.is_enabled", return_value=True)
+    mocker.patch("api.utils.email.Email.send_mail", return_value=True)
     mocker.patch("api.utils.routing.get_redirect_url", side_effect=func)
     assert (
         await client.post("/users/reset_password", json={"email": "notexisting@gmail.com", "next_url": "https://example.com"})
@@ -1630,8 +1629,8 @@ async def test_verify_email(client: TestClient, user, token, mocker):
         nonlocal auth_code
         auth_code = code
 
-    mocker.patch("api.utils.email.email_enabled", return_value=True)
-    mocker.patch("api.utils.email.send_mail", return_value=True)
+    mocker.patch("api.utils.email.Email.is_enabled", return_value=True)
+    mocker.patch("api.utils.email.Email.send_mail", return_value=True)
     mocker.patch("api.utils.routing.get_redirect_url", side_effect=func)
     assert (
         await client.post("/users/verify", json={"email": "notexisting@gmail.com", "next_url": "https://example.com"})
@@ -1779,8 +1778,8 @@ async def test_refund_functionality(client: TestClient, user, token, mocker):
         nonlocal full_url
         full_url = refund_url
 
-    mocker.patch("api.utils.email.email_enabled", return_value=True)
-    mocker.patch("api.utils.email.send_mail", return_value=True)
+    mocker.patch("api.utils.email.Email.is_enabled", return_value=True)
+    mocker.patch("api.utils.email.Email.send_mail", return_value=True)
     mocker.patch("api.utils.templates.get_customer_refund_template", side_effect=func)
     resp = await client.post(
         f"/invoices/{invoice_id}/refunds",

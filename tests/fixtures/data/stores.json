@@ -10,12 +10,14 @@
         }
     },
     "response": {
-        "email": null,
-        "email_host": "",
-        "email_password": "",
-        "email_port": 25,
-        "email_user": "",
-        "email_use_ssl": true,
+        "email_settings": {
+            "address": "",
+            "host": "",
+            "port": 25,
+            "user": "",
+            "password": "",
+            "auth_mode": "starttls"
+        },
         "name": "test",
         "default_currency": "USD",
         "checkout_settings": {

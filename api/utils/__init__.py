@@ -2,7 +2,6 @@ from api.utils import (
     authorization,
     common,
     database,
-    email,
     files,
     host,
     logging,
@@ -16,12 +15,13 @@ from api.utils import (
     time,
     wallets,
 )
+from api.utils.email import Email
 
 __all__ = [
     "authorization",
     "common",
     "database",
-    "email",
+    "Email",
     "files",
     "host",
     "logging",

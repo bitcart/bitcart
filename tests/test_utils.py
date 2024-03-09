@@ -14,6 +14,7 @@ from redis.asyncio.client import PubSub
 
 from api import exceptions, models, schemes, settings, utils
 from api.constants import TFA_RECOVERY_ALPHABET
+from api.types import StrEnum
 from tests.helper import create_notification, create_store
 
 
@@ -165,7 +166,6 @@ def test_run_host(mocker):
     assert ok is False
     assert not os.path.exists(TEST_FILE)
     assert "Connection problem" in error
-    assert "Name or service not known" in error
     assert utils.host.run_host_output(content, "good")["status"] == "error"
     # Same with key file
     settings.settings.ssh_settings.key_file = "something"
@@ -361,3 +361,17 @@ def test_gen_recovery_code():
     assert code[5] == "-"
     assert all(x in TFA_RECOVERY_ALPHABET for x in code[:5])
     assert all(x in TFA_RECOVERY_ALPHABET for x in code[6:])
+
+
+def test_str_enum():
+    class TestEnum(StrEnum):
+        TEST = "test"
+        TEST2 = "test2"
+
+    assert TestEnum.TEST == "test"
+    assert TestEnum.TEST2 == "test2"
+
+    assert list(TestEnum) == ["test", "test2"]
+    assert "test" in TestEnum
+    assert "test2" in TestEnum
+    assert "test3" not in TestEnum

@@ -239,12 +239,4 @@ async def get_syncinfo(user: models.User = Security(utils.authorization.auth_dep
 @router.get("/testping")
 async def test_email_ping(user: models.User = Security(utils.authorization.auth_dependency, scopes=["server_management"])):
     policy = await utils.policies.get_setting(schemes.Policy)
-    email_settings = policy.email_settings
-    return utils.email.check_ping(
-        email_settings.get("email_host"),
-        email_settings.get("email_port"),
-        email_settings.get("email_user"),
-        email_settings.get("email_password"),
-        email_settings.get("email"),
-        email_settings.get("email_use_ssl"),
-    )
+    return utils.email.Email.get_email(policy).check_ping()
