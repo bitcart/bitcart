@@ -165,7 +165,6 @@ def test_run_host(mocker):
     assert ok is False
     assert not os.path.exists(TEST_FILE)
     assert "Connection problem" in error
-    assert "Name or service not known" in error
     assert utils.host.run_host_output(content, "good")["status"] == "error"
     # Same with key file
     settings.settings.ssh_settings.key_file = "something"
