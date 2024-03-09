@@ -269,7 +269,6 @@ class StorePluginSettings(BaseModel):
 class BaseStore(CreatedMixin):
     name: str
     default_currency: str = "USD"
-    email_settings: EmailSettings = EmailSettings()
     checkout_settings: StoreCheckoutSettings = StoreCheckoutSettings()
     theme_settings: StoreThemeSettings = StoreThemeSettings()
 
@@ -281,6 +280,7 @@ class CreateStore(BaseStore):
     wallets: List[str]
     notifications: Optional[List[str]] = []
     templates: Optional[Dict[str, str]] = {}
+    email_settings: EmailSettings = EmailSettings()
     plugin_settings: StorePluginSettings = StorePluginSettings()
 
     @validator("notifications", pre=True, always=True)

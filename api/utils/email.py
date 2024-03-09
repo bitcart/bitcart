@@ -50,7 +50,7 @@ class Email:
             logger.debug(f"Checking ping error for {dsn}\n{traceback.format_exc()}")
             return False
 
-    def send_mail(self, where, text, subject="Thank you for your purchase", use_html_templates=False):  # pragma: no cover
+    def send_mail(self, where, text, subject="Thank you for your order", use_html_templates=False):  # pragma: no cover
         if not where:
             return
         message_obj = MIMEMultipart()

@@ -30,6 +30,17 @@ async def set_store_checkout_settings(
     return model
 
 
+@router.patch("/{model_id}/email_settings", response_model=schemes.Store)
+async def set_store_email_settings(
+    model_id: str,
+    settings: schemes.EmailSettings,
+    user: models.User = Security(utils.authorization.auth_dependency, scopes=["store_management"]),
+):
+    model = await utils.database.get_object(models.Store, model_id, user)
+    await model.set_json_key("email_settings", settings)
+    return model
+
+
 @router.patch("/{model_id}/rate_rules")
 async def set_store_rate_rules(
     model_id: str,

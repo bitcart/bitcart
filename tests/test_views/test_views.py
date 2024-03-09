@@ -914,7 +914,6 @@ async def test_get_public_store(client: TestClient, store):
         "created",
         "name",
         "default_currency",
-        "email_settings",
         "id",
         "user_id",
         "checkout_settings",
