@@ -201,7 +201,7 @@ async def invoice_notification(invoice: models.Invoice, status: str):
         await run_hook("invoice_complete", invoice)
         store = await utils.database.get_object(models.Store, invoice.store_id)
         await utils.notifications.notify(store, await utils.templates.get_notify_template(store, invoice))
-        if invoice.products and (email_obj := utils.Email.get_email(store)).is_enabled():
+        if invoice.products and (email_obj := utils.StoreEmail.get_email(store)).is_enabled():
             messages = []
             products = await utils.database.get_objects(models.Product, invoice.products)
             for product in products:

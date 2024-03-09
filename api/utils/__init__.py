@@ -15,7 +15,7 @@ from api.utils import (
     time,
     wallets,
 )
-from api.utils.email import Email
+from api.utils.email import Email, StoreEmail
 
 __all__ = [
     "authorization",
@@ -29,6 +29,7 @@ __all__ = [
     "policies",
     "redis",
     "routing",
+    "StoreEmail",
     "schemes",
     "tasks",
     "templates",

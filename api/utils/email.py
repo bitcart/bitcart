@@ -5,6 +5,7 @@ from email import utils as email_utils
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
+from api.constants import DEFAULT_SENDMAIL_SUBJECT
 from api.logger import get_logger
 from api.schemes import SMTPAuthMode
 
@@ -50,7 +51,7 @@ class Email:
             logger.debug(f"Checking ping error for {dsn}\n{traceback.format_exc()}")
             return False
 
-    def send_mail(self, where, text, subject="Thank you for your order", use_html_templates=False):  # pragma: no cover
+    def send_mail(self, where, text, subject=DEFAULT_SENDMAIL_SUBJECT, use_html_templates=False):  # pragma: no cover
         if not where:
             return
         message_obj = MIMEMultipart()
@@ -64,10 +65,10 @@ class Email:
             server.login(self.user, self.password)
             server.sendmail(self.address, where, message)
 
-    @staticmethod
-    def get_email(model):
+    @classmethod
+    def get_email(cls, model):
         email_settings = model.email_settings
-        return Email(
+        return cls(
             email_settings.host,
             email_settings.port,
             email_settings.user,
@@ -75,3 +76,16 @@ class Email:
             email_settings.address,
             email_settings.auth_mode,
         )
+
+
+class StoreEmail(Email):
+    use_html_templates: bool
+
+    @classmethod
+    def get_email(cls, store):
+        email = super().get_email(store)
+        email.use_html_templates = store.checkout_settings.use_html_templates
+        return email
+
+    def send_mail(self, where, text, subject=DEFAULT_SENDMAIL_SUBJECT):
+        super().send_mail(where, text, subject, self.use_html_templates)

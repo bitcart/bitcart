@@ -144,7 +144,7 @@ async def test_notification_template(client, token, user):
     notification = MockTemplateObj(template_name="notification", mock_name="MockNotification", user_id=user["id"])
     # default notification template
     template = await utils.templates.get_notify_template(notification, invoice)
-    assert template.strip() == "New order from"
+    assert template.strip() == "New order from  for  !"
     # custom template
     resp = await client.post(
         "/templates",

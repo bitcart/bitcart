@@ -12,7 +12,7 @@ def test_default_template_render(notification_template):
     assert template.name == "notification"
     assert template.template_text == notification_template
     assert template.render() == ""  # Silent error handling
-    assert template.render(invoice=DummyInvoice()) == "New order from test@test.com"
+    assert template.render(invoice=DummyInvoice()) == "New order from test@test.com for  !"
 
 
 def test_unknown_template_render():

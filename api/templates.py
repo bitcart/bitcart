@@ -4,9 +4,21 @@ from jinja2 import TemplateError
 from jinja2.sandbox import SandboxedEnvironment
 
 from api.exceptions import TemplateLoadError
+from api.ext.moneyformat import currency_table
 from api.logger import get_exception_message, get_logger
 
+
+def format_decimal(obj, key, **kwargs):  # pragma: no cover
+    if not hasattr(obj, key):
+        return ""
+    value = getattr(obj, key)
+    if not hasattr(obj, "currency"):
+        return value
+    return currency_table.normalize(obj.currency, value)
+
+
 sandbox = SandboxedEnvironment(trim_blocks=True)
+sandbox.filters["format_decimal"] = format_decimal
 
 logger = get_logger(__name__)
 

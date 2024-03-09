@@ -149,7 +149,7 @@ async def refund_invoice(
     )
     if data.send_email and invoice.buyer_email:
         store = await utils.database.get_object(models.Store, invoice.store_id)
-        if utils.email.Email.get_email(store).is_enabled():
+        if (email_obj := utils.StoreEmail.get_email(store)).is_enabled():
             refund_url = urljoin(data.admin_host, f"/refunds/{refund.id}")
             refund.amount = currency_table.normalize(refund.currency, refund.amount)
             refund_template = await apply_filters(
@@ -160,9 +160,7 @@ async def refund_invoice(
                 refund,
                 refund_url,
             )
-            utils.email.Email.get_email(store).send_mail(
-                invoice.buyer_email, refund_template, f"Refund for invoice {invoice.id}"
-            )
+            email_obj.send_mail(invoice.buyer_email, refund_template, f"Refund for invoice {invoice.id}")
     return refund
 
 

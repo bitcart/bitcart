@@ -1,1 +1,1 @@
-New order from {{ invoice.buyer_email }}
+New order from {{ invoice.buyer_email }} for {{ invoice | format_decimal("price") }} {{ invoice.currency }}!
