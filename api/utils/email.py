@@ -1,5 +1,6 @@
 import smtplib
 import traceback
+from dataclasses import dataclass
 from email import utils as email_utils
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -10,15 +11,14 @@ from api.schemes import SMTPAuthMode
 logger = get_logger(__name__)
 
 
+@dataclass
 class Email:
-
-    def __init__(self, host, port, user, password, address, mode=SMTPAuthMode.STARTTLS) -> None:
-        self.host = host
-        self.port = port
-        self.user = user
-        self.password = password
-        self.address = address
-        self.mode = mode
+    host: str
+    port: int
+    user: str
+    password: str
+    address: str
+    mode: SMTPAuthMode = SMTPAuthMode.STARTTLS
 
     def is_enabled(self):
         return self.host and self.port and self.user and self.password and self.address
@@ -26,12 +26,11 @@ class Email:
     def __str__(self) -> str:
         return f"{self.user}:{self.password}@{self.host}:{self.port}?email={self.address}&mode={self.mode}"
 
-    def init_smtp_server(self):
+    def init_smtp_server(self):  # pragma: no cover
         if self.mode == SMTPAuthMode.SSL_TLS:
             server = smtplib.SMTP_SSL(host=self.host, port=self.port, timeout=5)
         else:
             server = smtplib.SMTP(host=self.host, port=self.port, timeout=5)
-
         if self.mode == SMTPAuthMode.STARTTLS:
             server.starttls()
         return server
@@ -61,7 +60,6 @@ class Email:
         message_obj["Date"] = email_utils.formatdate()
         message_obj.attach(MIMEText(text, "html" if use_html_templates else "plain"))
         message = message_obj.as_string()
-
         with self.init_smtp_server() as server:
             server.login(self.user, self.password)
             server.sendmail(self.address, where, message)

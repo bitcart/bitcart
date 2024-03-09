@@ -210,9 +210,8 @@ class EmailSettings(BaseModel):
 
     @validator("auth_mode")
     def validate_auth_mode(cls, v):
-        print(v, list(SMTPAuthMode))
         if v not in SMTPAuthMode:
-            raise HTTPException(422, f"Invalid auth_mode. Expected either of {list(SMTPAuthMode)}.")
+            raise HTTPException(422, f"Invalid auth_mode. Expected either of {', '.join(SMTPAuthMode)}.")
         return v
 
 

@@ -39,8 +39,7 @@ async def generic_email_code_flow(
     redis_key, template_name, email_title, hook_name, user, next_url, expire_time=SHORT_EXPIRATION
 ):
     policy = await utils.policies.get_setting(schemes.Policy)
-    email_obj = utils.email.Email.get_email(policy)
-
+    email_obj = utils.Email.get_email(policy)
     if not email_obj.is_enabled():  # pragma: no cover
         return
     code = utils.common.unique_id()

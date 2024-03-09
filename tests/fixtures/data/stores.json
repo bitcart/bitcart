@@ -13,9 +13,9 @@
         "email_settings": {
             "address": "",
             "host": "",
-            "password": "",
             "port": 25,
             "user": "",
+            "password": "",
             "auth_mode": "starttls"
         },
         "name": "test",

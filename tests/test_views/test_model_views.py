@@ -95,9 +95,6 @@ class ViewTestMixin:
 
     # The actual create is done by data fixture once
     async def test_create(self, state):
-        print(state["data"].items())
-        print("--------------------")
-        print(self.expected_resp(state).items())
         assert state["data"].items() > self.expected_resp(state).items()
         self.check_data(state["data"])
 

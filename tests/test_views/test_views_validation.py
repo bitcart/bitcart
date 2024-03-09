@@ -286,3 +286,15 @@ async def test_payouts_wallet_deleted(client: TestClient, user, token):
     await client.delete(f"/wallets/{wallet_id}", headers={"Authorization": f"Bearer {token}"})
     resp = await client.get(f"/payouts/{payout['id']}", headers={"Authorization": f"Bearer {token}"})
     assert resp.json()["wallet_currency"] is None
+
+
+async def test_store_email_authmode_validation(client: TestClient, token, store):
+    store_id = store["id"]
+    check_validation_failed(
+        await client.patch(
+            f"/stores/{store_id}",
+            json={"email_settings": {"auth_mode": "test"}},
+            headers={"Authorization": f"Bearer {token}"},
+        ),
+        "Invalid auth_mode. Expected either of none, ssl/tls, starttls.",
+    )
