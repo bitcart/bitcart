@@ -317,7 +317,7 @@ class XMRDaemon(BlockProcessorDaemon):
     BLOCK_TIME = 60
     MEMPOOL_TIME = 5
 
-    DEFAULT_MAX_SYNC_BLOCKS = 300  # 10 hours
+    DEFAULT_MAX_SYNC_BLOCKS = 100  # 3.3 hours
 
     UNIT = "piconero"
 

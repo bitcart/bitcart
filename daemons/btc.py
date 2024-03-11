@@ -664,6 +664,15 @@ class BTCDaemon(BaseDaemon):
         del self.wallets[key]
         return True
 
+    @rpc
+    async def switch_server(self, server, wallet=None):
+        try:
+            server = self.electrum.interface.ServerAddr.from_str(server)
+        except Exception:
+            return False
+        await self.daemon.network.switch_to_interface(server)
+        return True
+
 
 if __name__ == "__main__":
     daemon = BTCDaemon()
