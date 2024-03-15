@@ -545,9 +545,9 @@ cytoolz==0.12.3 \
     --hash=sha256:fe8c6267caa7ec67bcc37e360f0d8a26bc3bdce510b15b97f2f2e0143bdd3673 \
     --hash=sha256:fea649f979def23150680de1bd1d09682da3b54932800a0f90f29fc2a6c98ba8
     # via eth-utils
-eth-abi==4.2.1 \
-    --hash=sha256:60d88788d53725794cdb07c0f0bb0df2a31a6e1ad19644313fe6117ac24eeeb0 \
-    --hash=sha256:abd83410a5326145bf178675c276de0ed154f6dc695dcad1beafaa44d97f44ae
+eth-abi==5.0.1 \
+    --hash=sha256:521960d8b4beee514958e1774951dc6b48176aa274e3bd8b166f6921453047ef \
+    --hash=sha256:e9425110c6120c585c9f0db2e8a33d76c4b886b148a65e68fc0035d3917a3b9c
     # via
     #   eth-account
     #   tronpy
@@ -1197,9 +1197,9 @@ toolz==0.12.1 \
     --hash=sha256:d22731364c07d72eea0a0ad45bafb2c2937ab6fd38a3507bf55eae8744aa7d85 \
     --hash=sha256:ecca342664893f177a13dac0e6b41cbd8ac25a358e5f215316d43e2100224f4d
     # via cytoolz
-tronpy==0.4.0 \
-    --hash=sha256:1a828ecdb3c89bab48f8ecdceb2c4ebd4e64a116bb1cfb1964da8ccd1378ef22 \
-    --hash=sha256:d4f329edbb3fd2e85a4983e93369b03fcb03ba1f7cb4549a938d11efbc4d5a76
+tronpy==0.5.0 \
+    --hash=sha256:04b28bc9bd49255ee48757db39c3df48affe8ab36bd7674c2e369ea34e02fc21 \
+    --hash=sha256:2fe9bb26992dfc6a590dc30f3dcc4e631a91c2b5fa89eb785e9389e32d4891cb
     # via -r requirements/daemons/trx.txt
 trontxsize==1.0.6 \
     --hash=sha256:35995eba52482139ce4f548d2c4cd135d0604e6b27f3c6ef846f336251978de1 \
