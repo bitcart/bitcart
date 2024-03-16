@@ -8,7 +8,7 @@ executors:
     parameters:
       v:
         type: string
-        default: "3.8"
+        default: "3.9"
     docker:
       - image: cimg/python:<< parameters.v >>
       - image: circleci/redis:alpine
@@ -199,7 +199,6 @@ workflows:
           matrix:
             parameters:
               v:
-                - "3.8"
                 - "3.9"
                 - "3.10"
                 - "3.11"
