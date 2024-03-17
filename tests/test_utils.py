@@ -19,8 +19,8 @@ from api.types import StrEnum
 from api.utils.authorization import captcha_flow, verify_captcha
 from tests.helper import create_notification, create_store
 
-VALID_CAPTCHA_CODE = "20000000-aaaa-bbbb-cccc-000000000002"
-VALID_CAPTCHA_SECRET = "0x0000000000000000000000000000000000000000"
+VALID_CAPTCHA_CODE = "1x00000000000000000000AA"
+VALID_CAPTCHA_SECRET = "1x0000000000000000000000000000000AA"
 
 
 def test_verify_password():
@@ -385,11 +385,11 @@ def test_str_enum():
 @pytest.mark.anyio
 async def test_verify_captcha():
     # Test with valid code & secret
-    # https://docs.hcaptcha.com/#integration-testing-test-keys
+    # https://developers.cloudflare.com/turnstile/reference/testing
     assert await verify_captcha(code=VALID_CAPTCHA_CODE, secret=VALID_CAPTCHA_SECRET)
 
     # Test with invalid code/secret
-    assert not await verify_captcha(code="non-valid-code", secret=VALID_CAPTCHA_SECRET)
+    assert await verify_captcha(code="non-valid-code", secret=VALID_CAPTCHA_SECRET)  # secret takes precedence
     assert not await verify_captcha(code=VALID_CAPTCHA_CODE, secret="non-valid-secret")
 
 
@@ -406,6 +406,7 @@ async def test_captcha_flow(mocker):
     fake_run_hook.assert_called_once_with("captcha_passed")
 
     fake_run_hook.reset_mock()
+    fake_policy.captcha_secretkey = "non-valid-secret"
     with pytest.raises(HTTPException):
         await captcha_flow("invalid-code")
     fake_run_hook.assert_called_once_with("captcha_failed")

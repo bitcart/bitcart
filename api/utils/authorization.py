@@ -149,16 +149,15 @@ auth_dependency = AuthDependency()
 optional_auth_dependency = AuthDependency(token_required=False)
 
 
-# TODO: add tests for captcha
-async def verify_captcha(code, secret):  # pragma: no cover
+async def verify_captcha(code, secret):
     try:
         async with ClientSession() as session:
             async with session.post(
-                "https://hcaptcha.com/siteverify",
+                "https://challenges.cloudflare.com/turnstile/v0/siteverify",
                 data={"response": code, "secret": secret},
             ) as resp:
                 return (await resp.json())["success"]
-    except Exception:
+    except Exception:  # pragma: no cover
         return False
 
 
