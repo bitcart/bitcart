@@ -666,6 +666,7 @@ class ETHDaemon(BlockProcessorDaemon):
         nonce = kwargs.pop("nonce", None)
         gas_price = kwargs.pop("gas_price", None)
         multiplier = kwargs.pop("speed_multiplier", None)
+        kwargs.pop("fee", None)  # TODO: better unify params
         exec_function = await self.load_contract_exec_function(address, function, *args, **kwargs)
         # pass gas here to avoid calling estimate_gas on an incomplete tx
         tx = await exec_function.build_transaction(

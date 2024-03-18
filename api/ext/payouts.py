@@ -50,17 +50,18 @@ async def prepare_tx(coin, wallet, destination, amount, divisibility):
     else:
         if wallet.contract:
             if amount == SEND_ALL:
-                amount = Decimal(await coin.server.readcontract(wallet.contract, "balanceOf", wallet.xpub)) / Decimal(
+                address = await coin.server.getaddress()
+                amount = Decimal(await coin.server.readcontract(wallet.contract, "balanceOf", address)) / Decimal(
                     10**divisibility
                 )
             raw_tx = await coin.server.transfer(wallet.contract, destination, amount, unsigned=True)
         else:
             if amount == SEND_ALL:
-                request_amount = Decimal((await coin.balance())["confirmed"])
+                amount = Decimal((await coin.balance())["confirmed"])
                 estimated_fee = Decimal(
                     await coin.server.get_default_fee(await coin.server.payto(destination, amount, unsigned=True))
                 )
-                request_amount -= estimated_fee
+                amount -= estimated_fee
             raw_tx = await coin.server.payto(destination, amount, unsigned=True)
     return raw_tx
 
