@@ -2,6 +2,7 @@ import asyncio
 import json
 import weakref
 from decimal import Decimal
+from typing import Any
 
 import httpx
 import trontxsize
@@ -17,7 +18,7 @@ from tronpy import AsyncTron, keys
 from tronpy.abi import trx_abi
 from tronpy.async_tron import AsyncContract, AsyncHTTPProvider, AsyncTransaction
 from tronpy.exceptions import AddressNotFound
-from utils import exception_retry_middleware, rpc
+from utils import AbstractRPCProvider, MultipleProviderRPC, exception_retry_middleware, rpc
 
 with open("daemons/tokens/trc20.json") as f:
     TRC20_TOKENS = json.loads(f.read())
@@ -52,6 +53,23 @@ DEFAULT_FEE_LIMIT = 30_000_000  # 30 TRX
 
 
 # async_tron.AsyncHTTPProvider = AsyncHTTPProvider  # monkey patch
+
+
+class TronRPCProvider(AbstractRPCProvider, AsyncHTTPProvider):
+    async def send_single_request(self, *args, **kwargs):
+        return await self.make_request(*args, **kwargs)
+
+    async def send_ping_request(self):
+        return await self.send_single_request("wallet/getnowblock")
+
+
+class MultipleRPCTronProvider(AsyncHTTPProvider):
+    def __init__(self, rpc: MultipleProviderRPC, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.rpc = rpc
+
+    async def make_request(self, method: str, params: Any = None) -> dict:
+        return await self.rpc.send_request(method, params)
 
 
 class TRXFeatures(BlockchainFeatures):
@@ -164,6 +182,9 @@ class TRXFeatures(BlockchainFeatures):
         block_number = data.get("blockNumber", height + 1) or height + 1
         return max(0, height - block_number + 1)
 
+    def current_server(self):
+        return self.web3.provider.rpc.current_rpc.endpoint_uri
+
 
 class KeyStore(ETHKeyStore):
     def load_account_from_key(self):
@@ -230,16 +251,26 @@ class TRXDaemon(ETHDaemon):
         self.CONTRACTS_CACHE = weakref.WeakValueDictionary()
         self.DECIMALS_CACHE = {}
 
-    def create_coin(self):
-        if self.SERVER and not self.SERVER.endswith("/"):
-            self.SERVER += "/"
-        provider = AsyncHTTPProvider(self.SERVER)
-        provider.make_request = exception_retry_middleware(
-            provider.make_request,
-            (httpx.HTTPError, AsyncClientError, TimeoutError, asyncio.TimeoutError),
-            self.VERBOSE,
-        )
+    async def create_coin(self):
+        for idx in range(len(self.SERVERS)):
+            if not self.SERVERS[idx].endswith("/"):
+                self.SERVERS[idx] += "/"
+        server_providers = []
+        for server in self.SERVERS:
+            server_provider = TronRPCProvider(server)
+            server_provider.make_request = exception_retry_middleware(
+                server_provider.make_request,
+                (httpx.HTTPError, AsyncClientError, TimeoutError, asyncio.TimeoutError),
+                self.VERBOSE,
+            )
+            server_providers.append(server_provider)
+        multi_provider = MultipleProviderRPC(server_providers)
+        await multi_provider.start()
+        provider = MultipleRPCTronProvider(multi_provider)
         self.coin = TRXFeatures(AsyncTron(provider, conf={"fee_limit": DEFAULT_FEE_LIMIT}))
+
+    async def shutdown_coin(self):
+        await self.coin.web3.provider.rpc.stop()
 
     async def check_contract_logs(self, contract, divisibility, from_block=None, to_block=None):
         pass  # we do it right during block processing

@@ -4,6 +4,7 @@ import os
 import traceback
 from collections import deque
 from decimal import Decimal
+from typing import Any
 
 from aiohttp import ClientError as AsyncClientError
 from eth_account import Account
@@ -18,8 +19,17 @@ from hexbytes import HexBytes
 from mnemonic import Mnemonic
 from storage import JSONEncoder as StorageJSONEncoder
 from storage import Storage
-from utils import exception_retry_middleware, load_json_dict, modify_payment_url, rpc, try_cast_num
+from utils import (
+    AbstractRPCProvider,
+    MultipleProviderRPC,
+    exception_retry_middleware,
+    load_json_dict,
+    modify_payment_url,
+    rpc,
+    try_cast_num,
+)
 from web3 import AsyncWeb3
+from web3._utils.rpc_abi import RPC as ETHRPC
 from web3.contract import AsyncContract
 from web3.datastructures import AttributeDict
 from web3.exceptions import ABIFunctionNotFound, BlockNotFound, MethodUnavailable, TransactionNotFound
@@ -28,6 +38,7 @@ from web3.exceptions import Web3Exception
 from web3.middleware import async_simple_cache_middleware
 from web3.middleware.geth_poa import async_geth_poa_middleware
 from web3.providers.rpc import get_default_http_endpoint
+from web3.types import RPCEndpoint, RPCResponse
 
 Account.enable_unaudited_hdwallet_features()
 
@@ -45,6 +56,30 @@ class JSONEncoder(StorageJSONEncoder):
         if isinstance(obj, HexBytes):
             return str(obj.hex())
         return super().default(obj)
+
+
+class MultipleRPCEthereumProvider(AsyncWeb3.AsyncHTTPProvider):
+    def __init__(self, rpc: MultipleProviderRPC, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.rpc = rpc
+
+    async def make_request(self, method: RPCEndpoint, params: Any) -> RPCResponse:
+        return await self.rpc.send_request(method, params)
+
+
+class EthereumRPCProvider(AbstractRPCProvider, AsyncWeb3.AsyncHTTPProvider):
+
+    web3: AsyncWeb3 = None  # patched later when it's created
+    cooked_func = None
+
+    async def prepare_for_requests(self):
+        self.cooked_func = await self.request_func(self.web3, self.web3.middleware_onion)
+
+    async def send_single_request(self, *args, **kwargs):
+        return await self.cooked_func(*args, **kwargs)
+
+    async def send_ping_request(self):
+        return await self.send_single_request(ETHRPC.web3_clientVersion, [])
 
 
 class ETHFeatures(BlockchainFeatures):
@@ -152,6 +187,9 @@ class ETHFeatures(BlockchainFeatures):
         data = data or await self.get_tx_receipt_safe(tx_hash)
         height = await self.get_block_number()
         return max(0, height - (data["blockNumber"] or height + 1) + 1)
+
+    def current_server(self):
+        return self.web3.provider.rpc.current_rpc.endpoint_uri
 
 
 with open("daemons/abi/erc20.json") as f:
@@ -348,16 +386,26 @@ class ETHDaemon(BlockProcessorDaemon):
                 print(f"Error getting logs on contract {contract.address}:")
                 print(traceback.format_exc())
 
-    def create_coin(self):
-        self.coin = ETHFeatures(
-            AsyncWeb3(
-                AsyncWeb3.AsyncHTTPProvider(self.SERVER, request_kwargs={"timeout": 5 * 60}),
-            )
-        )
-        self.coin.web3.provider.middlewares = []
-        self.coin.web3.middleware_onion.inject(async_geth_poa_middleware, layer=0)
-        self.coin.web3.middleware_onion.inject(async_http_retry_request_middleware, layer=0)
-        self.coin.web3.middleware_onion.add(async_simple_cache_middleware)
+    async def create_coin(self):
+        server_providers = []
+        for server in self.SERVERS:
+            provider = EthereumRPCProvider(server, request_kwargs={"timeout": 5 * 60})
+            provider.middlewares = []
+            server_providers.append(provider)
+        provider = MultipleProviderRPC(server_providers)
+        await provider.start()
+        web3 = AsyncWeb3(MultipleRPCEthereumProvider(provider))
+        web3.provider.middlewares = []
+        web3.middleware_onion.inject(async_http_retry_request_middleware, layer=0)
+        for provider in web3.provider.rpc.providers:
+            provider.web3 = web3
+            await provider.prepare_for_requests()  # required to call retry middlewares individually
+        web3.middleware_onion.inject(async_geth_poa_middleware, layer=0)
+        web3.middleware_onion.add(async_simple_cache_middleware)
+        self.coin = ETHFeatures(web3)
+
+    async def shutdown_coin(self):
+        await self.coin.web3.provider.rpc.stop()
 
     def get_default_server_url(self):
         return get_default_http_endpoint()

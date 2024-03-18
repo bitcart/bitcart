@@ -119,6 +119,10 @@ class BlockchainFeatures(metaclass=ABCMeta):
     def to_dict(self, obj):
         return json.loads(StorageJSONEncoder(precision=daemon_ctx.get().DIVISIBILITY).encode(obj))
 
+    @abstractmethod
+    def current_server(self):
+        pass
+
 
 pr_tooltips = {PR_UNPAID: "Unpaid", PR_PAID: "Paid", PR_EXPIRED: "Expired", PR_UNCONFIRMED: "Unconfirmed"}
 
@@ -550,7 +554,6 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
         self.latest_blocks = deque(maxlen=self.MAX_SYNC_BLOCKS)
         self.config_path = os.path.join(self.get_datadir(), "config")
         self.config = ConfigDB(self.config_path)
-        self.create_coin()
         self.env_update_hooks = {"server": self.update_server}  # TODO: add a way to extend
         # initialize wallet storages
         self.wallets = {}
@@ -561,11 +564,16 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
         self.loop = None
         self.synchronized = False
 
-    def update_server(self):
-        self.create_coin()
+    async def update_server(self):
+        await self.shutdown_coin()
+        await self.create_coin()
 
     @abstractmethod
-    def create_coin(self):
+    async def create_coin(self):
+        pass
+
+    @abstractmethod
+    async def shutdown_coin(self):
         pass
 
     @abstractmethod
@@ -574,7 +582,7 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
 
     def load_env(self):
         super().load_env()
-        self.SERVER = self.env("SERVER", default=self.get_default_server_url())
+        self.SERVERS = self.env("SERVER", default=self.get_default_server_url()).split(",")
         max_sync_hours = self.env("MAX_SYNC_HOURS", cast=int, default=1)
         self.MAX_SYNC_BLOCKS = max_sync_hours * self.DEFAULT_MAX_SYNC_BLOCKS
         self.NO_SYNC_WAIT = self.env("EXPERIMENTAL_NOSYNC", cast=bool, default=False)
@@ -591,6 +599,7 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
 
     async def on_startup(self, app):
         await super().on_startup(app)
+        await self.create_coin()
         self.loop = asyncio.get_event_loop()
         if self.latest_height == -1:
             self.latest_height = await self.coin.get_block_number()
@@ -694,6 +703,7 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
         block_number = await self.coin.get_block_number()
         for wallet in list(self.wallets.values()):
             wallet.stop(block_number)
+        await self.shutdown_coin()
         await super().on_shutdown(app)
 
     def get_method_data(self, method):
@@ -926,7 +936,7 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
             "connected": await self.coin.is_connected(),
             "gas_price": await self.getfeerate(),
             "path": path,
-            "server": self.SERVER,
+            "server": self.coin.current_server(),
             "server_height": numblocks,
             "spv_nodes": nodes,
             "synchronized": not await self.coin.is_syncing() and self.synchronized,
@@ -971,7 +981,7 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
 
     @rpc
     def getservers(self, wallet=None):
-        return [self.SERVER]
+        return self.SERVERS
 
     @rpc(requires_network=True)
     @abstractmethod
@@ -1087,13 +1097,13 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
         return self.wallets[wallet].remove_request(key)
 
     @rpc
-    def setconfig(self, key, value, wallet=None):
+    async def setconfig(self, key, value, wallet=None):
         if key.startswith("env_"):
             key = key[4:]
             if key in self.env_names and hasattr(self, key.upper()):
                 setattr(self, key.upper(), value)
                 if key in self.env_update_hooks:
-                    self.env_update_hooks[key]()
+                    await self.env_update_hooks[key]()
             return True
         self.config.set_config(key, value)
         return True

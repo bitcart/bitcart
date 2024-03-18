@@ -47,3 +47,11 @@ class RPCProvider:
             if "result" not in data:
                 raise JSONRPCError("No result field in response")
             return data["result"]
+
+    async def request(self, kind, method, **kwargs):
+        if kind == "jsonrpc":
+            return await self.jsonrpc_request(method, **kwargs)
+        elif kind == "raw":
+            return await self.raw_request(method, **kwargs)
+        else:
+            raise ValueError("Invalid request kind")
