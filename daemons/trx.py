@@ -119,7 +119,7 @@ class TRXFeatures(BlockchainFeatures):
         return f"tron:{req.address}"
 
     async def process_tx_data(self, full_data):
-        if len(full_data["raw_data"]["contract"]) == 0:
+        if len(full_data["raw_data"]["contract"]) == 0 or full_data["ret"][0]["contractRet"] != "SUCCESS":
             return
         contract = full_data["raw_data"]["contract"][0]
         value = contract["parameter"]["value"]
@@ -349,7 +349,7 @@ class TRXDaemon(ETHDaemon):
         exec_function = await self.load_contract_exec_function(address, function, *args, **kwargs)
         tx = (await exec_function).with_owner(self.wallets[wallet].address)
         if fee is not None:
-            tx = tx.fee_limit(fee)
+            tx = tx.fee_limit(to_wei(fee, self.DIVISIBILITY))
         tx = await tx.build()
         if unsigned:
             return tx.to_json()

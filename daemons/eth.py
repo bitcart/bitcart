@@ -613,7 +613,17 @@ class ETHDaemon(BlockProcessorDaemon):
 
     @rpc(requires_wallet=True, requires_network=True)
     async def transfer(
-        self, address, to, value, gas=None, unsigned=False, nonce=None, gas_price=None, speed_multiplier=None, wallet=None
+        self,
+        address,
+        to,
+        value,
+        gas=None,
+        unsigned=False,
+        nonce=None,
+        gas_price=None,
+        speed_multiplier=None,
+        fee=None,
+        wallet=None,
     ):
         try:
             divisibility = await self.readcontract(address, "decimals")
@@ -630,6 +640,7 @@ class ETHDaemon(BlockProcessorDaemon):
             nonce=nonce,
             gas_price=gas_price,
             speed_multiplier=speed_multiplier,
+            fee=fee,
             wallet=wallet,
         )
 
