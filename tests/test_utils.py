@@ -19,8 +19,20 @@ from api.types import StrEnum
 from api.utils.authorization import captcha_flow, verify_captcha
 from tests.helper import create_notification, create_store
 
-VALID_CAPTCHA_CODE = "1x00000000000000000000AA"
-VALID_CAPTCHA_SECRET = "1x0000000000000000000000000000000AA"
+# https://docs.hcaptcha.com/#integration-testing-test-keys
+# https://developers.cloudflare.com/turnstile/reference/testing
+VALID_CAPTCHA = {
+    schemes.CaptchaType.HCAPTCHA: {
+        "API": "https://hcaptcha.com/siteverify",
+        "CODE": "20000000-aaaa-bbbb-cccc-000000000002",
+        "SECRET": "0x0000000000000000000000000000000000000000",
+    },
+    schemes.CaptchaType.CF_TURNSTILE: {
+        "API": "https://challenges.cloudflare.com/turnstile/v0/siteverify",
+        "CODE": "1x00000000000000000000AA",
+        "SECRET": "1x0000000000000000000000000000000AA",
+    },
+}
 
 
 def test_verify_password():
@@ -384,25 +396,49 @@ def test_str_enum():
 
 @pytest.mark.anyio
 async def test_verify_captcha():
-    # Test with valid code & secret
-    # https://developers.cloudflare.com/turnstile/reference/testing
-    assert await verify_captcha(code=VALID_CAPTCHA_CODE, secret=VALID_CAPTCHA_SECRET)
+    for PROVIDER, CAPTCHA in VALID_CAPTCHA.items():
+        # Test with valid code & secret
+        assert await verify_captcha(CAPTCHA["API"], code=CAPTCHA["CODE"], secret=CAPTCHA["SECRET"])
 
-    # Test with invalid code/secret
-    assert await verify_captcha(code="non-valid-code", secret=VALID_CAPTCHA_SECRET)  # secret takes precedence
-    assert not await verify_captcha(code=VALID_CAPTCHA_CODE, secret="non-valid-secret")
+        # Test with invalid code/secret
+        if PROVIDER == schemes.CaptchaType.CF_TURNSTILE:
+            assert await verify_captcha(
+                CAPTCHA["API"], code="non-valid-code", secret=CAPTCHA["SECRET"]
+            )  # secret takes precedence
+        else:
+            assert not await verify_captcha(CAPTCHA["API"], code="non-valid-code", secret=CAPTCHA["SECRET"])
+        assert not await verify_captcha(CAPTCHA["API"], code=CAPTCHA["CODE"], secret="non-valid-secret")
 
 
 @pytest.mark.anyio
-async def test_captcha_flow(mocker):
+async def test_hcaptcha_flow(mocker):
     fake_run_hook = mocker.patch("api.utils.authorization.run_hook")
 
     fake_policy = mocker.Mock()
-    fake_policy.captcha_secretkey = VALID_CAPTCHA_SECRET
-    fake_policy.enable_captcha = True
+    fake_policy.captcha_secretkey = VALID_CAPTCHA[schemes.CaptchaType.HCAPTCHA]["SECRET"]
+    fake_policy.captcha_type = schemes.CaptchaType.HCAPTCHA
     mocker.patch("api.utils.policies.get_setting", return_value=fake_policy)
 
-    await captcha_flow(VALID_CAPTCHA_CODE)
+    await captcha_flow(VALID_CAPTCHA[schemes.CaptchaType.HCAPTCHA]["CODE"])
+    fake_run_hook.assert_called_once_with("captcha_passed")
+
+    fake_run_hook.reset_mock()
+    fake_policy.captcha_secretkey = "non-valid-secret"
+    with pytest.raises(HTTPException):
+        await captcha_flow("invalid-code")
+    fake_run_hook.assert_called_once_with("captcha_failed")
+
+
+@pytest.mark.anyio
+async def test_turnstile_flow(mocker):
+    fake_run_hook = mocker.patch("api.utils.authorization.run_hook")
+
+    fake_policy = mocker.Mock()
+    fake_policy.captcha_secretkey = VALID_CAPTCHA[schemes.CaptchaType.CF_TURNSTILE]["SECRET"]
+    fake_policy.captcha_type = schemes.CaptchaType.CF_TURNSTILE
+    mocker.patch("api.utils.policies.get_setting", return_value=fake_policy)
+
+    await captcha_flow(VALID_CAPTCHA[schemes.CaptchaType.CF_TURNSTILE]["CODE"])
     fake_run_hook.assert_called_once_with("captcha_passed")
 
     fake_run_hook.reset_mock()
