@@ -29,7 +29,7 @@ from monero.transaction import Transaction as MoneroTransaction
 from monero.wallet import Wallet as MoneroWallet
 from storage import JSONEncoder as StorageJSONEncoder
 from storage import Storage
-from utils import exception_retry_middleware, load_json_dict, modify_payment_url, rpc
+from utils import AbstractRPCProvider, MultipleProviderRPC, exception_retry_middleware, load_json_dict, modify_payment_url, rpc
 
 MAX_FETCH_TXES = 100
 
@@ -57,11 +57,8 @@ class Transaction(BaseTransaction):
 class MoneroRPC(RPCProvider):
     def __init__(self, url):
         super().__init__(url)
-        self.jsonrpc_request = exception_retry_middleware(
-            self.jsonrpc_request, (AsyncClientError, TimeoutError, asyncio.TimeoutError), daemon_ctx.get().VERBOSE
-        )
-        self.raw_request = exception_retry_middleware(
-            self.raw_request, (AsyncClientError, TimeoutError, asyncio.TimeoutError), daemon_ctx.get().VERBOSE
+        self.request = exception_retry_middleware(
+            self.request, (AsyncClientError, TimeoutError, asyncio.TimeoutError), daemon_ctx.get().VERBOSE
         )
 
     @staticmethod
@@ -77,7 +74,8 @@ class MoneroRPC(RPCProvider):
         return results
 
     async def _fetch_tx_list(self, hashes):
-        resp = await self.raw_request(
+        resp = await self.request(
+            "raw",
             "get_transactions",
             txs_hashes=hashes,
             decode_as_json=True,
@@ -102,7 +100,7 @@ class MoneroRPC(RPCProvider):
         return txs
 
     async def get_block(self, height):
-        resp = await self.jsonrpc_request("get_block", height=height)
+        resp = await self.request("jsonrpc", "get_block", height=height)
         if resp["status"] != "OK":
             raise Exception(resp["status"])
         block = resp["block_header"]
@@ -114,22 +112,38 @@ class MoneroRPC(RPCProvider):
         }
 
     async def get_mempool(self):
-        resp = await self.raw_request("get_transaction_pool")
+        resp = await self.request("raw", "get_transaction_pool")
         if resp["status"] != "OK":
             raise Exception(resp["status"])
         return resp.get("transactions", [])
 
     async def broadcast(self, tx):
-        resp = await self.raw_request("send_raw_transaction", tx_as_hex=tx)
+        resp = await self.request("raw", "send_raw_transaction", tx_as_hex=tx)
         if resp["status"] != "OK":
             raise Exception(resp["status"])
         return resp
 
     async def get_fee_estimate(self):
-        resp = await self.jsonrpc_request("get_fee_estimate")
+        resp = await self.request("jsonrpc", "get_fee_estimate")
         if resp["status"] != "OK":
             raise Exception(resp["status"])
         return resp["fee"]
+
+
+class MoneroRPCProvider(AbstractRPCProvider, MoneroRPC):
+    async def send_single_request(self, *args, **kwargs):
+        return await self.request(*args, **kwargs)
+
+    async def send_ping_request(self):
+        return await self.send_single_request("jsonrpc", "get_version")
+
+
+class MultipleRPCMoneroProvider(MoneroRPC):
+    def __init__(self, rpc: MultipleProviderRPC, *args, **kwargs):
+        self.rpc = rpc
+
+    async def request(self, kind, method, **kwargs):
+        return await self.rpc.send_request(kind, method, **kwargs)
 
 
 class XMRFeatures(BlockchainFeatures):
@@ -141,7 +155,7 @@ class XMRFeatures(BlockchainFeatures):
         self.get_tx_receipt_safe = self.get_tx_receipt
 
     async def get_block_number(self):
-        return (await self.rpc.jsonrpc_request("get_block_count"))["count"] - 1
+        return (await self.rpc.request("jsonrpc", "get_block_count"))["count"] - 1
 
     async def is_connected(self):
         return True
@@ -214,6 +228,9 @@ class XMRFeatures(BlockchainFeatures):
 
     def to_dict(self, obj):
         return json.loads(JSONEncoder(precision=daemon_ctx.get().DIVISIBILITY).encode(obj))
+
+    def current_server(self):
+        return self.rpc.rpc.current_rpc.url
 
 
 class KeyStore(BaseKeyStore):
@@ -377,8 +394,14 @@ class XMRDaemon(BlockProcessorDaemon):
                     print(traceback.format_exc())
             await asyncio.sleep(self.MEMPOOL_TIME)
 
-    def create_coin(self):
-        self.coin = XMRFeatures(MoneroRPC(self.SERVER))
+    async def create_coin(self):
+        multi_provider = MultipleProviderRPC([MoneroRPCProvider(server) for server in self.SERVERS])
+        await multi_provider.start()
+        provider = MultipleRPCMoneroProvider(multi_provider)
+        self.coin = XMRFeatures(provider)
+
+    async def shutdown_coin(self):
+        await self.coin.rpc.rpc.stop()
 
     def get_default_server_url(self):
         return ""

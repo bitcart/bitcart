@@ -6,6 +6,7 @@ import logging
 import sys
 import time
 import traceback
+from abc import ABCMeta, abstractmethod
 from base64 import b64decode
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -245,3 +246,111 @@ def modify_payment_url(key, url, amount):
     qs[key] = amount
     parsed = parsed._replace(query=urlencode(qs))
     return urlunparse(parsed)
+
+
+class AbstractRPCProvider(metaclass=ABCMeta):
+    @abstractmethod
+    async def send_single_request(self, *args, **kwargs):
+        pass
+
+    @abstractmethod
+    async def send_ping_request(self):
+        pass
+
+
+class MultipleProviderRPC(metaclass=ABCMeta):
+    providers: list[AbstractRPCProvider]
+
+    NEXT_RPC_SWITCH_TIMES = 5
+    RPC_UP_CHECK_TIMES = 5
+    CHECK_STABLE_RPC_INTERVAL = 5 * 60
+
+    RESET = object()  # sentinel
+
+    def __init__(self, providers: list[AbstractRPCProvider]):
+        assert isinstance(providers, list)
+        self.providers = providers
+        if not self.providers:
+            raise ValueError("No urls provided")
+        self.current_rpc_idx = 0
+        self.failed_stats = [0 for _ in self.providers]
+        self.switch_lock = asyncio.Lock()
+        self.locks = [asyncio.Lock() for _ in self.providers]
+        self.running = False
+
+    @property
+    def current_rpc(self):
+        return self.providers[self.current_rpc_idx]
+
+    def prev_rpc_idx(self, idx):
+        return (idx - 1) % len(self.providers)
+
+    def next_rpc_idx(self, idx):
+        return (idx + 1) % len(self.providers)
+
+    async def prev_rpc(self):
+        async with self.switch_lock:
+            await self._edit_failed_stats(self.current_rpc_idx)
+            self.current_rpc_idx = self.prev_rpc_idx(self.current_rpc_idx)
+            return self.current_rpc
+
+    async def next_rpc(self):
+        async with self.switch_lock:
+            await self._edit_failed_stats(self.current_rpc_idx)
+            self.current_rpc_idx = self.next_rpc_idx(self.current_rpc_idx)
+            return self.current_rpc
+
+    def is_last_rpc(self):
+        return self.current_rpc_idx == len(self.providers) - 1
+
+    async def _edit_failed_stats(self, idx, delta=RESET):
+        async with self.locks[idx]:
+            if delta is self.RESET:
+                self.failed_stats[idx] = 0
+            else:
+                self.failed_stats[idx] = max(0, self.failed_stats[idx] + delta)
+
+    async def send_request(self, *args, **kwargs):
+        has_exception = False
+        try:
+            start_rpc_idx = self.current_rpc_idx
+            rpc_idx = start_rpc_idx
+            while True:
+                try:
+                    return await self.providers[rpc_idx].send_single_request(*args, **kwargs)
+                except Exception:
+                    await self._edit_failed_stats(rpc_idx, +1)
+                    if self.failed_stats[rpc_idx] > self.NEXT_RPC_SWITCH_TIMES:
+                        await self.next_rpc()
+                    rpc_idx = self.next_rpc_idx(rpc_idx)
+                    if rpc_idx == start_rpc_idx:
+                        raise
+        except Exception:
+            has_exception = True
+            raise
+        finally:
+            if not has_exception:
+                await self._edit_failed_stats(rpc_idx, -1)
+
+    async def maintain_stable_rpc(self):
+        while self.running:
+            await asyncio.sleep(self.CHECK_STABLE_RPC_INTERVAL)
+            prev_idx = self.current_rpc_idx - 1
+            if prev_idx < 0:
+                continue
+            is_stable = True
+            for _ in range(0, self.RPC_UP_CHECK_TIMES + 1):
+                try:
+                    await self.providers[prev_idx].send_ping_request()
+                except Exception:
+                    is_stable = False
+                    break
+            if is_stable:
+                await self.prev_rpc()
+
+    async def start(self):
+        self.running = True
+        asyncio.ensure_future(self.maintain_stable_rpc())
+
+    async def stop(self):
+        self.running = False
