@@ -308,5 +308,5 @@ async def test_settings_captcha_type_validation(client: TestClient, token, store
             json={"captcha_type": "invalid"},
             headers={"Authorization": f"Bearer {token}"},
         ),
-        f"Invalid captcha_type. Expected either of {', '.join(schemes.CaptchaType)}."
+        f"Invalid captcha_type. Expected either of {', '.join(schemes.CaptchaType)}.",
     )
