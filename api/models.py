@@ -512,15 +512,11 @@ class PaymentMethod(BaseModel):
     hint = Column(Text)
     created = Column(DateTime(True), nullable=False)
 
-    async def to_dict(self, index: int = None):
-        from api import utils
-
+    def to_dict(self, currency, index: int = None):
         data = super().to_dict()
-        invoice_id = data.pop("invoice_id")
-        invoice = await utils.database.get_object(Invoice, invoice_id, load_data=False)  # To avoid recursion
         data["amount"] = currency_table.format_decimal(self.symbol, self.amount, divisibility=self.divisibility)
-        data["rate"] = currency_table.format_decimal(invoice.currency, self.rate)
-        data["rate_str"] = currency_table.format_currency(invoice.currency, self.rate)
+        data["rate"] = currency_table.format_decimal(currency, self.rate)
+        data["rate_str"] = currency_table.format_currency(currency, self.rate)
         data["name"] = self.get_name(index)
         if data["payment_url"].startswith("ethereum:"):  # pragma: no cover
             data["chain_id"] = self.parse_chain_id(data["payment_url"])
@@ -592,10 +588,18 @@ class Invoice(BaseModel):
 
         self.payments = []
         payment_methods = (
-            await PaymentMethod.query.where(PaymentMethod.invoice_id == self.id).order_by(PaymentMethod.created).gino.all()
+            await select([PaymentMethod, Invoice.currency])
+            .where(PaymentMethod.invoice_id == self.id)
+            .where(Invoice.id == PaymentMethod.invoice_id)
+            .order_by(PaymentMethod.created)
+            .gino.load((PaymentMethod, Invoice.currency))
+            .all()
         )
-        for index, method in crud.invoices.get_methods_inds(payment_methods):
-            self.payments.append(await method.to_dict(index))
+
+        self.payments = [
+            method.to_dict(currency, index) for index, method, currency in crud.invoices.get_methods_inds(payment_methods)
+        ]
+
         await super().add_related()
 
     async def create_related(self):

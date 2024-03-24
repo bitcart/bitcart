@@ -303,13 +303,13 @@ def get_methods_inds(methods: list):
     currencies = defaultdict(int)
     met = defaultdict(int)
     for item in methods:
-        if not item.label and not item.lightning:  # custom label not counted
-            currencies[item.symbol] += 1
+        if not item[0].label and not item[0].lightning:  # custom label not counted
+            currencies[item[0].symbol] += 1
     for item in methods:
-        if not item.label and not item.lightning:
-            met[item.symbol] += 1
-        index = met[item.symbol] if currencies[item.symbol] > 1 else None
-        yield index, item
+        if not item[0].label and not item[0].lightning:
+            met[item[0].symbol] += 1
+        index = met[item[0].symbol] if currencies[item[0].symbol] > 1 else None
+        yield index, item[0], item[1]
 
 
 def match_payment(payments, paid_currency):  # pragma: no cover

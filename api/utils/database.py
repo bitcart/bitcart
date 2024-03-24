@@ -1,3 +1,4 @@
+import asyncio
 from contextlib import asynccontextmanager, contextmanager
 from typing import Type, TypeVar
 
@@ -97,8 +98,7 @@ async def get_scalar(query, func, column, use_distinct=True):
 
 
 async def postprocess_func(items):
-    for item in items:
-        await item.load_data()
+    await asyncio.gather(*(item.load_data() for item in items))
     return items
 
 
