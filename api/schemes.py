@@ -529,8 +529,8 @@ class BalanceResponse(BaseModel):
 
 class CaptchaType(StrEnum):
     NONE = "none"
-    HCAPTCHA = "hCaptcha"
-    CF_TURNSTILE = "Cloudflare Turnstile"
+    HCAPTCHA = "hcaptcha"
+    CF_TURNSTILE = "cloudflare_turnstile"
 
 
 class Policy(BaseModel):
