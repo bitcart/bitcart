@@ -149,11 +149,11 @@ auth_dependency = AuthDependency()
 optional_auth_dependency = AuthDependency(token_required=False)
 
 
-async def verify_captcha(code, secret):
+async def verify_captcha(api_uri, code, secret):
     try:
         async with ClientSession() as session:
             async with session.post(
-                "https://challenges.cloudflare.com/turnstile/v0/siteverify",
+                api_uri,
                 data={"response": code, "secret": secret},
             ) as resp:
                 return (await resp.json())["success"]
@@ -163,8 +163,13 @@ async def verify_captcha(code, secret):
 
 async def captcha_flow(code):
     policies = await utils.policies.get_setting(schemes.Policy)
-    if policies.enable_captcha:  # pragma: no cover
-        if not await verify_captcha(code, policies.captcha_secretkey):
+    if policies.captcha_type != schemes.CaptchaType.NONE:  # pragma: no cover
+        if policies.captcha_type == schemes.CaptchaType.HCAPTCHA:
+            api_uri = "https://hcaptcha.com/siteverify"
+        elif policies.captcha_type == schemes.CaptchaType.CF_TURNSTILE:
+            api_uri = "https://challenges.cloudflare.com/turnstile/v0/siteverify"
+
+        if not await verify_captcha(api_uri, code, policies.captcha_secretkey):
             await run_hook("captcha_failed")
             raise HTTPException(401, {"message": "Unauthorized", "status": 403})
         await run_hook("captcha_passed")

@@ -527,6 +527,12 @@ class BalanceResponse(BaseModel):
     lightning: Money
 
 
+class CaptchaType(StrEnum):
+    NONE = "none"
+    HCAPTCHA = "hcaptcha"
+    CF_TURNSTILE = "cloudflare_turnstile"
+
+
 class Policy(BaseModel):
     _SECRET_FIELDS = {"captcha_secretkey", "email_settings"}
 
@@ -540,7 +546,7 @@ class Policy(BaseModel):
     captcha_sitekey: str = ""
     captcha_secretkey: str = ""
     admin_theme_url: str = ""
-    enable_captcha: bool = False
+    captcha_type: str = CaptchaType.NONE
     explorer_urls: Dict[str, str] = {}
     rpc_urls: Dict[str, str] = {}
     email_settings: EmailSettings = EmailSettings()
@@ -567,6 +573,12 @@ class Policy(BaseModel):
                 continue
             if v.get(key) is None:
                 v[key] = settings.settings.get_default_rpc(key)
+        return v
+
+    @validator("captcha_type")
+    def validate_captcha_type(cls, v):
+        if v not in CaptchaType:
+            raise HTTPException(422, f"Invalid captcha_type. Expected either of {', '.join(CaptchaType)}.")
         return v
 
 

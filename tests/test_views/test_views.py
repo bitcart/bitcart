@@ -415,7 +415,7 @@ async def test_policies(client: TestClient, token: str):
         "staging_updates": False,
         "captcha_sitekey": "",
         "admin_theme_url": "",
-        "enable_captcha": False,
+        "captcha_type": schemes.CaptchaType.NONE,
         "explorer_urls": {
             "btc": static_data.DEFAULT_EXPLORER,
         },
@@ -439,7 +439,7 @@ async def test_policies(client: TestClient, token: str):
         "captcha_sitekey": "",
         "captcha_secretkey": "",
         "admin_theme_url": "",
-        "enable_captcha": False,
+        "captcha_type": schemes.CaptchaType.NONE,
         "explorer_urls": {
             "btc": static_data.DEFAULT_EXPLORER,
         },
@@ -458,7 +458,7 @@ async def test_policies(client: TestClient, token: str):
         "staging_updates": False,
         "captcha_sitekey": "",
         "admin_theme_url": "",
-        "enable_captcha": False,
+        "captcha_type": schemes.CaptchaType.NONE,
         "explorer_urls": {
             "btc": static_data.DEFAULT_EXPLORER,
         },
@@ -481,7 +481,7 @@ async def test_policies(client: TestClient, token: str):
         "captcha_sitekey": "",
         "captcha_secretkey": "",
         "admin_theme_url": "",
-        "enable_captcha": False,
+        "captcha_type": schemes.CaptchaType.NONE,
         "explorer_urls": {
             "btc": static_data.DEFAULT_EXPLORER,
         },
