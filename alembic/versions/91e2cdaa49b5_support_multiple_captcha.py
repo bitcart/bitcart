@@ -24,7 +24,7 @@ def upgrade():
         SET value = jsonb_set(
             value::jsonb - '{enable_captcha}',
             '{captcha_type}'::text[],
-            CASE WHEN value::jsonb->>'enable_captcha' = 'true' THEN '"hCaptcha"'::jsonb ELSE '"none"'::jsonb END
+            CASE WHEN value::jsonb->>'enable_captcha' = 'true' THEN '"hcaptcha"'::jsonb ELSE '"none"'::jsonb END
         )
         WHERE name = 'policy'
     """
@@ -40,7 +40,7 @@ def downgrade():
         SET value = jsonb_set(
             value::jsonb - '{captcha_type}',
             '{enable_captcha}'::text[],
-            CASE WHEN value::jsonb->>'captcha_type' = '"hCaptcha"'::jsonb THEN 'true'::jsonb ELSE 'false'::jsonb END
+            CASE WHEN value::jsonb->>'captcha_type' = '"hcaptcha"'::jsonb THEN 'true'::jsonb ELSE 'false'::jsonb END
         )
         WHERE name = 'policy'
     """
