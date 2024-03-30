@@ -52,7 +52,6 @@ class BaseUser(CreatedMixin):
 class CreateUser(BaseUser):
     password: str
     captcha_code: str = ""
-    verify_url: str = ""
 
 
 class User(BaseUser):
@@ -135,7 +134,6 @@ class Token(CreateDBToken):
 
 class ResetPasswordData(BaseModel):
     email: EmailStr
-    next_url: str
     captcha_code: str = ""
 
 

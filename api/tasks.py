@@ -21,7 +21,7 @@ async def send_verification_email(event, event_data):
     user = await utils.database.get_object(models.User, event_data["id"], raise_exception=False)
     if not user:
         return
-    await crud.users.send_verification_email(user, event_data["next_url"])
+    await crud.users.send_verification_email(user)
 
 
 @event_handler.on("sync_wallet")

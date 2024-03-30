@@ -27,7 +27,7 @@ async def create_user(user: schemes.CreateUser, auth_user: schemes.User):
         is_superuser = user.is_superuser
     d = user.dict()
     d["is_superuser"] = is_superuser
-    for key in ("verify_url", "captcha_code"):
+    for key in ("captcha_code",):
         d.pop(key, None)
     obj = await utils.database.create_object(models.User, d)
     if is_superuser and auth_user is None:
@@ -53,13 +53,26 @@ async def generic_email_code_flow(
     await run_hook(f"{hook_name}_requested", user, code)
 
 
-async def reset_user_password(user, next_url):
-    await generic_email_code_flow(RESET_REDIS_KEY, "forgotpassword", "Password reset", "password_reset", user, next_url)
-
-
-async def send_verification_email(user, next_url, expire_time=VERIFY_EMAIL_EXPIRATION):
+async def reset_user_password(user):
     await generic_email_code_flow(
-        VERIFY_REDIS_KEY, "verifyemail", "Verify email", "verify_email", user, next_url, expire_time=expire_time
+        RESET_REDIS_KEY,
+        "forgotpassword",
+        "Password reset",
+        "password_reset",
+        user,
+        utils.routing.prepare_next_url("/forgotpassword"),
+    )
+
+
+async def send_verification_email(user, expire_time=VERIFY_EMAIL_EXPIRATION):
+    await generic_email_code_flow(
+        VERIFY_REDIS_KEY,
+        "verifyemail",
+        "Verify email",
+        "verify_email",
+        user,
+        utils.routing.prepare_next_url("/login/email"),
+        expire_time=expire_time,
     )
 
 
