@@ -1,8 +1,8 @@
-"""
+"""Add payment_id to invoices
 
-Revision ID: 9584780048e2
-Revises: 818bb0f07e9b
-Create Date: 2024-03-24 22:05:51.712728
+Revision ID: 1c45e078409d
+Revises: 91e2cdaa49b5
+Create Date: 2024-04-01 00:20:44.780863
 
 """
 
@@ -11,8 +11,8 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision = "9584780048e2"
-down_revision = "818bb0f07e9b"
+revision = "1c45e078409d"
+down_revision = "91e2cdaa49b5"
 branch_labels = None
 depends_on = None
 
