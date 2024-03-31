@@ -268,17 +268,15 @@ async def update_stock_levels(invoice):
 
 async def update_status(invoice, status, method=None, tx_hashes=[], sent_amount=Decimal(0), set_exception_status=None):
     if status == InvoiceStatus.PENDING and invoice.status == InvoiceStatus.PENDING and method and sent_amount > 0:
-        full_method_name = method.get_name()
-        if True:
-            await invoice.update(
-                paid_currency=full_method_name,
-                payment_id=method.id,
-                discount=method.discount,
-                tx_hashes=tx_hashes,
-                sent_amount=sent_amount,
-                exception_status=InvoiceExceptionStatus.PAID_PARTIAL,
-            ).apply()
-            await process_notifications(invoice)
+        await invoice.update(
+            paid_currency=method.get_name(),
+            payment_id=method.id,
+            discount=method.discount,
+            tx_hashes=tx_hashes,
+            sent_amount=sent_amount,
+            exception_status=InvoiceExceptionStatus.PAID_PARTIAL,
+        ).apply()
+        await process_notifications(invoice)
 
     if (
         invoice.status != status
