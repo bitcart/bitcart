@@ -182,7 +182,7 @@ async def new_block_handler(instance, event, height):
         instance.coin_name.lower(), statuses=[InvoiceStatus.CONFIRMED]
     ):
         with log_errors():  # issues processing one item
-            if invoice.status != InvoiceStatus.CONFIRMED or method.get_name() != invoice.paid_currency or method.lightning:
+            if invoice.status != InvoiceStatus.CONFIRMED or method.id != invoice.payment_id or method.lightning:
                 continue
             await invoice.load_data()
             confirmations = await get_confirmations(method, wallet)
@@ -242,7 +242,7 @@ async def process_notifications(invoice):
             "sent_amount": currency_table.format_decimal(
                 "",
                 invoice.sent_amount,
-                divisibility=crud.invoices.find_sent_amount_divisibility(invoice.id, invoice.payments, invoice.paid_currency),
+                divisibility=crud.invoices.find_sent_amount_divisibility(invoice.id, invoice.payments, invoice.payment_id),
             ),
             "paid_currency": invoice.paid_currency,
         },
@@ -269,9 +269,10 @@ async def update_stock_levels(invoice):
 async def update_status(invoice, status, method=None, tx_hashes=[], sent_amount=Decimal(0), set_exception_status=None):
     if status == InvoiceStatus.PENDING and invoice.status == InvoiceStatus.PENDING and method and sent_amount > 0:
         full_method_name = method.get_name()
-        if not invoice.paid_currency or invoice.paid_currency == full_method_name:
+        if True:
             await invoice.update(
                 paid_currency=full_method_name,
+                payment_id=method.id,
                 discount=method.discount,
                 tx_hashes=tx_hashes,
                 sent_amount=sent_amount,
@@ -287,7 +288,7 @@ async def update_status(invoice, status, method=None, tx_hashes=[], sent_amount=
         log_text = f"Updating status of invoice {invoice.id}"
         if method:
             full_method_name = method.get_name()
-            if (not invoice.paid_currency or invoice.paid_currency == full_method_name) and status in [
+            if status in [
                 InvoiceStatus.PAID,
                 InvoiceStatus.CONFIRMED,
                 InvoiceStatus.COMPLETE,
@@ -299,6 +300,7 @@ async def update_status(invoice, status, method=None, tx_hashes=[], sent_amount=
                 )
                 kwargs = dict(
                     paid_currency=full_method_name,
+                    payment_id=method.id,
                     discount=method.discount,
                     tx_hashes=tx_hashes,
                     sent_amount=sent_amount,
