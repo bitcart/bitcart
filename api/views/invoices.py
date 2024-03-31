@@ -79,10 +79,7 @@ async def update_invoice(
     data: schemes.CustomerUpdateData,
 ):
     item = await utils.database.get_object(models.Invoice, model_id)
-    kwargs = {}
-    for field, value in data:
-        if not getattr(item, field) and value:
-            kwargs[field] = value
+    kwargs = {field: value for field, value in data if not getattr(item, field) and value}
     if kwargs:
         await run_hook("invoice_customer_update", item, kwargs)
         await utils.database.modify_object(item, kwargs)
@@ -137,9 +134,9 @@ async def refund_invoice(
     user: models.User = Security(utils.authorization.auth_dependency, scopes=["invoice_management", "payout_management"]),
 ):
     invoice = await utils.database.get_object(models.Invoice, model_id, user)
-    if not invoice.paid_currency:
+    if not invoice.payment_id:
         raise HTTPException(422, "Can't refund unpaid invoice")
-    payment = crud.invoices.match_payment(invoice.payments, invoice.paid_currency)
+    payment = crud.invoices.match_payment(invoice.payments, invoice.payment_id)
     refund = await utils.database.create_object(
         models.Refund,
         schemes.CreateRefund(

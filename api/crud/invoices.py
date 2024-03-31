@@ -27,9 +27,7 @@ async def validate_stock_levels(products):
         .gino.all()
     )
     for product_id, product_name, quantity in quantities:
-        if quantity == -1:  # unlimited quantity
-            continue
-        if quantity < products[product_id]:
+        if quantity != -1 and quantity < products[product_id]:
             raise HTTPException(
                 422,
                 f"Product {product_name} only has {quantity} items left in stock, requested {products[product_id]}."
@@ -83,17 +81,16 @@ async def create_invoice(invoice: schemes.CreateInvoice, user: schemes.User):
 async def determine_network_fee(coin, wallet, invoice, store, divisibility):  # pragma: no cover
     if not coin.is_eth_based:
         return Decimal(await coin.server.get_default_fee(100))  # 100 bytes
-    else:
-        address = await coin.server.getaddress()
-        tx = await prepare_tx(coin, wallet, address, 0, divisibility)
-        fee = Decimal(await coin.server.get_default_fee(tx))
-        if wallet.contract:
-            coin_no_contract = await settings.settings.get_coin(
-                wallet.currency, {"xpub": wallet.xpub, **wallet.additional_xpub_data}
-            )
-            rate_no_contract = await utils.wallets.get_rate(wallet, invoice.currency, coin=coin_no_contract)
-            return fee * rate_no_contract
-        return fee
+    address = await coin.server.getaddress()
+    tx = await prepare_tx(coin, wallet, address, 0, divisibility)
+    fee = Decimal(await coin.server.get_default_fee(tx))
+    if wallet.contract:
+        coin_no_contract = await settings.settings.get_coin(
+            wallet.currency, {"xpub": wallet.xpub, **wallet.additional_xpub_data}
+        )
+        rate_no_contract = await utils.wallets.get_rate(wallet, invoice.currency, coin=coin_no_contract)
+        return fee * rate_no_contract
+    return fee
 
 
 def match_discount(price, wallet, invoice, discounts, promocode):
@@ -303,30 +300,24 @@ def get_methods_inds(methods: list):
     currencies = defaultdict(int)
     met = defaultdict(int)
     for item in methods:
-        if not item[0].label and not item[0].lightning:  # custom label not counted
-            currencies[item[0].symbol] += 1
+        if not item.label and not item.lightning:  # custom label not counted
+            currencies[item.symbol] += 1
     for item in methods:
-        if not item[0].label and not item[0].lightning:
-            met[item[0].symbol] += 1
-        index = met[item[0].symbol] if currencies[item[0].symbol] > 1 else None
-        yield index, item[0], item[1]
+        if not item.label and not item.lightning:
+            met[item.symbol] += 1
+        index = met[item.symbol] if currencies[item.symbol] > 1 else None
+        yield index, item
 
 
-def match_payment(payments, paid_currency):  # pragma: no cover
-    for method in payments:
-        if method["name"] == paid_currency:
-            return method
-    # Else try matching by prefix (because of indexes like BTC (1), BTC (2))
-    for method in payments:
-        if method["name"].startswith(paid_currency):
-            return method
+def match_payment(payments, payment_id):  # pragma: no cover
+    return next((payment for payment in payments if payment["id"] == payment_id), None)
 
 
-def find_sent_amount_divisibility(obj_id, payments, paid_currency):  # pragma: no cover
-    if not paid_currency:
+def find_sent_amount_divisibility(obj_id, payments, payment_id):  # pragma: no cover
+    if not payment_id:
         return None
-    method = match_payment(payments, paid_currency)
+    method = match_payment(payments, payment_id)
     if method:
         return method["divisibility"]
-    logger.error(f"Could not find sent amount divisibility for invoice {obj_id}, paid_currency={paid_currency}")
+    logger.error(f"Could not find sent amount divisibility for invoice {obj_id}, payment_id={payment_id}")
     return None

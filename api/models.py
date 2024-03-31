@@ -244,7 +244,7 @@ class Wallet(BaseModel):
     user_id = Column(Text, ForeignKey(User.id, ondelete="SET NULL"))
     created = Column(DateTime(True), nullable=False)
     lightning_enabled = Column(Boolean(), default=False)
-    label = Column(Text)
+    label = Column(Text, nullable=False)
     hint = Column(Text)
     contract = Column(Text)
     additional_xpub_data = Column(JSON)
@@ -508,7 +508,7 @@ class PaymentMethod(BaseModel):
     divisibility = Column(Integer)
     user_address = Column(Text)
     node_id = Column(Text)
-    label = Column(Text)
+    label = Column(Text, nullable=False)
     hint = Column(Text)
     created = Column(DateTime(True), nullable=False)
 
@@ -525,15 +525,8 @@ class PaymentMethod(BaseModel):
     @classmethod
     def parse_chain_id(self, url):  # pragma: no cover
         k = url.find("@")
-        if k == -1:
-            return None
-        part = url[k + 1 :]
-        chain_id = ""
-        for i in range(len(part)):
-            if not part[i].isdigit():
-                break
-            chain_id += part[i]
-        return int(chain_id)
+        if k != -1:
+            return int("".join(filter(lambda x: x.isdigit(), url[k + 1 :])))
 
     def get_name(self, index: int = None):
         if self.label:
@@ -561,6 +554,7 @@ class Invoice(BaseModel):
     sent_amount = Column(Numeric(36, 18))
     exception_status = Column(Text)
     currency = Column(Text)
+    payment_id = Column(Text, ForeignKey("paymentmethods.id", ondelete="SET NULL"))
     paid_currency = Column(Text)
     status = Column(Text, nullable=False)
     expiration = Column(Integer)
@@ -587,7 +581,7 @@ class Invoice(BaseModel):
         from api import crud
 
         self.payments = []
-        payment_methods = (
+        query = (
             await select([PaymentMethod, Invoice.currency])
             .where(PaymentMethod.invoice_id == self.id)
             .where(Invoice.id == PaymentMethod.invoice_id)
@@ -596,8 +590,13 @@ class Invoice(BaseModel):
             .all()
         )
 
+        for method, currency in query:
+            method.invoice_currency = currency
+
+        payment_methods = [method for method, _ in query]
+
         self.payments = [
-            method.to_dict(currency, index) for index, method, currency in crud.invoices.get_methods_inds(payment_methods)
+            method.to_dict(method.invoice_currency, index) for index, method in crud.invoices.get_methods_inds(payment_methods)
         ]
 
         await super().add_related()
