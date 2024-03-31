@@ -54,7 +54,7 @@ async def reset_password(data: schemes.ResetPasswordData):
     )
     if not user:
         return True
-    await crud.users.reset_user_password(user, data.next_url)
+    await crud.users.reset_user_password(user)
     return True
 
 
@@ -85,7 +85,7 @@ async def send_verification_email(
         return True
     if user.is_verified:
         raise HTTPException(422, "User is already verified")
-    await crud.users.send_verification_email(user, data.next_url)
+    await crud.users.send_verification_email(user)
     return True
 
 
@@ -111,7 +111,7 @@ async def create_user(
     auth_user: Optional[models.User] = Security(utils.authorization.optional_auth_dependency, scopes=[]),
 ):
     user = await crud.users.create_user(model, auth_user)
-    await events.event_handler.publish("send_verification_email", {"id": user.id, "next_url": model.verify_url})
+    await events.event_handler.publish("send_verification_email", {"id": user.id})
     policies = await utils.policies.get_setting(schemes.Policy)
     if policies.require_verified_email:  # pragma: no cover
         raise HTTPException(403, "Email is not verified")

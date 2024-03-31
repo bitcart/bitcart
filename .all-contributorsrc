@@ -135,6 +135,13 @@
             "avatar_url": "https://avatars.githubusercontent.com/u/11212268?v=4",
             "profile": "https://www.groestlcoin.org/",
             "contributions": ["code"]
+        },
+        {
+            "login": "g00g1",
+            "name": "g00g1",
+            "avatar_url": "https://avatars.githubusercontent.com/u/91201021?v=4",
+            "profile": "https://github.com/g00g1",
+            "contributions": ["code"]
         }
     ],
     "contributorsPerLine": 7,

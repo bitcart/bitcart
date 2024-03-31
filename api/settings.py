@@ -23,7 +23,7 @@ from starlette.config import Config
 from starlette.datastructures import CommaSeparatedStrings
 
 from api import db
-from api.constants import GIT_REPO_URL, PLUGINS_SCHEMA_URL, VERSION, WEBSITE
+from api.constants import GIT_REPO_URL, HTTPS_REVERSE_PROXIES, PLUGINS_SCHEMA_URL, VERSION, WEBSITE
 from api.ext.blockexplorer import EXPLORERS
 from api.ext.exchanges.rates_manager import RatesManager
 from api.ext.notifiers import parse_notifier_schema
@@ -55,6 +55,10 @@ class Settings(BaseSettings):
     admin_plugins_dir: str = Field("data/admin_plugins", env="BITCART_ADMIN_PLUGINS_DIR")
     store_plugins_dir: str = Field("data/store_plugins", env="BITCART_STORE_PLUGINS_DIR")
     docker_plugins_dir: str = Field("data/docker_plugins", env="BITCART_DOCKER_PLUGINS_DIR")
+    admin_host: str = Field("localhost:3000", env="BITCART_ADMIN_HOST")
+    admin_rootpath: str = Field("/", env="BITCART_ADMIN_ROOTPATH")
+    reverseproxy: str = Field("nginx-https", env="BITCART_REVERSEPROXY")
+    https_enabled: bool = Field(False, env="BITCART_HTTPS_ENABLED")
     log_file: str = None
     log_file_name: str = Field(None, env="LOG_FILE")
     log_file_regex: re.Pattern = None
@@ -120,6 +124,17 @@ class Settings(BaseSettings):
     @property
     def connection_str(self):
         return f"postgresql://{self.db_user}:{self.db_password}@{self.db_host}:{self.db_port}/{self.db_name}"
+
+    @property
+    def protocol(self):
+        if self.admin_host.startswith("localhost"):
+            return "http"
+        return "https" if self.https_enabled or self.reverseproxy in HTTPS_REVERSE_PROXIES else "http"
+
+    @property
+    def admin_url(self):
+        rootpath = "" if self.admin_rootpath == "/" else self.admin_rootpath
+        return f"{self.protocol}://{self.admin_host}{rootpath}"
 
     @validator("enabled_cryptos", pre=True, always=True)
     def validate_enabled_cryptos(cls, v):

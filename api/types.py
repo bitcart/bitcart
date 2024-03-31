@@ -12,7 +12,7 @@ class StrEnumMeta(type):
         return new_class
 
     def __contains__(cls, v):
-        return v.lower() in cls.__enum_fields__
+        return v in cls.__enum_fields__
 
     def __iter__(cls):
         return iter(cls.__enum_fields__)

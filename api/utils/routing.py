@@ -9,7 +9,7 @@ from pydantic import BaseModel
 from pydantic import create_model as create_pydantic_model
 from starlette.requests import Request
 
-from api import db, events, models, pagination, utils
+from api import db, events, models, pagination, settings, utils
 
 HTTP_METHODS: List[str] = ["GET", "POST", "PATCH", "DELETE"]
 ENDPOINTS: List[str] = ["get_all", "get_one", "get_count", "post", "patch", "delete", "batch_action"]
@@ -294,3 +294,7 @@ def get_redirect_url(url, **kwargs):
     parsed = parsed._replace(query=url_new_query)
     new_url = urlparse.urlunparse(parsed)
     return new_url
+
+
+def prepare_next_url(path):
+    return urlparse.urljoin(settings.settings.admin_url, path)

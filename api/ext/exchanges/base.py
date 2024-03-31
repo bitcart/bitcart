@@ -40,6 +40,8 @@ class BaseExchange(metaclass=ABCMeta):
             ):
                 try:
                     await self.refresh()
+                    # we don't support quotes which have more than 1 underscore
+                    self.quotes = {k: v for k, v in self.quotes.items() if k.count("_") == 1}
                     self.quotes.update(get_inverse_dict(self.quotes))
                 except Exception as e:
                     logger.error(f"Failed refreshing exchange rates:\n{get_exception_message(e)}")

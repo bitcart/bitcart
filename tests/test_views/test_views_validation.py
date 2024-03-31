@@ -7,6 +7,7 @@ import pytest
 from bitcart.errors import BaseError as BitcartBaseError
 from parametrization import Parametrization
 
+from api import schemes
 from api.constants import BACKUP_FREQUENCIES, BACKUP_PROVIDERS, FEE_ETA_TARGETS, MAX_CONFIRMATION_WATCH
 from tests.fixtures.static_data import TEST_XPUB
 from tests.helper import create_invoice, create_payout, create_product, create_store, create_token, create_user
@@ -297,4 +298,15 @@ async def test_store_email_authmode_validation(client: TestClient, token, store)
             headers={"Authorization": f"Bearer {token}"},
         ),
         "Invalid auth_mode. Expected either of none, ssl/tls, starttls.",
+    )
+
+
+async def test_settings_captcha_type_validation(client: TestClient, token, store):
+    check_validation_failed(
+        await client.post(
+            "/manage/policies",
+            json={"captcha_type": "invalid"},
+            headers={"Authorization": f"Bearer {token}"},
+        ),
+        f"Invalid captcha_type. Expected either of {', '.join(schemes.CaptchaType)}.",
     )

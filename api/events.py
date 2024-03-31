@@ -76,7 +76,7 @@ event_handler = EventHandler(
             "params": {"id"},
         },
         "send_verification_email": {
-            "params": {"id", "next_url"},
+            "params": {"id"},
         },
         "sync_wallet": {
             "params": {"id"},
