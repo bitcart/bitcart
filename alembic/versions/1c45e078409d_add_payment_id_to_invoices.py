@@ -42,18 +42,23 @@ def upgrade():
                 RETURN QUERY
                 SELECT
                     CASE
-                        WHEN COUNT(*) > 1 THEN CAST(ROW_NUMBER() OVER(PARTITION BY symbol ORDER BY id) AS INTEGER)
+                        WHEN pm_count > 1 AND label = '' AND lightning = FALSE THEN
+                        CAST(ROW_NUMBER() OVER(PARTITION BY symbol ORDER BY id) AS INTEGER)
                         ELSE NULL
                     END AS index,
                     id AS payment_method_id
-                FROM
-                    paymentmethods
-                WHERE
-                    invoice_id = inv_id
-                    AND label = ''
-                    AND lightning = FALSE
-                GROUP BY
-                    symbol, id;
+                FROM (
+                    SELECT
+                        id,
+                        symbol,
+                        label,
+                        lightning,
+                        COUNT(*) OVER (PARTITION BY symbol) AS pm_count
+                    FROM
+                        paymentmethods
+                    WHERE
+                        invoice_id = inv_id
+                ) AS subquery;
             END;
             $$ LANGUAGE plpgsql;
 
