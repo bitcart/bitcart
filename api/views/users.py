@@ -2,7 +2,7 @@ import json
 from typing import Optional
 
 import pyotp
-from fastapi import APIRouter, HTTPException, Request, Security
+from fastapi import APIRouter, HTTPException, Query, Request, Security
 from fido2.server import Fido2Server
 from fido2.webauthn import AttestedCredentialData, PublicKeyCredentialRpEntity, PublicKeyCredentialUserEntity
 from sqlalchemy import distinct, func, select
@@ -89,8 +89,8 @@ async def send_verification_email(
     return True
 
 
-@router.post("/verify/finalize/{code}")
-async def finalize_email_verification(code: str):
+@router.post("/verify/finalize/{code}", response_model=schemes.EmailVerifyResponse)
+async def finalize_email_verification(code: str, add_token: bool = Query(False)):
     async with utils.redis.wait_for_redis():
         user_id = await settings.settings.redis_pool.execute_command("GETDEL", f"{crud.users.VERIFY_REDIS_KEY}:{code}")
     if user_id is None:
@@ -99,11 +99,17 @@ async def finalize_email_verification(code: str):
     if not user:  # pragma: no cover
         raise HTTPException(422, "Invalid code")
     await user.update(is_verified=True).apply()
-    return True
+    response = {"success": True, "token": None}
+    if add_token:  # pragma: no cover
+        token = await utils.database.create_object(
+            models.Token, schemes.CreateDBToken(permissions=["full_control"], user_id=user.id)
+        )
+        response["token"] = token.id
+    return response
 
 
 class CreateUserWithToken(schemes.DisplayUser):
-    token: str
+    token: Optional[str]
 
 
 async def create_user(
@@ -113,13 +119,13 @@ async def create_user(
     user = await crud.users.create_user(model, auth_user)
     await events.event_handler.publish("send_verification_email", {"id": user.id})
     policies = await utils.policies.get_setting(schemes.Policy)
-    if policies.require_verified_email:  # pragma: no cover
-        raise HTTPException(403, "Email is not verified")
-    token = await utils.database.create_object(
-        models.Token, schemes.CreateDBToken(permissions=["full_control"], user_id=user.id)
-    )
     data = schemes.DisplayUser.from_orm(user).dict()
-    data["token"] = token.id
+    token = None
+    if not policies.require_verified_email:
+        token = await utils.database.create_object(
+            models.Token, schemes.CreateDBToken(permissions=["full_control"], user_id=user.id)
+        )
+        data["token"] = token.id
     await run_hook("user_created", user, token)
     return data
 

@@ -13,7 +13,7 @@ from fastapi import HTTPException
 from starlette.concurrency import run_in_threadpool
 
 from api import utils
-from api.constants import ALPHABET, ID_LENGTH, STR_TO_BOOL_MAPPING
+from api.constants import ALPHABET, ID_LENGTH, STR_TO_BOOL_MAPPING, TOTP_ALPHABET, TOTP_LENGTH
 
 
 def get_object_name(obj):
@@ -21,7 +21,11 @@ def get_object_name(obj):
 
 
 def unique_id(length=ID_LENGTH):
-    return "".join(secrets.choice(ALPHABET) for i in range(length))
+    return "".join(secrets.choice(ALPHABET) for _ in range(length))
+
+
+def unique_verify_code(length=TOTP_LENGTH):
+    return "".join(secrets.choice(TOTP_ALPHABET) for _ in range(length))
 
 
 async def run_universal(func, *args, **kwargs):

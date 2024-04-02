@@ -17,6 +17,8 @@ HTTPS_REVERSE_PROXIES = [
 ]  # reverse proxies supporting https; NOTE: maybe this could be used by accessing generator package?
 ID_LENGTH = 32  # default length of IDs of all objects except for invoice
 PUBLIC_ID_LENGTH = 22  # The length of invoice and products ids; should be shorter than usual for better UX
+TOTP_LENGTH = 6  # for email verification and such
+TOTP_ALPHABET = string.digits  # only numbers for ease of access
 # as supported by backup.sh
 BACKUP_PROVIDERS = ["local", "scp", "s3"]
 BACKUP_FREQUENCIES = ["daily", "weekly", "monthly"]

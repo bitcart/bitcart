@@ -802,3 +802,8 @@ class RateResult(BaseModel):
 
 class RatesResponse(BaseModel):
     rates: List[RateResult]
+
+
+class EmailVerifyResponse(BaseModel):
+    success: bool
+    token: Optional[str]
