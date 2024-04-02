@@ -30,53 +30,29 @@ def upgrade():
         ["id"],
         ondelete="SET NULL",
     )
-
+    op.execute("UPDATE paymentmethods SET label = '' WHERE label IS NULL")
+    op.execute("UPDATE wallets SET label = '' WHERE label IS NULL")
     op.execute(
         """
             CREATE OR REPLACE FUNCTION get_methods_inds(inv_id TEXT)
             RETURNS TABLE (index int, payment_method_id text) AS
             $$
-            DECLARE
-                currencies INT;
-                met INT;
-                item RECORD;
-                inner_item RECORD;
             BEGIN
-                FOR item IN
-                    SELECT DISTINCT symbol
-                    FROM paymentmethods AS pm
-                    WHERE pm.invoice_id = inv_id
-                LOOP
-                    currencies := 0;
-                    met := 0;
-                    SELECT COUNT(*)
-                    INTO currencies
-                    FROM paymentmethods AS pm
-                    WHERE pm.invoice_id = inv_id
-                    AND symbol = item.symbol
+                RETURN QUERY
+                SELECT
+                    CASE
+                        WHEN COUNT(*) > 1 THEN CAST(ROW_NUMBER() OVER(PARTITION BY symbol ORDER BY id) AS INTEGER)
+                        ELSE NULL
+                    END AS index,
+                    id AS payment_method_id
+                FROM
+                    paymentmethods
+                WHERE
+                    invoice_id = inv_id
                     AND label = ''
-                    AND lightning = FALSE;
-
-                    FOR inner_item IN
-                        SELECT id, label, lightning
-                        FROM paymentmethods  AS pm
-                        WHERE pm.invoice_id = inv_id
-                        AND symbol = item.symbol
-                    LOOP
-                        IF inner_item.label = '' AND inner_item.lightning = FALSE THEN
-                            met := met + 1;
-                        END IF;
-
-                        IF currencies > 1 THEN
-                            index := met;
-                        ELSE
-                            index := NULL;
-                        END IF;
-
-                        payment_method_id := inner_item.id;
-                        RETURN NEXT;
-                    END LOOP;
-                END LOOP;
+                    AND lightning = FALSE
+                GROUP BY
+                    symbol, id;
             END;
             $$ LANGUAGE plpgsql;
 
@@ -113,11 +89,11 @@ def upgrade():
             UPDATE invoices AS i
             SET payment_id = subquery.payment_id
             FROM (
-                SELECT inv.id, inv.paid_currency, gni.payment_id, get_name(gni.payment_id, gni.index)
+                SELECT inv.id, inv.paid_currency, gmi.payment_id, get_name(gmi.payment_id, gmi.index)
                 FROM invoices AS inv
                 JOIN paymentmethods AS pm ON pm.invoice_id = inv.id
-                JOIN LATERAL get_methods_inds(inv.id) AS gni(index, payment_id)
-                ON starts_with(get_name(gni.payment_id, gni.index), inv.paid_currency) AND inv.paid_currency != ''
+                JOIN LATERAL get_methods_inds(inv.id) AS gmi(index, payment_id)
+                ON starts_with(get_name(gmi.payment_id, gmi.index), inv.paid_currency) AND inv.paid_currency != ''
             ) AS subquery(id, paid_currency, payment_id, name)
             WHERE subquery.id = i.id;
         """
