@@ -73,6 +73,7 @@ Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/d
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/restyler"><img src="https://avatars.githubusercontent.com/u/775507?v=4?s=100" width="100px;" alt="restyler"/><br /><sub><b>restyler</b></sub></a><br /><a href="https://github.com/bitcart/bitcart/commits?author=restyler" title="Documentation">📖</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://www.groestlcoin.org/"><img src="https://avatars.githubusercontent.com/u/11212268?v=4?s=100" width="100px;" alt="gruve-p"/><br /><sub><b>gruve-p</b></sub></a><br /><a href="https://github.com/bitcart/bitcart/commits?author=gruve-p" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/g00g1"><img src="https://avatars.githubusercontent.com/u/91201021?v=4?s=100" width="100px;" alt="g00g1"/><br /><sub><b>g00g1</b></sub></a><br /><a href="https://github.com/bitcart/bitcart/commits?author=g00g1" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/Ravaan21"><img src="https://avatars.githubusercontent.com/u/48627542?v=4?s=100" width="100px;" alt="RAVAAN"/><br /><sub><b>RAVAAN</b></sub></a><br /><a href="#security-Ravaan21" title="Security">🛡️</a></td>
     </tr>
   </tbody>
 </table>
