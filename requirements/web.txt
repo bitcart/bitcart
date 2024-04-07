@@ -1,6 +1,7 @@
 -r base.txt
 aiofiles
 alembic
+apprise
 bcrypt==4.0.1 # TODO: remove when passlib is updated
 bitcart
 email-validator
@@ -10,7 +11,6 @@ gino
 hiredis
 Jinja2
 msgpack
-notifiers
 packaging
 paramiko
 passlib[bcrypt]
