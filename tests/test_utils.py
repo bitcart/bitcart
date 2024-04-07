@@ -10,7 +10,6 @@ from decimal import Decimal
 import pytest
 from bitcart.errors import BaseError as BitcartBaseError
 from fastapi import HTTPException
-from notifiers.exceptions import BadArguments
 from redis.asyncio.client import PubSub
 
 from api import exceptions, models, schemes, settings, utils
@@ -272,14 +271,6 @@ def test_search_query_parse_datetime():
     check_date(utils.common.SearchQuery("start_date:-150d").parse_datetime("start_date"), days=150)
 
 
-async def notify(store, expect_raises):
-    if expect_raises:
-        with pytest.raises(BadArguments):
-            await utils.notifications.notify(store, "Text")
-    else:
-        await utils.notifications.notify(store, "Text")
-
-
 async def check_modify_notify(client, store, notification_id, token, base_data, key, value, convert, expect_raises=False):
     assert (
         await client.patch(
@@ -288,7 +279,7 @@ async def check_modify_notify(client, store, notification_id, token, base_data, 
             headers={"Authorization": f"Bearer {token}"},
         )
     ).status_code == 200
-    await notify(store, expect_raises)
+    await utils.notifications.notify(store, "Text")
     # run only if conversion works
     try:
         converted = convert(value)
@@ -299,14 +290,14 @@ async def check_modify_notify(client, store, notification_id, token, base_data, 
                 headers={"Authorization": f"Bearer {token}"},
             )
         ).status_code == 200
-        await notify(store, expect_raises)
+        await utils.notifications.notify(store, "Text")
     except Exception:
         pass
 
 
 @pytest.mark.anyio
 async def test_send_notification(client, token, user, mocker):
-    mocker.patch("notifiers.providers.twilio.Twilio._send_notification", return_value=True)
+    mocker.patch("apprise.plugins.NotifyTwilio.NotifyTwilio.send", return_value=True)  # TODO: TIMOX LAZY
     notification = await create_notification(client, user["id"], token, data={"user_id": 5})
     notification_id = notification["id"]
     data = await create_store(client, user["id"], token, custom_store_attrs={"notifications": [notification_id]})
@@ -314,19 +305,20 @@ async def test_send_notification(client, token, user, mocker):
     store = models.Store(**data)
     resp = await client.patch(
         f"/notifications/{notification_id}",
-        json={"provider": "telegram"},
+        json={"provider": "Telegram"},
         headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 200
     assert resp.json()["data"] == notification["data"]
     resp2 = await client.patch(
         f"/notifications/{notification_id}",
-        json={"provider": "twilio"},
+        json={"provider": "Twilio"},
         headers={"Authorization": f"Bearer {token}"},
     )
     assert resp2.status_code == 200
     assert resp2.json()["data"] == {}
-    await notify(store, expect_raises=True)
+    print("ALEX LAZY")
+    await utils.notifications.notify(store, "Text")
     base_data = {"from": "test", "to": "+111111111111", "account_sid": "test", "auth_token": "test"}
     assert (
         await client.patch(
@@ -335,7 +327,7 @@ async def test_send_notification(client, token, user, mocker):
             headers={"Authorization": f"Bearer {token}"},
         )
     ).status_code == 200
-    await notify(store, expect_raises=False)
+    await utils.notifications.notify(store, "Text")
     # Test that some primitive types are automatically converted
     await check_modify_notify(
         client, store, notification_id, token, base_data, "provide_feedback", "test", bool, expect_raises=False

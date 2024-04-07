@@ -64,6 +64,9 @@ class ViewTestMixin:
         resp = await client.post(
             f"/{self.name}", **self.prepare_data(self.create_data(state)), headers={"Authorization": f"Bearer {token}"}
         )
+        print(resp)
+        print(self.prepare_data(self.create_data(state)))
+        print(resp.json())
         assert resp.status_code == 200
         return resp.json()
 
@@ -119,9 +122,11 @@ class ViewTestMixin:
         assert resp.json() == self.expected_count
 
     async def test_get_one(self, client: TestClient, token: str, state, object_id):
+        print("MEOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOW")
         if self.get_one_auth:
             assert (await client.get(f"/{self.name}/{object_id}")).status_code == 401
         resp = await client.get(f"/{self.name}/{object_id}", headers={"Authorization": f"Bearer {token}"})
+        print(resp)
         assert resp.status_code == 200
         assert resp.json() == state["data"]
 
@@ -185,6 +190,7 @@ class TestNotifications(ViewTestMixin):
 
     @pytest.fixture(autouse=True)
     async def setup(self, state, user, client, token, anyio_backend):
+        print("1MEOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOW!")
         state["user"] = user
         state["data"] = await self.create_object(client, token, state)
 
@@ -221,6 +227,7 @@ class TestStores(ViewTestMixin):
 
     @pytest.fixture(autouse=True)
     async def setup(self, state, user, wallet, notification, client, token, anyio_backend):
+        print("1MEOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOW!")
         state["user"] = user
         state["wallet"] = wallet
         state["notification"] = notification
