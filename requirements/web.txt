@@ -10,6 +10,7 @@ fido2
 gino
 hiredis
 Jinja2
+jsonschema
 msgpack
 packaging
 paramiko
