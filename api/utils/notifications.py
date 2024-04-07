@@ -26,7 +26,7 @@ async def send_ipn(obj, status):  # pragma: no cover
 
 
 # Apply common type conversions which aren't user errors
-def validate_data(provider, data):
+def validate_data(provider, data):  # pragma: no cover
     for json_part in ("args", "tokens"):
         for k, v in provider["details"][json_part].items():
             if ("type" in v) and (k in data.keys()):
