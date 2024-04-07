@@ -104,7 +104,7 @@ async def create_notification(client, user_id: str, token: str, **custom_attrs) 
     default_attrs = {
         "user_id": user_id,
         "name": name,
-        "provider": "telegram",
+        "provider": "Telegram",
         "data": {},
     }
     return await create_model_obj(client, "notifications", default_attrs, custom_attrs, token=token)
