@@ -16,7 +16,6 @@ from aiohttp import ClientSession
 from bitcart import COINS, APIManager
 from bitcart.coin import Coin
 from fastapi import HTTPException
-from notifiers import all_providers, get_notifier
 from pydantic import BaseSettings, Field, validator
 from redis import asyncio as aioredis
 from starlette.config import Config
@@ -26,7 +25,7 @@ from api import db
 from api.constants import GIT_REPO_URL, HTTPS_REVERSE_PROXIES, PLUGINS_SCHEMA_URL, VERSION, WEBSITE
 from api.ext.blockexplorer import EXPLORERS
 from api.ext.exchanges.rates_manager import RatesManager
-from api.ext.notifiers import parse_notifier_schema
+from api.ext.notifiers import all_notifers, get_params
 from api.ext.rpc import RPC
 from api.ext.ssh import load_ssh_settings
 from api.logger import configure_logserver, get_exception_message, get_logger
@@ -236,15 +235,12 @@ class Settings(BaseSettings):
 
     def load_notification_providers(self):
         self.notifiers = {}
-        for provider in all_providers():
-            notifier = get_notifier(provider)
-            properties = parse_notifier_schema(notifier.schema)
-            required = []
-            if "required" in notifier.required:
-                required = notifier.required["required"]
-                if "message" in required:
-                    required.remove("message")
-            self.notifiers[notifier.name] = {"properties": properties, "required": required}
+        for notifier in all_notifers():
+            if isinstance(notifier["service_name"], str):
+                self.notifiers[notifier["service_name"]] = {
+                    "properties": get_params(notifier),
+                    "required": get_params(notifier, need_required=True),
+                }
 
     async def get_coin(self, coin, xpub=None):
         from api.plugins import apply_filters
