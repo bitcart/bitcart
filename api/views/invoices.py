@@ -45,6 +45,7 @@ async def export_invoices(
     pagination: pagination.Pagination = Depends(),
     export_format: str = "json",
     add_payments: bool = False,
+    exclude_manually_marked: bool = False,
     all_users: bool = False,
     user: models.User = Security(utils.authorization.auth_dependency, scopes=["invoice_management"]),
 ):
@@ -56,6 +57,9 @@ async def export_invoices(
     query = pagination.get_base_query(models.Invoice).where(models.Invoice.status == InvoiceStatus.COMPLETE)
     if not all_users:
         query = query.where(models.Invoice.user_id == user.id)
+    if exclude_manually_marked:
+        query = query.where(models.Invoice.status == "complete").where(db.db.func.cardinality(models.Invoice.tx_hashes) > 0)
+
     data = await pagination.get_list(query)
     await utils.database.postprocess_func(data)
     data = list(export_ext.db_to_json(data, add_payments))
