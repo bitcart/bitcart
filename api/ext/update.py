@@ -60,7 +60,7 @@ async def collect_stats():
         "average_invoice_creation_time": str(average_creation_time),
         "number_of_methods": average_number_of_methods_per_invoice,
         "currencies": list(settings.settings.cryptos.keys()),
-        "average_paid_time": average_paid_time,
+        "average_paid_time": str(average_paid_time),
     }
 
 
