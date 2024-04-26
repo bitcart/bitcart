@@ -9,7 +9,7 @@ utils.routing.ModelView.register(
     router,
     "/",
     models.Payout,
-    schemes.Payout,
+    schemes.UpdatePayout,
     schemes.CreatePayout,
     schemes.DisplayPayout,
     custom_methods={

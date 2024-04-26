@@ -15,7 +15,7 @@
         "notification_url": "",
         "redirect_url": "",
         "currency": "USD",
-        "paid_currency": "",
+        "paid_currency": null,
         "expiration": 15,
         "expiration_seconds": 900,
         "metadata": {}
