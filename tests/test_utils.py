@@ -228,7 +228,7 @@ async def test_custom_create_task(caplog):
 @pytest.mark.anyio
 async def test_no_exchange_rates_available(mocker, caplog, wallet):
     mocker.patch("api.settings.settings.exchange_rates.get_rate", side_effect=BitcartBaseError("No exchange rates available"))
-    rate = await utils.wallets.get_rate(schemes.Wallet(**wallet), "USD")
+    rate = await utils.wallets.get_rate(schemes.DisplayWallet(**wallet), "USD")
     assert rate == Decimal(1)
     assert "Error fetching rates" in caplog.text
 
@@ -236,7 +236,7 @@ async def test_no_exchange_rates_available(mocker, caplog, wallet):
 @pytest.mark.anyio
 async def test_broken_coin(mocker, caplog, wallet):
     mocker.patch("bitcart.BTC.balance", side_effect=BitcartBaseError("Coin broken"))
-    success, divisibility, balance = await utils.wallets.get_confirmed_wallet_balance(schemes.Wallet(**wallet))
+    success, divisibility, balance = await utils.wallets.get_confirmed_wallet_balance(schemes.DisplayWallet(**wallet))
     assert not success
     assert divisibility == 8
     assert balance == Decimal(0)

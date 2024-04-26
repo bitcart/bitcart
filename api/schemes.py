@@ -2,12 +2,12 @@ import math
 import warnings
 from datetime import datetime
 from decimal import Decimal
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, ClassVar, Dict, List, Optional, Union
 
 from cryptography.utils import CryptographyDeprecationWarning
 from fastapi.exceptions import HTTPException
 from pydantic import BaseModel as PydanticBaseModel
-from pydantic import EmailStr, root_validator, validator
+from pydantic import EmailStr, Field, root_validator, validator
 from pydantic.utils import GetterDict as PydanticGetterDict
 
 from api.constants import BACKUP_FREQUENCIES, BACKUP_PROVIDERS, FEE_ETA_TARGETS, MAX_CONFIRMATION_WATCH
@@ -25,14 +25,54 @@ class GetterDict(PydanticGetterDict):  # for some reason, by default adding keys
         return setattr(self._obj, key, value)
 
 
+class WorkingMode(StrEnum):
+    CREATE = "create"
+    UPDATE = "update"
+    DISPLAY = "display"
+
+
 class BaseModel(PydanticBaseModel):
+    MODE: ClassVar[str] = WorkingMode.DISPLAY
+
+    @root_validator(pre=True)
+    def remove_hidden(cls, values):
+        return {k: v for k, v in values.items() if k in cls.schema()["properties"]}
+
     class Config:
         getter_dict = GetterDict
+
+        @staticmethod
+        def schema_extra(schema: dict, cls):
+            properties = dict()
+            if cls.MODE != WorkingMode.DISPLAY:
+                for k, v in schema.get("properties", {}).items():
+                    hidden_create = v.get("hidden_create", v.get("hidden", False))
+                    hidden_update = v.get("hidden_update", v.get("hidden", False))
+                    if (
+                        cls.MODE == WorkingMode.CREATE
+                        and not hidden_create
+                        or cls.MODE == WorkingMode.UPDATE
+                        and not hidden_update
+                    ):
+                        properties[k] = v
+                schema["properties"] = properties
+
+
+class CreateModel(BaseModel):
+    MODE: ClassVar[str] = WorkingMode.CREATE
+
+
+class UpdateModel(BaseModel):
+    MODE: ClassVar[str] = WorkingMode.UPDATE
+
+
+class DisplayModel(BaseModel):
+    MODE: ClassVar[str] = WorkingMode.DISPLAY
 
 
 class CreatedMixin(BaseModel):
     metadata: Optional[Dict[str, Any]] = {}
-    created: Optional[datetime]
+    created: Optional[datetime] = Field(hidden=True)
 
     @validator("created", pre=True, always=True)
     def set_created(cls, v):
@@ -55,19 +95,19 @@ class BaseUser(CreatedMixin):
         orm_mode = True
 
 
-class CreateUser(BaseUser):
+class CreateUser(BaseUser, CreateModel):
     password: str
     captcha_code: str = ""
 
 
-class User(BaseUser):
+class User(BaseUser, UpdateModel):
     id: Optional[str]
     password: Optional[str]
     is_verified: bool = False
     is_enabled: bool = True
 
 
-class DisplayUser(BaseUser):
+class DisplayUser(BaseUser, DisplayModel):
     id: Optional[str]
     is_verified: bool
     is_enabled: bool
@@ -84,9 +124,7 @@ class HTTPCreateToken(CreatedMixin):
 
     @validator("permissions", pre=True, always=False)
     def validate_permissions(cls, val):
-        if val == "":
-            return []
-        return val
+        return [] if val == "" else val
 
     class Config:
         orm_mode = True
@@ -152,7 +190,7 @@ class ResetPasswordFinalize(BaseModel):
     logout_all: bool = True
 
 
-class CreateWallet(CreatedMixin):
+class CreateWallet(CreateModel, CreatedMixin):
     name: str
     xpub: str = ""
     currency: str = "btc"
@@ -182,12 +220,16 @@ class CreateWallet(CreatedMixin):
         return val or ""
 
 
-class Wallet(CreateWallet):
-    id: Optional[str]
+class UpdateWallet(UpdateModel, CreateWallet):
+    pass
+
+
+class DisplayWallet(DisplayModel, UpdateWallet):
+    id: str
     user_id: str
-    error: bool = False
     balance: Money
     xpub_name: str
+    error: bool = False
 
     @root_validator(pre=True)
     def set_balance(cls, values):
@@ -360,8 +402,8 @@ class Template(CreateTemplate):
     user_id: str
 
 
-class CreateProduct(CreatedMixin):
-    status: str = "active"
+class CreateProduct(CreateModel, CreatedMixin):
+    status: str = Field(None, hidden_create=True)
     price: Decimal
     quantity: int
     name: str
@@ -369,9 +411,8 @@ class CreateProduct(CreatedMixin):
     description: str = ""
     category: str = ""
     image: Optional[str] = ""
-    store_id: str
+    store_id: Optional[str]
     discounts: Optional[List[str]] = []
-    templates: Optional[Dict[str, str]] = {}
 
     @validator("status", pre=True, always=True)
     def set_status(cls, v):
@@ -381,19 +422,23 @@ class CreateProduct(CreatedMixin):
     def set_discounts(cls, v):
         return v or []
 
-    @validator("templates", pre=True, always=True)
-    def set_templates(cls, v):
-        return v or {}
-
     class Config:
         orm_mode = True
 
 
-class Product(CreateProduct):
-    id: Optional[str]
-    store_id: Optional[str]
+class UpdateProduct(UpdateModel, CreateProduct):
+    pass
+
+
+class DisplayProduct(DisplayModel, UpdateProduct):
+    id: str
     user_id: str
     price: Money
+    templates: Optional[Dict[str, str]]
+
+    @validator("templates", pre=True, always=True)
+    def set_templates(cls, v):
+        return v or {}
 
     @root_validator(pre=True)
     def set_price(cls, values):
@@ -402,25 +447,24 @@ class Product(CreateProduct):
         return values
 
 
-class CreateInvoice(CreatedMixin):
-    price: Decimal
-    store_id: str
-    currency: str = ""
-    paid_currency: Optional[str] = ""
-    sent_amount: Decimal = 0
+class CreateInvoice(CreateModel, CreatedMixin):
+    price: Decimal = 0
+    store_id: str = ""
+    currency: str = Field("", hidden_update=True)
     order_id: Optional[str] = ""
     notification_url: Optional[str] = ""
     redirect_url: Optional[str] = ""
     buyer_email: Optional[EmailStr] = ""
-    promocode: Optional[str] = ""
+    promocode: Optional[str] = Field("", hidden_update=True)
     shipping_address: Optional[str] = ""
     notes: Optional[str] = ""
-    discount: Optional[str]
-    status: str = None
-    exception_status: str = None
+    discount: Optional[str] = Field("", hidden_update=True)
+    status: str = Field(None, hidden_create=True)
+    exception_status: str = Field(None, hidden_create=True, hidden_update=True)
     products: Optional[Union[List[str], Dict[str, int]]] = {}
-    tx_hashes: Optional[List[str]] = []
-    expiration: int = None
+    tx_hashes: Optional[List[str]] = Field([], hidden=True)
+    expiration: int = Field(None, hidden=True)
+    sent_amount: Decimal = Field(0, hidden=True)
 
     @validator("expiration", pre=True, always=True)
     def set_expiration(cls, v):
@@ -428,9 +472,7 @@ class CreateInvoice(CreatedMixin):
 
     @validator("tx_hashes", pre=True, always=False)
     def validate_tx_hashes(cls, val):
-        if val == "":
-            return []
-        return val
+        return [] if val == "" else val
 
     @validator("status", pre=True, always=True)
     def set_status(cls, v):
@@ -444,15 +486,9 @@ class CreateInvoice(CreatedMixin):
 
         return v or InvoiceExceptionStatus.NONE
 
-    @validator("sent_amount", pre=True, always=True)
-    def set_sent_amount(cls, v):
-        return v or Decimal(0)
-
     @validator("buyer_email", pre=True, always=False)
     def validate_buyer_email(cls, val):
-        if val == "":
-            return None
-        return val  # pragma: no cover
+        return None if val == "" else val  # pragma: no cover
 
     @validator("discount", pre=True, always=True)
     def set_discount(cls, val):
@@ -473,9 +509,7 @@ class CustomerUpdateData(BaseModel):
 
     @validator("buyer_email", pre=True, always=False)
     def validate_buyer_email(cls, val):
-        if val == "":
-            return None
-        return val  # pragma: no cover
+        return None if val == "" else val  # pragma: no cover
 
 
 class MethodUpdateData(BaseModel):
@@ -483,13 +517,22 @@ class MethodUpdateData(BaseModel):
     address: str
 
 
-class Invoice(CreateInvoice):
-    id: Optional[str]
-    store_id: Optional[str]
+class UpdateInvoice(UpdateModel, CreateInvoice):
     user_id: str
-    currency: str = "USD"
+    paid_currency: Optional[str] = ""
+
+
+class DisplayInvoice(DisplayModel, UpdateInvoice):
+    id: str
+    time_left: int
+    expiration: int
+    expiration_seconds: int
+    product_names: dict
+    paid_date: Optional[datetime]
+    payments: list = []
+    payment_id: Optional[str] = ""
+    refund_id: Optional[str]
     price: Money
-    sent_amount: Money
 
     @root_validator(pre=True)
     def set_price(cls, values):
@@ -506,17 +549,6 @@ class Invoice(CreateInvoice):
                 ),
             )
         return values
-
-
-class DisplayInvoice(Invoice):
-    time_left: int
-    expiration: int
-    expiration_seconds: int
-    product_names: dict
-    paid_date: Optional[datetime]
-    payments: list = []
-    payment_id: Optional[str] = ""
-    refund_id: Optional[str]
 
 
 class TxResponse(BaseModel):
@@ -699,15 +731,15 @@ class SSHSettings(BaseModel):
         return client
 
 
-class CreatePayout(CreatedMixin):
+class CreatePayout(CreateModel, CreatedMixin):
     amount: Decimal
     destination: str
-    store_id: str
-    wallet_id: str
+    store_id: str = Field(hidden_update=True)
+    wallet_id: Optional[str] = Field(hidden_update=True)
     currency: str = ""
     notification_url: Optional[str] = ""
     max_fee: Optional[Decimal] = None
-    status: str = None
+    status: str = Field(None, hidden=True)
 
     @validator("status", pre=True, always=True)
     def set_status(cls, v):
@@ -723,13 +755,14 @@ class CreatePayout(CreatedMixin):
         orm_mode = True
 
 
-class Payout(CreatePayout):
-    id: Optional[str]
-    store_id: Optional[str]
-    wallet_id: Optional[str]
-    user_id: str
-    currency: str = "USD"
+class UpdatePayout(UpdateModel, CreatePayout):
     tx_hash: Optional[str] = None
+
+
+class DisplayPayout(DisplayModel, UpdatePayout):
+    id: str
+    wallet_currency: Optional[str]
+    user_id: str
     used_fee: Optional[Decimal] = None
     amount: Money
 
@@ -738,10 +771,6 @@ class Payout(CreatePayout):
         if "amount" in values:
             values["amount"] = currency_table.format_decimal(values.get("currency"), values["amount"])
         return values
-
-
-class DisplayPayout(Payout):
-    wallet_currency: Optional[str]
 
 
 class UninstallPluginData(BaseModel):
