@@ -12,7 +12,7 @@ from api import db, models, pagination, schemes, settings, utils
 
 router = APIRouter()
 
-OptionalProductScheme = utils.schemes.to_optional(schemes.Product)
+OptionalProductScheme = utils.schemes.to_optional(schemes.UpdateProduct)
 
 
 def get_image_filename(model_id):
@@ -83,7 +83,7 @@ async def patch_product(
     return item
 
 
-async def delete_product(item: schemes.Product, user: schemes.User) -> schemes.Product:
+async def delete_product(item: schemes.DisplayProduct, user: schemes.User) -> schemes.DisplayProduct:
     utils.files.safe_remove(get_image_local_path(item.id))
     await item.delete()
     return item
@@ -154,8 +154,9 @@ utils.routing.ModelView.register(
     router,
     "/",
     models.Product,
-    schemes.Product,
+    schemes.UpdateProduct,
     schemes.CreateProduct,
+    schemes.DisplayProduct,
     custom_methods={"delete": delete_product, "batch_action": batch_product_action},
     request_handlers={
         "get": get_products,

@@ -173,9 +173,9 @@ utils.routing.ModelView.register(
     router,
     "/",
     models.Wallet,
+    schemes.UpdateWallet,
     schemes.CreateWallet,
-    schemes.CreateWallet,
-    schemes.Wallet,
+    schemes.DisplayWallet,
     background_tasks_mapping={"post": "sync_wallet"},
     scopes=["wallet_management"],
 )

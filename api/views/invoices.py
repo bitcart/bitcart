@@ -219,7 +219,7 @@ utils.routing.ModelView.register(
     router,
     "/",
     models.Invoice,
-    schemes.Invoice,
+    schemes.UpdateInvoice,
     schemes.CreateInvoice,
     schemes.DisplayInvoice,
     custom_methods={
