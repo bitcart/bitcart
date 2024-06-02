@@ -396,6 +396,7 @@ class ETHDaemon(BlockProcessorDaemon):
         await provider.start()
         web3 = AsyncWeb3(MultipleRPCEthereumProvider(provider))
         web3.provider.middlewares = []
+        web3.middleware_onion.clear()
         web3.middleware_onion.inject(async_http_retry_request_middleware, layer=0)
         for provider in web3.provider.rpc.providers:
             provider.web3 = web3
