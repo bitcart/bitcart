@@ -390,14 +390,13 @@ class ETHDaemon(BlockProcessorDaemon):
         server_providers = []
         for server in self.SERVERS:
             provider = EthereumRPCProvider(server, request_kwargs={"timeout": 5 * 60})
-            provider.middlewares = []
+            provider.middlewares = [async_http_retry_request_middleware]
             server_providers.append(provider)
         provider = MultipleProviderRPC(server_providers)
         await provider.start()
         web3 = AsyncWeb3(MultipleRPCEthereumProvider(provider))
         web3.provider.middlewares = []
         web3.middleware_onion.clear()
-        web3.middleware_onion.inject(async_http_retry_request_middleware, layer=0)
         for provider in web3.provider.rpc.providers:
             provider.web3 = web3
             await provider.prepare_for_requests()  # required to call retry middlewares individually
