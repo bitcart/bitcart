@@ -1,6 +1,7 @@
 aiohttp<4.0
 async-lru
-eth-rlp<2.0 # web3 forgot to pin this
+eth-account<0.12 # web3 broke this
+eth-rlp<2.0 # web3 broke this
 mnemonic
 tronpy
 trontxsize
