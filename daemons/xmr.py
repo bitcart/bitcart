@@ -15,7 +15,7 @@ from genericprocessor import Invoice as BaseInvoice
 from genericprocessor import KeyStore as BaseKeyStore
 from genericprocessor import Transaction as BaseTransaction
 from genericprocessor import Wallet as BaseWallet
-from genericprocessor import WalletDB, daemon_ctx, decimal_to_string, from_wei, str_to_bool, to_wei
+from genericprocessor import WalletDB, daemon_ctx, decimal_to_string, from_wei, str_to_bool
 from jsonrpc import RPCProvider
 from monero import const as monero_const
 from monero import ed25519
@@ -566,7 +566,7 @@ class XMRDaemon(BlockProcessorDaemon):
 
     @rpc
     async def modifypaymenturl(self, url, amount, divisibility=None, wallet=None):
-        return modify_payment_url("tx_amount", url, to_wei(amount, divisibility))
+        return modify_payment_url("tx_amount", url, amount)
 
 
 if __name__ == "__main__":
