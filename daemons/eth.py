@@ -363,7 +363,13 @@ class ETHDaemon(BlockProcessorDaemon):
         while self.running:
             (from_addr, tx_hash) = await self.trace_queue.get()
             try:
-                debug_data = await self.archive_coin.debug_trace_tx(tx_hash)
+                debug_data = None
+                for _ in range(5):
+                    debug_data = await self.archive_coin.debug_trace_tx(tx_hash)
+                    if debug_data:
+                        break
+                if not debug_data:
+                    raise Exception(f"Error getting debug trace for {tx_hash}")
                 txes = list(
                     map(
                         lambda x: Transaction(
