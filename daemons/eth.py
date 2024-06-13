@@ -330,8 +330,9 @@ class ETHDaemon(BlockProcessorDaemon):
     async def on_startup(self, app):
         self.trace_available = False
         self.trace_queue = asyncio.Queue()
+        await self.create_coin(archive=True)
         try:
-            await self.coin.debug_trace_tx("0x0000000000000000000000000000000000000000000000000000000000000000")
+            await self.archive_coin.debug_trace_tx("0x0000000000000000000000000000000000000000000000000000000000000000")
         except MethodUnavailable:
             pass
         except Exception as e:
@@ -341,11 +342,15 @@ class ETHDaemon(BlockProcessorDaemon):
         if self.trace_available:
             self.loop.create_task(self.run_trace_queue())
 
+    def load_env(self):
+        super().load_env()
+        self.ARCHIVE_SERVERS = self.env("ARCHIVE_SERVER", default=",".join(self.SERVERS)).split(",")
+
     async def run_trace_queue(self):
         while self.running:
             (from_addr, tx_hash) = await self.trace_queue.get()
             try:
-                debug_data = await self.coin.debug_trace_tx(tx_hash)
+                debug_data = await self.archive_coin.debug_trace_tx(tx_hash)
                 txes = list(
                     map(
                         lambda x: Transaction(
@@ -386,9 +391,10 @@ class ETHDaemon(BlockProcessorDaemon):
                 print(f"Error getting logs on contract {contract.address}:")
                 print(traceback.format_exc())
 
-    async def create_coin(self):
+    async def create_coin(self, archive=False):
         server_providers = []
-        for server in self.SERVERS:
+        server_list = self.ARCHIVE_SERVERS if archive else self.SERVERS
+        for server in server_list:
             provider = EthereumRPCProvider(server, request_kwargs={"timeout": 5 * 60})
             provider.middlewares = [async_http_retry_request_middleware]
             server_providers.append(provider)
@@ -402,7 +408,10 @@ class ETHDaemon(BlockProcessorDaemon):
             await provider.prepare_for_requests()  # required to call retry middlewares individually
         web3.middleware_onion.inject(async_geth_poa_middleware, layer=0)
         web3.middleware_onion.add(async_simple_cache_middleware)
-        self.coin = ETHFeatures(web3)
+        if archive:
+            self.archive_coin = ETHFeatures(web3)
+        else:
+            self.coin = ETHFeatures(web3)
 
     async def shutdown_coin(self):
         await self.coin.web3.provider.rpc.stop()
