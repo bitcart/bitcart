@@ -368,6 +368,7 @@ class ETHDaemon(BlockProcessorDaemon):
                     debug_data = await self.archive_coin.debug_trace_tx(tx_hash)
                     if debug_data:
                         break
+                    await asyncio.sleep(2)
                 if not debug_data:
                     raise Exception(f"Error getting debug trace for {tx_hash}")
                 txes = list(
