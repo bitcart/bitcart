@@ -157,8 +157,12 @@ class ETHFeatures(BlockchainFeatures):
     async def process_tx_data(self, data):
         if "to" not in data:
             return
-        if data["input"] != "0x" and getattr(daemon_ctx.get(), "trace_available", False):
-            await daemon_ctx.get().trace_queue.put((data["from"], str(data["hash"].hex())))
+        if getattr(daemon_ctx.get(), "trace_available", False) and data["input"].hex() != "0x" and data["to"] is not None:
+            try:
+                self.web3.eth.contract(address=data["to"], abi=daemon_ctx.get().ABI).decode_function_input(data["input"])
+            except Exception:
+                if len(await self.web3.eth.get_code(data["to"])) != 0:
+                    await daemon_ctx.get().trace_queue.put((data["from"], str(data["hash"].hex())))
         return Transaction(str(data["hash"].hex()), data["from"], data["to"], data["value"])
 
     def find_all_trace_outputs(self, debug_data, depth=0):
@@ -338,13 +342,16 @@ class ETHDaemon(BlockProcessorDaemon):
         except Exception as e:
             if "transaction not found" in str(e):
                 self.trace_available = True
+        else:
+            self.trace_available = True
         await super().on_startup(app)
         if self.trace_available:
-            self.loop.create_task(self.run_trace_queue())
+            asyncio.gather(*[self.run_trace_queue() for _ in range(self.ARCHIVE_CONCURRENCY)])
 
     def load_env(self):
         super().load_env()
         self.ARCHIVE_SERVERS = self.env("ARCHIVE_SERVER", default=",".join(self.SERVERS)).split(",")
+        self.ARCHIVE_CONCURRENCY = self.env("ARCHIVE_CONCURRENCY", default=10, cast=int)
 
     async def run_trace_queue(self):
         while self.running:
@@ -413,8 +420,10 @@ class ETHDaemon(BlockProcessorDaemon):
         else:
             self.coin = ETHFeatures(web3)
 
-    async def shutdown_coin(self):
+    async def shutdown_coin(self, final=False):
         await self.coin.web3.provider.rpc.stop()
+        if final and hasattr(self, "archive_coin"):
+            await self.archive_coin.web3.provider.rpc.stop()
 
     def get_default_server_url(self):
         return get_default_http_endpoint()

@@ -573,7 +573,7 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    async def shutdown_coin(self):
+    async def shutdown_coin(self, final=False):
         pass
 
     @abstractmethod
@@ -703,7 +703,7 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
         block_number = await self.coin.get_block_number()
         for wallet in list(self.wallets.values()):
             wallet.stop(block_number)
-        await self.shutdown_coin()
+        await self.shutdown_coin(final=True)
         await super().on_shutdown(app)
 
     def get_method_data(self, method):

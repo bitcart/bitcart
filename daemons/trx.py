@@ -269,7 +269,7 @@ class TRXDaemon(ETHDaemon):
         provider = MultipleRPCTronProvider(multi_provider)
         self.coin = TRXFeatures(AsyncTron(provider, conf={"fee_limit": DEFAULT_FEE_LIMIT}))
 
-    async def shutdown_coin(self):
+    async def shutdown_coin(self, final=False):
         await self.coin.web3.provider.rpc.stop()
 
     async def check_contract_logs(self, contract, divisibility, from_block=None, to_block=None):

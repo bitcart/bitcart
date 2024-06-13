@@ -400,7 +400,7 @@ class XMRDaemon(BlockProcessorDaemon):
         provider = MultipleRPCMoneroProvider(multi_provider)
         self.coin = XMRFeatures(provider)
 
-    async def shutdown_coin(self):
+    async def shutdown_coin(self, final=False):
         await self.coin.rpc.rpc.stop()
 
     def get_default_server_url(self):
