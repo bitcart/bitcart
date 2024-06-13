@@ -351,7 +351,7 @@ class ETHDaemon(BlockProcessorDaemon):
     def load_env(self):
         super().load_env()
         self.ARCHIVE_SERVERS = self.env("ARCHIVE_SERVER", default=",".join(self.SERVERS)).split(",")
-        self.ARCHIVE_CONCURRENCY = self.env("ARCHIVE_CONCURRENCY", default=10, cast=int)
+        self.ARCHIVE_CONCURRENCY = self.env("ARCHIVE_CONCURRENCY", default=5, cast=int)
 
     async def run_trace_queue(self):
         while self.running:
