@@ -353,6 +353,12 @@ class ETHDaemon(BlockProcessorDaemon):
         self.ARCHIVE_SERVERS = self.env("ARCHIVE_SERVER", default=",".join(self.SERVERS)).split(",")
         self.ARCHIVE_CONCURRENCY = self.env("ARCHIVE_CONCURRENCY", default=5, cast=int)
 
+    @rpc
+    async def getinfo(self, wallet=None):
+        result = await super().getinfo(wallet)
+        result["trace_enabled"] = self.trace_available
+        return result
+
     async def run_trace_queue(self):
         while self.running:
             (from_addr, tx_hash) = await self.trace_queue.get()
