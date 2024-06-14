@@ -252,11 +252,11 @@ class TRXDaemon(ETHDaemon):
         self.DECIMALS_CACHE = {}
 
     async def create_coin(self):
-        for idx in range(len(self.SERVERS)):
-            if not self.SERVERS[idx].endswith("/"):
-                self.SERVERS[idx] += "/"
+        for idx in range(len(self.SERVER)):
+            if not self.SERVER[idx].endswith("/"):
+                self.SERVER[idx] += "/"
         server_providers = []
-        for server in self.SERVERS:
+        for server in self.SERVER:
             server_provider = TronRPCProvider(server)
             server_provider.make_request = exception_retry_middleware(
                 server_provider.make_request,
@@ -269,7 +269,7 @@ class TRXDaemon(ETHDaemon):
         provider = MultipleRPCTronProvider(multi_provider)
         self.coin = TRXFeatures(AsyncTron(provider, conf={"fee_limit": DEFAULT_FEE_LIMIT}))
 
-    async def shutdown_coin(self, final=False):
+    async def shutdown_coin(self, final=False, archive_only=False):
         await self.coin.web3.provider.rpc.stop()
 
     async def check_contract_logs(self, contract, divisibility, from_block=None, to_block=None):

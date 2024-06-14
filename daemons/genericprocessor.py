@@ -565,6 +565,7 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
         self.synchronized = False
 
     async def update_server(self):
+        self.SERVER = self.SERVER.split(",")
         await self.shutdown_coin()
         await self.create_coin()
 
@@ -573,7 +574,7 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    async def shutdown_coin(self, final=False):
+    async def shutdown_coin(self, final=False, archive_only=False):
         pass
 
     @abstractmethod
@@ -582,7 +583,7 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
 
     def load_env(self):
         super().load_env()
-        self.SERVERS = self.env("SERVER", default=self.get_default_server_url()).split(",")
+        self.SERVER = self.env("SERVER", default=self.get_default_server_url()).split(",")
         max_sync_hours = self.env("MAX_SYNC_HOURS", cast=int, default=1)
         self.MAX_SYNC_BLOCKS = max_sync_hours * self.DEFAULT_MAX_SYNC_BLOCKS
         self.NO_SYNC_WAIT = self.env("EXPERIMENTAL_NOSYNC", cast=bool, default=False)
@@ -981,7 +982,7 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
 
     @rpc
     def getservers(self, wallet=None):
-        return self.SERVERS
+        return self.SERVER
 
     @rpc(requires_network=True)
     @abstractmethod

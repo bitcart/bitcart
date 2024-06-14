@@ -395,12 +395,12 @@ class XMRDaemon(BlockProcessorDaemon):
             await asyncio.sleep(self.MEMPOOL_TIME)
 
     async def create_coin(self):
-        multi_provider = MultipleProviderRPC([MoneroRPCProvider(server) for server in self.SERVERS])
+        multi_provider = MultipleProviderRPC([MoneroRPCProvider(server) for server in self.SERVER])
         await multi_provider.start()
         provider = MultipleRPCMoneroProvider(multi_provider)
         self.coin = XMRFeatures(provider)
 
-    async def shutdown_coin(self, final=False):
+    async def shutdown_coin(self, final=False, archive_only=False):
         await self.coin.rpc.rpc.stop()
 
     def get_default_server_url(self):

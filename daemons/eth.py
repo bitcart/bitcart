@@ -328,9 +328,15 @@ class ETHDaemon(BlockProcessorDaemon):
 
     def __init__(self):
         super().__init__()
+        self.env_update_hooks = {"server": self.update_server, "archive_server": self.update_archive_server}
         self.contracts = {}
         self.contract_heights = self.config.get_dict("contract_heights")
         self.contract_cache = {"decimals": {}, "symbol": {}}
+
+    async def update_archive_server(self):
+        self.ARCHIVE_SERVER = self.ARCHIVE_SERVER.split(",")
+        await self.shutdown_coin(archive_only=True)
+        await self.create_coin(archive=True)
 
     async def on_startup(self, app):
         self.trace_available = False
@@ -352,7 +358,7 @@ class ETHDaemon(BlockProcessorDaemon):
 
     def load_env(self):
         super().load_env()
-        self.ARCHIVE_SERVERS = self.env("ARCHIVE_SERVER", default=",".join(self.SERVERS)).split(",")
+        self.ARCHIVE_SERVER = self.env("ARCHIVE_SERVER", default=",".join(self.SERVER)).split(",")
         self.ARCHIVE_CONCURRENCY = self.env("ARCHIVE_CONCURRENCY", default=20, cast=int)
         self.ARCHIVE_RATE_LIMIT = self.env("ARCHIVE_RATE_LIMIT", default=5, cast=int)
 
@@ -416,7 +422,7 @@ class ETHDaemon(BlockProcessorDaemon):
 
     async def create_coin(self, archive=False):
         server_providers = []
-        server_list = self.ARCHIVE_SERVERS if archive else self.SERVERS
+        server_list = self.ARCHIVE_SERVER if archive else self.SERVER
         for server in server_list:
             provider = EthereumRPCProvider(server, request_kwargs={"timeout": 5 * 60})
             provider.middlewares = [async_http_retry_request_middleware]
@@ -436,9 +442,10 @@ class ETHDaemon(BlockProcessorDaemon):
         else:
             self.coin = ETHFeatures(web3)
 
-    async def shutdown_coin(self, final=False):
-        await self.coin.web3.provider.rpc.stop()
-        if final and hasattr(self, "archive_coin"):
+    async def shutdown_coin(self, final=False, archive_only=False):
+        if not archive_only:
+            await self.coin.web3.provider.rpc.stop()
+        if (archive_only or final) and hasattr(self, "archive_coin"):
             await self.archive_coin.web3.provider.rpc.stop()
 
     def get_default_server_url(self):
