@@ -7,6 +7,7 @@ from decimal import Decimal
 from typing import Any
 
 from aiohttp import ClientError as AsyncClientError
+from aiolimiter import AsyncLimiter
 from eth_account import Account
 from eth_account.messages import encode_defunct
 from eth_keys.datatypes import PrivateKey, PublicKey
@@ -346,12 +347,14 @@ class ETHDaemon(BlockProcessorDaemon):
             self.trace_available = True
         await super().on_startup(app)
         if self.trace_available:
+            self.archive_limiter = AsyncLimiter(1, 1 / self.ARCHIVE_RATE_LIMIT)
             asyncio.gather(*[self.run_trace_queue() for _ in range(self.ARCHIVE_CONCURRENCY)])
 
     def load_env(self):
         super().load_env()
         self.ARCHIVE_SERVERS = self.env("ARCHIVE_SERVER", default=",".join(self.SERVERS)).split(",")
-        self.ARCHIVE_CONCURRENCY = self.env("ARCHIVE_CONCURRENCY", default=5, cast=int)
+        self.ARCHIVE_CONCURRENCY = self.env("ARCHIVE_CONCURRENCY", default=20, cast=int)
+        self.ARCHIVE_RATE_LIMIT = self.env("ARCHIVE_RATE_LIMIT", default=5, cast=int)
 
     @rpc
     async def getinfo(self, wallet=None):
@@ -365,7 +368,8 @@ class ETHDaemon(BlockProcessorDaemon):
             try:
                 debug_data = None
                 for _ in range(5):
-                    debug_data = await self.archive_coin.debug_trace_tx(tx_hash)
+                    async with self.archive_limiter:
+                        debug_data = await self.archive_coin.debug_trace_tx(tx_hash)
                     if debug_data:
                         break
                     await asyncio.sleep(2)
@@ -382,8 +386,7 @@ class ETHDaemon(BlockProcessorDaemon):
                         self.coin.find_all_trace_outputs(debug_data),
                     )
                 )
-                coros = [self.process_transaction(tx) for tx in txes]
-                await asyncio.gather(*coros)
+                [asyncio.ensure_future(self.process_transaction(tx)) for tx in txes]
             except Exception:
                 if self.VERBOSE:
                     print(f"Error processing debug trace for {tx_hash}:")
