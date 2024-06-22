@@ -110,7 +110,7 @@ class BlockchainFeatures(metaclass=ABCMeta):
     def get_gas_price(self) -> int:
         pass
 
-    async def debug_trace_tx(self, tx_hash):
+    async def debug_trace_block(self, block_number):
         return None
 
     def get_wallet_key(self, xpub, *args, **kwargs):
@@ -650,6 +650,8 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
         for block_number in range(start_height, end_height + 1):
             try:
                 await self.trigger_event({"event": "new_block", "height": block_number}, None)
+                if getattr(self, "trace_available", False):
+                    await self.trace_queue.put(block_number)
                 block = await self.coin.get_block_txes(block_number)
                 transactions = []
                 tasks = []

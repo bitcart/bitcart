@@ -33,7 +33,7 @@ from web3 import AsyncWeb3
 from web3._utils.rpc_abi import RPC as ETHRPC
 from web3.contract import AsyncContract
 from web3.datastructures import AttributeDict
-from web3.exceptions import ABIFunctionNotFound, BlockNotFound, MethodUnavailable, TransactionNotFound
+from web3.exceptions import ABIFunctionNotFound, BlockNotFound, TransactionNotFound
 from web3.exceptions import ValidationError as Web3ValidationError
 from web3.exceptions import Web3Exception
 from web3.middleware import async_simple_cache_middleware
@@ -149,31 +149,37 @@ class ETHFeatures(BlockchainFeatures):
             base_url += f"?value={amount_wei}"
         return base_url
 
-    async def debug_trace_tx(self, tx_hash):
+    async def debug_trace_block(self, block_number):
         return await self.web3.manager.coro_request(
-            "debug_traceTransaction",
-            [tx_hash, {"tracer": "callTracer", "timeout": "10s"}],
+            "debug_traceBlockByNumber",
+            [block_number, {"tracer": "callTracer", "timeout": "10s"}],
         )
 
     async def process_tx_data(self, data):
         if "to" not in data:
             return
-        if getattr(daemon_ctx.get(), "trace_available", False) and data["input"].hex() != "0x" and data["to"] is not None:
-            try:
-                self.web3.eth.contract(address=data["to"], abi=daemon_ctx.get().ABI).decode_function_input(data["input"])
-            except Exception:
-                if len(await self.web3.eth.get_code(data["to"])) != 0:
-                    await daemon_ctx.get().trace_queue.put((data["from"], str(data["hash"].hex())))
         return Transaction(str(data["hash"].hex()), data["from"], data["to"], data["value"])
 
-    def find_all_trace_outputs(self, debug_data, depth=0):
+    def find_all_trace_tx_outputs(self, tx_hash, from_addr, debug_data, depth=0):
         if debug_data["input"] == "0x" and "to" in debug_data:
-            return [(self.normalize_address(debug_data["to"]), int(debug_data.get("value", "0x0"), 16))]
+            return [(tx_hash, from_addr, self.normalize_address(debug_data["to"]), int(debug_data.get("value", "0x0"), 16))]
         if depth + 1 >= self.MAX_TRACE_DEPTH:
             return []
         result = []
         for call in debug_data.get("calls", []):
-            result.extend(self.find_all_trace_outputs(call, depth + 1))
+            result.extend(self.find_all_trace_tx_outputs(tx_hash, from_addr, call, depth + 1))
+        return result
+
+    def find_all_trace_outputs(self, debug_data):
+        result = []
+        for tx in debug_data:
+            if tx["result"]["input"] != "0x" and tx["result"]["to"] is not None:
+                try:
+                    self.web3.eth.contract(
+                        address=self.normalize_address(tx["result"]["to"]), abi=daemon_ctx.get().ABI
+                    ).decode_function_input(tx["result"]["input"])
+                except Exception:
+                    result.extend(self.find_all_trace_tx_outputs(tx["txHash"], tx["result"]["from"], tx["result"]))
         return result
 
     def get_tx_hash(self, tx_data):
@@ -343,14 +349,10 @@ class ETHDaemon(BlockProcessorDaemon):
         self.trace_queue = asyncio.Queue()
         await self.create_coin(archive=True)
         try:
-            await self.archive_coin.debug_trace_tx("0x0000000000000000000000000000000000000000000000000000000000000000")
-        except MethodUnavailable:
-            pass
-        except Exception as e:
-            if "transaction not found" in str(e):
-                self.trace_available = True
-        else:
+            await self.archive_coin.debug_trace_block(0)
             self.trace_available = True
+        except Exception:
+            pass
         await super().on_startup(app)
         if self.trace_available:
             self.archive_limiter = AsyncLimiter(1, 1 / self.ARCHIVE_RATE_LIMIT)
@@ -370,24 +372,24 @@ class ETHDaemon(BlockProcessorDaemon):
 
     async def run_trace_queue(self):
         while self.running:
-            (from_addr, tx_hash) = await self.trace_queue.get()
+            block_number = await self.trace_queue.get()
             try:
                 debug_data = None
                 for _ in range(5):
                     async with self.archive_limiter:
-                        debug_data = await self.archive_coin.debug_trace_tx(tx_hash)
+                        debug_data = await self.archive_coin.debug_trace_block(block_number)
                     if debug_data:
                         break
                     await asyncio.sleep(2)
                 if not debug_data:
-                    raise Exception(f"Error getting debug trace for {tx_hash}")
+                    raise Exception(f"Error getting debug trace for {block_number}")
                 txes = list(
                     map(
                         lambda x: Transaction(
-                            tx_hash,
-                            from_addr,
                             x[0],
                             x[1],
+                            x[2],
+                            x[3],
                         ),
                         self.coin.find_all_trace_outputs(debug_data),
                     )
@@ -395,7 +397,7 @@ class ETHDaemon(BlockProcessorDaemon):
                 [asyncio.ensure_future(self.process_transaction(tx)) for tx in txes]
             except Exception:
                 if self.VERBOSE:
-                    print(f"Error processing debug trace for {tx_hash}:")
+                    print(f"Error processing debug trace for {block_number}:")
                     print(traceback.format_exc())
 
     async def check_contract_logs(self, contract, divisibility, from_block=None, to_block=None):
