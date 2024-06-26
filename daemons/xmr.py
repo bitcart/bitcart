@@ -394,7 +394,7 @@ class XMRDaemon(BlockProcessorDaemon):
                     print(traceback.format_exc())
             await asyncio.sleep(self.MEMPOOL_TIME)
 
-    async def create_coin(self):
+    async def create_coin(self, archive=False):
         multi_provider = MultipleProviderRPC([MoneroRPCProvider(server) for server in self.SERVER])
         await multi_provider.start()
         provider = MultipleRPCMoneroProvider(multi_provider)

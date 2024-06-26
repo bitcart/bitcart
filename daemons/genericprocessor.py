@@ -570,7 +570,7 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
         await self.create_coin()
 
     @abstractmethod
-    async def create_coin(self):
+    async def create_coin(self, archive=False):
         pass
 
     @abstractmethod

@@ -251,7 +251,7 @@ class TRXDaemon(ETHDaemon):
         self.CONTRACTS_CACHE = weakref.WeakValueDictionary()
         self.DECIMALS_CACHE = {}
 
-    async def create_coin(self):
+    async def create_coin(self, archive=False):
         for idx in range(len(self.SERVER)):
             if not self.SERVER[idx].endswith("/"):
                 self.SERVER[idx] += "/"
