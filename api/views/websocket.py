@@ -83,6 +83,7 @@ class InvoiceNotify(GenericWebsocketEndpoint):
                         ),
                     ),
                     "paid_currency": self.object.paid_currency,
+                    "payment_id": self.object.payment_id,
                 }
             )
             await websocket.close()

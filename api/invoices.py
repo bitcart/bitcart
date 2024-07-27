@@ -245,6 +245,7 @@ async def process_notifications(invoice):
                 divisibility=crud.invoices.find_sent_amount_divisibility(invoice.id, invoice.payments, invoice.payment_id),
             ),
             "paid_currency": invoice.paid_currency,
+            "payment_id": invoice.payment_id,
         },
     )
     await invoice_notification(invoice, invoice.status)
@@ -268,15 +269,16 @@ async def update_stock_levels(invoice):
 
 async def update_status(invoice, status, method=None, tx_hashes=[], sent_amount=Decimal(0), set_exception_status=None):
     if status == InvoiceStatus.PENDING and invoice.status == InvoiceStatus.PENDING and method and sent_amount > 0:
-        await invoice.update(
-            paid_currency=method.get_name(),
-            payment_id=method.id,
-            discount=method.discount,
-            tx_hashes=tx_hashes,
-            sent_amount=sent_amount,
-            exception_status=InvoiceExceptionStatus.PAID_PARTIAL,
-        ).apply()
-        await process_notifications(invoice)
+        if not invoice.payment_id or invoice.payment_id == method.id:
+            await invoice.update(
+                paid_currency=method.get_name(),
+                payment_id=method.id,
+                discount=method.discount,
+                tx_hashes=tx_hashes,
+                sent_amount=sent_amount,
+                exception_status=InvoiceExceptionStatus.PAID_PARTIAL,
+            ).apply()
+            await process_notifications(invoice)
 
     if (
         invoice.status != status
@@ -286,7 +288,7 @@ async def update_status(invoice, status, method=None, tx_hashes=[], sent_amount=
         log_text = f"Updating status of invoice {invoice.id}"
         if method:
             full_method_name = method.get_name()
-            if status in [
+            if (not invoice.payment_id or invoice.payment_id == method.id) and status in [
                 InvoiceStatus.PAID,
                 InvoiceStatus.CONFIRMED,
                 InvoiceStatus.COMPLETE,

@@ -509,6 +509,7 @@ class DisplayInvoice(Invoice):
     product_names: dict
     paid_date: Optional[datetime]
     payments: list = []
+    payment_id: Optional[str] = ""
     refund_id: Optional[str]
 
 

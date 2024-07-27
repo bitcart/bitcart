@@ -260,6 +260,7 @@ async def test_lightning_pay_flow(
     # check that it was paid with lightning actually
     resp = await client.get(f"/invoices/{invoice_id}")
     assert resp.json()["paid_currency"] == "BTC (⚡)"
+    assert resp.json()["payment_id"] == pay_details["id"]
 
 
 async def apply_batch_payout_action(client, token, command, ids, options={}):

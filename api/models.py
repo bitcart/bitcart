@@ -525,8 +525,15 @@ class PaymentMethod(BaseModel):
     @classmethod
     def parse_chain_id(self, url):  # pragma: no cover
         k = url.find("@")
-        if k != -1:
-            return int("".join(filter(lambda x: x.isdigit(), url[k + 1 :])))
+        if k == -1:
+            return None
+        part = url[k + 1 :]
+        chain_id = ""
+        for i in range(len(part)):
+            if not part[i].isdigit():
+                break
+            chain_id += part[i]
+        return int(chain_id)
 
     def get_name(self, index: int = None):
         if self.label:
@@ -580,23 +587,11 @@ class Invoice(BaseModel):
     async def add_related(self):
         from api import crud
 
-        self.payments = []
-        query = (
-            await select([PaymentMethod, Invoice.currency])
-            .where(PaymentMethod.invoice_id == self.id)
-            .where(Invoice.id == PaymentMethod.invoice_id)
-            .order_by(PaymentMethod.created)
-            .gino.load((PaymentMethod, Invoice.currency))
-            .all()
+        payment_methods = (
+            await PaymentMethod.query.where(PaymentMethod.invoice_id == self.id).order_by(PaymentMethod.created).gino.all()
         )
-
-        for method, currency in query:
-            method.invoice_currency = currency
-
-        payment_methods = [method for method, _ in query]
-
         self.payments = [
-            method.to_dict(method.invoice_currency, index) for index, method in crud.invoices.get_methods_inds(payment_methods)
+            method.to_dict(self.currency, index) for index, method in crud.invoices.get_methods_inds(payment_methods)
         ]
 
         await super().add_related()
