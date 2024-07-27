@@ -1,9 +1,10 @@
 import math
+import warnings
 from datetime import datetime
 from decimal import Decimal
 from typing import Any, Dict, List, Optional, Union
 
-import paramiko
+from cryptography.utils import CryptographyDeprecationWarning
 from fastapi.exceptions import HTTPException
 from pydantic import BaseModel as PydanticBaseModel
 from pydantic import EmailStr, root_validator, validator
@@ -12,6 +13,11 @@ from pydantic.utils import GetterDict as PydanticGetterDict
 from api.constants import BACKUP_FREQUENCIES, BACKUP_PROVIDERS, FEE_ETA_TARGETS, MAX_CONFIRMATION_WATCH
 from api.ext.moneyformat import currency_table
 from api.types import Money, StrEnum
+
+# https://github.com/paramiko/paramiko/issues/2419
+with warnings.catch_warnings():
+    warnings.filterwarnings(action="ignore", category=CryptographyDeprecationWarning)
+    import paramiko
 
 
 class GetterDict(PydanticGetterDict):  # for some reason, by default adding keys is not allowed
