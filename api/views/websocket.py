@@ -79,10 +79,11 @@ class InvoiceNotify(GenericWebsocketEndpoint):
                         "",
                         self.object.sent_amount,
                         divisibility=crud.invoices.find_sent_amount_divisibility(
-                            self.object.id, self.object.payments, self.object.paid_currency
+                            self.object.id, self.object.payments, self.object.payment_id
                         ),
                     ),
                     "paid_currency": self.object.paid_currency,
+                    "payment_id": self.object.payment_id,
                 }
             )
             await websocket.close()

@@ -502,7 +502,7 @@ class Invoice(CreateInvoice):
                 "",
                 values["sent_amount"],
                 divisibility=crud.invoices.find_sent_amount_divisibility(
-                    values["id"], values["payments"], values["paid_currency"]
+                    values["id"], values["payments"], values["payment_id"]
                 ),
             )
         return values
@@ -515,6 +515,7 @@ class DisplayInvoice(Invoice):
     product_names: dict
     paid_date: Optional[datetime]
     payments: list = []
+    payment_id: Optional[str] = ""
     refund_id: Optional[str]
 
 

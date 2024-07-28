@@ -167,14 +167,26 @@ async def test_fiatlist_multi_coins(client: TestClient, mocker):
 
 async def check_ws_response(ws, sent_amount):
     data = await ws.receive_json()
-    assert data == {"status": "paid", "exception_status": "none", "sent_amount": sent_amount, "paid_currency": "BTC"}
+    assert (
+        data.items()
+        >= {"status": "paid", "exception_status": "none", "sent_amount": sent_amount, "paid_currency": "BTC"}.items()
+    )
+    assert data["payment_id"] is not None
     data = await ws.receive_json()
-    assert data == {"status": "complete", "exception_status": "none", "sent_amount": sent_amount, "paid_currency": "BTC"}
+    assert (
+        data.items()
+        >= {"status": "complete", "exception_status": "none", "sent_amount": sent_amount, "paid_currency": "BTC"}.items()
+    )
+    assert data["payment_id"] is not None
 
 
 async def check_ws_response_complete(ws, sent_amount):
     data = await ws.receive_json()
-    assert data == {"status": "complete", "exception_status": "none", "sent_amount": sent_amount, "paid_currency": "BTC"}
+    assert (
+        data.items()
+        >= {"status": "complete", "exception_status": "none", "sent_amount": sent_amount, "paid_currency": "BTC"}.items()
+    )
+    assert data["payment_id"] is not None
 
 
 async def check_ws_response2(ws):
@@ -896,7 +908,9 @@ async def test_create_invoice_and_pay(client, token: str, store):
         DummyInstance(), None, data["payments"][0]["lookup_field"], "complete", None
     )  # pay the invoice
     # validate invoice paid_currency
-    assert (await utils.database.get_object(models.Invoice, invoice_id)).paid_currency == payment_method.currency.upper()
+    final_invoice = await utils.database.get_object(models.Invoice, invoice_id)
+    assert final_invoice.paid_currency == payment_method.currency.upper()
+    assert final_invoice.payment_id == payment_method.id
     await client.delete(f"/invoices/{invoice_id}", headers={"Authorization": f"Bearer {token}"})
 
 

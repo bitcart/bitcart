@@ -244,7 +244,7 @@ class Wallet(BaseModel):
     user_id = Column(Text, ForeignKey(User.id, ondelete="SET NULL"))
     created = Column(DateTime(True), nullable=False)
     lightning_enabled = Column(Boolean(), default=False)
-    label = Column(Text)
+    label = Column(Text, nullable=False)
     hint = Column(Text)
     contract = Column(Text)
     additional_xpub_data = Column(JSON)
@@ -508,19 +508,15 @@ class PaymentMethod(BaseModel):
     divisibility = Column(Integer)
     user_address = Column(Text)
     node_id = Column(Text)
-    label = Column(Text)
+    label = Column(Text, nullable=False)
     hint = Column(Text)
     created = Column(DateTime(True), nullable=False)
 
-    async def to_dict(self, index: int = None):
-        from api import utils
-
+    def to_dict(self, currency, index: int = None):
         data = super().to_dict()
-        invoice_id = data.pop("invoice_id")
-        invoice = await utils.database.get_object(Invoice, invoice_id, load_data=False)  # To avoid recursion
         data["amount"] = currency_table.format_decimal(self.symbol, self.amount, divisibility=self.divisibility)
-        data["rate"] = currency_table.format_decimal(invoice.currency, self.rate)
-        data["rate_str"] = currency_table.format_currency(invoice.currency, self.rate)
+        data["rate"] = currency_table.format_decimal(currency, self.rate)
+        data["rate_str"] = currency_table.format_currency(currency, self.rate)
         data["name"] = self.get_name(index)
         if data["payment_url"].startswith("ethereum:"):  # pragma: no cover
             data["chain_id"] = self.parse_chain_id(data["payment_url"])
@@ -565,6 +561,7 @@ class Invoice(BaseModel):
     sent_amount = Column(Numeric(36, 18))
     exception_status = Column(Text)
     currency = Column(Text)
+    payment_id = Column(Text, ForeignKey("paymentmethods.id", ondelete="SET NULL"))
     paid_currency = Column(Text)
     status = Column(Text, nullable=False)
     expiration = Column(Integer)
@@ -590,12 +587,13 @@ class Invoice(BaseModel):
     async def add_related(self):
         from api import crud
 
-        self.payments = []
         payment_methods = (
             await PaymentMethod.query.where(PaymentMethod.invoice_id == self.id).order_by(PaymentMethod.created).gino.all()
         )
-        for index, method in crud.invoices.get_methods_inds(payment_methods):
-            self.payments.append(await method.to_dict(index))
+        self.payments = [
+            method.to_dict(self.currency, index) for index, method in crud.invoices.get_methods_inds(payment_methods)
+        ]
+
         await super().add_related()
 
     async def create_related(self):
