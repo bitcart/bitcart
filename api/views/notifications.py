@@ -8,7 +8,7 @@ router = APIRouter()
 
 @router.get("/list")
 async def get_notifications():
-    return prepare_compliant_response(list([k for k in settings.settings.notifiers.keys() if isinstance(k, str)]))
+    return prepare_compliant_response(list(settings.settings.notifiers.keys()))
 
 
 @router.get("/schema")
