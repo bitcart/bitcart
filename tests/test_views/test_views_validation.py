@@ -105,7 +105,7 @@ async def test_invalid_notification_provider(client: TestClient, token):
     assert (
         await client.post(
             "/notifications",
-            json={"name": "test", "provider": "telegram", "data": {}},
+            json={"name": "test", "provider": "Telegram", "data": {}},
             headers={"Authorization": f"Bearer {token}"},
         )
     ).status_code == 200
