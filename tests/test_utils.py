@@ -271,7 +271,7 @@ def test_search_query_parse_datetime():
     check_date(utils.common.SearchQuery("start_date:-150d").parse_datetime("start_date"), days=150)
 
 
-async def check_modify_notify(client, store, notification_id, token, base_data, key, value, convert, expect_raises=False):
+async def check_modify_notify(client, store, notification_id, token, base_data, key, value, convert):
     assert (
         await client.patch(
             f"/notifications/{notification_id}",
@@ -279,7 +279,7 @@ async def check_modify_notify(client, store, notification_id, token, base_data, 
             headers={"Authorization": f"Bearer {token}"},
         )
     ).status_code == 200
-    await utils.notifications.notify(store, "Text")
+    assert await utils.notifications.notify(store, "Text") is True
     # run only if conversion works
     try:
         converted = convert(value)
@@ -297,7 +297,7 @@ async def check_modify_notify(client, store, notification_id, token, base_data, 
 
 @pytest.mark.anyio
 async def test_send_notification(client, token, user, mocker):
-    mocker.patch("apprise.plugins.twilio.NotifyTwilio.send", return_value=True)
+    mocker.patch("apprise.plugins.matrix.NotifyMatrix.send", return_value=True)
     notification = await create_notification(client, user["id"], token, data={"user_id": 5})
     notification_id = notification["id"]
     data = await create_store(client, user["id"], token, custom_store_attrs={"notifications": [notification_id]})
@@ -312,13 +312,13 @@ async def test_send_notification(client, token, user, mocker):
     assert resp.json()["data"] == notification["data"]
     resp2 = await client.patch(
         f"/notifications/{notification_id}",
-        json={"provider": "Twilio"},
+        json={"provider": "Matrix"},
         headers={"Authorization": f"Bearer {token}"},
     )
     assert resp2.status_code == 200
     assert resp2.json()["data"] == {}
-    await utils.notifications.notify(store, "Text")
-    base_data = {"from": "test", "to": "+111111111111", "account_sid": "test", "auth_token": "test"}
+    assert await utils.notifications.notify(store, "Text") is False
+    base_data = {"host": "matrix.org"}
     assert (
         await client.patch(
             f"/notifications/{notification_id}",
@@ -326,25 +326,15 @@ async def test_send_notification(client, token, user, mocker):
             headers={"Authorization": f"Bearer {token}"},
         )
     ).status_code == 200
-    await utils.notifications.notify(store, "Text")
+    assert await utils.notifications.notify(store, "Text") is True
     # Test that some primitive types are automatically converted
-    await check_modify_notify(
-        client, store, notification_id, token, base_data, "provide_feedback", "test", bool, expect_raises=False
-    )
-    await check_modify_notify(
-        client, store, notification_id, token, base_data, "provide_feedback", "true", bool, expect_raises=False
-    )
-    await check_modify_notify(
-        client, store, notification_id, token, base_data, "provide_feedback", True, bool, expect_raises=False
-    )
-    await check_modify_notify(
-        client, store, notification_id, token, base_data, "validity_period", "5", int, expect_raises=False
-    )
-    await check_modify_notify(
-        client, store, notification_id, token, base_data, "validity_period", "test", int, expect_raises=True
-    )
-    await check_modify_notify(client, store, notification_id, token, base_data, "max_price", "5.5", int, expect_raises=False)
-    await check_modify_notify(client, store, notification_id, token, base_data, "max_price", "test", int, expect_raises=True)
+    await check_modify_notify(client, store, notification_id, token, base_data, "verify", "test", bool)
+    await check_modify_notify(client, store, notification_id, token, base_data, "verify", "true", bool)
+    await check_modify_notify(client, store, notification_id, token, base_data, "verify", True, bool)
+    await check_modify_notify(client, store, notification_id, token, base_data, "port", "5", int)
+    await check_modify_notify(client, store, notification_id, token, base_data, "port", "test", int)
+    await check_modify_notify(client, store, notification_id, token, base_data, "rto", "5.5", int)
+    await check_modify_notify(client, store, notification_id, token, base_data, "rto", "test", int)
 
 
 @pytest.mark.anyio

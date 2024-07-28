@@ -236,11 +236,11 @@ class Settings(BaseSettings):
     def load_notification_providers(self):
         self.notifiers = {}
         for notifier in all_notifers():
-            if isinstance(notifier["service_name"], str):
-                self.notifiers[notifier["service_name"]] = {
-                    "properties": get_params(notifier),
-                    "required": get_params(notifier, need_required=True),
-                }
+            self.notifiers[str(notifier["service_name"])] = {
+                "properties": get_params(notifier),
+                "required": get_params(notifier, need_required=True),
+                "setup_url": notifier["setup_url"],
+            }
 
     async def get_coin(self, coin, xpub=None):
         from api.plugins import apply_filters

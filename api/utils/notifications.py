@@ -1,7 +1,7 @@
 import traceback
 
+import apprise
 from aiohttp import ClientSession
-from apprise import Apprise
 
 from api import models, utils
 from api.ext.notifiers import get_notifier
@@ -29,10 +29,10 @@ async def send_ipn(obj, status):  # pragma: no cover
 def validate_data(provider, data):  # pragma: no cover
     for json_part in ("args", "tokens"):
         for k, v in provider["details"][json_part].items():
-            if ("type" in v) and (k in data.keys()):
+            if "type" in v and k in data.keys():
                 field_type = v["type"]
                 try:
-                    if field_type == "integer":
+                    if field_type == "int":
                         data[k] = int(data[k])
                     elif field_type == "float":
                         data[k] = float(data[k])
@@ -40,16 +40,24 @@ def validate_data(provider, data):  # pragma: no cover
                         data[k] = utils.common.str_to_bool(data[k])
                 except Exception:
                     pass
-    save_protocol = [el for el in provider["details"]["tokens"]["schema"]["values"] if el[-1] == "s"]
-    data["schema"] = save_protocol if save_protocol else provider["details"]["tokens"]["schema"]["values"][0]
+    data["schema"] = provider["details"]["tokens"]["schema"]["values"][0]
     return data
 
 
 async def notify(store, text):  # pragma: no cover
-    appr = Apprise()
+    appr = apprise.Apprise()
     notification_providers = await utils.database.get_objects(models.Notification, store.notifications)
     for db_provider in notification_providers:
-        provider = get_notifier(db_provider.provider)
-        data = validate_data(provider, db_provider.data)
-        appr.add(data)
-    await appr.async_notify(text)
+        provider_schema = get_notifier(db_provider.provider)
+        data = validate_data(provider_schema, db_provider.data)
+        try:
+            provider = apprise.Apprise.instantiate(data, suppress_exceptions=False)
+        except Exception as e:
+            logger.error(f"Failed to instantiate provider {db_provider.provider}: {e}")
+            return False
+        appr.add(provider)
+    with apprise.LogCapture(level=apprise.logging.INFO) as output:
+        if not await appr.async_notify(text):
+            logger.error(f"Failed to send some notifications of store {store.id}:\n{output.getvalue().strip()}")
+            return False
+    return True
