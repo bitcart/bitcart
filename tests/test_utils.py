@@ -297,7 +297,7 @@ async def check_modify_notify(client, store, notification_id, token, base_data, 
 
 @pytest.mark.anyio
 async def test_send_notification(client, token, user, mocker):
-    mocker.patch("apprise.plugins.NotifyTwilio.NotifyTwilio.send", return_value=True)  # TODO: TIMOX LAZY
+    mocker.patch("apprise.plugins.twilio.NotifyTwilio.send", return_value=True)
     notification = await create_notification(client, user["id"], token, data={"user_id": 5})
     notification_id = notification["id"]
     data = await create_store(client, user["id"], token, custom_store_attrs={"notifications": [notification_id]})
@@ -317,7 +317,6 @@ async def test_send_notification(client, token, user, mocker):
     )
     assert resp2.status_code == 200
     assert resp2.json()["data"] == {}
-    print("ALEX LAZY")
     await utils.notifications.notify(store, "Text")
     base_data = {"from": "test", "to": "+111111111111", "account_sid": "test", "auth_token": "test"}
     assert (
