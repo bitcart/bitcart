@@ -1,5 +1,5 @@
 import json
-from typing import List, Optional, Tuple, Union
+from typing import Optional, Union
 
 import pyotp
 from fastapi import APIRouter, Depends, HTTPException, Query, Security
@@ -24,7 +24,7 @@ async def get_tokens(
     pagination: pagination.Pagination = Depends(),
     app_id: Optional[str] = None,
     redirect_url: Optional[str] = None,
-    permissions: List[str] = Query(None),
+    permissions: list[str] = Query(None),
 ):
     return await utils.database.paginate_object(
         models.Token, pagination, user, app_id=app_id, redirect_url=redirect_url, permissions=permissions
@@ -33,7 +33,7 @@ async def get_tokens(
 
 @router.get("/current", response_model=schemes.Token)
 async def get_current_token(
-    auth_data: Tuple[models.User, str] = Security(utils.authorization.AuthDependency(return_token=True)),
+    auth_data: tuple[models.User, str] = Security(utils.authorization.AuthDependency(return_token=True)),
 ):
     return auth_data[1]
 
@@ -44,7 +44,7 @@ async def get_token_count(
     pagination: pagination.Pagination = Depends(),
     app_id: Optional[str] = None,
     redirect_url: Optional[str] = None,
-    permissions: List[str] = Query(None),
+    permissions: list[str] = Query(None),
 ):
     return await utils.database.paginate_object(
         models.Token, pagination, user, app_id=app_id, redirect_url=redirect_url, permissions=permissions, count_only=True
@@ -108,7 +108,7 @@ async def validate_credentials(user, token_data):
 async def create_oauth2_token(
     request: Request,
     form_data: OAuth2PasswordRequestForm = Depends(),
-    auth_data: Union[None, Tuple[Optional[models.User], str]] = Security(
+    auth_data: Union[None, tuple[Optional[models.User], str]] = Security(
         utils.authorization.AuthDependency(token_required=False, return_token=True)
     ),
 ):  # pragma: no cover
@@ -124,7 +124,7 @@ async def create_oauth2_token(
 @router.post("")
 async def create_token(
     token_data: Optional[schemes.HTTPCreateLoginToken] = schemes.HTTPCreateLoginToken(),
-    auth_data: Union[None, Tuple[Optional[models.User], str]] = Security(
+    auth_data: Union[None, tuple[Optional[models.User], str]] = Security(
         utils.authorization.AuthDependency(token_required=False, return_token=True)
     ),
 ):

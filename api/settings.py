@@ -9,7 +9,6 @@ import sys
 import traceback
 from contextlib import asynccontextmanager
 from contextvars import ContextVar
-from typing import Dict
 
 import fido2.features
 from aiohttp import ClientSession
@@ -66,7 +65,7 @@ class Settings(BaseSettings):
     torrc_file: str = Field(None, env="TORRC_FILE")
     openapi_path: str = Field(None, env="OPENAPI_PATH")
     api_title: str = Field("Bitcart", env="API_TITLE")
-    cryptos: Dict[str, Coin] = None
+    cryptos: dict[str, Coin] = None
     crypto_settings: dict = None
     manager: APIManager = None
     notifiers: dict = None

@@ -2,7 +2,6 @@ import asyncio
 import time
 from abc import ABCMeta, abstractmethod
 from decimal import Decimal
-from typing import Dict, List
 
 from bitcart.coin import Coin
 
@@ -23,7 +22,7 @@ def get_inverse_dict(d):
 
 
 class BaseExchange(metaclass=ABCMeta):
-    def __init__(self, coins: List[Coin], contracts: Dict[str, list]):
+    def __init__(self, coins: list[Coin], contracts: dict[str, list]):
         self.coins = coins
         self.contracts = contracts
         self.quotes = {}
