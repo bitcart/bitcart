@@ -12,7 +12,7 @@ from api import db, models, pagination, schemes, settings, utils
 
 router = APIRouter()
 
-OptionalProductScheme = utils.schemes.to_optional(schemes.Product)
+OptionalProductScheme = utils.schemes.to_optional(schemes.UpdateProduct)
 
 
 def get_image_filename(model_id):
@@ -48,7 +48,7 @@ async def create_product(
 ):
     data = parse_data(data, schemes.CreateProduct)
     kwargs = utils.database.prepare_create_kwargs(models.Product, data, user)
-    kwargs["image"] = get_image_filename(kwargs["id"]) if image else None
+    kwargs["image"] = get_image_filename(kwargs["id"]) if image else ""
     obj = await utils.database.create_object_core(models.Product, kwargs)
     if image:
         await save_image(obj, image)
@@ -77,13 +77,13 @@ async def patch_product(
         await save_image(item, image)
     else:
         utils.files.safe_remove(get_image_local_path(item.id))
-        data.image = None
+        data.image = ""
     data = data.dict(exclude_unset=True)
     await utils.database.modify_object(item, data)
     return item
 
 
-async def delete_product(item: schemes.Product, user: schemes.User) -> schemes.Product:
+async def delete_product(item: schemes.DisplayProduct, user: schemes.User) -> schemes.DisplayProduct:
     utils.files.safe_remove(get_image_local_path(item.id))
     await item.delete()
     return item
@@ -154,8 +154,9 @@ utils.routing.ModelView.register(
     router,
     "/",
     models.Product,
-    schemes.Product,
+    schemes.UpdateProduct,
     schemes.CreateProduct,
+    schemes.DisplayProduct,
     custom_methods={"delete": delete_product, "batch_action": batch_product_action},
     request_handlers={
         "get": get_products,

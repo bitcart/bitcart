@@ -1,5 +1,5 @@
 from contextlib import asynccontextmanager, contextmanager
-from typing import Type, TypeVar
+from typing import TypeVar
 
 import asyncpg
 from fastapi import HTTPException
@@ -44,7 +44,7 @@ async def create_object_core(model, kwargs):
     return await apply_filters(f"db_create_{model.__class__.__name__.lower()}", result)
 
 
-async def create_object(model: Type[ModelType], data, user=None, **additional_kwargs) -> ModelType:
+async def create_object(model: type[ModelType], data, user=None, **additional_kwargs) -> ModelType:
     kwargs = prepare_create_kwargs(model, data, user, **additional_kwargs)
     return await create_object_core(model, kwargs)
 
@@ -62,7 +62,7 @@ async def modify_object(model, data, **additional_kwargs):
 
 
 async def get_object(
-    model: Type[ModelType],
+    model: type[ModelType],
     model_id=None,
     user=None,
     custom_query=None,

@@ -53,8 +53,8 @@ def get_app():
     app = FastAPI(
         title=settings.api_title,
         version=VERSION,
-        docs_url="/",
-        redoc_url="/redoc",
+        redoc_url="/",
+        docs_url="/swagger",
         root_path=settings.root_path,
         description="Bitcart Merchants API",
         lifespan=lifespan,

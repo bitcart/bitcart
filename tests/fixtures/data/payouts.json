@@ -5,7 +5,9 @@
     },
     "patch": {
         "max_fee": 1,
-        "tx_hash": "test"
+        "metadata": {
+            "test": "test"
+        }
     },
     "response": {
         "amount": "5.00",

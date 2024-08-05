@@ -10,13 +10,13 @@
         "name": "Test 2"
     },
     "response": {
-        "price": "0.50",
+        "price": "0.500000000000000000",
         "description": "",
         "quantity": 5,
         "download_url": "",
         "status": "active",
         "name": "test",
-        "image": null,
+        "image": "",
         "category": "",
         "metadata": {}
     },

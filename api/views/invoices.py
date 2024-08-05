@@ -127,7 +127,7 @@ async def update_payment_details(
     return True
 
 
-@router.post("/{model_id}/refunds", response_model=schemes.Refund)
+@router.post("/{model_id}/refunds", response_model=schemes.DisplayRefund)
 async def refund_invoice(
     data: schemes.RefundData,
     model_id: str,
@@ -161,7 +161,7 @@ async def refund_invoice(
     return refund
 
 
-@router.get("/refunds/{refund_id}", response_model=schemes.Refund)
+@router.get("/refunds/{refund_id}", response_model=schemes.DisplayRefund)
 async def get_refund(refund_id: str):
     refund = await utils.database.get_object(models.Refund, refund_id)
     payout_status = None
@@ -178,7 +178,7 @@ async def get_refund(refund_id: str):
     return refund
 
 
-@router.post("/refunds/{refund_id}/submit", response_model=schemes.Refund)
+@router.post("/refunds/{refund_id}/submit", response_model=schemes.DisplayRefund)
 async def submit_refund(refund_id: str, data: schemes.SubmitRefundData):
     async with db.db.transaction():
         refund = await utils.database.get_object(models.Refund, refund_id, atomic_update=True)
@@ -216,7 +216,7 @@ utils.routing.ModelView.register(
     router,
     "/",
     models.Invoice,
-    schemes.Invoice,
+    schemes.UpdateInvoice,
     schemes.CreateInvoice,
     schemes.DisplayInvoice,
     custom_methods={

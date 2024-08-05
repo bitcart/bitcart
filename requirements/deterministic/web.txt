@@ -483,9 +483,9 @@ frozenlist==1.4.1 \
     # via
     #   aiohttp
     #   aiosignal
-gino==1.0.1 \
-    --hash=sha256:56df57cfdefbaf897a7c4897c265a0e91a8cca80716fb64f7d3cf6d501fdfb3d \
-    --hash=sha256:fe4189e82fe9d20c4a5f03fc775fb91c168061c5176b4c95623caeef22316150
+gino[pg]==1.1.0rc1 \
+    --hash=sha256:184de44b0eccc7a9233c43eb7a21a72fbf56a101350e07b12701673441a05a8d \
+    --hash=sha256:61a6f91aa9c7a0d430bc0809818914a516e177b05bc2bd2406c51aee96bc9d78
     # via -r requirements/web.txt
 h11==0.14.0 \
     --hash=sha256:8f19fbbe99e72420ff35c00b27a34cb9937e902a8b810e2c88300c6f0a3b699d \

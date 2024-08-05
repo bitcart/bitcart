@@ -8,7 +8,8 @@ utils.routing.ModelView.register(
     router,
     "/",
     models.Discount,
-    schemes.Discount,
+    schemes.UpdateDiscount,
     schemes.CreateDiscount,
+    schemes.DisplayDiscount,
     scopes=["discount_management"],
 )

@@ -36,7 +36,7 @@ async def get_me(user: models.User = Security(utils.authorization.auth_dependenc
     return user
 
 
-@router.post("/me/settings", response_model=schemes.User)
+@router.post("/me/settings", response_model=schemes.DisplayUser)
 async def set_settings(
     settings: schemes.UserPreferences,
     user: models.User = Security(utils.authorization.auth_dependency, scopes=["full_control"]),

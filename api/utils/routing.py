@@ -1,7 +1,7 @@
 from collections import defaultdict
 from dataclasses import dataclass
 from os.path import join as path_join
-from typing import Any, Callable, ClassVar, Dict, List, Optional, Type, Union
+from typing import Any, Callable, ClassVar, Optional, Union
 from urllib import parse as urlparse
 
 from fastapi import APIRouter, Depends, HTTPException, Security
@@ -11,8 +11,8 @@ from starlette.requests import Request
 
 from api import db, events, models, pagination, settings, utils
 
-HTTP_METHODS: List[str] = ["GET", "POST", "PATCH", "DELETE"]
-ENDPOINTS: List[str] = ["get_all", "get_one", "get_count", "post", "patch", "delete", "batch_action"]
+HTTP_METHODS: list[str] = ["GET", "POST", "PATCH", "DELETE"]
+ENDPOINTS: list[str] = ["get_all", "get_one", "get_count", "post", "patch", "delete", "batch_action"]
 CUSTOM_HTTP_METHODS: dict = {"batch_action": "post"}
 
 
@@ -28,17 +28,17 @@ class ModelView:
     create_model: Any
     pydantic_model: Any
     display_model: Any
-    allowed_methods: List[str]
-    custom_methods: Dict[str, Callable]
-    background_tasks_mapping: Dict[str, Callable]
-    request_handlers: Dict[str, Callable]
+    allowed_methods: list[str]
+    custom_methods: dict[str, Callable]
+    background_tasks_mapping: dict[str, Callable]
+    request_handlers: dict[str, Callable]
     get_one_auth: bool
     post_auth: bool
     get_one_model: bool
-    scopes: Union[List, Dict]
-    custom_commands: Dict[str, Callable]
+    scopes: Union[list, dict]
+    custom_commands: dict[str, Callable]
     using_router: bool
-    response_models: Dict[str, BaseModel]
+    response_models: dict[str, BaseModel]
 
     @classmethod
     def register(
@@ -49,17 +49,17 @@ class ModelView:
         pydantic_model,
         create_model=None,
         display_model=None,
-        allowed_methods: List[str] = ["GET_COUNT", "GET_ONE"] + HTTP_METHODS + ["BATCH_ACTION"],
-        custom_methods: Dict[str, Callable] = {},
-        background_tasks_mapping: Dict[str, Callable] = {},
-        request_handlers: Dict[str, Callable] = {},
+        allowed_methods: list[str] = ["GET_COUNT", "GET_ONE"] + HTTP_METHODS + ["BATCH_ACTION"],
+        custom_methods: dict[str, Callable] = {},
+        background_tasks_mapping: dict[str, Callable] = {},
+        request_handlers: dict[str, Callable] = {},
         get_one_auth=True,
         post_auth=True,
         get_one_model=True,
         scopes=None,
         custom_commands={},
         using_router=True,
-        response_models: Dict[str, BaseModel] = {},
+        response_models: dict[str, BaseModel] = {},
     ):
         # add to crud_models
         if scopes is None:  # pragma: no cover
@@ -109,7 +109,7 @@ class ModelView:
                 response_model=self.response_models.get(method_name, response_models.get(method_name)),
             )
 
-    def get_paths(self) -> Dict[str, str]:
+    def get_paths(self) -> dict[str, str]:
         item_path = path_join(self.path, "{model_id}")
         batch_path = path_join(self.path, "batch")
         count_path = path_join(self.path, "count")
@@ -126,7 +126,7 @@ class ModelView:
             "batch_action": batch_path,
         }
 
-    def get_names(self) -> Dict[str, str]:
+    def get_names(self) -> dict[str, str]:
         return {
             "get": f"Get {self.orm_model.__name__}s",
             "get_count": f"Get number of {self.orm_model.__name__}s",
@@ -137,7 +137,7 @@ class ModelView:
             "batch_action": f"Batch actions on {self.orm_model.__name__}s",
         }
 
-    def get_response_models(self) -> Dict[str, Type]:
+    def get_response_models(self) -> dict[str, type]:
         display_model = self.pydantic_model if not self.display_model else self.display_model
         pagination_response = get_pagination_model(display_model)
         return {
@@ -276,7 +276,7 @@ def get_pagination_model(display_model):
         count=(int, ...),
         next=(Optional[str], None),
         previous=(Optional[str], None),
-        result=(List[display_model], ...),
+        result=(list[display_model], ...),
         __base__=BaseModel,
     )
 

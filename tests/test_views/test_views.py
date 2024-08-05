@@ -774,10 +774,16 @@ async def test_invoice_ws(ws_client, token: str, store):
 
 
 @pytest.mark.parametrize("currencies", ["", "DUMMY", "btc"])
-async def test_create_invoice_discount(client: TestClient, token: str, store, currencies: str):
+async def test_create_invoice_discount(client: TestClient, token: str, store, currencies: str):  # TODO: improve this test
     store_id = store["id"]
     # create discount
-    new_discount = {"name": "apple", "percent": 50, "currencies": currencies, "end_date": "2099-12-31 00:00:00.000000"}
+    new_discount = {
+        "name": "apple",
+        "percent": 50,
+        "currencies": currencies,
+        "promocode": "testpromo",
+        "end_date": "2099-12-31 00:00:00.000000",
+    }
     create_discount_resp = await client.post("/discounts", json=new_discount, headers={"Authorization": f"Bearer {token}"})
     assert create_discount_resp.status_code == 200
     discount_id = create_discount_resp.json()["id"]
@@ -790,14 +796,14 @@ async def test_create_invoice_discount(client: TestClient, token: str, store, cu
     product_id = create_product_resp.json()["id"]
     invoice_resp = await client.post(
         "/invoices",
-        json={"store_id": store_id, "price": 0.5, "products": [product_id], "discount": discount_id},
+        json={"store_id": store_id, "price": 0.5, "products": [product_id], "promocode": "testpromo"},
         headers={"Authorization": f"Bearer {token}"},
     )
     assert invoice_resp.status_code == 200
     assert {
         "price": "0.50",
         "store_id": store_id,
-        "discount": discount_id,
+        "promocode": "testpromo",
         "products": [product_id],
     }.items() < invoice_resp.json().items()
     assert (
@@ -1392,8 +1398,8 @@ async def test_invoice_update_customer(client: TestClient, user, token, name, ex
     assert (await client.patch("/invoices/test/customer", json={name: expected})).status_code == 404
     # Can edit only allowed fields
     assert (await client.patch(f"/invoices/{invoice_id}/customer", json={"price": 1})).json()["price"] == invoice["price"]
-    # Empty string is counted as None
-    assert (await client.patch(f"/invoices/{invoice_id}/customer", json={"buyer_email": ""})).json()["buyer_email"] is None
+    # Empty string is treated normally
+    assert (await client.patch(f"/invoices/{invoice_id}/customer", json={"buyer_email": ""})).json()["buyer_email"] == ""
     resp = await client.patch(f"/invoices/{invoice_id}/customer", json={name: expected})
     assert resp.status_code == 200
     assert resp.json()[name] == expected

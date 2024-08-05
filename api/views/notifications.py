@@ -20,7 +20,8 @@ utils.routing.ModelView.register(
     router,
     "/",
     models.Notification,
-    schemes.Notification,
+    schemes.UpdateNotification,
     schemes.CreateNotification,
+    schemes.DisplayNotification,
     scopes=["notification_management"],
 )

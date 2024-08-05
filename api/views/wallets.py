@@ -1,5 +1,4 @@
 import math
-from typing import List
 
 from bitcart.errors import BaseError as BitcartBaseError
 from fastapi import APIRouter, HTTPException, Security
@@ -11,22 +10,22 @@ from api.types import Money
 router = APIRouter()
 
 
-@router.get("/history/all", response_model=List[schemes.TxResponse])
+@router.get("/history/all", response_model=list[schemes.TxResponse])
 async def all_wallet_history(
     user: models.User = Security(utils.authorization.auth_dependency, scopes=["wallet_management"]),
 ):
-    response: List[schemes.TxResponse] = []
+    response: list[schemes.TxResponse] = []
     for model in await models.Wallet.query.where(models.Wallet.user_id == user.id).gino.all():
         await utils.wallets.get_wallet_history(model, response)
     return response
 
 
-@router.get("/history/{model_id}", response_model=List[schemes.TxResponse])
+@router.get("/history/{model_id}", response_model=list[schemes.TxResponse])
 async def wallet_history(
     model_id: str,
     user: models.User = Security(utils.authorization.auth_dependency, scopes=["wallet_management"]),
 ):
-    response: List[schemes.TxResponse] = []
+    response: list[schemes.TxResponse] = []
     model = await utils.database.get_object(models.Wallet, model_id, user)
     await utils.wallets.get_wallet_history(model, response)
     return response
@@ -177,9 +176,9 @@ utils.routing.ModelView.register(
     router,
     "/",
     models.Wallet,
+    schemes.UpdateWallet,
     schemes.CreateWallet,
-    schemes.CreateWallet,
-    schemes.Wallet,
+    schemes.DisplayWallet,
     background_tasks_mapping={"post": "sync_wallet"},
     scopes=["wallet_management"],
 )
