@@ -49,6 +49,8 @@ FEE_PARAMS = EIP1559_PARAMS + ("gasPrice", "gas")
 
 TX_DEFAULT_GAS = 21000
 
+RPC_SOURCE = "Infura"
+
 
 class JSONEncoder(StorageJSONEncoder):
     def default(self, obj):
@@ -219,6 +221,10 @@ async def async_http_retry_request_middleware(make_request, w3):
         (AsyncClientError, TimeoutError, asyncio.TimeoutError, Web3Exception),
         daemon_ctx.get().VERBOSE,
     )
+
+
+RPC_ORIGIN = "metamask"
+RPC_DEST = "metamask"
 
 
 class KeyStore(BaseKeyStore):
@@ -426,7 +432,14 @@ class ETHDaemon(BlockProcessorDaemon):
         server_providers = []
         server_list = self.ARCHIVE_SERVER if archive else self.SERVER
         for server in server_list:
-            provider = EthereumRPCProvider(server, request_kwargs={"timeout": 5 * 60})
+            # optimize requests by using correct headers
+            provider = EthereumRPCProvider(
+                server,
+                request_kwargs={
+                    "timeout": 5 * 60,
+                    "headers": {f"{RPC_SOURCE}-Source": f"{RPC_ORIGIN}/{RPC_DEST}"},
+                },
+            )
             provider.middlewares = [async_http_retry_request_middleware]
             server_providers.append(provider)
         provider = MultipleProviderRPC(server_providers)
