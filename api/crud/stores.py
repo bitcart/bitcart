@@ -23,6 +23,6 @@ async def get_store(model_id: str, user: schemes.User, item: models.Store, inter
     if internal:
         return item
     elif user and user.id == item.user_id:
-        return schemes.Store.from_orm(item)
+        return schemes.DisplayStore.from_orm(item)
     else:
         return schemes.PublicStore.from_orm(item)

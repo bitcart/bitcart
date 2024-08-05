@@ -274,6 +274,7 @@ class Settings(BaseSettings):
         return RPC.get(coin, {}).get(self.crypto_settings[coin]["network"], "")
 
     async def create_db_engine(self):
+        db.db._bakery = None
         return await db.db.set_bind(self.connection_str, min_size=1, loop=asyncio.get_running_loop())
 
     async def shutdown_db_engine(self):

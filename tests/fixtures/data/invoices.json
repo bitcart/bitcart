@@ -3,13 +3,13 @@
         "price": 0.5
     },
     "patch": {
-        "status": "complete",
+        "notification_url": "test2",
         "order_id": "test"
     },
     "response": {
         "price": "0.50",
         "status": "pending",
-        "buyer_email": null,
+        "buyer_email": "",
         "promocode": "",
         "order_id": "",
         "notification_url": "",

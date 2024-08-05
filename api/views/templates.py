@@ -22,7 +22,8 @@ utils.routing.ModelView.register(
     router,
     "/",
     models.Template,
-    schemes.Template,
+    schemes.UpdateTemplate,
     schemes.CreateTemplate,
+    schemes.DisplayTemplate,
     scopes=["template_management"],
 )

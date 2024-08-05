@@ -19,7 +19,7 @@ async def ping_email(
 
 
 # NOTE: to_optional not required here because settings have default values set everywhere
-@router.patch("/{model_id}/checkout_settings", response_model=schemes.Store)
+@router.patch("/{model_id}/checkout_settings", response_model=schemes.DisplayStore)
 async def set_store_checkout_settings(
     model_id: str,
     settings: schemes.StoreCheckoutSettings,
@@ -30,7 +30,7 @@ async def set_store_checkout_settings(
     return model
 
 
-@router.patch("/{model_id}/email_settings", response_model=schemes.Store)
+@router.patch("/{model_id}/email_settings", response_model=schemes.DisplayStore)
 async def set_store_email_settings(
     model_id: str,
     settings: schemes.EmailSettings,
@@ -74,7 +74,7 @@ async def get_store_rates(model_id: str, currencies: str = Query(...)):
     return {"rates": results}
 
 
-@router.patch("/{model_id}/theme_settings", response_model=schemes.Store)
+@router.patch("/{model_id}/theme_settings", response_model=schemes.DisplayStore)
 async def set_store_theme_settings(
     model_id: str,
     settings: schemes.StoreThemeSettings,
@@ -85,7 +85,7 @@ async def set_store_theme_settings(
     return model
 
 
-@router.patch("/{model_id}/plugin_settings", response_model=schemes.Store)
+@router.patch("/{model_id}/plugin_settings", response_model=schemes.DisplayStore)
 async def set_store_plugin_settings(
     model_id: str,
     settings: schemes.StorePluginSettings,
@@ -100,8 +100,9 @@ utils.routing.ModelView.register(
     router,
     "/",
     models.Store,
-    schemes.Store,
+    schemes.UpdateStore,
     schemes.CreateStore,
+    schemes.DisplayStore,
     custom_methods={
         "post": crud.stores.create_store,
         "get_one": crud.stores.get_store,

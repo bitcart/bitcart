@@ -561,7 +561,7 @@ class Invoice(BaseModel):
     sent_amount = Column(Numeric(36, 18))
     exception_status = Column(Text)
     currency = Column(Text)
-    payment_id = Column(Text, ForeignKey("paymentmethods.id", ondelete="SET NULL"))
+    payment_id = Column(Text, ForeignKey("paymentmethods.id", ondelete="SET NULL", use_alter=True))
     paid_currency = Column(Text)
     status = Column(Text, nullable=False)
     expiration = Column(Integer)

@@ -44,7 +44,7 @@ async def patch_file(
     return item
 
 
-async def delete_file(item: schemes.File, user: schemes.User) -> schemes.File:
+async def delete_file(item: schemes.DisplayFile, user: schemes.User) -> schemes.DisplayFile:
     utils.files.safe_remove(get_file_path(item))
     await item.delete()
     return item
@@ -71,8 +71,9 @@ utils.routing.ModelView.register(
     router,
     "/",
     models.File,
-    schemes.File,
+    schemes.UpdateFile,
     schemes.CreateFile,
+    schemes.DisplayFile,
     custom_methods={"delete": delete_file, "batch_action": batch_file_action},
     request_handlers={"post": create_file, "patch": patch_file},
     scopes=["file_management"],
