@@ -23,6 +23,7 @@ def upgrade():
     op.execute("UPDATE invoices SET notes='' where notes IS NULL")
     op.execute("UPDATE invoices SET redirect_url='' where redirect_url IS NULL")
     op.execute("UPDATE invoices SET notification_url='' where notification_url IS NULL")
+    op.execute("UPDATE invoices SET buyer_email='' where buyer_email IS NULL")
     op.execute("UPDATE wallets SET hint='' where hint IS NULL")
 
 
