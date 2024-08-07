@@ -383,7 +383,10 @@ class ETHDaemon(BlockProcessorDaemon):
                 debug_data = None
                 for _ in range(5):
                     async with self.archive_limiter:
-                        debug_data = await self.archive_coin.debug_trace_block(block_number)
+                        try:
+                            debug_data = await self.archive_coin.debug_trace_block(block_number)
+                        except Exception:
+                            pass
                     if debug_data:
                         break
                     await asyncio.sleep(2)
