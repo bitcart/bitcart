@@ -22,5 +22,6 @@ python-dateutil
 python-dotenv
 python-multipart
 redis
+setuptools
 sqlalchemy<1.4
 uvicorn[standard]
