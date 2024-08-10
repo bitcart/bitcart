@@ -58,8 +58,7 @@ async def export_invoices(
     if not all_users:
         query = query.where(models.Invoice.user_id == user.id)
     if exclude_manually_marked:
-        query = query.where(models.Invoice.status == "complete").where(db.db.func.cardinality(models.Invoice.tx_hashes) > 0)
-
+        query = query.where(db.db.func.cardinality(models.Invoice.tx_hashes) > 0)
     data = await pagination.get_list(query)
     await utils.database.postprocess_func(data)
     data = list(export_ext.db_to_json(data, add_payments))
