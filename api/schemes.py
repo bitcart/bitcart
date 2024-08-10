@@ -414,7 +414,7 @@ class CreateProduct(CreateModel, CreatedMixin):
     name: str
     price: Decimal
     quantity: int
-    store_id: Optional[str]
+    store_id: str
     status: str = Field("active", hidden_create=True)
     download_url: str = ""
     description: str = ""
@@ -434,6 +434,7 @@ class UpdateProduct(UpdateModel, CreateProduct):
 class DisplayProduct(DisplayModel, CreateProduct):
     id: str
     user_id: str
+    store_id: Optional[str]
     price: Money
 
     @root_validator(pre=True)
@@ -500,6 +501,7 @@ class UpdateInvoice(UpdateModel, CreateInvoice):
 class DisplayInvoice(DisplayModel, CreateInvoice):
     id: str
     user_id: str
+    store_id: Optional[str]
     time_left: int
     expiration_seconds: int
     product_names: dict
@@ -533,7 +535,7 @@ class CreatePayout(CreateModel, CreatedMixin):
     amount: Decimal
     destination: str
     store_id: str
-    wallet_id: Optional[str]
+    wallet_id: str
     currency: str = ""
     notification_url: str = ""
     max_fee: Optional[Decimal] = None
@@ -564,6 +566,8 @@ class UpdatePayout(UpdateModel, CreatePayout):
 class DisplayPayout(DisplayModel, CreatePayout):
     id: str
     user_id: str
+    store_id: Optional[str]
+    wallet_id: Optional[str]
     wallet_currency: Optional[str]
     used_fee: Optional[Decimal]
     tx_hash: Optional[str]
@@ -594,6 +598,7 @@ class UpdateRefund(UpdateModel, CreateRefund):
 class DisplayRefund(DisplayModel, CreateRefund):
     id: str
     user_id: str
+    wallet_id: Optional[str]
     destination: Optional[str]
     wallet_currency: Optional[str]
     payout_id: Optional[str]

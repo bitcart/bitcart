@@ -25,6 +25,7 @@ def upgrade():
     op.execute("UPDATE invoices SET notification_url='' where notification_url IS NULL")
     op.execute("UPDATE invoices SET buyer_email='' where buyer_email IS NULL")
     op.execute("UPDATE wallets SET hint='' where hint IS NULL")
+    op.execute("UPDATE notifications SET provider='Telegram' where provider='telegram'")
 
 
 def downgrade():
