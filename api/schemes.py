@@ -34,6 +34,8 @@ class BaseModel(PydanticBaseModel):
     def remove_hidden(cls, values):
         if cls.MODE == WorkingMode.UNSET:  # pragma: no cover
             raise ValueError("Base model should not be used directly")
+        if cls.MODE == WorkingMode.DISPLAY:
+            return {k: v for k, v in values.items() if v != ""}
         # We also skip empty strings (to trigger defaults) as that's what frontend sends
         return {k: v for k, v in values.items() if k in cls.schema()["properties"] and v != ""}
 
