@@ -1,4 +1,4 @@
-from api import exceptions, models, settings, templates, utils
+from api import exceptions, models, schemes, settings, templates, utils
 from api.logger import get_logger
 from api.utils.common import get_object_name
 
@@ -11,6 +11,20 @@ def get_template_matching_str(name, obj):
         template_str += f" for {get_object_name(obj)} {obj.id}"
     template_str += ":"
     return template_str
+
+
+async def get_global_template(name):  # pragma: no cover
+    policy = await utils.policies.get_setting(schemes.Policy)
+    template_id = policy.global_templates.get(name)
+    if template_id:
+        custom_template = await utils.database.get_object(models.Template, template_id, raise_exception=False)
+        if custom_template:
+            logger.info(f'{get_template_matching_str(name, None)} selected global template "{custom_template.name}"')
+            return templates.Template(name, custom_template.text)
+    if name in settings.settings.template_manager.templates:
+        logger.info(f"{get_template_matching_str(name, None)} selected default template")
+        return settings.settings.template_manager.templates[name]
+    raise exceptions.TemplateDoesNotExistError(f"Template {name} does not exist and has no default")
 
 
 async def get_template(name, user_id=None, obj=None):

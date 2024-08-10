@@ -428,6 +428,11 @@ async def test_policies(client: TestClient, token: str):
         "captcha_sitekey": "",
         "admin_theme_url": "",
         "captcha_type": schemes.CaptchaType.NONE,
+        "use_html_templates": False,
+        "global_templates": {
+            "forgotpassword": "",
+            "verifyemail": "",
+        },
         "explorer_urls": {
             "btc": static_data.DEFAULT_EXPLORER,
         },
@@ -452,6 +457,11 @@ async def test_policies(client: TestClient, token: str):
         "captcha_secretkey": "",
         "admin_theme_url": "",
         "captcha_type": schemes.CaptchaType.NONE,
+        "use_html_templates": False,
+        "global_templates": {
+            "forgotpassword": "",
+            "verifyemail": "",
+        },
         "explorer_urls": {
             "btc": static_data.DEFAULT_EXPLORER,
         },
@@ -471,6 +481,11 @@ async def test_policies(client: TestClient, token: str):
         "captcha_sitekey": "",
         "admin_theme_url": "",
         "captcha_type": schemes.CaptchaType.NONE,
+        "use_html_templates": False,
+        "global_templates": {
+            "forgotpassword": "",
+            "verifyemail": "",
+        },
         "explorer_urls": {
             "btc": static_data.DEFAULT_EXPLORER,
         },
@@ -494,6 +509,11 @@ async def test_policies(client: TestClient, token: str):
         "captcha_secretkey": "",
         "admin_theme_url": "",
         "captcha_type": schemes.CaptchaType.NONE,
+        "use_html_templates": False,
+        "global_templates": {
+            "forgotpassword": "",
+            "verifyemail": "",
+        },
         "explorer_urls": {
             "btc": static_data.DEFAULT_EXPLORER,
         },

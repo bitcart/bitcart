@@ -651,6 +651,8 @@ class Policy(DisplayModel):
     captcha_secretkey: str = ""
     admin_theme_url: str = ""
     captcha_type: str = CaptchaType.NONE
+    use_html_templates: bool = False
+    global_templates: dict[str, str] = {}
     explorer_urls: dict[str, str] = {}
     rpc_urls: dict[str, str] = {}
     email_settings: EmailSettings = EmailSettings()
@@ -661,6 +663,9 @@ class Policy(DisplayModel):
         for key in settings.settings.cryptos:
             if self.explorer_urls.get(key) is None:
                 self.explorer_urls[key] = await settings.settings.get_default_explorer(key)
+        for key in settings.settings.template_manager.templates_strings["global"]:
+            if self.global_templates.get(key) is None:
+                self.global_templates[key] = ""
 
     @validator("rpc_urls", pre=True, always=True)  # pragma: no cover
     def set_rpc_urls(cls, v):

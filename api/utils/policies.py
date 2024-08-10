@@ -1,9 +1,12 @@
 import json
+from typing import TypeVar
 
 from api import models, utils
 
+T = TypeVar("T")
 
-async def get_setting(scheme):
+
+async def get_setting(scheme: T) -> T:
     name = scheme.__name__.lower()
     item = await utils.database.get_object(
         models.Setting, custom_query=models.Setting.query.where(models.Setting.name == name), raise_exception=False
