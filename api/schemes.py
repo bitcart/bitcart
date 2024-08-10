@@ -373,14 +373,6 @@ class CreateNotification(CreateModel, CreatedMixin):
     class Config:
         orm_mode = True
 
-    @validator("provider")
-    def validate_provider(cls, v):
-        from api import settings
-
-        if v not in settings.settings.notifiers:
-            raise HTTPException(422, "Unsupported notificaton provider")
-        return v
-
 
 class UpdateNotification(UpdateModel, CreateNotification):
     pass
@@ -389,6 +381,7 @@ class UpdateNotification(UpdateModel, CreateNotification):
 class DisplayNotification(DisplayModel, CreateNotification):
     id: str
     user_id: str
+    error: bool = False
 
 
 # Templates

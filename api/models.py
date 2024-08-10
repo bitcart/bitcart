@@ -320,6 +320,11 @@ class Notification(BaseModel):
             kwargs["data"] = {}
         return kwargs
 
+    async def add_fields(self):
+        await super().add_fields()
+
+        self.error = self.provider not in settings.settings.notifiers
+
 
 class Template(BaseModel):
     __tablename__ = "templates"

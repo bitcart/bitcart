@@ -94,14 +94,13 @@ async def test_store_checkout_settings_valid(client: TestClient, token, store, d
 
 async def test_invalid_notification_provider(client: TestClient, token):
     # Only allow providers supported by the notifiers library to prevent further errors
-    check_validation_failed(
-        await client.post(
-            "/notifications",
-            json={"name": "test", "provider": "invalid", "data": {}},
-            headers={"Authorization": f"Bearer {token}"},
-        ),
-        "Unsupported notificaton provider",
+    resp = await client.post(
+        "/notifications",
+        json={"name": "test", "provider": "invalid", "data": {}},
+        headers={"Authorization": f"Bearer {token}"},
     )
+    assert resp.status_code == 200
+    assert resp.json()["error"]
     assert (
         await client.post(
             "/notifications",
