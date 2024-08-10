@@ -448,7 +448,7 @@ class CreateInvoice(CreateModel, CreatedMixin):
     notification_url: str = ""
     redirect_url: str = ""
     buyer_email: Optional[EmailStr] = ""
-    promocode: str = Field("", hidden_update=True)
+    promocode: Optional[str] = Field("", hidden_update=True)
     shipping_address: str = ""
     notes: str = ""
     status: str = Field(None, hidden=True)
