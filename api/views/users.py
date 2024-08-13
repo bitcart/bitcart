@@ -2,7 +2,8 @@ import json
 from typing import Optional
 
 import pyotp
-from fastapi import APIRouter, HTTPException, Query, Request, Security
+from fastapi import APIRouter, HTTPException, Path, Query, Request, Response, Security
+from fastapi.responses import RedirectResponse
 from fido2.server import Fido2Server
 from fido2.webauthn import AttestedCredentialData, PublicKeyCredentialRpEntity, PublicKeyCredentialUserEntity
 from sqlalchemy import distinct, func, select
@@ -10,6 +11,7 @@ from sqlalchemy import distinct, func, select
 from api import crud, db, events, models, schemes, settings, utils
 from api.constants import FIDO2_REGISTER_KEY, SHORT_EXPIRATION
 from api.plugins import run_hook
+from api.social import available_providers
 
 router = APIRouter()
 
@@ -214,6 +216,71 @@ async def fido2_delete_device(
             break
     await user.update(fido2_devices=user.fido2_devices).apply()
     return True
+
+
+@router.get("/login/{sso_provider}")
+async def sso_login(request: Request, sso_provider: str = Path()):
+    if sso_provider not in available_providers:
+        raise HTTPException(404, "Invalid provider")
+    redirect_uri = request.url_for("auth", sso_provider=sso_provider)
+    oauth_client = getattr(settings.settings.oauth, sso_provider)
+    return await oauth_client.authorize_redirect(request, redirect_uri)
+
+
+@router.get("/auth/{sso_provider}")
+async def auth(request: Request, response: Response, sso_provider: str = Path()):
+    response = RedirectResponse(
+        "http://" + settings.settings.admin_host + "/",
+    )
+    # skip unknown provider
+    if sso_provider not in settings.settings.oauth_providers:
+        raise HTTPException(404, "Invalid provider")
+    # get access_token
+    try:
+        oauth_client = getattr(settings.settings.oauth, sso_provider)
+        token = await oauth_client.authorize_access_token(request)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Fail to get access token")
+
+    # get data by token
+    user = await oauth_client.userinfo(token=token)
+    if not user:
+        raise HTTPException(status_code=400, detail="Missing user data")
+    data = settings.settings.oauth_providers.get(sso_provider).process_data(user, token)
+    if not data["email"]:
+        raise HTTPException(status_code=400, detail="Missing user data")
+
+    # if user not exist create new
+    existing_user = await models.User.query.where(models.User.email == data["email"]).gino.first()
+    token = None
+    if not existing_user:
+        try:
+            data["is_verified"] = True
+            existing_user = await create_user(
+                schemes.CreateUser(**data, password=utils.common.get_unusable_hash()), existing_user
+            )
+            token = "Bearer " + existing_user["token"]
+        except Exception:  # pragma: no cover
+            raise HTTPException(status_code=400, detail="Missing user data")
+    elif existing_user and sso_provider == existing_user.sso_type:
+        policies = await utils.policies.get_setting(schemes.Policy)
+        if not policies.require_verified_email:
+            token = (
+                "Bearer "
+                + (
+                    await utils.database.create_object(
+                        models.Token, schemes.CreateDBToken(permissions=["full_control"], user_id=existing_user.id)
+                    )
+                ).id
+            )
+    else:
+        response = RedirectResponse(
+            "http://" + settings.settings.admin_host + "?error=User already exists",
+        )
+        return response
+
+    response.set_cookie("auth._token.local", token)
+    return response
 
 
 crud_routes = utils.routing.ModelView.register(

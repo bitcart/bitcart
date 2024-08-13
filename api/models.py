@@ -210,6 +210,7 @@ class User(BaseModel):
     tfa_enabled = Column(Boolean(), default=False)
     recovery_codes = Column(ARRAY(Text))
     fido2_devices = Column(ARRAY(JSON))
+    sso_type = Column(Text)
     settings = Column(JSON)
 
     async def add_fields(self):

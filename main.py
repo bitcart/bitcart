@@ -1,4 +1,5 @@
 import json
+import secrets
 import traceback
 from contextlib import asynccontextmanager
 
@@ -6,6 +7,7 @@ from fastapi import FastAPI, Request
 from fastapi.requests import HTTPConnection
 from starlette.applications import Starlette
 from starlette.middleware.cors import CORSMiddleware
+from starlette.middleware.sessions import SessionMiddleware
 from starlette.responses import PlainTextResponse
 from starlette.staticfiles import StaticFiles
 from starlette.types import Receive, Scope, Send
@@ -121,6 +123,7 @@ def get_app():
         return PlainTextResponse("Internal Server Error", status_code=500)
 
     app.add_middleware(RawContextMiddleware)
+    app.add_middleware(SessionMiddleware, secret_key=secrets.token_urlsafe(64))
 
     if settings.openapi_path:
         with log_errors():

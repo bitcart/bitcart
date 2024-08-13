@@ -123,6 +123,7 @@ class BaseUser(CreatedMixin):
 class CreateUser(CreateModel, BaseUser):
     password: str
     captcha_code: str = ""
+    sso_type: str = "password"
 
 
 class User(UpdateModel, BaseUser):
@@ -135,6 +136,7 @@ class DisplayUser(DisplayModel, BaseUser):
     id: str
     is_verified: bool
     is_enabled: bool
+    sso_type: Optional[str] = None
     totp_key: str
     totp_url: str
     tfa_enabled: bool
