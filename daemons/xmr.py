@@ -310,7 +310,7 @@ class Wallet(BaseWallet):
 
     async def process_new_payment(self, to_address, tx, payment, wallet, unconfirmed=False):
         req = self.get_request(to_address)
-        if req is None or req.status not in (PR_UNPAID, PR_UNCONFIRMED):
+        if req is None or req.status not in (PR_UNPAID, PR_UNCONFIRMED) or tx.hash in req.tx_hashes:
             return
         if unconfirmed:
             req.sent_amount += payment.amount

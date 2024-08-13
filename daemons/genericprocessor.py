@@ -448,6 +448,8 @@ class Wallet:
             return None
         if req.status == PR_PAID:  # immutable
             return req
+        if req.status == PR_UNCONFIRMED and status == PR_EXPIRED:  # once mined, wait forever
+            return req
         req.status = status
         if tx_hash is not None:
             req.tx_hashes.append(tx_hash)
@@ -481,7 +483,7 @@ class Wallet:
 
     async def process_new_payment(self, from_address, tx, amount, wallet):
         req = self.get_request(from_address)
-        if req is None or req.status != PR_UNPAID:
+        if req is None or req.status != PR_UNPAID or tx.hash in req.tx_hashes:
             return
         req.sent_amount += amount
         await self.process_payment(
