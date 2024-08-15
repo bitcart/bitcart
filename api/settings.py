@@ -178,6 +178,11 @@ class Settings(BaseSettings):
         rootpath = "" if self.admin_rootpath == "/" else self.admin_rootpath
         return f"{self.protocol}://{self.admin_host}{rootpath}"
 
+    @field_validator("enabled_cryptos", mode="before")
+    @classmethod
+    def validate_enabled_cryptos(cls, v):
+        return CommaSeparatedStrings(v)
+
     @field_validator("db_name", mode="before")
     @classmethod
     def set_db_name(cls, db, info: ValidationInfo):
