@@ -11,7 +11,7 @@ from api.utils.common import prepare_compliant_response
 
 logger = get_logger(__name__)
 
-router = APIRouter()
+router = APIRouter(tags=["cryptos"])
 
 
 @router.get("")  # Note: we use empty string there as it's included as subrouter, to avoid redirects

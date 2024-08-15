@@ -1,7 +1,5 @@
 import requests
 
-from api import settings
-
 from .base import BaseProvider
 
 
@@ -16,11 +14,11 @@ class GithubProvider(BaseProvider):
             "sso_type": "github",
         }
 
-    def get_configuration(self):
+    def get_configuration(self, client_id, client_secret):
         return {
             "name": "github",
-            "client_id": settings.settings.github_client_id,
-            "client_secret": settings.settings.github_client_secret,
+            "client_id": client_id,
+            "client_secret": client_secret,
             "access_token_url": "https://github.com/login/oauth/access_token",
             "access_token_params": None,
             "authorize_url": "https://github.com/login/oauth/authorize",

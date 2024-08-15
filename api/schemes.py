@@ -680,7 +680,7 @@ class CaptchaType(StrEnum):
 
 
 class Policy(DisplayModel):
-    _SECRET_FIELDS = {"captcha_secretkey", "email_settings"}
+    _SECRET_FIELDS = {"captcha_secretkey", "email_settings", "enabled_providers"}
 
     disable_registration: bool = False
     require_verified_email: bool = False
@@ -698,6 +698,7 @@ class Policy(DisplayModel):
     explorer_urls: dict[str, str] = {}
     rpc_urls: dict[str, str] = Field({}, validate_default=True)
     email_settings: EmailSettings = EmailSettings()
+    enabled_providers: list[Dict[str, str]] = []
 
     async def async_init(self):
         from api import settings

@@ -13,7 +13,7 @@ from api import models, pagination, schemes, settings, utils
 from api.constants import FIDO2_LOGIN_KEY, SHORT_EXPIRATION
 from api.plugins import run_hook
 
-router = APIRouter()
+router = APIRouter(tags=["token"])
 
 TFA_REDIS_KEY = "users_tfa"
 

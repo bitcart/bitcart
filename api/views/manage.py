@@ -11,7 +11,7 @@ from api import constants, models, schemes, settings, utils
 from api.ext import backups as backups_ext
 from api.plugins import run_hook
 
-router = APIRouter()
+router = APIRouter(tags=["manage"])
 
 # Docker deployment maintenance commands
 
@@ -240,3 +240,9 @@ async def get_syncinfo(user: models.User = Security(utils.authorization.auth_dep
 async def test_email_ping(user: models.User = Security(utils.authorization.auth_dependency, scopes=["server_management"])):
     policy = await utils.policies.get_setting(schemes.Policy)
     return utils.Email.get_email(policy).check_ping()
+
+
+@router.get("/providers")
+async def get_providers():
+    policy = await utils.policies.get_setting(schemes.Policy)
+    return list(map(lambda el: el["provider_name"], policy.enabled_providers))

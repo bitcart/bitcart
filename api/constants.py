@@ -41,6 +41,5 @@ FIDO2_LOGIN_KEY = "fido2_login_cache"
 VERIFY_EMAIL_EXPIRATION = 60 * 60 * 24  # 1 day
 DEFAULT_SENDMAIL_SUBJECT = "Thank you for your order"  # used in api/invoices.py
 HTTPS_REVERSE_PROXIES = ["nginx-https"]
-DEFAULT_OAUTH_PROVIDERS = "github,google"
 UNUSABLE_PASSWORD_LENGTH = 64
 UNUSABLE_PASSWORD_PREFIX = "!"

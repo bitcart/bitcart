@@ -6,7 +6,7 @@ from sqlalchemy import select
 
 from api import models, schemes, settings, utils
 
-router = APIRouter()
+router = APIRouter(tags=["files"])
 
 
 def get_file_path(item):

@@ -17,7 +17,7 @@ class BaseProvider:
         """
 
     @abstractmethod
-    def get_configuration(self) -> int:
+    def get_configuration(self, client_id, client_secret) -> int:
         """Get oauth2 provider configuration for oauthlib
 
         Should provide required scope information to query email and profile data, as well as userinfo_endpoint

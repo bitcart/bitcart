@@ -9,7 +9,7 @@ from api.ext import configurator
 from api.ext import ssh as ssh_ext
 from api.plugins import run_hook
 
-router = APIRouter()
+router = APIRouter(tags=["configurator"])
 
 
 @router.post("/deploy")

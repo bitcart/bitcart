@@ -2,7 +2,7 @@ from fastapi import APIRouter
 
 from api import models, schemes, utils
 
-router = APIRouter()
+router = APIRouter(tags=["discounts"])
 
 crud_routes = utils.routing.ModelView.register(
     router,

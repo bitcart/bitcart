@@ -13,7 +13,7 @@ from api.constants import FIDO2_REGISTER_KEY, SHORT_EXPIRATION
 from api.plugins import run_hook
 from api.social import available_providers
 
-router = APIRouter()
+router = APIRouter(tags=["users"])
 
 
 @router.get("/stats")
@@ -223,6 +223,16 @@ async def sso_login(request: Request, sso_provider: str = Path()):
     if sso_provider not in available_providers:
         raise HTTPException(404, "Invalid provider")
     redirect_uri = request.url_for("auth", sso_provider=sso_provider)
+
+    policy = await utils.policies.get_setting(schemes.Policy)
+    provider = list(filter(lambda x: x["provider_name"] == sso_provider, policy.enabled_providers))[0]
+    if not provider:
+        raise ValueError(f"Unknown provider: {provider}")
+
+    settings.settings.oauth_providers[sso_provider] = available_providers[sso_provider]()
+    settings.settings.oauth.register(
+        **settings.settings.oauth_providers[sso_provider].get_configuration(provider["client_id"], provider["client_secret"]),
+    )
     oauth_client = getattr(settings.settings.oauth, sso_provider)
     return await oauth_client.authorize_redirect(request, redirect_uri)
 
@@ -233,7 +243,8 @@ async def auth(request: Request, response: Response, sso_provider: str = Path())
         "http://" + settings.settings.admin_host + "/",
     )
     # skip unknown provider
-    if sso_provider not in settings.settings.oauth_providers:
+    policy = await utils.policies.get_setting(schemes.Policy)
+    if sso_provider not in map(lambda x: x["provider_name"], policy.enabled_providers):
         raise HTTPException(404, "Invalid provider")
     # get access_token
     try:

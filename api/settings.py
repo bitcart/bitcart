@@ -33,7 +33,7 @@ from starlette.config import Config
 from starlette.datastructures import CommaSeparatedStrings
 
 from api import db
-from api.constants import DEFAULT_OAUTH_PROVIDERS, GIT_REPO_URL, HTTPS_REVERSE_PROXIES, PLUGINS_SCHEMA_URL, VERSION, WEBSITE
+from api.constants import GIT_REPO_URL, HTTPS_REVERSE_PROXIES, PLUGINS_SCHEMA_URL, VERSION, WEBSITE
 from api.ext.blockexplorer import EXPLORERS
 from api.ext.exchanges.rates_manager import RatesManager
 from api.ext.notifiers import all_notifers, get_params
@@ -41,7 +41,6 @@ from api.ext.rpc import RPC
 from api.ext.ssh import load_ssh_settings
 from api.logger import configure_logserver, get_exception_message, get_logger
 from api.schemes import SSHSettings
-from api.social import available_providers
 from api.templates import TemplateManager
 from api.utils.files import ensure_exists
 
@@ -112,13 +111,8 @@ class Settings(BaseSettings):
     plugins_schema: dict = {}
     is_worker: bool = False
 
-    enabled_oauth_providers: CommaSeparatedStrings = Field(DEFAULT_OAUTH_PROVIDERS, validation_alias="ENABLED_OAUTH_PROVIDERS")
-    oauth_providers: dict = None
     oauth: OAuth = None
-    github_client_id: str = Field(None, validation_alias="GITHUB_CLIENT_ID")
-    github_client_secret: str = Field(None, validation_alias="GITHUB_CLIENT_SECRET")
-    google_client_id: str = Field(None, validation_alias="GOOGLE_CLIENT_ID")
-    google_client_secret: str = Field(None, validation_alias="GOOGLE_CLIENT_SECRET")
+    oauth_providers: dict = None
 
     model_config = SettingsConfigDict(env_file="conf/.env", extra="ignore")
 
@@ -244,10 +238,6 @@ class Settings(BaseSettings):
         path = os.path.abspath(path)
         ensure_exists(path)
         return path
-
-    @validator("enabled_oauth_providers", pre=True, always=True)
-    def validate_oauth_providers(cls, v):
-        return CommaSeparatedStrings(v)
 
     def set_log_file(self, filename):
         self.log_file_name = filename
@@ -400,13 +390,6 @@ class Settings(BaseSettings):
     def init_oauth(self):
         self.oauth = OAuth(self.config)
         self.oauth_providers = {}
-        for provider in self.enabled_oauth_providers:
-            if provider not in available_providers:
-                raise ValueError(f"Unknown provider: {provider}")
-            self.oauth_providers[provider] = available_providers[provider]()
-            self.oauth.register(
-                **self.oauth_providers[provider].get_configuration(),
-            )
 
 
 def excepthook_handler(settings, excepthook):

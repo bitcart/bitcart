@@ -8,7 +8,7 @@ from fastapi import APIRouter, File, Security, UploadFile
 from api import models, schemes, settings, utils
 from api.ext import plugins as plugin_ext
 
-router = APIRouter()
+router = APIRouter(tags=["plugins"])
 
 
 @router.get("")

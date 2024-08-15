@@ -10,7 +10,7 @@ from starlette.requests import Request
 
 from api import db, models, pagination, schemes, settings, utils
 
-router = APIRouter()
+router = APIRouter(tags=["products"])
 
 OptionalProductScheme = utils.schemes.to_optional(schemes.UpdateProduct)
 
