@@ -119,7 +119,7 @@ async def create_user(
     user = await crud.users.create_user(model, auth_user)
     await events.event_handler.publish("send_verification_email", {"id": user.id})
     policies = await utils.policies.get_setting(schemes.Policy)
-    data = schemes.DisplayUser.from_orm(user).dict()
+    data = schemes.DisplayUser.model_validate(user).model_dump()
     token = None
     if not policies.require_verified_email:
         token = await utils.database.create_object(
@@ -226,7 +226,7 @@ utils.routing.ModelView.register(
     models.User,
     schemes.User,
     schemes.CreateUser,
-    display_model=schemes.DisplayUser,
+    schemes.DisplayUser,
     custom_methods={"post": crud.users.create_user},
     post_auth=False,
     request_handlers={"post": create_user},

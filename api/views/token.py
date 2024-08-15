@@ -62,7 +62,7 @@ async def patch_token(
         model_id,
         custom_query=models.Token.query.where(models.Token.user_id == user.id).where(models.Token.id == model_id),
     )
-    await utils.database.modify_object(item, model.dict(exclude_unset=True))
+    await utils.database.modify_object(item, model.model_dump(exclude_unset=True))
     return item
 
 
@@ -132,7 +132,7 @@ async def create_token(
     if auth_data:
         user, token = auth_data
     user = await validate_credentials(user, token_data)
-    token_data = token_data.dict()
+    token_data = token_data.model_dump()
     strict = token_data.pop("strict")
     if "server_management" in token_data["permissions"] and not user.is_superuser:
         if strict:
@@ -148,7 +148,7 @@ async def create_token(
     if policies.require_verified_email and not user.is_verified:
         raise HTTPException(403, "Email is not verified")
     requires_extra = not token and (user.tfa_enabled or bool(user.fido2_devices))
-    token_data = schemes.CreateDBToken(**token_data, user_id=user.id).dict()
+    token_data = schemes.CreateDBToken(**token_data, user_id=user.id).model_dump()
     if requires_extra:
         return await create_token_tfa_flow(token_data, user)
     else:
@@ -159,7 +159,7 @@ async def create_token_normal(token_data):
     token = await utils.database.create_object(models.Token, token_data)
     await run_hook("token_created", token)
     return {
-        **schemes.Token.from_orm(token).dict(),
+        **schemes.Token.model_validate(token).model_dump(),
         "access_token": token.id,
         "token_type": "bearer",
         "tfa_required": False,
@@ -172,7 +172,7 @@ async def create_token_tfa_flow(token_data, user):
     async with utils.redis.wait_for_redis():
         code = utils.common.unique_id()
         await settings.settings.redis_pool.set(
-            f"{TFA_REDIS_KEY}:{code}", schemes.CreateDBToken(**token_data).json(), ex=SHORT_EXPIRATION
+            f"{TFA_REDIS_KEY}:{code}", schemes.CreateDBToken(**token_data).model_dump_json(), ex=SHORT_EXPIRATION
         )
     tfa_types = []
     if user.fido2_devices:  # pragma: no cover

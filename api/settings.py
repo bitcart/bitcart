@@ -9,13 +9,23 @@ import sys
 import traceback
 from contextlib import asynccontextmanager
 from contextvars import ContextVar
+from typing import Any, Optional
 
 import fido2.features
 from aiohttp import ClientSession
 from bitcart import COINS, APIManager
 from bitcart.coin import Coin
 from fastapi import HTTPException
-from pydantic import BaseSettings, Field, validator
+from pydantic import Field, ValidationInfo, field_validator
+from pydantic.fields import FieldInfo
+from pydantic_settings import (
+    BaseSettings,
+    DotEnvSettingsSource,
+    EnvSettingsSource,
+    PydanticBaseSettingsSource,
+    SecretsSettingsSource,
+    SettingsConfigDict,
+)
 from redis import asyncio as aioredis
 from starlette.config import Config
 from starlette.datastructures import CommaSeparatedStrings
@@ -35,51 +45,85 @@ from api.utils.files import ensure_exists
 fido2.features.webauthn_json_mapping.enabled = True
 
 
+class CustomDecodingMixin:
+    def decode_complex_value(self, field_name: str, field: FieldInfo, value: Any) -> Any:
+        if field_name == "enabled_cryptos":
+            return CommaSeparatedStrings(value)
+        return json.loads(value)
+
+
+class MyEnvSettingsSource(CustomDecodingMixin, EnvSettingsSource):
+    pass
+
+
+class MyDotEnvSettingsSource(CustomDecodingMixin, DotEnvSettingsSource):
+    pass
+
+
+class MySecretsSettingsSource(CustomDecodingMixin, SecretsSettingsSource):
+    pass
+
+
 class Settings(BaseSettings):
-    enabled_cryptos: CommaSeparatedStrings = Field("btc", env="BITCART_CRYPTOS")
-    redis_host: str = Field("redis://localhost", env="REDIS_HOST")
-    test: bool = Field("pytest" in sys.modules, env="TEST")
-    functional_tests: bool = Field(False, env="FUNCTIONAL_TESTS")
-    docker_env: bool = Field(False, env="IN_DOCKER")
-    root_path: str = Field("", env="BITCART_BACKEND_ROOTPATH")
-    db_name: str = Field("bitcart", env="DB_DATABASE")
-    db_user: str = Field("postgres", env="DB_USER")
-    db_password: str = Field("", env="DB_PASSWORD")
-    db_host: str = Field("127.0.0.1", env="DB_HOST")
-    db_port: int = Field(5432, env="DB_PORT")
-    datadir: str = Field("data", env="BITCART_DATADIR")
-    backups_dir: str = Field("data/backups", env="BITCART_BACKUPS_DIR")
-    backend_plugins_dir: str = Field("modules", env="BITCART_BACKEND_PLUGINS_DIR")
-    admin_plugins_dir: str = Field("data/admin_plugins", env="BITCART_ADMIN_PLUGINS_DIR")
-    store_plugins_dir: str = Field("data/store_plugins", env="BITCART_STORE_PLUGINS_DIR")
-    docker_plugins_dir: str = Field("data/docker_plugins", env="BITCART_DOCKER_PLUGINS_DIR")
-    admin_host: str = Field("localhost:3000", env="BITCART_ADMIN_HOST")
-    admin_rootpath: str = Field("/", env="BITCART_ADMIN_ROOTPATH")
-    reverseproxy: str = Field("nginx-https", env="BITCART_REVERSEPROXY")
-    https_enabled: bool = Field(False, env="BITCART_HTTPS_ENABLED")
-    log_file: str = None
-    log_file_name: str = Field(None, env="LOG_FILE")
-    log_file_regex: re.Pattern = None
-    ssh_settings: SSHSettings = None
-    update_url: str = Field(None, env="UPDATE_URL")
-    torrc_file: str = Field(None, env="TORRC_FILE")
-    openapi_path: str = Field(None, env="OPENAPI_PATH")
-    api_title: str = Field("Bitcart", env="API_TITLE")
-    cryptos: dict[str, Coin] = None
-    crypto_settings: dict = None
-    manager: APIManager = None
-    notifiers: dict = None
-    redis_pool: aioredis.Redis = None
-    config: Config = None
-    logger: logging.Logger = None
-    template_manager: TemplateManager = None
-    exchange_rates: RatesManager = None
-    plugins: list = None
+    enabled_cryptos: CommaSeparatedStrings = Field("btc", validation_alias="BITCART_CRYPTOS")
+    redis_host: str = Field("redis://localhost", validation_alias="REDIS_HOST")
+    test: bool = Field("pytest" in sys.modules, validation_alias="TEST")
+    functional_tests: bool = Field(False, validation_alias="FUNCTIONAL_TESTS")
+    docker_env: bool = Field(False, validation_alias="IN_DOCKER")
+    root_path: str = Field("", validation_alias="BITCART_BACKEND_ROOTPATH")
+    db_name: str = Field("bitcart", validation_alias="DB_DATABASE")
+    db_user: str = Field("postgres", validation_alias="DB_USER")
+    db_password: str = Field("", validation_alias="DB_PASSWORD")
+    db_host: str = Field("127.0.0.1", validation_alias="DB_HOST")
+    db_port: int = Field(5432, validation_alias="DB_PORT")
+    datadir: str = Field("data", validation_alias="BITCART_DATADIR")
+    backups_dir: str = Field("data/backups", validation_alias="BITCART_BACKUPS_DIR")
+    backend_plugins_dir: str = Field("modules", validation_alias="BITCART_BACKEND_PLUGINS_DIR")
+    admin_plugins_dir: str = Field("data/admin_plugins", validation_alias="BITCART_ADMIN_PLUGINS_DIR")
+    store_plugins_dir: str = Field("data/store_plugins", validation_alias="BITCART_STORE_PLUGINS_DIR")
+    docker_plugins_dir: str = Field("data/docker_plugins", validation_alias="BITCART_DOCKER_PLUGINS_DIR")
+    admin_host: str = Field("localhost:3000", validation_alias="BITCART_ADMIN_HOST")
+    admin_rootpath: str = Field("/", validation_alias="BITCART_ADMIN_ROOTPATH")
+    reverseproxy: str = Field("nginx-https", validation_alias="BITCART_REVERSEPROXY")
+    https_enabled: bool = Field(False, validation_alias="BITCART_HTTPS_ENABLED")
+    log_file: Optional[str] = None
+    log_file_name: Optional[str] = Field(None, validation_alias="LOG_FILE")
+    log_file_regex: Optional[re.Pattern] = None
+    ssh_settings: Optional[SSHSettings] = None
+    update_url: Optional[str] = Field(None, validation_alias="UPDATE_URL")
+    torrc_file: Optional[str] = Field(None, validation_alias="TORRC_FILE")
+    openapi_path: Optional[str] = Field(None, validation_alias="OPENAPI_PATH")
+    api_title: str = Field("Bitcart", validation_alias="API_TITLE")
+    cryptos: Optional[dict[str, Coin]] = None
+    crypto_settings: Optional[dict] = None
+    manager: Optional[APIManager] = None
+    notifiers: Optional[dict] = None
+    redis_pool: Optional[aioredis.Redis] = None
+    config: Optional[Config] = None
+    logger: Optional[logging.Logger] = None
+    template_manager: Optional[TemplateManager] = None
+    exchange_rates: Optional[RatesManager] = None
+    plugins: Optional[list] = None
     plugins_schema: dict = {}
     is_worker: bool = False
 
-    class Config:
-        env_file = "conf/.env"
+    model_config = SettingsConfigDict(env_file="conf/.env", extra="ignore")
+
+    @classmethod
+    def settings_customise_sources(
+        cls,
+        settings_cls: type[BaseSettings],
+        init_settings: PydanticBaseSettingsSource,
+        env_settings: PydanticBaseSettingsSource,
+        dotenv_settings: PydanticBaseSettingsSource,
+        file_secret_settings: PydanticBaseSettingsSource,
+    ) -> tuple[PydanticBaseSettingsSource, ...]:
+        return (
+            init_settings,
+            MyEnvSettingsSource(settings_cls),
+            MyDotEnvSettingsSource(settings_cls),
+            MySecretsSettingsSource(settings_cls),
+        )
 
     @property
     def logserver_client_host(self) -> str:
@@ -134,47 +178,44 @@ class Settings(BaseSettings):
         rootpath = "" if self.admin_rootpath == "/" else self.admin_rootpath
         return f"{self.protocol}://{self.admin_host}{rootpath}"
 
-    @validator("enabled_cryptos", pre=True, always=True)
-    def validate_enabled_cryptos(cls, v):
-        return CommaSeparatedStrings(v)
-
-    @validator("db_name", pre=True, always=True)
-    def set_db_name(cls, db, values):
-        if values["test"]:
+    @field_validator("db_name", mode="before")
+    @classmethod
+    def set_db_name(cls, db, info: ValidationInfo):
+        if info.data["test"]:
             return "bitcart_test"
         return db
 
-    @validator("datadir", pre=True, always=True)
+    @field_validator("datadir", mode="before")
     def set_datadir(cls, path):
         path = os.path.abspath(path)
         ensure_exists(path)
         return path
 
-    @validator("backups_dir", pre=True, always=True)
+    @field_validator("backups_dir", mode="before")
     def set_backups_dir(cls, path):
         path = os.path.abspath(path)
         ensure_exists(path)
         return path
 
-    @validator("backend_plugins_dir", pre=True, always=True)
+    @field_validator("backend_plugins_dir", mode="before")
     def set_backend_plugins_dir(cls, path):
         path = os.path.abspath(path)
         ensure_exists(path)
         return path
 
-    @validator("admin_plugins_dir", pre=True, always=True)
+    @field_validator("admin_plugins_dir", mode="before")
     def set_admin_plugins_dir(cls, path):
         path = os.path.abspath(path)
         ensure_exists(path)
         return path
 
-    @validator("store_plugins_dir", pre=True, always=True)
+    @field_validator("store_plugins_dir", mode="before")
     def set_store_plugins_dir(cls, path):
         path = os.path.abspath(path)
         ensure_exists(path)
         return path
 
-    @validator("docker_plugins_dir", pre=True, always=True)
+    @field_validator("docker_plugins_dir", mode="before")
     def set_docker_plugins_dir(cls, path):
         path = os.path.abspath(path)
         ensure_exists(path)

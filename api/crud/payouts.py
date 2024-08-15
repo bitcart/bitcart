@@ -9,7 +9,7 @@ logger = get_logger(__name__)
 
 
 async def create_payout(payout: schemes.CreatePayout, user: schemes.User):
-    d = payout.dict()
+    d = payout.model_dump()
     store = await utils.database.get_object(models.Store, d["store_id"], user)
     d["currency"] = d["currency"] or store.default_currency or "USD"
     d["user_id"] = store.user_id

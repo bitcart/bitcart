@@ -80,7 +80,7 @@ async def get_policies(
     exclude = set()
     if not user:
         exclude = data._SECRET_FIELDS
-    return data.dict(exclude=exclude)
+    return data.model_dump(exclude=exclude)
 
 
 @router.post("/policies", response_model=schemes.Policy)

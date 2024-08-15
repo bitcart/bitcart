@@ -156,7 +156,7 @@ class BaseModel(db.Model, metaclass=BaseModelMeta):
 
     async def set_json_key(self, key, scheme):
         # Update only passed values, don't modify existing ones
-        json_data = jsonable_encoder(getattr(self, key).copy(update=scheme.dict(exclude_unset=True)))
+        json_data = jsonable_encoder(getattr(self, key).model_copy(update=scheme.model_dump(exclude_unset=True)))
         kwargs = {key: json_data}
         await self.update(**kwargs).apply()
 

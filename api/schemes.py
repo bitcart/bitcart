@@ -2,12 +2,12 @@ import math
 import warnings
 from datetime import datetime
 from decimal import Decimal
-from typing import Any, ClassVar, Optional, Union
+from typing import Annotated, Any, ClassVar, Optional, Union
 
 from cryptography.utils import CryptographyDeprecationWarning
 from fastapi.exceptions import HTTPException
 from pydantic import BaseModel as PydanticBaseModel
-from pydantic import EmailStr, Field, root_validator, validator
+from pydantic import ConfigDict, EmailStr, Field, PlainSerializer, field_validator, model_validator
 
 from api.constants import BACKUP_FREQUENCIES, BACKUP_PROVIDERS, FEE_ETA_TARGETS, MAX_CONFIRMATION_WATCH
 from api.ext.moneyformat import currency_table
@@ -19,6 +19,10 @@ with warnings.catch_warnings():
     import paramiko
 
 
+NonZuluDatetime = Annotated[datetime, PlainSerializer(lambda v: v.isoformat(), return_type=str, when_used="json")]
+DecimalAsFloat = Annotated[Decimal, PlainSerializer(lambda v: float(v), return_type=float, when_used="json")]
+
+
 # Base setup for all models
 class WorkingMode(StrEnum):
     UNSET = "unset"
@@ -27,35 +31,50 @@ class WorkingMode(StrEnum):
     DISPLAY = "display"  # no restrictions
 
 
+def iter_attributes(obj):  # to do the from_attributes job because pydantic doesn't do it before validator
+    for k in dir(obj):
+        if not k.startswith("_"):
+            v = getattr(obj, k)
+            if not callable(v):
+                yield k, v
+
+
 class BaseModel(PydanticBaseModel):
     MODE: ClassVar[str] = WorkingMode.UNSET
 
-    @root_validator(pre=True)
-    def remove_hidden(cls, values):
+    @model_validator(
+        mode="wrap"
+    )  # TODO: wrap used here due to pydantic bug: https://github.com/pydantic/pydantic/issues/10135
+    @classmethod
+    def remove_hidden(cls, values, handler):
         if cls.MODE == WorkingMode.UNSET:  # pragma: no cover
             raise ValueError("Base model should not be used directly")
+        if not isinstance(values, dict):
+            values = {k: v for k, v in iter_attributes(values)}
         if cls.MODE == WorkingMode.DISPLAY:
-            return {k: v for k, v in values.items() if v != ""}
-        # We also skip empty strings (to trigger defaults) as that's what frontend sends
-        return {k: v for k, v in values.items() if k in cls.schema()["properties"] and v != ""}
+            values = {k: v for k, v in values.items() if v != ""}
+        else:
+            # We also skip empty strings (to trigger defaults) as that's what frontend sends
+            values = {k: v for k, v in values.items() if k in cls.model_json_schema()["properties"] and v != ""}
+        return handler(values)
 
-    class Config:
+    @staticmethod
+    def schema_extra(schema: dict, cls):
+        properties = dict()
+        if cls.MODE != WorkingMode.DISPLAY:
+            for k, v in schema.get("properties", {}).items():
+                hidden_create = v.get("hidden_create", v.get("hidden", False))
+                hidden_update = v.get("hidden_update", v.get("hidden", False))
+                if (
+                    cls.MODE == WorkingMode.CREATE
+                    and not hidden_create
+                    or cls.MODE == WorkingMode.UPDATE
+                    and not hidden_update
+                ):
+                    properties[k] = v
+            schema["properties"] = properties
 
-        @staticmethod
-        def schema_extra(schema: dict, cls):
-            properties = dict()
-            if cls.MODE != WorkingMode.DISPLAY:
-                for k, v in schema.get("properties", {}).items():
-                    hidden_create = v.get("hidden_create", v.get("hidden", False))
-                    hidden_update = v.get("hidden_update", v.get("hidden", False))
-                    if (
-                        cls.MODE == WorkingMode.CREATE
-                        and not hidden_create
-                        or cls.MODE == WorkingMode.UPDATE
-                        and not hidden_update
-                    ):
-                        properties[k] = v
-                schema["properties"] = properties
+    model_config = ConfigDict(json_schema_extra=schema_extra)
 
 
 class CreateModel(BaseModel):
@@ -72,9 +91,12 @@ class DisplayModel(BaseModel):
 
 class CreatedMixin(BaseModel):
     metadata: dict[str, Any] = {}
-    created: datetime = Field(None, hidden=True)  # set by validator due to circular imports
+    created: NonZuluDatetime = Field(
+        None, json_schema_extra={"hidden": True}, validate_default=True
+    )  # set by validator due to circular imports
 
-    @validator("created", pre=True, always=True)
+    @field_validator("created", mode="before")
+    @classmethod
     def set_created(cls, v):
         from api.utils.time import now
 
@@ -92,8 +114,7 @@ class BaseUser(CreatedMixin):
     is_superuser: bool = False
     settings: UserPreferences = UserPreferences()
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class CreateUser(CreateModel, BaseUser):
@@ -123,8 +144,7 @@ class HTTPCreateToken(CreatedMixin):
     redirect_url: str = ""
     permissions: list[str] = []
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class HTTPCreateLoginToken(CreateModel, HTTPCreateToken):
@@ -192,17 +212,17 @@ class ResetPasswordFinalize(UpdateModel):
 class CreateWallet(CreateModel, CreatedMixin):
     name: str
     xpub: str
-    currency: str = "btc"
+    currency: str = Field("btc", validate_default=True)
     lightning_enabled: bool = False
     label: str = ""
     hint: str = ""
     contract: str = ""
     additional_xpub_data: dict = {}
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
-    @validator("currency", always=True)
+    @field_validator("currency")
+    @classmethod
     def validate_currency(cls, v):
         return v.lower()
 
@@ -224,7 +244,8 @@ class DisplayWallet(DisplayModel, UpdateWallet):
     xpub_name: str
     error: bool = False
 
-    @root_validator(pre=True)
+    @model_validator(mode="before")
+    @classmethod
     def set_balance(cls, values):
         if "balance" in values:
             values["balance"] = currency_table.format_decimal(
@@ -248,7 +269,8 @@ class EmailSettings(DisplayModel):  # all policies have DisplayModel
     password: str = ""
     auth_mode: str = SMTPAuthMode.STARTTLS
 
-    @validator("auth_mode")
+    @field_validator("auth_mode")
+    @classmethod
     def validate_auth_mode(cls, v):
         if v not in SMTPAuthMode:
             raise HTTPException(422, f"Invalid auth_mode. Expected either of {', '.join(SMTPAuthMode)}.")
@@ -258,7 +280,7 @@ class EmailSettings(DisplayModel):  # all policies have DisplayModel
 class StoreCheckoutSettings(DisplayModel):
     expiration: int = 15
     transaction_speed: int = 0
-    underpaid_percentage: Decimal = 0
+    underpaid_percentage: float = 0
     custom_logo_link: str = ""
     recommended_fee_target_blocks: int = 1
     show_recommended_fee: bool = True
@@ -272,19 +294,22 @@ class StoreCheckoutSettings(DisplayModel):
     rate_rules: str = ""
     pos_screen_enabled: bool = True
 
-    @validator("recommended_fee_target_blocks")
+    @field_validator("recommended_fee_target_blocks")
+    @classmethod
     def validate_recommended_fee_target_blocks(cls, v):
         from api import utils
 
         return utils.common.validate_list(v, FEE_ETA_TARGETS, "Recommended fee confirmation target blocks")
 
-    @validator("transaction_speed")
+    @field_validator("transaction_speed")
+    @classmethod
     def validate_transaction_speed(cls, v):
         if v < 0 or v > MAX_CONFIRMATION_WATCH:
             raise HTTPException(422, f"Transaction speed must be in range from 0 to {MAX_CONFIRMATION_WATCH}")
         return v
 
-    @validator("underpaid_percentage")
+    @field_validator("underpaid_percentage")
+    @classmethod
     def validate_underpaid_percentage(cls, v):
         if v < 0 or v >= 100:
             raise HTTPException(422, "Underpaid percentage must be in range from 0 to 99.99")
@@ -308,14 +333,14 @@ class StorePluginSettings(DisplayModel):
 
 class BaseStore(CreatedMixin):
     name: str
-    default_currency: str = "USD"
+    default_currency: str = Field("USD", validate_default=True)
     checkout_settings: StoreCheckoutSettings = StoreCheckoutSettings()
     theme_settings: StoreThemeSettings = StoreThemeSettings()
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
-    @validator("default_currency", always=True)
+    @field_validator("default_currency")
+    @classmethod
     def validate_default_currency(cls, v):
         return v.upper()
 
@@ -348,13 +373,12 @@ class DisplayStore(DisplayModel, CreateStore):
 class CreateDiscount(CreateModel, CreatedMixin):
     name: str
     percent: int
-    end_date: datetime
+    end_date: NonZuluDatetime
     description: str = ""
     promocode: str = ""
     currencies: str = ""
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class UpdateDiscount(UpdateModel, CreateDiscount):
@@ -372,8 +396,7 @@ class CreateNotification(CreateModel, CreatedMixin):
     provider: str
     data: dict
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class UpdateNotification(UpdateModel, CreateNotification):
@@ -391,8 +414,7 @@ class CreateTemplate(CreateModel, CreatedMixin):
     name: str
     text: str
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class UpdateTemplate(UpdateModel, CreateTemplate):
@@ -407,10 +429,10 @@ class DisplayTemplate(DisplayModel, CreateTemplate):
 # Products
 class CreateProduct(CreateModel, CreatedMixin):
     name: str
-    price: Decimal
+    price: DecimalAsFloat
     quantity: int
     store_id: str
-    status: str = Field("active", hidden_create=True)
+    status: str = Field("active", json_schema_extra={"hidden_create": True})
     download_url: str = ""
     description: str = ""
     category: str = ""
@@ -418,8 +440,7 @@ class CreateProduct(CreateModel, CreatedMixin):
     discounts: list[str] = []
     templates: dict[str, str] = {}
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class UpdateProduct(UpdateModel, CreateProduct):
@@ -432,7 +453,8 @@ class DisplayProduct(DisplayModel, CreateProduct):
     store_id: Optional[str]
     price: Money
 
-    @root_validator(pre=True)
+    @model_validator(mode="before")
+    @classmethod
     def set_price(cls, values):
         if "price" in values:
             values["price"] = currency_table.format_decimal(values.get("currency"), values["price"])
@@ -441,41 +463,43 @@ class DisplayProduct(DisplayModel, CreateProduct):
 
 # Invoices
 class CreateInvoice(CreateModel, CreatedMixin):
-    price: Decimal = Field(..., hidden_update=True)
-    store_id: str = Field(..., hidden_update=True)
-    currency: str = Field("", hidden_update=True)
+    price: DecimalAsFloat = Field(..., json_schema_extra={"hidden_update": True})
+    store_id: str = Field(..., json_schema_extra={"hidden_update": True})
+    currency: str = Field("", json_schema_extra={"hidden_update": True}, validate_default=True)
     order_id: str = ""
     notification_url: str = ""
     redirect_url: str = ""
     buyer_email: Optional[EmailStr] = ""
-    promocode: Optional[str] = Field("", hidden_update=True)
+    promocode: Optional[str] = Field("", json_schema_extra={"hidden_update": True})
     shipping_address: str = ""
     notes: str = ""
-    status: str = Field(None, hidden=True)
-    exception_status: str = Field(None, hidden=True)
-    products: Union[list[str], dict[str, int]] = Field({}, hidden_update=True)
-    tx_hashes: list[str] = Field([], hidden=True)
-    expiration: int = Field(None, hidden_update=True)
-    sent_amount: Decimal = Field(0, hidden=True)
+    status: str = Field(None, json_schema_extra={"hidden": True}, validate_default=True)
+    exception_status: str = Field(None, json_schema_extra={"hidden": True}, validate_default=True)
+    products: Union[list[str], dict[str, int]] = Field({}, json_schema_extra={"hidden_update": True})
+    tx_hashes: list[str] = Field([], json_schema_extra={"hidden": True})
+    expiration: int = Field(None, json_schema_extra={"hidden_update": True})
+    sent_amount: DecimalAsFloat = Field(Decimal("0"), json_schema_extra={"hidden": True})
 
-    @validator("currency", always=True)
+    @field_validator("currency")
+    @classmethod
     def validate_currency(cls, v):
         return v.upper()
 
-    @validator("status", pre=True, always=True)
+    @field_validator("status", mode="before")
+    @classmethod
     def set_status(cls, v):
         from api.invoices import InvoiceStatus
 
         return v or InvoiceStatus.PENDING
 
-    @validator("exception_status", pre=True, always=True)
+    @field_validator("exception_status", mode="before")
+    @classmethod
     def set_exception_status(cls, v):
         from api.invoices import InvoiceExceptionStatus
 
         return v or InvoiceExceptionStatus.NONE
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class CustomerUpdateData(UpdateModel):
@@ -493,6 +517,13 @@ class UpdateInvoice(UpdateModel, CreateInvoice):
     pass
 
 
+class PaymentData(DisplayModel):
+    created: NonZuluDatetime
+    recommended_fee: DecimalAsFloat
+
+    model_config = ConfigDict(extra="allow")
+
+
 class DisplayInvoice(DisplayModel, CreateInvoice):
     id: str
     user_id: str
@@ -500,15 +531,16 @@ class DisplayInvoice(DisplayModel, CreateInvoice):
     time_left: int
     expiration_seconds: int
     product_names: dict
-    payments: list = []
-    paid_date: Optional[datetime]
+    payments: list[PaymentData] = []
+    paid_date: Optional[NonZuluDatetime]
     payment_id: Optional[str]
     refund_id: Optional[str]
     paid_currency: Optional[str]
     discount: Optional[str]
     price: Money
 
-    @root_validator(pre=True)
+    @model_validator(mode="before")
+    @classmethod
     def set_price(cls, values):
         from api import crud
 
@@ -527,31 +559,33 @@ class DisplayInvoice(DisplayModel, CreateInvoice):
 
 # Payouts
 class CreatePayout(CreateModel, CreatedMixin):
-    amount: Decimal
+    amount: DecimalAsFloat
     destination: str
     store_id: str
     wallet_id: str
-    currency: str = ""
+    currency: str = Field("", validate_default=True)
     notification_url: str = ""
-    max_fee: Optional[Decimal] = None
-    status: str = Field(None, hidden=True)
+    max_fee: Optional[DecimalAsFloat] = Field(None, validate_default=True)
+    status: str = Field(None, json_schema_extra={"hidden": True}, validate_default=True)
 
-    @validator("currency", always=True)
+    @field_validator("currency")
+    @classmethod
     def validate_currency(cls, v):
         return v.upper()
 
-    @validator("status", pre=True, always=True)
+    @field_validator("status", mode="before")
+    @classmethod
     def set_status(cls, v):
         from api.ext.payouts import PayoutStatus
 
         return v or PayoutStatus.PENDING
 
-    @validator("max_fee", pre=True, always=True)
+    @field_validator("max_fee", mode="before")
+    @classmethod
     def set_max_fee(cls, v):
         return v or None
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class UpdatePayout(UpdateModel, CreatePayout):
@@ -564,11 +598,12 @@ class DisplayPayout(DisplayModel, CreatePayout):
     store_id: Optional[str]
     wallet_id: Optional[str]
     wallet_currency: Optional[str]
-    used_fee: Optional[Decimal]
+    used_fee: Optional[DecimalAsFloat]
     tx_hash: Optional[str]
     amount: Money
 
-    @root_validator(pre=True)
+    @model_validator(mode="before")
+    @classmethod
     def set_amount(cls, values):
         if "amount" in values:
             values["amount"] = currency_table.format_decimal(values.get("currency"), values["amount"])
@@ -577,13 +612,12 @@ class DisplayPayout(DisplayModel, CreatePayout):
 
 # Refunds
 class CreateRefund(CreateModel, CreatedMixin):
-    amount: Decimal
+    amount: DecimalAsFloat
     currency: str
     wallet_id: str
     invoice_id: str
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class UpdateRefund(UpdateModel, CreateRefund):
@@ -595,16 +629,15 @@ class DisplayRefund(DisplayModel, CreateRefund):
     user_id: str
     wallet_id: Optional[str]
     destination: Optional[str]
-    wallet_currency: Optional[str]
+    wallet_currency: Optional[str] = None  # added at runtime
     payout_id: Optional[str]
-    payout_status: Optional[str]
-    tx_hash: Optional[str]
+    payout_status: Optional[str] = None
+    tx_hash: Optional[str] = None
 
 
 # Files
 class CreateFile(CreateModel, CreatedMixin):
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class UpdateFile(UpdateModel, CreateFile):
@@ -619,7 +652,7 @@ class DisplayFile(DisplayModel, CreateFile):
 
 # Misc schemes
 class TxResponse(DisplayModel):
-    date: Optional[datetime]
+    date: Optional[NonZuluDatetime]
     txid: str
     amount: str
 
@@ -654,7 +687,7 @@ class Policy(DisplayModel):
     use_html_templates: bool = False
     global_templates: dict[str, str] = {}
     explorer_urls: dict[str, str] = {}
-    rpc_urls: dict[str, str] = {}
+    rpc_urls: dict[str, str] = Field({}, validate_default=True)
     email_settings: EmailSettings = EmailSettings()
 
     async def async_init(self):
@@ -667,7 +700,8 @@ class Policy(DisplayModel):
             if self.global_templates.get(key) is None:
                 self.global_templates[key] = ""
 
-    @validator("rpc_urls", pre=True, always=True)  # pragma: no cover
+    @field_validator("rpc_urls", mode="before")  # pragma: no cover
+    @classmethod
     def set_rpc_urls(cls, v):
         from api import settings
 
@@ -680,7 +714,8 @@ class Policy(DisplayModel):
                 v[key] = settings.settings.get_default_rpc(key)
         return v
 
-    @validator("captcha_type")
+    @field_validator("captcha_type")
+    @classmethod
     def validate_captcha_type(cls, v):
         if v not in CaptchaType:
             raise HTTPException(422, f"Invalid captcha_type. Expected either of {', '.join(CaptchaType)}.")
@@ -697,13 +732,15 @@ class BackupsPolicy(DisplayModel):
     frequency: str = "weekly"
     environment_variables: dict[str, str] = {}
 
-    @validator("provider")
+    @field_validator("provider")
+    @classmethod
     def validate_provider(cls, v):
         from api import utils
 
         return utils.common.validate_list(v, BACKUP_PROVIDERS, "Backup provider")
 
-    @validator("frequency")
+    @field_validator("frequency")
+    @classmethod
     def validate_frequency(cls, v):
         from api import utils
 
@@ -722,7 +759,7 @@ class BatchSettings(DisplayModel):
 
 class OpenChannelScheme(DisplayModel):
     node_id: str
-    amount: Decimal
+    amount: DecimalAsFloat
 
 
 class CloseChannelScheme(DisplayModel):
@@ -757,10 +794,10 @@ class ConfiguratorAdvancedSettings(DisplayModel):
 
 
 class ConfiguratorSSHSettings(DisplayModel):
-    host: Optional[str]
-    username: Optional[str]
-    password: Optional[str]
-    root_password: Optional[str]
+    host: Optional[str] = None
+    username: Optional[str] = None
+    password: Optional[str] = None
+    root_password: Optional[str] = None
 
 
 class ConfiguratorServerSettings(DisplayModel):
@@ -778,14 +815,14 @@ class ConfiguratorDeploySettings(ConfiguratorServerSettings):
 # This is different from ConfiguratorSSHSettings - it is an internal object which is used for ssh connection management
 # throughout the app
 class SSHSettings(DisplayModel):
-    host: Optional[str]
+    host: Optional[str] = None
     port: Optional[int] = 22
-    username: Optional[str]
-    password: Optional[str]
-    key_file: Optional[str]
-    key_file_password: Optional[str]
-    authorized_keys_file: Optional[str]
-    bash_profile_script: Optional[str]
+    username: Optional[str] = None
+    password: Optional[str] = None
+    key_file: Optional[str] = None
+    key_file_password: Optional[str] = None
+    authorized_keys_file: Optional[str] = None
+    bash_profile_script: Optional[str] = None
 
     def create_ssh_client(self):
         client = paramiko.SSHClient()
@@ -805,7 +842,7 @@ class UninstallPluginData(DisplayModel):
 
 
 class RefundData(DisplayModel):
-    amount: Decimal
+    amount: DecimalAsFloat
     currency: str
     admin_host: str
     send_email: bool = True
@@ -816,10 +853,11 @@ class SubmitRefundData(CreateModel):
 
 
 class RateResult(DisplayModel):
-    rate: Optional[Decimal]
+    rate: Optional[DecimalAsFloat] = Field(..., validate_default=True)
     message: str
 
-    @validator("rate", pre=True, always=True)
+    @field_validator("rate", mode="before")
+    @classmethod
     def set_rate(cls, v):  # pragma: no cover
         if math.isnan(v):
             return None

@@ -36,7 +36,7 @@ async def validate_stock_levels(products):
 
 
 async def create_invoice(invoice: schemes.CreateInvoice, user: schemes.User):
-    d = invoice.dict()
+    d = invoice.model_dump()
     start_time = time.time()
     store = await utils.database.get_object(models.Store, d["store_id"], user)
     if not store.checkout_settings.allow_anonymous_invoice_creation and not user:

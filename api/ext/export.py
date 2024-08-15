@@ -15,7 +15,7 @@ def process_invoice(invoice, add_payments=False):
 
 
 def db_to_json(data, add_payments=False):
-    return map(lambda x: process_invoice(DisplayInvoice.from_orm(x).dict(), add_payments), data)
+    return map(lambda x: process_invoice(DisplayInvoice.model_validate(x).model_dump(), add_payments), data)
 
 
 def get_leaves(item, key=None):  # pragma: no cover

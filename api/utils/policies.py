@@ -22,7 +22,7 @@ async def get_setting(scheme: T) -> T:
 
 async def set_setting(scheme):
     name = scheme.__class__.__name__.lower()
-    json_data = scheme.dict(exclude_unset=True)
+    json_data = scheme.model_dump(exclude_unset=True)
     data = {"name": name, "value": json_data}
     model = await utils.database.get_object(
         models.Setting, custom_query=models.Setting.query.where(models.Setting.name == name), raise_exception=False

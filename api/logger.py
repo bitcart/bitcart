@@ -38,7 +38,7 @@ class MsgpackHandler(logging.handlers.SocketHandler):
 
     def msgpack_encoder(self, obj):
         if isinstance(obj, BaseModel):
-            return obj.dict()
+            return obj.model_dump()
         if isinstance(obj, datetime.datetime):
             return {"__datetime__": True, "data": obj.strftime("%Y%m%dT%H:%M:%S.%f")}
         if isinstance(obj, Decimal):

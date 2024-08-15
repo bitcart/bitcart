@@ -112,17 +112,19 @@ async def test_invalid_notification_provider(client: TestClient, token):
 
 async def test_invalid_fk_constaint(client: TestClient, token):
     # For m2m, it disallows invalid foreign keys with a bit different error
-    resp = await client.post("/stores", json={"name": "test", "wallets": [999]}, headers={"Authorization": f"Bearer {token}"})
+    resp = await client.post(
+        "/stores", json={"name": "test", "wallets": ["999"]}, headers={"Authorization": f"Bearer {token}"}
+    )
     assert resp.status_code == 403
     assert resp.json()["detail"] == "Access denied: attempt to use objects not owned by current user"
     # For invoices (custom logic), it returns 404 at initial store fetching stage
     assert (
-        await client.post("/invoices", json={"price": 5, "store_id": 999}, headers={"Authorization": f"Bearer {token}"})
+        await client.post("/invoices", json={"price": 5, "store_id": "999"}, headers={"Authorization": f"Bearer {token}"})
     ).status_code == 404
     # For o2m keys it should do the same
     resp = await client.post(
         "/products",
-        data={"data": json.dumps({"name": "test", "price": 1, "quantity": 1, "store_id": 999})},
+        data={"data": json.dumps({"name": "test", "price": 1, "quantity": 1, "store_id": "999"})},
         headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 403

@@ -466,7 +466,7 @@ async def test_policies(client: TestClient, token: str):
             "btc": static_data.DEFAULT_EXPLORER,
         },
         "rpc_urls": {},
-        "email_settings": schemes.EmailSettings(),
+        "email_settings": schemes.EmailSettings().model_dump(),
     }
     assert (await client.post("/users", json=static_data.POLICY_USER)).status_code == 422  # registration is off
     # Test for loading data from db instead of loading scheme's defaults
@@ -518,7 +518,7 @@ async def test_policies(client: TestClient, token: str):
             "btc": static_data.DEFAULT_EXPLORER,
         },
         "rpc_urls": {},
-        "email_settings": schemes.EmailSettings(),
+        "email_settings": schemes.EmailSettings().model_dump(),
     }
     assert (await client.post("/users", json=static_data.POLICY_USER)).status_code == 200  # registration is on again
     resp = await client.get("/manage/stores")
@@ -688,7 +688,7 @@ async def test_batch_commands(client: TestClient, token: str, store):
         await client.post("/invoices/batch", json={"ids": [], "command": "test"}, headers={"Authorization": f"Bearer {token}"})
     ).status_code == 404
     assert (
-        await client.post("/invoices", json={"store_id": -1, "price": 0.5}, headers={"Authorization": f"Bearer {token}"})
+        await client.post("/invoices", json={"store_id": "-1", "price": 0.5}, headers={"Authorization": f"Bearer {token}"})
     ).status_code == 404
     resp1 = await client.post(
         "/invoices", json={"store_id": store_id, "price": 0.5}, headers={"Authorization": f"Bearer {token}"}
@@ -1138,7 +1138,7 @@ async def test_change_store_checkout_settings(client: TestClient, token: str, st
     )
     assert resp.status_code == 200
     # Changes only the settings provided
-    default_values = schemes.StoreCheckoutSettings().dict()
+    default_values = schemes.StoreCheckoutSettings().model_dump()
     assert resp.json()["checkout_settings"] == {**default_values, "expiration": 60}
     assert len(resp.json()["wallets"]) > 0
     resp2 = await client.get(f"/stores/{store_id}", headers={"Authorization": f"Bearer {token}"})
@@ -1166,7 +1166,7 @@ async def test_change_store_theme_settings(client: TestClient, token: str, store
     )
     assert resp.status_code == 200
     # Changes only the settings provided
-    default_values = schemes.StoreThemeSettings().dict()
+    default_values = schemes.StoreThemeSettings().model_dump()
     assert resp.json()["theme_settings"] == {**default_values, "store_theme_url": "url"}
     assert len(resp.json()["wallets"]) > 0
     resp2 = await client.get(f"/stores/{store_id}", headers={"Authorization": f"Bearer {token}"})
@@ -1279,7 +1279,7 @@ async def test_unauthorized_m2m_access(client: TestClient, token: str, limited_u
     ).json()["access_token"]
     assert (
         await client.post(
-            "/stores", json={"name": "new store", "wallets": [2]}, headers={"Authorization": f"Bearer {token_usual}"}
+            "/stores", json={"name": "new store", "wallets": ["2"]}, headers={"Authorization": f"Bearer {token_usual}"}
         )
     ).status_code == 403  # Can't access other users' related objects
 
@@ -1296,7 +1296,7 @@ async def test_users_display_balance(client: TestClient, token: str, wallet):
     )
     assert resp.status_code == 200
     # Changes only the settings provided
-    default_values = schemes.UserPreferences().dict()
+    default_values = schemes.UserPreferences().model_dump()
     assert resp.json()["settings"] == {**default_values, "balance_currency": "BTC"}
     assert float(await get_wallet_balances(client, token)) == 0.01
     resp = await client.post(

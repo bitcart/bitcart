@@ -23,7 +23,7 @@ def safe_db_write():
 
 
 def get_kwargs(model, data, additional_kwargs, user=None):
-    kwargs = data if isinstance(data, dict) else data.dict()
+    kwargs = data if isinstance(data, dict) else data.model_dump()
     kwargs.update(additional_kwargs)
     if user:
         kwargs["user_id"] = user.id

@@ -16,7 +16,7 @@ packaging
 paramiko
 passlib[bcrypt]
 psycopg2-binary
-pydantic<2 # not stable enough!
+pydantic-settings
 pyotp
 python-dateutil
 python-dotenv

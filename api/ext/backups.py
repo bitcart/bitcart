@@ -32,7 +32,7 @@ class BackupsManager:
     async def start_backup_task(self, left, backup_policy, fresh=True):
         await self.reset_task()
         if fresh:
-            await utils.policies.set_setting(schemes.BackupState(last_run=time.time()))
+            await utils.policies.set_setting(schemes.BackupState(last_run=int(time.time())))
         self.logger.info(
             f"Scheduling backup task for provider {backup_policy.provider}, frequency {backup_policy.frequency}, left: {left}"
             " seconds"

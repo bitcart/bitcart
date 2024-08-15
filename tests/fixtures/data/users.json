@@ -1,11 +1,11 @@
 {
     "create": {
         "email": "test@example.com",
-        "password": 12345
+        "password": "12345"
     },
     "patch": {
         "email": "test1@example.com",
-        "password": 12345
+        "password": "12345"
     },
     "response": {
         "email": "test@example.com",

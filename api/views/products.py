@@ -78,7 +78,7 @@ async def patch_product(
     else:
         utils.files.safe_remove(get_image_local_path(item.id))
         data.image = ""
-    data = data.dict(exclude_unset=True)
+    data = data.model_dump(exclude_unset=True)
     await utils.database.modify_object(item, data)
     return item
 

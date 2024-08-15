@@ -18,7 +18,8 @@ def load_ssh_settings(config):
 
 
 def parse_connection_string(connection_string):
-    port = username = ""
+    username = ""
+    port = 22
     host = connection_string
     if host:
         parts = host.split(":")

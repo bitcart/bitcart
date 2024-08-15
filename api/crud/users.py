@@ -25,7 +25,7 @@ async def create_user(user: schemes.CreateUser, auth_user: schemes.User):
         is_superuser = True if count == 0 else False
     elif auth_user and auth_user.is_superuser:
         is_superuser = user.is_superuser
-    d = user.dict()
+    d = user.model_dump()
     d["is_superuser"] = is_superuser
     for key in ("captcha_code",):
         d.pop(key, None)

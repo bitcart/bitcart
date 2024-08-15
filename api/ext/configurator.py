@@ -130,7 +130,7 @@ async def create_new_task(script, ssh_settings, is_manual):
     data = {
         "id": deploy_id,
         "script": script,
-        "ssh_settings": ssh_settings.dict(),
+        "ssh_settings": ssh_settings.model_dump(),
         "success": is_manual,
         "finished": is_manual,
         "created": utils.time.now().timestamp(),

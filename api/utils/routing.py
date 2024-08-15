@@ -225,7 +225,7 @@ class ModelView:
             if self.custom_methods.get("patch"):
                 await self.custom_methods["patch"](item, model, user)  # pragma: no cover
             else:
-                await utils.database.modify_object(item, model.dict(exclude_unset=True))
+                await utils.database.modify_object(item, model.model_dump(exclude_unset=True))
             return item
 
         return patch
