@@ -5,7 +5,7 @@ apprise
 bcrypt==4.0.1 # TODO: remove when passlib is updated
 bitcart
 email-validator
-fastapi==0.110.3 # fastapi cli not needed here
+fastapi
 fido2
 gino[pg]==1.1.0rc1
 hiredis
