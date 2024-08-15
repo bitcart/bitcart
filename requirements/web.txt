@@ -2,7 +2,6 @@
 aiofiles
 alembic
 apprise
-bcrypt==4.0.1 # TODO: remove when passlib is updated
 bitcart
 email-validator
 fastapi
@@ -14,8 +13,8 @@ jsonschema
 msgpack
 packaging
 paramiko
-passlib[bcrypt]
 psycopg2-binary
+pwdlib[bcrypt]
 pydantic-settings
 pyotp
 python-dateutil

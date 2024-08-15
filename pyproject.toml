@@ -12,7 +12,6 @@ addopts = ["-n", "auto", "--cov=.", "--cov-report", "term-missing"]
 filterwarnings = [
     "error::DeprecationWarning",
     "error::PendingDeprecationWarning",
-    "ignore:.*'crypt' is deprecated.*:DeprecationWarning:passlib",                   # TODO: passlib is no longer maintained?
     "ignore:Deprecated call to `pkg_resources.declare_namespace:DeprecationWarning",
     "ignore:pkg_resources is deprecated as an API:DeprecationWarning",               # sqlalchemy
 ]

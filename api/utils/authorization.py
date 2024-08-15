@@ -4,7 +4,8 @@ from typing import Optional
 from aiohttp import ClientSession
 from fastapi import HTTPException
 from fastapi.security import OAuth2PasswordBearer, SecurityScopes
-from passlib.context import CryptContext
+from pwdlib import PasswordHash
+from pwdlib.hashers.bcrypt import BcryptHasher
 from starlette.requests import Request
 from starlette.status import HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN
 
@@ -12,7 +13,7 @@ from api import models, schemes, utils
 from api.constants import TFA_RECOVERY_ALPHABET, TFA_RECOVERY_LENGTH
 from api.plugins import run_hook
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = PasswordHash((BcryptHasher(),))
 
 
 def verify_password(plain_password, hashed_password):
