@@ -389,7 +389,7 @@ class ETHDaemon(BlockProcessorDaemon):
                             pass
                     if debug_data:
                         break
-                    await asyncio.sleep(2)
+                    await asyncio.sleep(5)
                 if not debug_data:
                     raise Exception(f"Error getting debug trace for {block_number}")
                 txes = list(

@@ -670,21 +670,24 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
                     print(f"Error processing block {block_number}:")
                     print(traceback.format_exc())
 
+    async def process_block_by_chunks(self, start_height, end_height):
+        tasks = []
+        for block_number in range(start_height, end_height + 1, CHUNK_SIZE):
+            tasks.append(self.process_block(block_number, min(block_number + CHUNK_SIZE - 1, end_height)))
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        if self.VERBOSE:
+            for task in results:
+                if isinstance(task, Exception):
+                    print(get_exception_traceback(task))
+
     async def process_pending(self):
         while self.running:
             try:
                 current_height = await self.coin.get_block_number()
-                tasks = []
                 # process at max 300 blocks since last processed block, fetched by chunks
-                for block_number in range(
-                    self.latest_height + 1, min(self.latest_height + self.MAX_SYNC_BLOCKS, current_height) + 1, CHUNK_SIZE
-                ):
-                    tasks.append(self.process_block(block_number, min(block_number + CHUNK_SIZE - 1, current_height)))
-                results = await asyncio.gather(*tasks, return_exceptions=True)
-                if self.VERBOSE:
-                    for task in results:
-                        if isinstance(task, Exception):
-                            print(get_exception_traceback(task))
+                await self.process_block_by_chunks(
+                    self.latest_height + 1, min(self.latest_height + self.MAX_SYNC_BLOCKS, current_height)
+                )
                 self.latest_height = current_height
                 self.synchronized = True  # set it once, as we just need to ensure initial sync was done
             except Exception:
@@ -1072,6 +1075,15 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
     @rpc
     def removelocaltx(self, *args, **kwargs):
         raise NotImplementedError(NO_HISTORY_MESSAGE)
+
+    @rpc(requires_network=True)
+    async def rescan_blocks(self, start_block, end_block=None, wallet=None):
+        if end_block is None:
+            end_block = start_block
+        start_block = int(start_block)
+        end_block = int(end_block)
+        await self.process_block_by_chunks(start_block, end_block)
+        return True
 
     def restore_wallet_from_text(self, text, contract=None, path=None, address=None):
         if not path:
