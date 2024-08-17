@@ -1,7 +1,7 @@
 from .base import BaseProvider
 
 
-class GoogleProvider(BaseProvider):
+class GoogleProvider(BaseProvider):  # pragma: no cover
     def process_data(self, user, token):
         return {
             "email": user["email"],

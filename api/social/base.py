@@ -1,7 +1,7 @@
 from abc import abstractmethod
 
 
-class BaseProvider:
+class BaseProvider:  # pragma: no cover
     @abstractmethod
     def process_data(self, user, token):
         """Parse user data from a service

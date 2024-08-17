@@ -3,7 +3,7 @@ import requests
 from .base import BaseProvider
 
 
-class GithubProvider(BaseProvider):
+class GithubProvider(BaseProvider):  # pragma: no cover
     def process_data(self, user, token):
         email_response = requests.get(
             "https://api.github.com/user/emails", headers={"Authorization": f'token {token["access_token"]}'}

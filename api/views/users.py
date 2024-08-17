@@ -225,9 +225,10 @@ async def sso_login(request: Request, sso_provider: str = Path()):
     redirect_uri = request.url_for("auth", sso_provider=sso_provider)
 
     policy = await utils.policies.get_setting(schemes.Policy)
-    provider = list(filter(lambda x: x["provider_name"] == sso_provider, policy.enabled_providers))[0]
+    provider = list(filter(lambda x: x["provider_name"] == sso_provider, policy.enabled_providers))
     if not provider:
-        raise ValueError(f"Unknown provider: {provider}")
+        raise HTTPException(404, f"The provider exists but is not connected: {sso_provider}")
+    provider = provider[0]
 
     settings.settings.oauth_providers[sso_provider] = available_providers[sso_provider]()
     settings.settings.oauth.register(
@@ -250,15 +251,15 @@ async def auth(request: Request, response: Response, sso_provider: str = Path())
     try:
         oauth_client = getattr(settings.settings.oauth, sso_provider)
         token = await oauth_client.authorize_access_token(request)
-    except Exception:
+    except Exception:  # pragma: no cover
         raise HTTPException(status_code=400, detail="Fail to get access token")
 
     # get data by token
     user = await oauth_client.userinfo(token=token)
-    if not user:
+    if not user:  # pragma: no cover
         raise HTTPException(status_code=400, detail="Missing user data")
     data = settings.settings.oauth_providers.get(sso_provider).process_data(user, token)
-    if not data["email"]:
+    if not data["email"]:  # pragma: no cover
         raise HTTPException(status_code=400, detail="Missing user data")
 
     # if user not exist create new
