@@ -698,7 +698,7 @@ class Policy(DisplayModel):
     explorer_urls: dict[str, str] = {}
     rpc_urls: dict[str, str] = Field({}, validate_default=True)
     email_settings: EmailSettings = EmailSettings()
-    enabled_providers: list[Dict[str, str]] = []
+    enabled_providers: list[dict[str, str]] = []
 
     async def async_init(self):
         from api import settings
