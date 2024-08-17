@@ -107,12 +107,11 @@ class Settings(BaseSettings):
     template_manager: Optional[TemplateManager] = None
     exchange_rates: Optional[RatesManager] = None
     locks: DefaultDict[str, Annotated[asyncio.Lock, Field(default_factory=asyncio.Lock)]] = defaultdict(asyncio.Lock)
+    oauth: Optional[OAuth] = None
+    oauth_providers: dict = {}
     plugins: Optional[list] = None
     plugins_schema: dict = {}
     is_worker: bool = False
-
-    oauth: OAuth = None
-    oauth_providers: dict = None
 
     model_config = SettingsConfigDict(env_file="conf/.env", extra="ignore")
 
@@ -389,7 +388,6 @@ class Settings(BaseSettings):
 
     def init_oauth(self):
         self.oauth = OAuth(self.config)
-        self.oauth_providers = {}
 
 
 def excepthook_handler(settings, excepthook):
