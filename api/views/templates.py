@@ -18,7 +18,7 @@ async def get_template_list(applicable_to: Optional[str] = None, show_all: bool 
     return prepare_compliant_response(result_set)
 
 
-utils.routing.ModelView.register(
+crud_routes = utils.routing.ModelView.register(
     router,
     "/",
     models.Template,

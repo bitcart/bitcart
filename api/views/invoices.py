@@ -212,7 +212,7 @@ async def submit_refund(refund_id: str, data: schemes.SubmitRefundData):
         return refund
 
 
-utils.routing.ModelView.register(
+crud_routes = utils.routing.ModelView.register(
     router,
     "/",
     models.Invoice,

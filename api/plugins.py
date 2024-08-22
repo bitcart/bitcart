@@ -9,7 +9,7 @@ from fastapi.encoders import jsonable_encoder
 
 from alembic import command
 from alembic.config import Config
-from api import events, settings, utils
+from api import events, models, settings, utils
 from api.logger import get_logger
 from api.templates import Template
 from api.utils.common import run_universal
@@ -121,9 +121,13 @@ class BaseCoin(metaclass=ABCMeta):
 
 
 class PluginsManager:
-    def __init__(self):
+    def __init__(self, test=False):
         self.plugins = {}
         self.callbacks = defaultdict(list)
+        if not test:
+            self.load_plugins()
+
+    def load_plugins(self):
         plugins_list = glob.glob("modules/**/plugin.py")
         plugins_list.extend(glob.glob("modules/**/**/plugin.py"))
         for plugin in plugins_list:
@@ -250,3 +254,15 @@ async def delete_metadata(model, object_id, key):
         del obj.metadata[key]
         await obj.update(metadata=obj.metadata).apply()
     return obj
+
+
+def register_model_override(name, obj):
+    from api import views
+
+    old_model = getattr(models, name)
+    for idx in range(len(utils.routing.ModelView.crud_models)):
+        if utils.routing.ModelView.crud_models[idx] == old_model:
+            utils.routing.ModelView.crud_models[idx] = obj
+    setattr(models, name, obj)
+    models.all_tables[name] = obj
+    views.users.crud_routes.orm_model = obj

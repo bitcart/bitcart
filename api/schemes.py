@@ -139,6 +139,10 @@ class DisplayUser(DisplayModel, BaseUser):
     fido2_devices: list
 
 
+class DisplayUserWithToken(DisplayUser):
+    token: Optional[str]
+
+
 # Tokens
 class HTTPCreateToken(CreatedMixin):
     app_id: str = ""

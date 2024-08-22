@@ -120,7 +120,7 @@ class Settings(BaseSettings):
     ) -> tuple[PydanticBaseSettingsSource, ...]:
         return (
             init_settings,
-            MyEnvSettingsSource(settings_cls),
+            MyEnvSettingsSource(settings_cls, env_ignore_empty=True),
             MyDotEnvSettingsSource(settings_cls),
             MySecretsSettingsSource(settings_cls),
         )
@@ -248,7 +248,7 @@ class Settings(BaseSettings):
     def load_plugins(self):
         from api.plugins import PluginsManager
 
-        self.plugins = PluginsManager()
+        self.plugins = PluginsManager(test=self.test)
 
     def load_cryptos(self):
         self.cryptos = {}

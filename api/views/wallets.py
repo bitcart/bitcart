@@ -172,7 +172,7 @@ async def get_wallet_rate(
     return rate
 
 
-utils.routing.ModelView.register(
+crud_routes = utils.routing.ModelView.register(
     router,
     "/",
     models.Wallet,

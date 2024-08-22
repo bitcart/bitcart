@@ -108,10 +108,6 @@ async def finalize_email_verification(code: str, add_token: bool = Query(False))
     return response
 
 
-class CreateUserWithToken(schemes.DisplayUser):
-    token: Optional[str]
-
-
 async def create_user(
     model: schemes.CreateUser,
     auth_user: Optional[models.User] = Security(utils.authorization.optional_auth_dependency, scopes=[]),
@@ -220,7 +216,7 @@ async def fido2_delete_device(
     return True
 
 
-utils.routing.ModelView.register(
+crud_routes = utils.routing.ModelView.register(
     router,
     "/",
     models.User,
@@ -230,7 +226,7 @@ utils.routing.ModelView.register(
     custom_methods={"post": crud.users.create_user},
     post_auth=False,
     request_handlers={"post": create_user},
-    response_models={"post": CreateUserWithToken},
+    response_models={"post": schemes.DisplayUserWithToken},
     scopes={
         "get_all": ["server_management"],
         "get_count": ["server_management"],

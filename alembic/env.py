@@ -41,13 +41,15 @@ plugin_name = config.get_main_option("plugin_name")
 version_table = f"plugin_{plugin_name}_alembic_version" if plugin_name else "alembic_version"
 
 
-def include_object(object, name, type_, reflected, compare_to):
+def include_object(obj, name, type_, reflected, compare_to):
     if type_ == "table":
         if name.startswith("app_"):
             return False
         if not plugin_name:
             return not name.startswith("plugin_")
         else:
+            if getattr(obj, "PUBLIC", False):
+                return True
             return name.startswith(f"plugin_{plugin_name}_")
     return True
 

@@ -67,7 +67,7 @@ async def batch_file_action(query, batch_settings: schemes.BatchSettings, user: 
     return True
 
 
-utils.routing.ModelView.register(
+crud_routes = utils.routing.ModelView.register(
     router,
     "/",
     models.File,

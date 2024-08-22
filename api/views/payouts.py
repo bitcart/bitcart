@@ -5,7 +5,7 @@ from api import crud, models, schemes, utils
 router = APIRouter()
 
 
-utils.routing.ModelView.register(
+crud_routes = utils.routing.ModelView.register(
     router,
     "/",
     models.Payout,

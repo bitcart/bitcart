@@ -62,7 +62,6 @@ def get_app():
     app.settings = settings
     app.mount("/images", StaticFiles(directory=settings.images_dir), name="images")
     app.mount("/files/localstorage", StaticFiles(directory=settings.files_dir), name="files")
-    app.include_router(router)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
@@ -73,7 +72,10 @@ def get_app():
     )
     settings.init_logging()
     settings.load_plugins()
+
     settings.plugins.setup_app(app)
+    # include built-in routes later to allow plugins to override them
+    app.include_router(router)
 
     @app.middleware("http")
     async def add_onion_host(request: Request, call_next):

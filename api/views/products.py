@@ -150,7 +150,7 @@ async def batch_product_action(query, batch_settings: schemes.BatchSettings, use
     return True
 
 
-utils.routing.ModelView.register(
+crud_routes = utils.routing.ModelView.register(
     router,
     "/",
     models.Product,

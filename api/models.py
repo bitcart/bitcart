@@ -48,12 +48,17 @@ class BaseModelMeta(ModelType):
         new_class = type.__new__(cls, name, bases, attrs)
         new_class.__namespace__ = attrs
         if hasattr(new_class, "__tablename__"):
+            is_public = hasattr(new_class, "PUBLIC")
             if hasattr(new_class, "TABLE_PREFIX"):  # pragma: no cover
                 new_class.__namespace__["__tablename__"] = f"plugin_{new_class.TABLE_PREFIX}_{new_class.__tablename__}"
             if getattr(new_class, "METADATA", True):
                 new_class.__namespace__["metadata"] = Column(JSON)
-        if new_class.__table__ is None:
-            new_class.__table__ = getattr(new_class, "_init_table")(new_class)
+            if new_class.__table__ is None or is_public:  # public means plugin overrides an existing table
+                if is_public:  # pragma: no cover
+                    new_class.__table_args__ = {"extend_existing": True}
+                new_class.__table__ = getattr(new_class, "_init_table")(new_class)
+            if is_public:  # pragma: no cover
+                new_class.__table__.PUBLIC = True
         return new_class
 
 

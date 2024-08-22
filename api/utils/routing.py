@@ -73,7 +73,7 @@ class ModelView:
 
         if not create_model:
             create_model = pydantic_model  # pragma: no cover
-        cls(
+        return cls(
             router=router,
             path=path,
             orm_model=orm_model,
@@ -108,6 +108,7 @@ class ModelView:
                 methods=[method_name if method in HTTP_METHODS else CUSTOM_HTTP_METHODS.get(method_name, "get")],
                 response_model=self.response_models.get(method_name, response_models.get(method_name)),
             )
+        return self
 
     def get_paths(self) -> dict[str, str]:
         item_path = path_join(self.path, "{model_id}")

@@ -96,7 +96,7 @@ async def set_store_plugin_settings(
     return model
 
 
-utils.routing.ModelView.register(
+crud_routes = utils.routing.ModelView.register(
     router,
     "/",
     models.Store,

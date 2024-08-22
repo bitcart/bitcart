@@ -16,7 +16,7 @@ async def get_notifications_schema():
     return settings.settings.notifiers
 
 
-utils.routing.ModelView.register(
+crud_routes = utils.routing.ModelView.register(
     router,
     "/",
     models.Notification,
