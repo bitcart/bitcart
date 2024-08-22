@@ -35,6 +35,12 @@ def iter_attributes(obj):  # to do the from_attributes job because pydantic does
 class BaseModel(PydanticBaseModel):
     MODE: ClassVar[str] = WorkingMode.UNSET
 
+    @staticmethod
+    def _prepare_value(v):
+        if isinstance(v, str):
+            return v.strip()
+        return v
+
     @model_validator(
         mode="wrap"
     )  # TODO: wrap used here due to pydantic bug: https://github.com/pydantic/pydantic/issues/10135
@@ -43,12 +49,14 @@ class BaseModel(PydanticBaseModel):
         if cls.MODE == WorkingMode.UNSET:  # pragma: no cover
             raise ValueError("Base model should not be used directly")
         if not isinstance(values, dict):
-            values = {k: v for k, v in iter_attributes(values)}
+            values = {k: cls._prepare_value(v) for k, v in iter_attributes(values)}
         if cls.MODE == WorkingMode.DISPLAY:
-            values = {k: v for k, v in values.items() if v != ""}
+            values = {k: cls._prepare_value(v) for k, v in values.items() if v != ""}
         else:
             # We also skip empty strings (to trigger defaults) as that's what frontend sends
-            values = {k: v for k, v in values.items() if k in cls.model_json_schema()["properties"] and v != ""}
+            values = {
+                k: cls._prepare_value(v) for k, v in values.items() if k in cls.model_json_schema()["properties"] and v != ""
+            }
         return handler(values)
 
     @staticmethod
