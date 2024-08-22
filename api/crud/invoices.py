@@ -88,8 +88,12 @@ async def determine_network_fee(coin, wallet, invoice, store, divisibility):  # 
         coin_no_contract = await settings.settings.get_coin(
             wallet.currency, {"xpub": wallet.xpub, **wallet.additional_xpub_data}
         )
+        # rate from network currency to invoice currency
         rate_no_contract = await utils.wallets.get_rate(wallet, invoice.currency, coin=coin_no_contract)
-        return fee * rate_no_contract
+        # rate from contract currency to invoice currency
+        rate_from_base = await utils.wallets.get_rate(wallet, invoice.currency)
+        # convert from contract to invoice currency, then back to contract currency
+        return (fee * rate_no_contract) / rate_from_base
     return fee
 
 
