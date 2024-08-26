@@ -93,7 +93,6 @@ def coingecko_based_exchange(name):
 
         async def fetch_rates(self, coins, page=1):
             base_url = f"https://api.coingecko.com/api/v3/exchanges/{name}/tickers"
-            page = 1
             resp, data = await fetch_delayed("GET", f"{base_url}?page={page}&coin_ids={','.join(coins)}", return_json=False)
             result = {f"{x['base']}_{x['target']}": utils.common.precise_decimal(x["last"]) for x in data["tickers"]}
             total = resp.headers.get("total")
@@ -105,7 +104,7 @@ def coingecko_based_exchange(name):
                 if total % per_page != 0:
                     total_pages += 1
                 for page in range(2, total_pages + 1):
-                    result.update(await self.fetch_rates(page=page))
+                    result.update(await self.fetch_rates(coins, page=page))
             return result
 
     return CoingeckoBasedExchange
