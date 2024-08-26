@@ -49,6 +49,7 @@ def get_moved_name(manifest, install):
         "backend": settings.settings.backend_plugins_dir,
         "admin": settings.settings.admin_plugins_dir,
         "store": settings.settings.store_plugins_dir,
+        "daemons": settings.settings.daemons_plugins_dir,
         "docker": settings.settings.docker_plugins_dir,
     }
     org_name = manifest["author"].lower()
