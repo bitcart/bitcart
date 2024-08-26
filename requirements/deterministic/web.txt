@@ -116,6 +116,7 @@ async-timeout==4.0.3 \
     --hash=sha256:4640d96be84d82d02ed59ea2b7105a0f7b33abe8703703cd0ab0bf87c427522f \
     --hash=sha256:7405140ff1230c310e51dc27b3145b9092d659ce68ff733fb0cefe3ee42be028
     # via
+    #   -r requirements/base.txt
     #   aiohttp
     #   asyncpg
     #   redis
