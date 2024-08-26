@@ -81,7 +81,7 @@ class Settings(BaseSettings):
     backend_plugins_dir: str = Field("modules", validation_alias="BITCART_BACKEND_PLUGINS_DIR")
     admin_plugins_dir: str = Field("data/admin_plugins", validation_alias="BITCART_ADMIN_PLUGINS_DIR")
     store_plugins_dir: str = Field("data/store_plugins", validation_alias="BITCART_STORE_PLUGINS_DIR")
-    daemons_plugins_dir: str = Field("data/daemons_plugins", validation_alias="BITCART_DAEMONS_PLUGINS_DIR")
+    daemon_plugins_dir: str = Field("data/daemon_plugins", validation_alias="BITCART_DAEMON_PLUGINS_DIR")
     docker_plugins_dir: str = Field("data/docker_plugins", validation_alias="BITCART_DOCKER_PLUGINS_DIR")
     admin_host: str = Field("localhost:3000", validation_alias="BITCART_ADMIN_HOST")
     admin_rootpath: str = Field("/", validation_alias="BITCART_ADMIN_ROOTPATH")
@@ -221,8 +221,8 @@ class Settings(BaseSettings):
         ensure_exists(path)
         return path
 
-    @field_validator("daemons_plugins_dir", mode="before")
-    def set_daemons_plugins_dir(cls, path):
+    @field_validator("daemon_plugins_dir", mode="before")
+    def set_daemon_plugins_dir(cls, path):
         path = os.path.abspath(path)
         ensure_exists(path)
         return path
