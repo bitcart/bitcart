@@ -334,6 +334,14 @@ class WalletDB(JsonDB):
             self.data[name] = {}
         return self.data[name]
 
+    @locked
+    def get_list(self, name) -> list:
+        # Warning: interacts un-intuitively with 'put': certain parts
+        # of 'data' will have pointers saved as separate variables.
+        if name not in self.data:
+            self.data[name] = []
+        return self.data[name]
+
     def _convert_dict(self, path, key, v):
         return v
 

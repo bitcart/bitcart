@@ -3,6 +3,8 @@ import json
 import os
 import traceback
 from collections import deque
+from contextvars import ContextVar
+from dataclasses import dataclass
 from decimal import Decimal
 from typing import Any
 
@@ -43,6 +45,7 @@ from web3.types import RPCEndpoint, RPCResponse
 
 Account.enable_unaudited_hdwallet_features()
 
+daemon_ctx: ContextVar["ETHDaemon"]
 
 EIP1559_PARAMS = ("maxFeePerGas", "maxPriorityFeePerGas")
 FEE_PARAMS = EIP1559_PARAMS + ("gasPrice", "gas")
@@ -227,9 +230,9 @@ RPC_ORIGIN = "metamask"
 RPC_DEST = "metamask"
 
 
+@dataclass
 class KeyStore(BaseKeyStore):
     account: Account = None
-    contract: str = None
 
     def load_contract(self):
         if not self.contract:
@@ -287,6 +290,10 @@ class KeyStore(BaseKeyStore):
 class Wallet(BaseWallet):
     contract: str = None
     _token_fetched = False
+
+    @property
+    def contract_addr(self):
+        return self.contract.address if self.contract else None
 
     async def fetch_token_info(self):
         self.symbol = (await daemon_ctx.get().readcontract(self.contract, "symbol")).upper()
@@ -521,15 +528,17 @@ class ETHDaemon(BlockProcessorDaemon):
             return None
 
         if diskless:
-            wallet = self.restore_wallet_from_text(xpub, contract, path=NOOP_PATH)
+            wallet = self.restore_wallet_from_text(xpub, contract, path=NOOP_PATH, **extra_params)
         else:
             wallet_dir = self.get_wallet_path()
             wallet_path = os.path.join(wallet_dir, wallet_key)
             if not os.path.exists(wallet_path):
-                self.restore(xpub, wallet_path=wallet_path, contract=contract)
+                self.restore(xpub, wallet_path=wallet_path, contract=contract, **extra_params)
             storage = Storage(wallet_path)
             db = WalletDB(storage.read())
             wallet = Wallet(self.coin, db, storage)
+            if wallet.keystore.update_keystore(**extra_params):
+                db.put("keystore", wallet.keystore.dump())
         self.wallets[wallet_key] = wallet
         self.wallets_updates[wallet_key] = deque(maxlen=self.POLLING_CAP)
         self.addresses[wallet.address].add(wallet_key)
@@ -633,7 +642,7 @@ class ETHDaemon(BlockProcessorDaemon):
 
     @rpc(requires_wallet=True, requires_network=True)
     async def payto(self, destination, amount, fee=None, feerate=None, gas=None, unsigned=False, wallet=None, *args, **kwargs):
-        address = self.wallets[wallet].address
+        address = kwargs["src_address"] if "src_address" in kwargs else self.wallets[wallet].address
         tx_dict = {
             "to": destination,
             "value": AsyncWeb3.to_wei(amount, "ether"),
@@ -655,9 +664,10 @@ class ETHDaemon(BlockProcessorDaemon):
         tx_dict["gas"] = int(gas) if gas else await self.get_default_gas(tx_dict)
         if unsigned:
             return tx_dict
-        if self.wallets[wallet].is_watching_only():
+        private_key = kwargs["private_key"] if "private_key" in kwargs else self.wallets[wallet].keystore.private_key
+        if private_key is None:
             raise Exception("This is a watching-only wallet")
-        return self._sign_transaction(tx_dict, self.wallets[wallet].keystore.private_key)
+        return self._sign_transaction(tx_dict, private_key)
 
     async def get_fee_params(self, gas_price=None, multiplier=None):
         if self.EIP1559_SUPPORTED:
@@ -767,19 +777,21 @@ class ETHDaemon(BlockProcessorDaemon):
 
     @rpc(requires_wallet=True, requires_network=True)
     async def writecontract(self, address, function, *args, **kwargs):
-        wallet = kwargs.pop("wallet")
+        wallet = kwargs.pop("wallet", None)
         unsigned = kwargs.pop("unsigned", False)
         gas = kwargs.pop("gas", None)
         nonce = kwargs.pop("nonce", None)
         gas_price = kwargs.pop("gas_price", None)
         multiplier = kwargs.pop("speed_multiplier", None)
         kwargs.pop("fee", None)  # TODO: better unify params
+        wallet_address = kwargs.pop("src_address") if "src_address" in kwargs else self.wallets[wallet].address
+        private_key = kwargs.pop("private_key") if "private_key" in kwargs else self.wallets[wallet].keystore.private_key
         exec_function = await self.load_contract_exec_function(address, function, *args, **kwargs)
         # pass gas here to avoid calling estimate_gas on an incomplete tx
         tx = await exec_function.build_transaction(
             {
                 **await self.get_common_payto_params(
-                    self.wallets[wallet].address,
+                    wallet_address,
                     nonce=nonce,
                     gas_price=gas_price,
                     multiplier=multiplier,
@@ -790,7 +802,7 @@ class ETHDaemon(BlockProcessorDaemon):
         tx["gas"] = int(gas) if gas else await self.get_default_gas(tx)
         if unsigned:
             return tx
-        signed = self._sign_transaction(tx, self.wallets[wallet].keystore.private_key)
+        signed = self._sign_transaction(tx, private_key)
         return await self.broadcast(signed)
 
     @rpc

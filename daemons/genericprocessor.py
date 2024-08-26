@@ -39,7 +39,7 @@ PR_EXPIRED = 1  # invoice is unpaid and expiry time reached
 PR_PAID = 3  # paid and mined (1 conf).
 PR_UNCONFIRMED = 7
 
-daemon_ctx = ContextVar("daemon")
+daemon_ctx: ContextVar[BaseDaemon] = ContextVar("daemon")
 
 
 class BlockchainFeatures(metaclass=ABCMeta):
@@ -239,6 +239,18 @@ class KeyStore(metaclass=ABCMeta):
     def __post_init__(self):
         self.load_account_from_key()
 
+    @classmethod
+    def from_kwargs(cls, **kwargs):
+        return cls(**{k: v for k, v in kwargs.items() if k in inspect.signature(cls).parameters})
+
+    def update_keystore(self, **kwargs):
+        updated = False
+        for k, v in kwargs.items():
+            if k in inspect.signature(self.__class__).parameters and v:
+                setattr(self, k, v)
+                updated = True
+        return updated
+
     @abstractmethod
     def load_account_from_key(self):
         pass
@@ -363,6 +375,14 @@ class Wallet:
     def address(self):
         return self.keystore.address
 
+    @property
+    def contract_addr(self):
+        return None
+
+    @property
+    def wallet_key(self):
+        return self.coin.get_wallet_key(self.keystore.key, self.contract_addr)
+
     async def balance(self):
         return await self.coin.get_balance(self.address)
 
@@ -457,7 +477,7 @@ class Wallet:
         for kwarg in kwargs:
             setattr(req, kwarg, kwargs[kwarg])
         self.add_payment_request(req, save_db=False)
-        if status == PR_PAID:
+        if status == PR_PAID or status == PR_EXPIRED:
             self.remove_from_detection_dict(req)
         self.save_db()
         return req
@@ -481,8 +501,8 @@ class Wallet:
             return
         self.set_request_status(req.id, PR_EXPIRED)
 
-    async def process_new_payment(self, from_address, tx, amount, wallet):
-        req = self.get_request(from_address)
+    async def process_new_payment(self, lookup_field, tx, amount, wallet):
+        req = self.get_request(lookup_field)
         if req is None or req.status != PR_UNPAID or tx.hash in req.tx_hashes:
             return
         req.sent_amount += amount
@@ -1085,11 +1105,11 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
         await self.process_block_by_chunks(start_block, end_block)
         return True
 
-    def restore_wallet_from_text(self, text, contract=None, path=None, address=None):
+    def restore_wallet_from_text(self, text, contract=None, path=None, address=None, **kwargs):
         if not path:
             path = os.path.join(self.get_wallet_path(), self.coin.get_wallet_key(text, contract))
         try:
-            keystore = daemon_ctx.get().KEYSTORE_CLASS(text, contract=contract, address=address)
+            keystore = daemon_ctx.get().KEYSTORE_CLASS.from_kwargs(key=text, contract=contract, address=address, **kwargs)
         except Exception as e:
             raise Exception("Invalid key provided") from e
         storage = Storage(path if path is not NOOP_PATH else None, in_memory_only=path is NOOP_PATH)
@@ -1102,8 +1122,8 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
         return wallet_obj
 
     @rpc
-    def restore(self, text, wallet=None, wallet_path=None, contract=None, address=None):
-        wallet = self.restore_wallet_from_text(text, contract, wallet_path, address=address)
+    def restore(self, text, wallet=None, wallet_path=None, contract=None, address=None, **kwargs):
+        wallet = self.restore_wallet_from_text(text, contract, wallet_path, address=address, **kwargs)
         return {
             "path": wallet.storage.path,
             "msg": "",

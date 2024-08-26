@@ -1,6 +1,7 @@
 import asyncio
 import json
 import weakref
+from contextvars import ContextVar
 from decimal import Decimal
 from typing import Any
 
@@ -19,6 +20,8 @@ from tronpy.abi import trx_abi
 from tronpy.async_tron import AsyncContract, AsyncHTTPProvider, AsyncTransaction
 from tronpy.exceptions import AddressNotFound
 from utils import AbstractRPCProvider, MultipleProviderRPC, exception_retry_middleware, rpc
+
+daemon_ctx: ContextVar["TRXDaemon"]
 
 with open("daemons/tokens/trc20.json") as f:
     TRC20_TOKENS = json.loads(f.read())
@@ -329,16 +332,17 @@ class TRXDaemon(ETHDaemon):
 
     @rpc(requires_wallet=True, requires_network=True)
     async def payto(self, destination, amount, fee=None, feerate=None, unsigned=False, wallet=None, *args, **kwargs):
-        address = self.wallets[wallet].address
+        address = kwargs["src_address"] if "src_address" in kwargs else self.wallets[wallet].address
         txn = self.coin.web3.trx.transfer(address, destination, to_wei(amount, self.DIVISIBILITY))
         if fee:
             txn = txn.fee_limit(to_wei(fee, self.DIVISIBILITY))
         tx_dict = await txn.build()
         if unsigned:
             return tx_dict.to_json()
-        if self.wallets[wallet].is_watching_only():
+        private_key = kwargs["private_key"] if "private_key" in kwargs else self.wallets[wallet].keystore.private_key
+        if private_key is None:
             raise Exception("This is a watching-only wallet")
-        return await self._sign_transaction(tx_dict.to_json(), self.wallets[wallet].keystore.private_key)
+        return await self._sign_transaction(tx_dict.to_json(), private_key)
 
     async def _sign_transaction(self, tx, private_key):
         if private_key is None:
@@ -373,18 +377,20 @@ class TRXDaemon(ETHDaemon):
         kwargs.pop("gas", None)
         kwargs.pop("nonce", None)
         kwargs.pop("speed_multiplier", None)
-        wallet = kwargs.pop("wallet")
+        wallet = kwargs.pop("wallet", None)
         unsigned = kwargs.pop("unsigned", False)
         kwargs.pop("gas_price", None)  # not used in tron
         fee = kwargs.pop("fee", None)
+        wallet_address = kwargs.pop("src_address") if "src_address" in kwargs else self.wallets[wallet].address
+        private_key = kwargs.pop("private_key") if "private_key" in kwargs else self.wallets[wallet].keystore.private_key
         exec_function = await self.load_contract_exec_function(address, function, *args, **kwargs)
-        tx = (await exec_function).with_owner(self.wallets[wallet].address)
+        tx = (await exec_function).with_owner(wallet_address)
         if fee is not None:
             tx = tx.fee_limit(to_wei(fee, self.DIVISIBILITY))
         tx = await tx.build()
         if unsigned:
             return tx.to_json()
-        signed = await self._sign_transaction(tx.to_json(), self.wallets[wallet].keystore.private_key)
+        signed = await self._sign_transaction(tx.to_json(), private_key)
         return await self.broadcast(signed)
 
     @rpc(requires_network=True)

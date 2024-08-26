@@ -5,6 +5,7 @@ import os
 import secrets
 import traceback
 from collections import deque
+from contextvars import ContextVar
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
@@ -32,6 +33,8 @@ from storage import Storage
 from utils import AbstractRPCProvider, MultipleProviderRPC, exception_retry_middleware, load_json_dict, modify_payment_url, rpc
 
 MAX_FETCH_TXES = 100
+
+daemon_ctx: ContextVar["XMRDaemon"]
 
 
 def is_valid_hash(hexhash):
@@ -308,8 +311,8 @@ class Wallet(BaseWallet):
             height=await self.coin.get_block_number(),
         )
 
-    async def process_new_payment(self, to_address, tx, payment, wallet, unconfirmed=False):
-        req = self.get_request(to_address)
+    async def process_new_payment(self, lookup_field, tx, payment, wallet, unconfirmed=False):
+        req = self.get_request(lookup_field)
         if req is None or req.status not in (PR_UNPAID, PR_UNCONFIRMED) or tx.hash in req.tx_hashes:
             return
         if unconfirmed:
