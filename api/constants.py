@@ -32,7 +32,7 @@ STR_TO_BOOL_MAPPING = {
 }  # common str -> bool conversions
 # due to many exchanges lacking more than 8 digits, we limit eth-based divisibility for invoices to 8
 MAX_CONTRACT_DIVISIBILITY = 8
-PLUGINS_SCHEMA_URL = "https://bitcart.ai/schemas/plugin/1.2.0/plugin.schema.json"
+PLUGINS_SCHEMA_URL = "https://bitcart.ai/schemas/plugin/1.3.0/plugin.schema.json"
 SHORT_EXPIRATION = 60 * 60  # used for temporary codes
 TFA_RECOVERY_ALPHABET = "23456789BCDFGHJKMNPQRTVWXY".lower()  # avoid confusing chars
 TFA_RECOVERY_LENGTH = 5  # each part has 5 chars
