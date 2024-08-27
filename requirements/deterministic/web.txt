@@ -1685,3 +1685,9 @@ zipp==3.20.0 \
     --hash=sha256:0145e43d89664cfe1a2e533adc75adafed82fe2da404b4bbb6b026c0157bdb31 \
     --hash=sha256:58da6168be89f0be59beb194da1250516fdaa062ccebd30127ac65d30045e10d
     # via importlib-metadata
+
+# The following packages are considered to be unsafe in a requirements file:
+setuptools==71.1.0 \
+    --hash=sha256:032d42ee9fb536e33087fb66cac5f840eb9391ed05637b3f2a76a7c8fb477936 \
+    --hash=sha256:33874fdc59b3188304b2e7c80d9029097ea31627180896fb549c578ceb8a0855
+    # via -r requirements/web.txt
