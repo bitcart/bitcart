@@ -1,8 +1,9 @@
 import asyncio
 import json
 import os
+import weakref
 
-from aiohttp import ClientSession, WSMsgType, web
+from aiohttp import WSCloseCode, WSMsgType, web
 from decouple import AutoConfig
 from utils import JsonResponse, authenticate, load_spec, maybe_update_key, noop_cast, parse_params
 
@@ -121,14 +122,14 @@ class BaseDaemon:
                     except json.JSONDecodeError:
                         pass
         finally:
-            request.app["websockets"].remove(ws)
+            request.app["websockets"].discard(ws)
 
     @authenticate
     async def handle_spec(self, request):
         return web.json_response(self.spec)
 
     def configure_app(self):
-        self.app["websockets"] = set()
+        self.app["websockets"] = weakref.WeakSet()
         self.app.router.add_post("/", self.handle_request)
         self.app.router.add_get("/ws", self.handle_websocket)
         self.app.router.add_get("/spec", self.handle_spec)
@@ -149,7 +150,7 @@ class BaseDaemon:
         # If xpub is not None (scoped to a specific wallet), we follow the notification settings
         coros = [
             ws.send_json(notification)
-            for ws in self.app["websockets"]
+            for ws in set(self.app["websockets"])
             if not ws.closed and (not xpub or not ws.config["xpub"] or ws.config["xpub"] == xpub)
         ]
         await asyncio.gather(*coros)
@@ -178,7 +179,6 @@ class BaseDaemon:
         Args:
             app (web.Application): aiohttp app instance
         """
-        self.client_session = ClientSession()
 
     async def on_shutdown(self, app):
         """Gracefuly release created objects here
@@ -186,7 +186,8 @@ class BaseDaemon:
         Args:
             app (web.Application): aiohttp app instance
         """
-        await self.client_session.close()
+        for ws in set(app["websockets"]):
+            await ws.close(code=WSCloseCode.GOING_AWAY, message="Server shutdown")
 
     async def execute_method(self, id, req_method, xpub, contract, extra_params, req_args, req_kwargs):
         """Main entrypoint for executing methods your daemon provides
