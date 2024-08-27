@@ -201,9 +201,9 @@ bcrypt==4.1.2 \
     # via
     #   paramiko
     #   pwdlib
-bitcart==1.15.0.0 \
-    --hash=sha256:51ad4fcf607015aaf2a4cdf648059f80102fc81feff8c8af1eb8edeedf1ed1d5 \
-    --hash=sha256:7ea215d24970c1730903750eda141d532bd80a632996e0d3dca4441130816fc9
+bitcart==1.16.0.0 \
+    --hash=sha256:da141f0d598898ced8eeef89c6d7d11d946fb805998b1af24a8f36ecd8e0e29f \
+    --hash=sha256:e1d4d0a73dcd971d9761889b23fd0bf10339d7534e9daea2b7cf86e2aa7b5d2b
     # via -r requirements/web.txt
 certifi==2024.7.4 \
     --hash=sha256:5a1e7645bc0ec61a09e26c36f6106dd4cf40c6db3a1fb6352b0244e7fb057c7b \
