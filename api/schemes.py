@@ -55,7 +55,9 @@ class BaseModel(PydanticBaseModel):
         else:
             # We also skip empty strings (to trigger defaults) as that's what frontend sends
             values = {
-                k: cls._prepare_value(v) for k, v in values.items() if k in cls.model_json_schema()["properties"] and v != ""
+                k: cls._prepare_value(v)
+                for k, v in values.items()
+                if k in cls.model_json_schema()["properties"] and (cls.MODE == WorkingMode.UPDATE or v != "")
             }
         return handler(values)
 
@@ -508,7 +510,7 @@ class CreateInvoice(CreateModel, CreatedMixin):
 
 
 class CustomerUpdateData(UpdateModel):
-    buyer_email: EmailStr = ""
+    buyer_email: Union[EmailStr, Literal[""]] = ""
     shipping_address: str = ""
     notes: str = ""
 
