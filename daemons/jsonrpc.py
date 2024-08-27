@@ -1,4 +1,4 @@
-from aiohttp import ClientSession
+from aiohttp import ClientSession, ClientTimeout
 from universalasync import get_event_loop
 
 
@@ -33,13 +33,13 @@ class RPCProvider:
             loop.run_until_complete(self._close())
 
     async def raw_request(self, method, **kwargs):
-        async with self.session.post(f"{self.url}/{method}", json=kwargs, timeout=5 * 60) as response:
+        async with self.session.post(f"{self.url}/{method}", json=kwargs, timeout=ClientTimeout(total=5 * 60)) as response:
             data = await response.json()
             return data
 
     async def jsonrpc_request(self, method, **kwargs):
         async with self.session.post(
-            f"{self.url}/json_rpc", json={"method": method, "params": kwargs}, timeout=5 * 60
+            f"{self.url}/json_rpc", json={"method": method, "params": kwargs}, timeout=ClientTimeout(total=5 * 60)
         ) as response:
             data = await response.json()
             if "error" in data:
