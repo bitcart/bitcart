@@ -4,9 +4,11 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.requests import HTTPConnection
+from starlette.applications import Starlette
 from starlette.middleware.cors import CORSMiddleware
 from starlette.responses import PlainTextResponse
 from starlette.staticfiles import StaticFiles
+from starlette.types import Receive, Scope, Send
 
 from api import settings as settings_module
 from api import utils
@@ -37,6 +39,31 @@ class RawContextMiddleware:
             settings_module.settings_ctx.reset(token)
 
 
+# TODO: remove when https://github.com/fastapi/fastapi/pull/11160 is merged
+def patch_call(instance):
+    class _(type(instance)):
+        async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+            if self.root_path:
+                root_path = scope.get("root_path", "")
+                if root_path and self.root_path != root_path:
+                    logger.warning(
+                        f"The ASGI server is using a different root path than the one "
+                        f"configured in FastAPI. The configured root path is: "
+                        f"{self.root_path}, the ASGI server root path is: {root_path}. "
+                        f"The former will be used."
+                    )
+                scope["root_path"] = self.root_path
+                path = scope.get("path")
+                if path and not path.startswith(self.root_path):
+                    scope["path"] = self.root_path + path
+                raw_path: bytes | None = scope.get("raw_path")
+                if raw_path and not raw_path.startswith(self.root_path.encode()):
+                    scope["raw_path"] = self.root_path.encode() + raw_path
+            await Starlette.__call__(self, scope, receive, send)
+
+    instance.__class__ = _
+
+
 def get_app():
     settings = Settings()
 
@@ -59,6 +86,7 @@ def get_app():
         description="Bitcart Merchants API",
         lifespan=lifespan,
     )
+    patch_call(app)
     app.settings = settings
     app.mount("/images", StaticFiles(directory=settings.images_dir), name="images")
     app.mount("/files/localstorage", StaticFiles(directory=settings.files_dir), name="files")
