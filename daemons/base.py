@@ -2,14 +2,10 @@ import asyncio
 import json
 import os
 
-from aiohttp import ClientSession, WSMsgType
-from aiohttp import __version__ as aiohttp_version
-from aiohttp import web
+from aiohttp import ClientSession, WSMsgType, web
 from decouple import AutoConfig
-from pkg_resources import parse_version
 from utils import JsonResponse, authenticate, load_spec, maybe_update_key, noop_cast, parse_params
 
-LEGACY_AIOHTTP = parse_version(aiohttp_version) < parse_version("4.0.0a0")
 os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = (
     "python"  # TODO: remove when all protobufs are re-generated for version 4 in electrums
 )
@@ -91,7 +87,7 @@ class BaseDaemon:
 
     async def get_handle_request_params(self, request):
         try:
-            data = await (request.json() if LEGACY_AIOHTTP else request.json(content_type=None))
+            data = await request.json()
         except json.decoder.JSONDecodeError:
             return None, None, None, None, None, None, None, JsonResponse(code=-32700, error="Parse error")
         method, id, params = data.get("method"), data.get("id", None), data.get("params", [])
