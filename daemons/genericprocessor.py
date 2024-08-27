@@ -331,7 +331,12 @@ class Wallet:
     async def _start_process_pending(self, blocks, current_height):
         for block in blocks:
             for tx in block:
-                await daemon_ctx.get().process_transaction(tx)
+                try:
+                    await daemon_ctx.get().process_transaction(tx)
+                except Exception:
+                    if daemon_ctx.get().VERBOSE:
+                        print(f"Error processing transaction {self.coin.get_tx_hash(tx)}:")
+                        print(traceback.format_exc())
 
     async def start(self, blocks):
         first_start = self.latest_height == -1
@@ -580,6 +585,7 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
         # initialize wallet storages
         self.wallets = {}
         self.addresses = defaultdict(set)
+        self.wallet_locks = defaultdict(asyncio.Lock)
         self.wallets_updates = {}
         # initialize not yet created network
         self.running = True
@@ -807,24 +813,31 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
             return await result if inspect.isawaitable(result) else result
 
     async def execute_method(self, id, req_method, xpub, contract, extra_params, req_args, req_kwargs):
-        wallet, error = await self._get_wallet(
-            id, req_method, xpub, contract, diskless=extra_params.get("diskless", False), extra_params=extra_params
-        )
-        if error:
-            return error.send()
-        exec_method, error = await self.get_exec_method(id, req_method)
-        if error:
-            return error.send()
-        if self.get_method_data(req_method).requires_wallet and not xpub:
-            return JsonResponse(code=-32000, error="Wallet not loaded", id=id).send()
+        wallet_key = self.coin.get_wallet_key(xpub, contract)
         try:
-            result = await self.get_exec_result(self.coin.get_wallet_key(xpub, contract), req_args, req_kwargs, exec_method)
-            return JsonResponse(result=result, id=id).send()
-        except BaseException as e:
-            if self.VERBOSE and not extra_params.get("quiet_mode"):
-                print(traceback.format_exc())
-            error_message = self.get_exception_message(e)
-            return JsonResponse(code=self.get_error_code(error_message), error=error_message, id=id).send()
+            if xpub:
+                await self.wallet_locks[wallet_key].acquire()
+            wallet, error = await self._get_wallet(
+                id, req_method, xpub, contract, diskless=extra_params.get("diskless", False), extra_params=extra_params
+            )
+            if error:
+                return error.send()
+            exec_method, error = await self.get_exec_method(id, req_method)
+            if error:
+                return error.send()
+            if self.get_method_data(req_method).requires_wallet and not xpub:
+                return JsonResponse(code=-32000, error="Wallet not loaded", id=id).send()
+            try:
+                result = await self.get_exec_result(wallet_key, req_args, req_kwargs, exec_method)
+                return JsonResponse(result=result, id=id).send()
+            except BaseException as e:
+                if self.VERBOSE and not extra_params.get("quiet_mode"):
+                    print(traceback.format_exc())
+                error_message = self.get_exception_message(e)
+                return JsonResponse(code=self.get_error_code(error_message), error=error_message, id=id).send()
+        finally:
+            if xpub:
+                self.wallet_locks[wallet_key].release()
 
     ### Methods ###
 
@@ -856,16 +869,17 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
     @rpc(requires_network=True)
     async def close_wallet(self, key=None, wallet=None):
         key = wallet or key
-        if key not in self.wallets:
-            return False
-        block_number = await self.coin.get_block_number()
-        if key in self.wallets:
-            self.wallets[key].stop(block_number)
-        self.wallets_updates.pop(key, None)
-        if key in self.wallets:
-            self.addresses.pop(self.wallets[key].address, None)
-        self.wallets.pop(key, None)
-        return True
+        async with self.wallet_locks[key]:
+            if key not in self.wallets:
+                return False
+            block_number = await self.coin.get_block_number()
+            if key in self.wallets:
+                self.wallets[key].stop(block_number)
+            self.wallets_updates.pop(key, None)
+            if key in self.wallets:
+                self.addresses.pop(self.wallets[key].address, None)
+            self.wallets.pop(key, None)
+            return True
 
     @rpc
     async def create(self, wallet=None, wallet_path=None):

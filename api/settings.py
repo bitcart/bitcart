@@ -7,9 +7,10 @@ import platform
 import re
 import sys
 import traceback
+from collections import defaultdict
 from contextlib import asynccontextmanager
 from contextvars import ContextVar
-from typing import Any, Optional
+from typing import Annotated, Any, DefaultDict, Optional
 
 import fido2.features
 from aiohttp import ClientSession
@@ -104,6 +105,7 @@ class Settings(BaseSettings):
     logger: Optional[logging.Logger] = None
     template_manager: Optional[TemplateManager] = None
     exchange_rates: Optional[RatesManager] = None
+    locks: DefaultDict[str, Annotated[asyncio.Lock, Field(default_factory=asyncio.Lock)]] = defaultdict(asyncio.Lock)
     plugins: Optional[list] = None
     plugins_schema: dict = {}
     is_worker: bool = False
@@ -411,6 +413,8 @@ def log_startup_info():
 
 
 settings_ctx = ContextVar("settings")
+
+settings: Settings
 
 
 def __getattr__(name):

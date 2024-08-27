@@ -145,7 +145,7 @@ async def new_payment_handler(
         query = get_pending_invoices_query(instance.coin_name.lower()).where(models.PaymentMethod.lookup_field == address)
         if contract:
             query = query.where(models.PaymentMethod.contract == contract)
-        data = await query.gino.load((models.PaymentMethod, models.Invoice, models.Wallet)).first()
+        data = await query.with_for_update().gino.load((models.PaymentMethod, models.Invoice, models.Wallet)).first()
         if not data:  # received payment but no matching invoice
             return
         method, invoice, wallet = data
@@ -176,21 +176,22 @@ async def get_confirmations(method, wallet):
 
 
 async def new_block_handler(instance, event, height):
-    coros = []
-    coros.append(payout_ext.process_new_block(instance.coin_name.lower()))
-    async for method, invoice, wallet in iterate_pending_invoices(
-        instance.coin_name.lower(), statuses=[InvoiceStatus.CONFIRMED]
-    ):
-        with log_errors():  # issues processing one item
-            if invoice.status != InvoiceStatus.CONFIRMED or method.id != invoice.payment_id or method.lightning:
-                continue
-            await invoice.load_data()
-            confirmations = await get_confirmations(method, wallet)
-            if confirmations != method.confirmations:
-                coros.append(update_confirmations(invoice, method, confirmations, invoice.tx_hashes, invoice.sent_amount))
-    coros.append(run_hook("new_block", instance.coin_name.lower(), height))
-    # NOTE: if another operation in progress exception occurs, make it await one by one
-    await asyncio.gather(*coros)
+    async with settings.settings.locks["new_block"]:
+        coros = []
+        coros.append(payout_ext.process_new_block(instance.coin_name.lower()))
+        async for method, invoice, wallet in iterate_pending_invoices(
+            instance.coin_name.lower(), statuses=[InvoiceStatus.CONFIRMED]
+        ):
+            with log_errors():  # issues processing one item
+                if invoice.status != InvoiceStatus.CONFIRMED or method.id != invoice.payment_id or method.lightning:
+                    continue
+                await invoice.load_data()
+                confirmations = await get_confirmations(method, wallet)
+                if confirmations != method.confirmations:
+                    coros.append(update_confirmations(invoice, method, confirmations, invoice.tx_hashes, invoice.sent_amount))
+        coros.append(run_hook("new_block", instance.coin_name.lower(), height))
+        # NOTE: if another operation in progress exception occurs, make it await one by one
+        await asyncio.gather(*coros)
 
 
 async def invoice_notification(invoice: models.Invoice, status: str):
