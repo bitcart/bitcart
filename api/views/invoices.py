@@ -29,6 +29,7 @@ async def get_or_create_invoice_by_order_id(
         models.Invoice,
         order_id,
         custom_query=models.Invoice.query.where(models.Invoice.order_id == order_id)
+        .where(models.Invoice.price == data.price)
         .where(models.Invoice.store_id == data.store_id)
         .where(models.Invoice.status != InvoiceStatus.EXPIRED),
         raise_exception=False,
