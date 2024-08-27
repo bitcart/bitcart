@@ -173,7 +173,7 @@ class TRXFeatures(BlockchainFeatures):
     def get_tx_hash(self, tx_data):
         return tx_data["txID"]
 
-    def get_wallet_key(self, xpub, contract=None):
+    def get_wallet_key(self, xpub, contract=None, **extra_params):
         key = xpub
         if contract:
             key += f"_{contract}"

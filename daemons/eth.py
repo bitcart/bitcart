@@ -193,7 +193,7 @@ class ETHFeatures(BlockchainFeatures):
     def to_dict(self, obj):
         return json.loads(JSONEncoder(precision=daemon_ctx.get().DIVISIBILITY).encode(obj))
 
-    def get_wallet_key(self, xpub, contract=None):
+    def get_wallet_key(self, xpub, contract=None, **extra_params):
         key = xpub
         if contract:
             key += f"_{contract}"
@@ -520,7 +520,7 @@ class ETHDaemon(BlockProcessorDaemon):
             await asyncio.sleep(self.BLOCK_TIME)
 
     async def load_wallet(self, xpub, contract, diskless=False, extra_params={}):
-        wallet_key = self.coin.get_wallet_key(xpub, contract)
+        wallet_key = self.coin.get_wallet_key(xpub, contract, **extra_params)
         if wallet_key in self.wallets:
             await self.add_contract(contract, wallet_key)
             return self.wallets[wallet_key]
@@ -537,8 +537,6 @@ class ETHDaemon(BlockProcessorDaemon):
             storage = Storage(wallet_path)
             db = WalletDB(storage.read())
             wallet = Wallet(self.coin, db, storage)
-            if wallet.keystore.update_keystore(**extra_params):
-                db.put("keystore", wallet.keystore.dump())
         self.wallets[wallet_key] = wallet
         self.wallets_updates[wallet_key] = deque(maxlen=self.POLLING_CAP)
         self.addresses[wallet.address].add(wallet_key)

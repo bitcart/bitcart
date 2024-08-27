@@ -411,7 +411,7 @@ class XMRDaemon(BlockProcessorDaemon):
 
     async def load_wallet(self, xpub, contract, diskless=False, extra_params={}):
         address = extra_params.get("address", None)
-        wallet_key = self.coin.get_wallet_key(xpub)
+        wallet_key = self.coin.get_wallet_key(xpub, **extra_params)
         if wallet_key in self.wallets:
             return self.wallets[wallet_key]
         if not xpub:

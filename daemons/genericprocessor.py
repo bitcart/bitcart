@@ -243,14 +243,6 @@ class KeyStore(metaclass=ABCMeta):
     def from_kwargs(cls, **kwargs):
         return cls(**{k: v for k, v in kwargs.items() if k in inspect.signature(cls).parameters})
 
-    def update_keystore(self, **kwargs):
-        updated = False
-        for k, v in kwargs.items():
-            if k in inspect.signature(self.__class__).parameters and v:
-                setattr(self, k, v)
-                updated = True
-        return updated
-
     @abstractmethod
     def load_account_from_key(self):
         pass
@@ -813,7 +805,7 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
             return await result if inspect.isawaitable(result) else result
 
     async def execute_method(self, id, req_method, xpub, contract, extra_params, req_args, req_kwargs):
-        wallet_key = self.coin.get_wallet_key(xpub, contract)
+        wallet_key = self.coin.get_wallet_key(xpub, contract, **extra_params)
         try:
             if xpub:
                 await self.wallet_locks[wallet_key].acquire()
@@ -1121,7 +1113,7 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
 
     def restore_wallet_from_text(self, text, contract=None, path=None, address=None, **kwargs):
         if not path:
-            path = os.path.join(self.get_wallet_path(), self.coin.get_wallet_key(text, contract))
+            path = os.path.join(self.get_wallet_path(), self.coin.get_wallet_key(text, contract, **kwargs))
         try:
             keystore = daemon_ctx.get().KEYSTORE_CLASS.from_kwargs(key=text, contract=contract, address=address, **kwargs)
         except Exception as e:
