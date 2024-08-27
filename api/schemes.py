@@ -472,8 +472,8 @@ class CreateInvoice(CreateModel, CreatedMixin):
     store_id: str = Field(..., json_schema_extra={"hidden_update": True})
     currency: str = Field("", json_schema_extra={"hidden_update": True}, validate_default=True)
     order_id: str = ""
-    notification_url: str = ""
-    redirect_url: str = ""
+    notification_url: Optional[str] = ""
+    redirect_url: Optional[str] = ""
     buyer_email: Optional[EmailStr] = ""
     promocode: Optional[str] = Field("", json_schema_extra={"hidden_update": True})
     shipping_address: str = ""
