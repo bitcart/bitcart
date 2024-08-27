@@ -1,7 +1,7 @@
 import math
 from datetime import datetime
 from decimal import Decimal
-from typing import Annotated, Any, ClassVar, Optional, Union
+from typing import Annotated, Any, ClassVar, Literal, Optional, Union
 
 import paramiko
 from fastapi.exceptions import HTTPException
@@ -51,7 +51,7 @@ class BaseModel(PydanticBaseModel):
         if not isinstance(values, dict):
             values = {k: cls._prepare_value(v) for k, v in iter_attributes(values)}
         if cls.MODE == WorkingMode.DISPLAY:
-            values = {k: cls._prepare_value(v) for k, v in values.items() if v != ""}
+            values = {k: cls._prepare_value(v) for k, v in values.items()}
         else:
             # We also skip empty strings (to trigger defaults) as that's what frontend sends
             values = {
@@ -474,7 +474,7 @@ class CreateInvoice(CreateModel, CreatedMixin):
     order_id: str = ""
     notification_url: Optional[str] = ""
     redirect_url: Optional[str] = ""
-    buyer_email: Optional[EmailStr] = ""
+    buyer_email: Optional[Union[EmailStr, Literal[""]]] = ""
     promocode: Optional[str] = Field("", json_schema_extra={"hidden_update": True})
     shipping_address: str = ""
     notes: str = ""
