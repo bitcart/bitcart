@@ -524,9 +524,13 @@ class ETHDaemon(BlockProcessorDaemon):
     def _process_param(self, wallet, extra_params, key):
         if key in extra_params:
             value = extra_params[key]
-            if (old_value := getattr(wallet.keystore, key)) != value:
+            if getattr(wallet.keystore, key) != value:
                 try:
-                    setattr(wallet.keystore, key, type(old_value)(value))
+                    cast_type = wallet.keystore.__dataclass_fields__[key].type
+                    if value:
+                        setattr(wallet.keystore, key, cast_type(value))
+                    else:
+                        setattr(wallet.keystore, key, cast_type())
                 except Exception:
                     return
                 wallet.db.put("keystore", wallet.keystore.dump())
