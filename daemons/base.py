@@ -3,7 +3,6 @@ import json
 import os
 import weakref
 
-import uvloop
 from aiohttp import WSCloseCode, WSMsgType, web
 from decouple import AutoConfig
 from utils import JsonResponse, authenticate, load_spec, maybe_update_key, noop_cast, parse_params
@@ -207,6 +206,3 @@ class BaseDaemon:
         Returns:
             web.Response: response containing details about method execution
         """
-
-
-uvloop.install()

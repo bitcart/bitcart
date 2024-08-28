@@ -823,6 +823,9 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
                     print(traceback.format_exc())
                 error_message = self.get_exception_message(e)
                 return JsonResponse(code=self.get_error_code(error_message), error=error_message, id=id).send()
+            finally:
+                if extra_params.get("one_time", False):
+                    await self.close_wallet_impl(wallet_key, locked=True)
         finally:
             if xpub:
                 self.wallet_locks[wallet_key].release()
@@ -869,10 +872,10 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
         self.wallets[wallet].clear_requests()
         return True
 
-    @rpc(requires_network=True)
-    async def close_wallet(self, key=None, wallet=None):
-        key = wallet or key
-        async with self.wallet_locks[key]:
+    async def close_wallet_impl(self, key, locked=False):
+        try:
+            if not locked:
+                await self.wallet_locks[key].acquire()
             if key not in self.wallets:
                 return False
             block_number = await self.coin.get_block_number()
@@ -883,6 +886,14 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
                 self.addresses.pop(self.wallets[key].address, None)
             self.wallets.pop(key, None)
             return True
+        finally:
+            if not locked:
+                self.wallet_locks[key].release()
+
+    @rpc(requires_network=True)
+    async def close_wallet(self, key=None, wallet=None):
+        key = wallet or key
+        return await self.close_wallet_impl(key)
 
     @rpc
     async def create(self, wallet=None, wallet_path=None):
