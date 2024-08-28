@@ -844,6 +844,21 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
         self.loop.create_task(self.wallets[wallet].expired_task(req))
         return await self.wallets[wallet].export_request(req)
 
+    async def _parse_and_load(self, semaphore, xpub):
+        async with semaphore:
+            xpub, contract, extra_params = self.parse_xpub(xpub)
+            await self.load_wallet(xpub, contract, diskless=extra_params.get("diskless", False), extra_params=extra_params)
+
+    @rpc
+    async def batch_load(self, wallets, background=False, wallet=None):
+        if not isinstance(wallets, list):
+            wallets = json.loads(wallets)
+        semaphore = asyncio.BoundedSemaphore(100)
+        coro = asyncio.gather(*(self._parse_and_load(semaphore, w) for w in wallets))
+        if not str_to_bool(background):
+            await coro
+        return True
+
     @rpc(requires_network=True)
     @abstractmethod
     async def broadcast(self, tx, wallet=None):
