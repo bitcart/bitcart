@@ -239,10 +239,6 @@ class KeyStore(metaclass=ABCMeta):
     def __post_init__(self):
         self.load_account_from_key()
 
-    @classmethod
-    def from_kwargs(cls, **kwargs):
-        return cls(**{k: v for k, v in kwargs.items() if k in inspect.signature(cls).parameters})
-
     @abstractmethod
     def load_account_from_key(self):
         pass
@@ -637,7 +633,7 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
         if to not in self.addresses:
             return
         for wallet in self.addresses[to]:
-            wallet_contract = self.wallets[wallet].contract.address if self.wallets[wallet].contract else None
+            wallet_contract = self.wallets[wallet].contract_addr
             if tx.contract != wallet_contract:
                 continue
             await self.trigger_event(
@@ -1115,7 +1111,7 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
         if not path:
             path = os.path.join(self.get_wallet_path(), self.coin.get_wallet_key(text, contract, **kwargs))
         try:
-            keystore = daemon_ctx.get().KEYSTORE_CLASS.from_kwargs(key=text, contract=contract, address=address, **kwargs)
+            keystore = daemon_ctx.get().KEYSTORE_CLASS(text, contract=contract, address=address)
         except Exception as e:
             raise Exception("Invalid key provided") from e
         storage = Storage(path if path is not NOOP_PATH else None, in_memory_only=path is NOOP_PATH)
@@ -1179,9 +1175,9 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
         return self.coin.is_address(address)
 
     @rpc
-    def validatekey(self, key, wallet=None):
+    def validatekey(self, key, wallet=None, **kwargs):
         try:
-            daemon_ctx.get().KEYSTORE_CLASS(key)
+            daemon_ctx.get().KEYSTORE_CLASS(key, **kwargs)
             return True
         except Exception:
             return False

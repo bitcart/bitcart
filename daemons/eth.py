@@ -287,6 +287,7 @@ class KeyStore(BaseKeyStore):
         return {"key": self.key, "contract": self.contract}
 
 
+@dataclass
 class Wallet(BaseWallet):
     contract: str = None
     _token_fetched = False
@@ -316,10 +317,11 @@ class Wallet(BaseWallet):
                 to_block=min(self.latest_height + daemon_ctx.get().MAX_SYNC_BLOCKS, current_height),
             )
 
-    async def balance(self):
+    async def balance(self, address=None):
+        address = address or self.address
         if self.contract:
-            return from_wei(await daemon_ctx.get().readcontract(self.contract, "balanceOf", self.address), self.divisibility)
-        return await self.coin.get_balance(self.address)
+            return from_wei(await daemon_ctx.get().readcontract(self.contract, "balanceOf", address), self.divisibility)
+        return await self.coin.get_balance(address)
 
 
 class ETHDaemon(BlockProcessorDaemon):
@@ -519,10 +521,24 @@ class ETHDaemon(BlockProcessorDaemon):
                     print(traceback.format_exc())
             await asyncio.sleep(self.BLOCK_TIME)
 
+    def _process_param(self, wallet, extra_params, key):
+        if key in extra_params:
+            value = extra_params[key]
+            if (old_value := getattr(wallet.keystore, key)) != value:
+                try:
+                    setattr(wallet.keystore, key, type(old_value)(value))
+                except Exception:
+                    return
+                wallet.db.put("keystore", wallet.keystore.dump())
+
+    def process_extra_params(self, wallet, extra_params):
+        pass
+
     async def load_wallet(self, xpub, contract, diskless=False, extra_params={}):
         wallet_key = self.coin.get_wallet_key(xpub, contract, **extra_params)
         if wallet_key in self.wallets:
             await self.add_contract(contract, wallet_key)
+            self.process_extra_params(self.wallets[wallet_key], extra_params)
             return self.wallets[wallet_key]
         if not xpub:
             return None
@@ -537,6 +553,7 @@ class ETHDaemon(BlockProcessorDaemon):
             storage = Storage(wallet_path)
             db = WalletDB(storage.read())
             wallet = Wallet(self.coin, db, storage)
+        self.process_extra_params(wallet, extra_params)
         self.wallets[wallet_key] = wallet
         self.wallets_updates[wallet_key] = deque(maxlen=self.POLLING_CAP)
         self.addresses[wallet.address].add(wallet_key)
