@@ -879,11 +879,12 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
             if key not in self.wallets:
                 return False
             block_number = await self.coin.get_block_number()
-            if key in self.wallets:
-                self.wallets[key].stop(block_number)
+            self.wallets[key].stop(block_number)
             self.wallets_updates.pop(key, None)
-            if key in self.wallets:
-                self.addresses.pop(self.wallets[key].address, None)
+            address = self.wallets[key].address
+            self.addresses[address].discard(key)
+            if not self.addresses[address]:
+                self.addresses.pop(address, None)
             self.wallets.pop(key, None)
             return True
         finally:
