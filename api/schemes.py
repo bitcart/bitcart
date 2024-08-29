@@ -142,7 +142,7 @@ class DisplayUser(DisplayModel, BaseUser):
 
 
 class DisplayUserWithToken(DisplayUser):
-    token: Optional[str]
+    token: Optional[str] = None
 
 
 # Tokens
