@@ -556,7 +556,7 @@ class ETHDaemon(BlockProcessorDaemon):
                 self.restore(xpub, wallet_path=wallet_path, contract=contract, **extra_params)
             storage = Storage(wallet_path)
             db = WalletDB(storage.read())
-            wallet = Wallet(self.coin, db, storage)
+            wallet = self.WALLET_CLASS(self.coin, db, storage)
         self.process_extra_params(wallet, extra_params)
         self.wallets[wallet_key] = wallet
         self.wallets_updates[wallet_key] = deque(maxlen=self.POLLING_CAP)

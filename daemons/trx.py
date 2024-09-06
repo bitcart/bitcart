@@ -2,6 +2,7 @@ import asyncio
 import json
 import weakref
 from contextvars import ContextVar
+from dataclasses import dataclass
 from decimal import Decimal
 from typing import Any
 
@@ -189,6 +190,7 @@ class TRXFeatures(BlockchainFeatures):
         return self.web3.provider.rpc.current_rpc.endpoint_uri
 
 
+@dataclass
 class KeyStore(ETHKeyStore):
     def load_account_from_key(self):
         try:

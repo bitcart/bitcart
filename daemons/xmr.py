@@ -313,7 +313,7 @@ class Wallet(BaseWallet):
 
     async def process_new_payment(self, lookup_field, tx, payment, wallet, unconfirmed=False):
         req = self.get_request(lookup_field)
-        if req is None or req.status not in (PR_UNPAID, PR_UNCONFIRMED) or tx.hash in req.tx_hashes:
+        if req is None or req.status not in (PR_UNPAID, PR_UNCONFIRMED) or (unconfirmed and tx.hash in req.tx_hashes):
             return
         if unconfirmed:
             req.sent_amount += payment.amount
@@ -426,7 +426,7 @@ class XMRDaemon(BlockProcessorDaemon):
                 self.restore(xpub, wallet_path=wallet_path, address=address)
             storage = Storage(wallet_path)
             db = WalletDB(storage.read())
-            wallet = Wallet(self.coin, db, storage)
+            wallet = self.WALLET_CLASS(self.coin, db, storage)
         self.wallets[wallet_key] = wallet
         self.wallets_updates[wallet_key] = deque(maxlen=self.POLLING_CAP)
         self.addresses[wallet.address].add(wallet_key)
