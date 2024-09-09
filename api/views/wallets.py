@@ -7,7 +7,7 @@ from api import crud, models, schemes, settings, utils
 from api.ext.moneyformat import currency_table
 from api.types import Money
 
-router = APIRouter()
+router = APIRouter(tags=["wallets"])
 
 
 @router.get("/history/all", response_model=list[schemes.TxResponse])

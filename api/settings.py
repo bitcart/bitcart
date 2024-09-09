@@ -14,6 +14,7 @@ from typing import Annotated, Any, DefaultDict, Optional
 
 import fido2.features
 from aiohttp import ClientSession
+from authlib.integrations.starlette_client import OAuth
 from bitcart import COINS, APIManager
 from bitcart.coin import Coin
 from fastapi import HTTPException
@@ -106,6 +107,8 @@ class Settings(BaseSettings):
     template_manager: Optional[TemplateManager] = None
     exchange_rates: Optional[RatesManager] = None
     locks: DefaultDict[str, Annotated[asyncio.Lock, Field(default_factory=asyncio.Lock)]] = defaultdict(asyncio.Lock)
+    oauth: Optional[OAuth] = None
+    oauth_providers: dict = {}
     plugins: Optional[list] = None
     plugins_schema: dict = {}
     is_worker: bool = False
@@ -365,6 +368,7 @@ class Settings(BaseSettings):
         await self.create_db_engine()
         if self.is_worker or self.functional_tests:
             await self.exchange_rates.init()
+        self.init_oauth()
 
     async def post_plugin_init(self):
         from api.plugins import apply_filters, register_filter
@@ -381,6 +385,9 @@ class Settings(BaseSettings):
         if worker:
             configure_logserver(self.logserver_client_host)
         self.logger = get_logger(__name__)
+
+    def init_oauth(self):
+        self.oauth = OAuth(self.config)
 
 
 def excepthook_handler(settings, excepthook):

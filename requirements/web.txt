@@ -2,12 +2,14 @@
 aiofiles
 alembic
 apprise
+authlib
 bitcart
 email-validator
 fastapi
 fido2
 gino[pg]==1.1.0rc1
 hiredis
+itsdangerous
 Jinja2
 jsonschema
 msgpack

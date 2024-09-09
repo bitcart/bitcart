@@ -2,7 +2,7 @@ from fastapi import APIRouter
 
 from api import crud, models, schemes, utils
 
-router = APIRouter()
+router = APIRouter(tags=["payouts"])
 
 
 crud_routes = utils.routing.ModelView.register(

@@ -6,7 +6,7 @@ from api import crud, models, schemes, utils
 from api.ext.fxrate import calculate_rules
 from api.views.stores.integrations import router as integrations_router
 
-router = APIRouter()
+router = APIRouter(tags=["stores"])
 
 
 @router.get("/{model_id}/ping")

@@ -11,7 +11,7 @@ from api.ext.moneyformat import currency_table
 from api.invoices import InvoiceStatus
 from api.plugins import apply_filters, run_hook
 
-router = APIRouter()
+router = APIRouter(tags=["invoices"])
 
 
 async def get_invoice_noauth(model_id: str):

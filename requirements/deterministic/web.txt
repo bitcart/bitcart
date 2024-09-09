@@ -170,6 +170,10 @@ attrs==24.2.0 \
     #   aiohttp
     #   jsonschema
     #   referencing
+authlib==1.3.1 \
+    --hash=sha256:7ae843f03c06c5c0debd63c9db91f9fda64fa62a42a77419fa15fbb7e7a58917 \
+    --hash=sha256:d35800b973099bbadc49b42b256ecb80041ad56b7fe1216a362c7943c088f377
+    # via -r requirements/web.txt
 bcrypt==4.1.2 \
     --hash=sha256:02d9ef8915f72dd6daaef40e0baeef8a017ce624369f09754baf32bb32dba25f \
     --hash=sha256:1c28973decf4e0e69cee78c68e30a523be441972c826703bb93099868a8ff5b5 \
@@ -409,6 +413,7 @@ cryptography==43.0.0 \
     --hash=sha256:ee0c405832ade84d4de74b9029bedb7b31200600fa524d218fc29bfa371e97f5 \
     --hash=sha256:fdcb265de28585de5b859ae13e3846a8e805268a823a12a4da2597f1f5afc9f0
     # via
+    #   authlib
     #   fido2
     #   paramiko
 dnspython==2.6.1 \
@@ -666,6 +671,10 @@ importlib-metadata==8.2.0 \
     --hash=sha256:11901fa0c2f97919b288679932bb64febaeacf289d18ac84dd68cb2e74213369 \
     --hash=sha256:72e8d4399996132204f9a16dcc751af254a48f8d1b20b9ff0f98d4a8f901e73d
     # via markdown
+itsdangerous==2.2.0 \
+    --hash=sha256:c6242fc49e35958c8b15141343aa660db5fc54d4f13a1db01a3f5891b98700ef \
+    --hash=sha256:e0050c0b7da1eea53ffaf149c0cfbb5c6e2e2b69c4bef22c81fa6eb73e5f6173
+    # via -r requirements/web.txt
 jinja2==3.1.4 \
     --hash=sha256:4a3aee7acbbe7303aede8e9648d13b8bf88a429282aa6122a993f0ac800cb369 \
     --hash=sha256:bc5dd2abb727a5319567b7a813e6a2e7318c39f4f487cfe6c89c6f9c7d25197d

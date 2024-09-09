@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 
 import pyotp
 import pytest
+from authlib.oauth2.rfc6749 import OAuth2Token
 from bitcart import BTC, LTC
 from bitcart.errors import BaseError as BitcartBaseError
 from parametrization import Parametrization
@@ -467,6 +468,7 @@ async def test_policies(client: TestClient, token: str):
         },
         "rpc_urls": {},
         "email_settings": schemes.EmailSettings().model_dump(),
+        "enabled_providers": [],
     }
     assert (await client.post("/users", json=static_data.POLICY_USER)).status_code == 422  # registration is off
     # Test for loading data from db instead of loading scheme's defaults
@@ -519,6 +521,7 @@ async def test_policies(client: TestClient, token: str):
         },
         "rpc_urls": {},
         "email_settings": schemes.EmailSettings().model_dump(),
+        "enabled_providers": [],
     }
     assert (await client.post("/users", json=static_data.POLICY_USER)).status_code == 200  # registration is on again
     resp = await client.get("/manage/stores")
@@ -1851,3 +1854,62 @@ async def test_refund_functionality(client: TestClient, user, token, mocker):
     resp2 = await client.get(f"/invoices/refunds/{refund_id}")
     assert resp2.json()["payout_status"] == "sent"
     assert resp2.json()["tx_hash"] == "test"
+
+
+async def test_manage_providers(client: TestClient, token):
+    providers = await client.get("/manage/providers")
+
+    assert providers.status_code == 200
+    assert providers.json() == []
+
+    await client.post(
+        "/manage/policies",
+        json={"enabled_providers": [{"provider_name": "google", "client_id": "test1", "client_secret": "test2"}]},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    providers = await client.get("/manage/providers")
+
+    assert providers.status_code == 200
+    assert providers.json() == ["google"]
+
+
+async def test_social_logins(client: TestClient, token, mocker):
+    resp = await client.get("/users/login/test")
+    assert resp.status_code == 404
+    assert resp.json()["detail"] == "Invalid provider"
+
+    resp = await client.get("/users/login/google")
+    assert resp.status_code == 404
+    assert resp.json()["detail"] == "The provider exists but is not connected: google"
+
+    await client.post(
+        "/manage/policies",
+        json={"enabled_providers": [{"provider_name": "google", "client_id": "test1", "client_secret": "test2"}]},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    resp = await client.get("/users/login/google")
+    assert resp.status_code == 302
+
+    resp = await client.get("/users/auth/test")
+    assert resp.status_code == 404
+    assert resp.json()["detail"] == "Invalid provider"
+
+    mocker.patch(
+        "authlib.integrations.starlette_client.apps.StarletteOAuth2App.authorize_access_token",
+        return_value=OAuth2Token(params={"access_token": "your_access_token", "token_type": "Bearer", "expires_in": 3600}),
+    )
+    mocker.patch(
+        "authlib.integrations.starlette_client.apps.StarletteOAuth2App.userinfo",
+        return_value={"email": "test@test.com"},
+    )
+
+    resp = await client.get("/users", params={"query": "test@test.com"}, headers={"Authorization": f"Bearer {token}"})
+    assert resp.json()["count"] == 0
+
+    resp = await client.get("/users/auth/google")
+    assert resp.status_code == 307
+
+    resp = await client.get("/users", params={"query": "test@test.com"}, headers={"Authorization": f"Bearer {token}"})
+    assert resp.json()["count"] == 1
+    assert resp.json()["result"]["email"] == "test@test.com"

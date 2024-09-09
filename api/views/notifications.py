@@ -3,7 +3,7 @@ from fastapi import APIRouter
 from api import models, schemes, settings, utils
 from api.utils.common import prepare_compliant_response
 
-router = APIRouter()
+router = APIRouter(tags=["notifications"])
 
 
 @router.get("/list")

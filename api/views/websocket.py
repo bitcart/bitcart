@@ -7,7 +7,7 @@ from api import crud, models, utils
 from api.ext.moneyformat import currency_table
 from api.invoices import InvoiceStatus
 
-router = APIRouter()
+router = APIRouter(tags=["websocket"])
 
 
 class GenericWebsocketEndpoint(WebSocketEndpoint):

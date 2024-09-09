@@ -3,7 +3,7 @@ from fastapi import APIRouter
 from api import settings, utils
 from api.ext import update as update_ext
 
-router = APIRouter()
+router = APIRouter(tags=["update"])
 
 
 @router.get("/check")

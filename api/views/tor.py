@@ -6,7 +6,7 @@ from api import models, utils
 from api.ext import tor as tor_ext
 from api.plugins import apply_filters
 
-router = APIRouter()
+router = APIRouter(tags=["tor"])
 
 
 @router.get("/services")
