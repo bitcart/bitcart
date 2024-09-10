@@ -893,8 +893,9 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
 
     @rpc(requires_network=True)
     async def close_wallet(self, key=None, wallet=None):
+        locked = bool(wallet)
         key = wallet or key
-        return await self.close_wallet_impl(key)
+        return await self.close_wallet_impl(key, locked=locked)
 
     @rpc
     async def create(self, wallet=None, wallet_path=None):
