@@ -6,4 +6,4 @@ eth-rlp<2.0 # web3 broke this
 mnemonic
 tronpy
 trontxsize
-web3
+web3<7 # TODO: upgrade
