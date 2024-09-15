@@ -10,7 +10,6 @@ MAX_CONFIRMATION_WATCH = 6  # maximum number of confirmations to save
 FEE_ETA_TARGETS = [25, 10, 5, 2, 1]  # supported target blocks confirmation ETA fee
 EVENTS_CHANNEL = "events"  # default redis channel for event system (inter-process communication)
 LOGSERVER_PORT = 9020  # port for logserver in the worker
-ALPHABET = string.ascii_letters  # used by ID generator
 SUPPORTED_CRYPTOS = {coin.lower(): obj.friendly_name for (coin, obj) in _COINS.items()}  # all cryptos supported by the SDK
 HTTPS_REVERSE_PROXIES = [
     "nginx-https"
