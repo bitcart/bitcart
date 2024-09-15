@@ -1030,6 +1030,7 @@ pydantic==2.9.1 \
     # via
     #   fastapi
     #   pydantic-settings
+    #   python-ulid
 pydantic-core==2.23.3 \
     --hash=sha256:01491d8b4d8db9f3391d93b0df60701e644ff0894352947f31fff3e52bd5c801 \
     --hash=sha256:03667cec5daf43ac4995cefa8aaf58f99de036204a37b889c24a80927b629cec \
@@ -1159,6 +1160,10 @@ python-dotenv==1.0.1 \
 python-multipart==0.0.9 \
     --hash=sha256:03f54688c663f1b7977105f021043b0793151e4cb1c1a9d4a11fc13d622c4026 \
     --hash=sha256:97ca7b8ea7b05f977dc3849c3ba99d51689822fab725c3703af7c866a0c2b215
+    # via -r requirements/web.txt
+python-ulid[pydantic]==2.7.0 \
+    --hash=sha256:18eb595885140851a490a95b0da4447911ff69fa9f434732067b97f6956f9fe9 \
+    --hash=sha256:c81658e382f69bad8c6d365155c4ae21843ae4226b94f72c12d7adcbb545a251
     # via -r requirements/web.txt
 pyyaml==6.0.2 \
     --hash=sha256:01179a4a8559ab5de078078f37e5c1a30d76bb88519906844fd7bdea1b7729ff \

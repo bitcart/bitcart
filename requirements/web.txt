@@ -20,6 +20,7 @@ pyotp
 python-dateutil
 python-dotenv
 python-multipart
+python-ulid[pydantic]
 redis
 sqlalchemy<1.4
 uvicorn[standard]

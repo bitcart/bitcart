@@ -11,9 +11,10 @@ from anyio import Semaphore
 from dateutil.parser import isoparse
 from fastapi import HTTPException
 from starlette.concurrency import run_in_threadpool
+from ulid import ULID
 
 from api import utils
-from api.constants import ALPHABET, ID_LENGTH, STR_TO_BOOL_MAPPING, TOTP_ALPHABET, TOTP_LENGTH
+from api.constants import ID_LENGTH, STR_TO_BOOL_MAPPING, TOTP_ALPHABET, TOTP_LENGTH
 
 
 def get_object_name(obj):
@@ -21,7 +22,7 @@ def get_object_name(obj):
 
 
 def unique_id(length=ID_LENGTH):
-    return "".join(secrets.choice(ALPHABET) for _ in range(length))
+    return str(ULID())
 
 
 def unique_verify_code(length=TOTP_LENGTH):
