@@ -157,7 +157,7 @@ class ETHFeatures(BlockchainFeatures):
     async def debug_trace_block(self, block_number):
         return await self.web3.manager.coro_request(
             "debug_traceBlockByNumber",
-            [block_number, {"tracer": "callTracer", "timeout": "10s"}],
+            [hex(block_number), {"tracer": "callTracer", "timeout": "10s"}],
         )
 
     async def process_tx_data(self, data):
