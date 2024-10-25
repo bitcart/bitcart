@@ -1,5 +1,4 @@
 import inspect
-import secrets
 import sys
 from datetime import timedelta
 
@@ -14,7 +13,6 @@ from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import ARRAY
 
 from api import schemes, settings
-from api.constants import PUBLIC_ID_LENGTH
 from api.db import db
 from api.ext.moneyformat import currency_table
 from api.logger import get_exception_message, get_logger
@@ -466,14 +464,6 @@ class Product(BaseModel):
     user_id = Column(Text, ForeignKey(User.id, ondelete="SET NULL"))
     created = Column(DateTime(True), nullable=False)
 
-    @classmethod
-    def prepare_create(cls, kwargs):
-        from api import utils
-
-        kwargs = super().prepare_create(kwargs)
-        kwargs["id"] = utils.common.unique_id(PUBLIC_ID_LENGTH)
-        return kwargs
-
     async def add_fields(self):
         await super().add_fields()
         from api import utils
@@ -616,14 +606,6 @@ class Invoice(BaseModel):
         kwargs.pop("products", None)
         return kwargs
 
-    @classmethod
-    def prepare_create(cls, kwargs):
-        from api import utils
-
-        kwargs = super().prepare_create(kwargs)
-        kwargs["id"] = utils.common.unique_id(PUBLIC_ID_LENGTH)
-        return kwargs
-
     def add_invoice_expiration(self):
         from api import utils
 
@@ -667,12 +649,6 @@ class Token(BaseModel):
     redirect_url = Column(Text)
     permissions = Column(ARRAY(Text))
     created = Column(DateTime(True), nullable=False)
-
-    @classmethod
-    def prepare_create(cls, kwargs):
-        kwargs = super().prepare_create(kwargs)
-        kwargs["id"] = secrets.token_urlsafe()
-        return kwargs
 
 
 class File(BaseModel):
