@@ -16,5 +16,5 @@ class MATICDaemon(eth.ETHDaemon):
 
 
 if __name__ == "__main__":
-    eth.daemon = MATICDaemon()
-    eth.daemon.start()
+    daemon = MATICDaemon()
+    daemon.start()

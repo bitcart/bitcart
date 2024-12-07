@@ -20,5 +20,5 @@ class SBCHDaemon(eth.ETHDaemon):
 
 
 if __name__ == "__main__":
-    eth.daemon = SBCHDaemon()
-    eth.daemon.start()
+    daemon = SBCHDaemon()
+    daemon.start()

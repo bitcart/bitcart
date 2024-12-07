@@ -21,5 +21,5 @@ class BNBDaemon(eth.ETHDaemon):
 
 
 if __name__ == "__main__":
-    eth.daemon = BNBDaemon()
-    eth.daemon.start()
+    daemon = BNBDaemon()
+    daemon.start()
