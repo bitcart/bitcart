@@ -123,6 +123,7 @@ class BaseDaemon:
                         pass
         finally:
             request.app["websockets"].discard(ws)
+            return ws
 
     @authenticate
     async def handle_spec(self, request):

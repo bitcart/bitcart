@@ -2,6 +2,7 @@
 aiofiles
 alembic
 apprise
+asyncpg==0.29.0
 bitcart
 email-validator
 fastapi
