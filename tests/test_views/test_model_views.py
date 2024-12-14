@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from api.constants import ID_LENGTH, PUBLIC_ID_LENGTH
+from api.constants import ID_LENGTH
 
 if TYPE_CHECKING:
     from httpx import AsyncClient as TestClient
@@ -245,7 +245,6 @@ class TestStores(ViewTestMixin):
 class TestProducts(ViewTestMixin):
     name = "products"
     tests = json_module.loads(open("tests/fixtures/data/products.json").read())
-    id_length = PUBLIC_ID_LENGTH
     get_one_auth = False
     json_encoding = False
 
@@ -275,7 +274,6 @@ class TestProducts(ViewTestMixin):
 class TestInvoices(ViewTestMixin):
     name = "invoices"
     tests = json_module.loads(open("tests/fixtures/data/invoices.json").read())
-    id_length = PUBLIC_ID_LENGTH
     create_auth = False
     get_one_auth = False
 
