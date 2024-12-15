@@ -1,3 +1,2 @@
-pip==24.2 # https://github.com/jazzband/pip-tools/issues/2131
-pip-tools
 pre-commit
+uv

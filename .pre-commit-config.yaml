@@ -41,8 +41,6 @@ repos:
       - id: check-symlinks
       - id: debug-statements
       - id: fix-byte-order-marker
-      - id: fix-encoding-pragma
-        args: ["--remove"]
       - id: detect-private-key
   - repo: https://github.com/pre-commit/mirrors-prettier
     rev: v4.0.0-alpha.8

@@ -204,7 +204,7 @@ python3 worker.py
 
 ### Updating dependencies
 
-If you need to update some dependency, use `pip-compile` from `pip-tools` (included in dev requirements file).
+If you need to update some dependency, use `uv pip compile` (included in dev requirements file).
 
 You can use `scripts/compile-requirements.sh` to re-compile requirements files from input files, and
 `scripts/sync-requirements.sh` to install every requirement file.

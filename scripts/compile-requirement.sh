@@ -20,6 +20,6 @@ if [[ ! "$SYSTEM_PYTHON" ]]; then
     echo "Please specify which python to use in \$SYSTEM_PYTHON" && exit 1
 fi
 
-${SYSTEM_PYTHON} -m piptools --help >/dev/null 2>&1 || { ${SYSTEM_PYTHON} -m pip install pip-tools; }
+${SYSTEM_PYTHON} -m pip list | grep -E "^uv " >/dev/null 2>&1 || { ${SYSTEM_PYTHON} -m pip install uv; }
 out_file=${1/requirements\//requirements/deterministic/}
-$SYSTEM_PYTHON -m piptools compile --generate-hashes --allow-unsafe --resolver=legacy -o $out_file $@
+$SYSTEM_PYTHON -m uv pip compile --generate-hashes -o $out_file $@
