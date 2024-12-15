@@ -11,12 +11,23 @@ from datetime import datetime
 from decimal import Decimal
 
 from aiohttp import ClientError as AsyncClientError
-from genericprocessor import NOOP_PATH, PR_PAID, PR_UNCONFIRMED, PR_UNPAID, BlockchainFeatures, BlockProcessorDaemon
+from genericprocessor import (
+    NOOP_PATH,
+    PR_PAID,
+    PR_UNCONFIRMED,
+    PR_UNPAID,
+    BlockchainFeatures,
+    BlockProcessorDaemon,
+    WalletDB,
+    daemon_ctx,
+    decimal_to_string,
+    from_wei,
+    str_to_bool,
+)
 from genericprocessor import Invoice as BaseInvoice
 from genericprocessor import KeyStore as BaseKeyStore
 from genericprocessor import Transaction as BaseTransaction
 from genericprocessor import Wallet as BaseWallet
-from genericprocessor import WalletDB, daemon_ctx, decimal_to_string, from_wei, str_to_bool
 from jsonrpc import RPCProvider
 from monero import const as monero_const
 from monero import ed25519

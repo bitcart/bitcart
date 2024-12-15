@@ -263,9 +263,11 @@ async def update_stock_levels(invoice):
         for product_quantity, product_id, quantity in quantities:
             if product_quantity == -1:  # unlimited quantity
                 continue
-            await models.Product.update.values(quantity=max(0, product_quantity - quantity)).where(
-                models.Product.id == product_id
-            ).gino.status()
+            await (
+                models.Product.update.values(quantity=max(0, product_quantity - quantity))
+                .where(models.Product.id == product_id)
+                .gino.status()
+            )
 
 
 async def update_status(invoice, status, method=None, tx_hashes=[], sent_amount=Decimal(0), set_exception_status=None):

@@ -40,7 +40,7 @@ async def test_rate(client: TestClient):
     resp = await client.get("/cryptos/rate")
     data = resp.json()
     assert resp.status_code == 200
-    assert isinstance(data, (int, float))
+    assert isinstance(data, int | float)
     assert data > 0
     assert (await client.get("/cryptos/rate?fiat_currency=eur")).status_code == 200
     assert (await client.get("/cryptos/rate?fiat_currency=EUR")).status_code == 200
@@ -51,7 +51,7 @@ async def test_wallet_rate(client: TestClient, token: str, wallet):
     resp = await client.get(f"/wallets/{wallet['id']}/rate")
     data = resp.json()
     assert resp.status_code == 200
-    assert isinstance(data, (int, float))
+    assert isinstance(data, int | float)
     assert data > 0
     assert (await client.get(f"/wallets/{wallet['id']}/rate?currency=eur")).status_code == 200
     assert (await client.get(f"/wallets/{wallet['id']}/rate?currency=EUR")).status_code == 200

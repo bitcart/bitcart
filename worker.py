@@ -8,9 +8,8 @@ import sqlalchemy
 
 from alembic import config, script
 from alembic.runtime import migration
-from api import events, invoices
+from api import events, invoices, tasks
 from api import settings as settings_module
-from api import tasks
 from api.ext import backups as backup_ext
 from api.ext import configurator as configurator_ext
 from api.ext import tor as tor_ext

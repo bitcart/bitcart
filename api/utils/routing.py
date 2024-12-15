@@ -2,7 +2,7 @@ from collections import defaultdict
 from collections.abc import Callable
 from dataclasses import dataclass
 from os.path import join as path_join
-from typing import Any, ClassVar, Optional
+from typing import Any, ClassVar
 from urllib import parse as urlparse
 
 from fastapi import APIRouter, Depends, HTTPException, Security
@@ -173,7 +173,7 @@ class ModelView:
 
     def _get_count(self):
         async def get_count(
-            user: models.User = Security(utils.authorization.auth_dependency, scopes=self.scopes["get_count"])
+            user: models.User = Security(utils.authorization.auth_dependency, scopes=self.scopes["get_count"]),
         ):
             return await utils.database.get_scalar(
                 (
@@ -276,8 +276,8 @@ def get_pagination_model(display_model):
     return create_pydantic_model(
         f"PaginationResponse_{display_model.__name__}",
         count=(int, ...),
-        next=(Optional[str], None),
-        previous=(Optional[str], None),
+        next=(str | None, None),
+        previous=(str | None, None),
         result=(list[display_model], ...),
         __base__=BaseModel,
     )

@@ -85,7 +85,7 @@ class BaseModel(db.Model, metaclass=BaseModelMeta):
                 .where(getattr(key_info["table"], key_info["current_id"]) == self.id)
                 .gino.all()
             )
-            setattr(self, key, [obj_id for obj_id, in result if obj_id])
+            setattr(self, key, [obj_id for (obj_id,) in result if obj_id])
 
     async def delete_related(self):
         for key_info in self.M2M_KEYS.values():

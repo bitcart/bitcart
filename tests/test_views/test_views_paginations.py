@@ -107,17 +107,23 @@ async def test_date_pagination(client: TestClient, user, token):
 
     now = utils.time.now()
     invoice1 = await create_invoice(client, user["id"], token)
-    await models.Invoice.update.where(models.Invoice.id == invoice1["id"]).values(
-        {"created": (now - timedelta(hours=1))}
-    ).gino.status()
+    await (
+        models.Invoice.update.where(models.Invoice.id == invoice1["id"])
+        .values({"created": (now - timedelta(hours=1))})
+        .gino.status()
+    )
     invoice2 = await create_invoice(client, user["id"], token)
-    await models.Invoice.update.where(models.Invoice.id == invoice2["id"]).values(
-        {"created": (now - timedelta(days=1))}
-    ).gino.status()
+    await (
+        models.Invoice.update.where(models.Invoice.id == invoice2["id"])
+        .values({"created": (now - timedelta(days=1))})
+        .gino.status()
+    )
     invoice3 = await create_invoice(client, user["id"], token)
-    await models.Invoice.update.where(models.Invoice.id == invoice3["id"]).values(
-        {"created": (now - timedelta(weeks=1))}
-    ).gino.status()
+    await (
+        models.Invoice.update.where(models.Invoice.id == invoice3["id"])
+        .values({"created": (now - timedelta(weeks=1))})
+        .gino.status()
+    )
 
     await check_start_date_query(client, token, "-2h", 1, invoice1["id"])
     await check_start_date_query(client, token, "-2d", 2, invoice2["id"])

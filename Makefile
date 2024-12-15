@@ -1,15 +1,13 @@
 all: ci
 
 lint:
-	flake8
+	ruff check
 
 checkformat:
-	black --check .
-	isort --check .
+	ruff format --check
 
 format:
-	black .
-	isort .
+	ruff format
 
 test:
 	pytest ${TEST_ARGS}

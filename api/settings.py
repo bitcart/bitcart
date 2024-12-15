@@ -10,7 +10,7 @@ import traceback
 from collections import defaultdict
 from contextlib import asynccontextmanager
 from contextvars import ContextVar
-from typing import Annotated, DefaultDict
+from typing import Annotated
 
 import fido2.features
 from aiohttp import ClientSession
@@ -78,7 +78,7 @@ class Settings(BaseSettings):
     logger: logging.Logger | None = None
     template_manager: TemplateManager | None = None
     exchange_rates: RatesManager | None = None
-    locks: DefaultDict[str, Annotated[asyncio.Lock, Field(default_factory=asyncio.Lock)]] = defaultdict(asyncio.Lock)
+    locks: defaultdict[str, Annotated[asyncio.Lock, Field(default_factory=asyncio.Lock)]] = defaultdict(asyncio.Lock)
     plugins: list | None = None
     plugins_schema: dict = {}
     is_worker: bool = False
@@ -342,7 +342,7 @@ class Settings(BaseSettings):
 
 def excepthook_handler(settings, excepthook):
     def internal_error_handler(type_, value, tb):
-        if type_ != KeyboardInterrupt:
+        if type_ is not KeyboardInterrupt:
             settings.logger.error("\n" + "".join(traceback.format_exception(type_, value, tb)))
         return excepthook(type_, value, tb)
 

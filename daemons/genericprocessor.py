@@ -15,9 +15,8 @@ from decimal import Decimal
 from base import BaseDaemon
 from storage import ConfigDB as StorageConfigDB
 from storage import JSONEncoder as StorageJSONEncoder
-from storage import Storage, StoredDBProperty, StoredObject, StoredProperty
+from storage import Storage, StoredDBProperty, StoredObject, StoredProperty, decimal_to_string
 from storage import WalletDB as StorageWalletDB
-from storage import decimal_to_string
 from utils import CastingDataclass, JsonResponse, get_exception_message, get_function_header, hide_logging_errors, rpc
 
 NO_HISTORY_MESSAGE = "We don't access transaction history to remain lightweight"

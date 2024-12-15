@@ -2,9 +2,8 @@ from decimal import Decimal
 
 from fastapi import APIRouter, HTTPException
 
-from api import crud
+from api import crud, models, schemes, utils
 from api import invoices as invoices_module
-from api import models, schemes, utils
 from api.ext import shopify as shopify_ext
 from api.invoices import InvoiceStatus
 

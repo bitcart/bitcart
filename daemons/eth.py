@@ -13,11 +13,19 @@ from aiolimiter import AsyncLimiter
 from eth_account import Account
 from eth_account.messages import encode_defunct
 from eth_keys.datatypes import PrivateKey, PublicKey
-from genericprocessor import NOOP_PATH, BlockchainFeatures, BlockProcessorDaemon
+from genericprocessor import (
+    NOOP_PATH,
+    BlockchainFeatures,
+    BlockProcessorDaemon,
+    Transaction,
+    WalletDB,
+    daemon_ctx,
+    from_wei,
+    str_to_bool,
+    to_wei,
+)
 from genericprocessor import KeyStore as BaseKeyStore
-from genericprocessor import Transaction
 from genericprocessor import Wallet as BaseWallet
-from genericprocessor import WalletDB, daemon_ctx, from_wei, str_to_bool, to_wei
 from hexbytes import HexBytes
 from mnemonic import Mnemonic
 from storage import JSONEncoder as StorageJSONEncoder
@@ -35,9 +43,8 @@ from web3 import AsyncWeb3
 from web3._utils.rpc_abi import RPC as ETHRPC
 from web3.contract import AsyncContract
 from web3.datastructures import AttributeDict
-from web3.exceptions import ABIFunctionNotFound, BlockNotFound, TransactionNotFound
+from web3.exceptions import ABIFunctionNotFound, BlockNotFound, TransactionNotFound, Web3Exception
 from web3.exceptions import ValidationError as Web3ValidationError
-from web3.exceptions import Web3Exception
 from web3.middleware import async_simple_cache_middleware
 from web3.middleware.geth_poa import async_geth_poa_middleware
 from web3.providers.rpc import get_default_http_endpoint
@@ -74,7 +81,6 @@ class MultipleRPCEthereumProvider(AsyncWeb3.AsyncHTTPProvider):
 
 
 class EthereumRPCProvider(AbstractRPCProvider, AsyncWeb3.AsyncHTTPProvider):
-
     web3: AsyncWeb3 = None  # patched later when it's created
     cooked_func = None
 

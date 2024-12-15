@@ -10,9 +10,8 @@ import httpx
 import trontxsize
 from aiohttp import ClientError as AsyncClientError
 from async_lru import alru_cache
-from eth import ETHDaemon
+from eth import ETHDaemon, Transaction, daemon_ctx, from_wei, load_json_dict, str_to_bool, to_wei
 from eth import KeyStore as ETHKeyStore
-from eth import Transaction, daemon_ctx, from_wei, load_json_dict, str_to_bool, to_wei
 from eth_account import Account
 from genericprocessor import BlockchainFeatures
 from mnemonic import Mnemonic

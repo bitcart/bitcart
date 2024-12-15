@@ -1,11 +1,12 @@
-[tool.black]
+[tool.ruff]
+target-version = "py311"
 line-length = 127
-preview = true
 
-[tool.isort]
-profile = "black"
-line_length = 127
-known_third_party = ["bitcart"]
+[tool.ruff.lint]
+extend-select = ["I", "UP"]
+
+[tool.ruff.lint.isort]
+known-third-party = ["bitcart"]
 
 [tool.pytest.ini_options]
 addopts = ["-n", "auto", "--cov=.", "--cov-report", "term-missing"]

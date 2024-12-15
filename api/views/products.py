@@ -134,7 +134,7 @@ async def products_count(
 async def categories(store: str):
     dataset = {
         category
-        for category, in await models.Product.select("category").where(models.Product.store_id == store).gino.all()
+        for (category,) in await models.Product.select("category").where(models.Product.store_id == store).gino.all()
         if category
     }
     dataset.discard("all")

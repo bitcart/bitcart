@@ -1518,9 +1518,9 @@ typing-extensions==4.12.2 \
     #   fastapi
     #   pydantic
     #   pydantic-core
-universalasync==0.3.1.2 \
-    --hash=sha256:5324996827402e1b509ca200b324615cb0b50f1f82f11afaf538533355a34d45 \
-    --hash=sha256:72271f3b35bc3bd6e72cab125d2cf19f178386c66d3c47e39bc2ddc4de974f6c
+universalasync==0.4.0.0 \
+    --hash=sha256:5a34333f78a4a121cca2d320529fdcd22e815a7b79dd3b8e530bb3259c01e2aa \
+    --hash=sha256:7407f283bb14c0ec70d83672a967de9a06934bc4dd1c768ca817cbdff99c7425
     # via bitcart
 urllib3==2.2.3 \
     --hash=sha256:ca899ca043dcb1bafa3e262d73aa25c465bfb49e0bd9dd5d59f1d0acba2f8fac \
