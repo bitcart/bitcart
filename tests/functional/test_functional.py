@@ -1,7 +1,7 @@
 import asyncio
-import multiprocessing
 import signal
 from decimal import Decimal
+from queue import Queue
 
 import async_timeout
 import pytest
@@ -135,7 +135,7 @@ async def prepare_ln_channels(regtest_wallet, regtest_lnnode):
 
 @pytest.fixture
 def queue():
-    return multiprocessing.Queue()
+    return Queue()
 
 
 @pytest.fixture

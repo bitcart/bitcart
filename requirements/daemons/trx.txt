@@ -7,3 +7,4 @@ mnemonic
 tronpy
 trontxsize
 web3<7 # TODO: upgrade
+bitarray<3 # electrum requires this

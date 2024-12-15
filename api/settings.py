@@ -10,7 +10,7 @@ import traceback
 from collections import defaultdict
 from contextlib import asynccontextmanager
 from contextvars import ContextVar
-from typing import Annotated, Any, DefaultDict, Optional
+from typing import Annotated, DefaultDict, Optional
 
 import fido2.features
 from aiohttp import ClientSession
@@ -18,15 +18,7 @@ from bitcart import COINS, APIManager
 from bitcart.coin import Coin
 from fastapi import HTTPException
 from pydantic import Field, ValidationInfo, field_validator
-from pydantic.fields import FieldInfo
-from pydantic_settings import (
-    BaseSettings,
-    DotEnvSettingsSource,
-    EnvSettingsSource,
-    PydanticBaseSettingsSource,
-    SecretsSettingsSource,
-    SettingsConfigDict,
-)
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 from redis import asyncio as aioredis
 from starlette.config import Config
 from starlette.datastructures import CommaSeparatedStrings
@@ -46,27 +38,8 @@ from api.utils.files import ensure_exists
 fido2.features.webauthn_json_mapping.enabled = True
 
 
-class CustomDecodingMixin:
-    def decode_complex_value(self, field_name: str, field: FieldInfo, value: Any) -> Any:
-        if field_name == "enabled_cryptos":
-            return CommaSeparatedStrings(value)
-        return json.loads(value)
-
-
-class MyEnvSettingsSource(CustomDecodingMixin, EnvSettingsSource):
-    pass
-
-
-class MyDotEnvSettingsSource(CustomDecodingMixin, DotEnvSettingsSource):
-    pass
-
-
-class MySecretsSettingsSource(CustomDecodingMixin, SecretsSettingsSource):
-    pass
-
-
 class Settings(BaseSettings):
-    enabled_cryptos: CommaSeparatedStrings = Field("btc", validation_alias="BITCART_CRYPTOS")
+    enabled_cryptos: Annotated[CommaSeparatedStrings, NoDecode] = Field("btc", validation_alias="BITCART_CRYPTOS")
     redis_host: str = Field("redis://localhost", validation_alias="REDIS_HOST")
     test: bool = Field("pytest" in sys.modules, validation_alias="TEST")
     functional_tests: bool = Field(False, validation_alias="FUNCTIONAL_TESTS")
@@ -111,22 +84,6 @@ class Settings(BaseSettings):
     is_worker: bool = False
 
     model_config = SettingsConfigDict(env_file="conf/.env", extra="ignore")
-
-    @classmethod
-    def settings_customise_sources(
-        cls,
-        settings_cls: type[BaseSettings],
-        init_settings: PydanticBaseSettingsSource,
-        env_settings: PydanticBaseSettingsSource,
-        dotenv_settings: PydanticBaseSettingsSource,
-        file_secret_settings: PydanticBaseSettingsSource,
-    ) -> tuple[PydanticBaseSettingsSource, ...]:
-        return (
-            init_settings,
-            MyEnvSettingsSource(settings_cls, env_ignore_empty=True),
-            MyDotEnvSettingsSource(settings_cls),
-            MySecretsSettingsSource(settings_cls),
-        )
 
     @property
     def logserver_client_host(self) -> str:

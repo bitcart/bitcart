@@ -4,3 +4,4 @@ eth-account<0.12 # web3 broke this
 eth-rlp<2.0 # web3 broke this
 mnemonic
 web3<7 # TODO: upgrade
+bitarray<3 # electrum requires this
