@@ -1,5 +1,4 @@
 import json
-from typing import Optional, Union
 
 import pyotp
 from fastapi import APIRouter, Depends, HTTPException, Query, Security
@@ -22,8 +21,8 @@ TFA_REDIS_KEY = "users_tfa"
 async def get_tokens(
     user: models.User = Security(utils.authorization.auth_dependency, scopes=["token_management"]),
     pagination: pagination.Pagination = Depends(),
-    app_id: Optional[str] = None,
-    redirect_url: Optional[str] = None,
+    app_id: str | None = None,
+    redirect_url: str | None = None,
     permissions: list[str] = Query(None),
 ):
     return await utils.database.paginate_object(
@@ -42,8 +41,8 @@ async def get_current_token(
 async def get_token_count(
     user: models.User = Security(utils.authorization.auth_dependency, scopes=["token_management"]),
     pagination: pagination.Pagination = Depends(),
-    app_id: Optional[str] = None,
-    redirect_url: Optional[str] = None,
+    app_id: str | None = None,
+    redirect_url: str | None = None,
     permissions: list[str] = Query(None),
 ):
     return await utils.database.paginate_object(
@@ -108,7 +107,7 @@ async def validate_credentials(user, token_data):
 async def create_oauth2_token(
     request: Request,
     form_data: OAuth2PasswordRequestForm = Depends(),
-    auth_data: Union[None, tuple[Optional[models.User], str]] = Security(
+    auth_data: tuple[models.User | None, str] | None = Security(
         utils.authorization.AuthDependency(token_required=False, return_token=True)
     ),
 ):  # pragma: no cover
@@ -123,8 +122,8 @@ async def create_oauth2_token(
 
 @router.post("")
 async def create_token(
-    token_data: Optional[schemes.HTTPCreateLoginToken] = schemes.HTTPCreateLoginToken(),
-    auth_data: Union[None, tuple[Optional[models.User], str]] = Security(
+    token_data: schemes.HTTPCreateLoginToken | None = schemes.HTTPCreateLoginToken(),
+    auth_data: tuple[models.User | None, str] | None = Security(
         utils.authorization.AuthDependency(token_required=False, return_token=True)
     ),
 ):

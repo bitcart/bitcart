@@ -1,3 +1,2 @@
-async-timeout # TODO: drop on 3.11+
 # .env file reading
 python-decouple

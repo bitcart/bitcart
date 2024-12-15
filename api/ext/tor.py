@@ -3,7 +3,6 @@ import json
 import os
 from dataclasses import asdict as dataclass_asdict
 from dataclasses import dataclass
-from typing import Optional
 
 from api import settings, utils
 from api.logger import get_logger
@@ -25,7 +24,7 @@ class HiddenService:
     name: str
     directory: str
     hostname: str
-    port_definition: Optional[PortDefinition] = None
+    port_definition: PortDefinition | None = None
 
 
 def is_onion(host):

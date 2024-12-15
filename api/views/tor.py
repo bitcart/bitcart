@@ -1,5 +1,3 @@
-from typing import Optional
-
 from fastapi import APIRouter, Security
 
 from api import models, utils
@@ -11,7 +9,7 @@ router = APIRouter()
 
 @router.get("/services")
 async def get_services(
-    user: Optional[models.User] = Security(utils.authorization.optional_auth_dependency, scopes=["server_management"])
+    user: models.User | None = Security(utils.authorization.optional_auth_dependency, scopes=["server_management"])
 ):
     key = "services_dict" if user else "anonymous_services_dict"
     async with utils.redis.wait_for_redis():

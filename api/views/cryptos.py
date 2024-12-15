@@ -1,6 +1,5 @@
 import math
 import re
-from typing import Optional
 
 from fastapi import APIRouter, HTTPException
 
@@ -40,7 +39,7 @@ async def rate(currency: str = "btc", fiat_currency: str = "USD"):
 
 
 @router.get("/fiatlist")
-async def get_fiatlist(query: Optional[str] = None):
+async def get_fiatlist(query: str | None = None):
     s = set(await settings.settings.exchange_rates.get_fiatlist())
     s = await apply_filters("get_fiatlist", s)
     if query is not None:

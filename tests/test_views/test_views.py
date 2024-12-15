@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 import json as json_module
 import os
-import sys
 from collections import defaultdict
 from decimal import Decimal
 from typing import TYPE_CHECKING
@@ -30,20 +29,6 @@ pytestmark = pytest.mark.anyio
 
 class DummyInstance:
     coin_name = "BTC"
-
-
-def is_event_loop_running():
-    try:
-        asyncio.get_running_loop()
-        return True
-    except RuntimeError:
-        return False
-
-
-def get_future_return_value(return_val):
-    future = asyncio.Future()
-    future.set_result(return_val)
-    return future if sys.version_info < (3, 8) or is_event_loop_running() else return_val
 
 
 async def test_docs_root(client: TestClient):

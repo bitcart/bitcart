@@ -1,7 +1,8 @@
 from collections import defaultdict
+from collections.abc import Callable
 from dataclasses import dataclass
 from os.path import join as path_join
-from typing import Any, Callable, ClassVar, Optional, Union
+from typing import Any, ClassVar, Optional
 from urllib import parse as urlparse
 
 from fastapi import APIRouter, Depends, HTTPException, Security
@@ -35,7 +36,7 @@ class ModelView:
     get_one_auth: bool
     post_auth: bool
     get_one_model: bool
-    scopes: Union[list, dict]
+    scopes: list | dict
     custom_commands: dict[str, Callable]
     using_router: bool
     response_models: dict[str, BaseModel]
@@ -160,7 +161,7 @@ class ModelView:
         async def get(
             request: Request,
             pagination: pagination.Pagination = Depends(),
-            user: ModelView.schemes.User = Security(utils.authorization.auth_dependency, scopes=self.scopes["get_all"]),
+            user: models.User = Security(utils.authorization.auth_dependency, scopes=self.scopes["get_all"]),
         ):
             params = utils.common.prepare_query_params(request)
             if self.custom_methods.get("get"):
@@ -172,7 +173,7 @@ class ModelView:
 
     def _get_count(self):
         async def get_count(
-            user: ModelView.schemes.User = Security(utils.authorization.auth_dependency, scopes=self.scopes["get_count"])
+            user: models.User = Security(utils.authorization.auth_dependency, scopes=self.scopes["get_count"])
         ):
             return await utils.database.get_scalar(
                 (
@@ -189,7 +190,7 @@ class ModelView:
     def _get_one(self):
         async def get_one(
             model_id: str,
-            user: Union[None, ModelView.schemes.User] = Security(
+            user: models.User | None = Security(
                 (utils.authorization.auth_dependency if self.get_one_auth else utils.authorization.optional_auth_dependency),
                 scopes=self.scopes["get_one"],
             ),
@@ -201,7 +202,7 @@ class ModelView:
     def _post(self):
         async def post(
             model: self.create_model,
-            user: Union[None, ModelView.schemes.User] = Security(
+            user: models.User | None = Security(
                 (utils.authorization.auth_dependency if self.post_auth else utils.authorization.optional_auth_dependency),
                 scopes=self.scopes["post"],
             ),
@@ -220,7 +221,7 @@ class ModelView:
         async def patch(
             model_id: str,
             model: utils.schemes.to_optional(self.pydantic_model),
-            user: ModelView.schemes.User = Security(utils.authorization.auth_dependency, scopes=self.scopes["patch"]),
+            user: models.User = Security(utils.authorization.auth_dependency, scopes=self.scopes["patch"]),
         ):
             item = await self._get_one_internal(model_id, user, True)
             if self.custom_methods.get("patch"):
@@ -234,7 +235,7 @@ class ModelView:
     def _delete(self):
         async def delete(
             model_id: str,
-            user: ModelView.schemes.User = Security(utils.authorization.auth_dependency, scopes=self.scopes["delete"]),
+            user: models.User = Security(utils.authorization.auth_dependency, scopes=self.scopes["delete"]),
         ):
             item = await self._get_one_internal(model_id, user, True)
             if self.custom_methods.get("delete"):
@@ -254,7 +255,7 @@ class ModelView:
     def _batch_action(self):
         async def batch_action(
             settings: ModelView.schemes.BatchSettings,
-            user: ModelView.schemes.User = Security(utils.authorization.auth_dependency, scopes=self.scopes["batch_action"]),
+            user: models.User = Security(utils.authorization.auth_dependency, scopes=self.scopes["batch_action"]),
         ):
             query = self.process_command(settings.command)
             if query is None:

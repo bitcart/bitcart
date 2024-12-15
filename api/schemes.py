@@ -1,7 +1,7 @@
 import math
 from datetime import datetime
 from decimal import Decimal
-from typing import Annotated, Any, ClassVar, Literal, Optional, Union
+from typing import Annotated, Any, ClassVar, Literal
 
 import paramiko
 from fastapi.exceptions import HTTPException
@@ -142,7 +142,7 @@ class DisplayUser(DisplayModel, BaseUser):
 
 
 class DisplayUserWithToken(DisplayUser):
-    token: Optional[str] = None
+    token: str | None = None
 
 
 # Tokens
@@ -457,7 +457,7 @@ class UpdateProduct(UpdateModel, CreateProduct):
 class DisplayProduct(DisplayModel, CreateProduct):
     id: str
     user_id: str
-    store_id: Optional[str]
+    store_id: str | None
     price: Money
 
     @model_validator(mode="before")
@@ -474,15 +474,15 @@ class CreateInvoice(CreateModel, CreatedMixin):
     store_id: str = Field(..., json_schema_extra={"hidden_update": True})
     currency: str = Field("", json_schema_extra={"hidden_update": True}, validate_default=True)
     order_id: str = ""
-    notification_url: Optional[str] = ""
-    redirect_url: Optional[str] = ""
-    buyer_email: Optional[Union[EmailStr, Literal[""]]] = ""
-    promocode: Optional[str] = Field("", json_schema_extra={"hidden_update": True})
+    notification_url: str | None = ""
+    redirect_url: str | None = ""
+    buyer_email: EmailStr | Literal[""] | None = ""
+    promocode: str | None = Field("", json_schema_extra={"hidden_update": True})
     shipping_address: str = ""
     notes: str = ""
     status: str = Field(None, json_schema_extra={"hidden": True}, validate_default=True)
     exception_status: str = Field(None, json_schema_extra={"hidden": True}, validate_default=True)
-    products: Union[list[str], dict[str, int]] = Field({}, json_schema_extra={"hidden_update": True})
+    products: list[str] | dict[str, int] = Field({}, json_schema_extra={"hidden_update": True})
     tx_hashes: list[str] = Field([], json_schema_extra={"hidden": True})
     expiration: int = Field(None, json_schema_extra={"hidden_update": True})
     sent_amount: DecimalAsFloat = Field(Decimal("0"), json_schema_extra={"hidden": True})
@@ -510,7 +510,7 @@ class CreateInvoice(CreateModel, CreatedMixin):
 
 
 class CustomerUpdateData(UpdateModel):
-    buyer_email: Union[EmailStr, Literal[""]] = ""
+    buyer_email: EmailStr | Literal[""] = ""
     shipping_address: str = ""
     notes: str = ""
 
@@ -534,16 +534,16 @@ class PaymentData(DisplayModel):
 class DisplayInvoice(DisplayModel, CreateInvoice):
     id: str
     user_id: str
-    store_id: Optional[str]
+    store_id: str | None
     time_left: int
     expiration_seconds: int
     product_names: dict
     payments: list[PaymentData] = []
-    paid_date: Optional[NonZuluDatetime]
-    payment_id: Optional[str]
-    refund_id: Optional[str]
-    paid_currency: Optional[str]
-    discount: Optional[str]
+    paid_date: NonZuluDatetime | None
+    payment_id: str | None
+    refund_id: str | None
+    paid_currency: str | None
+    discount: str | None
     price: Money
 
     @model_validator(mode="before")
@@ -572,7 +572,7 @@ class CreatePayout(CreateModel, CreatedMixin):
     wallet_id: str
     currency: str = Field("", validate_default=True)
     notification_url: str = ""
-    max_fee: Optional[DecimalAsFloat] = Field(None, validate_default=True)
+    max_fee: DecimalAsFloat | None = Field(None, validate_default=True)
     status: str = Field(None, json_schema_extra={"hidden": True}, validate_default=True)
 
     @field_validator("currency")
@@ -602,11 +602,11 @@ class UpdatePayout(UpdateModel, CreatePayout):
 class DisplayPayout(DisplayModel, CreatePayout):
     id: str
     user_id: str
-    store_id: Optional[str]
-    wallet_id: Optional[str]
-    wallet_currency: Optional[str]
-    used_fee: Optional[DecimalAsFloat]
-    tx_hash: Optional[str]
+    store_id: str | None
+    wallet_id: str | None
+    wallet_currency: str | None
+    used_fee: DecimalAsFloat | None
+    tx_hash: str | None
     amount: Money
 
     @model_validator(mode="before")
@@ -634,12 +634,12 @@ class UpdateRefund(UpdateModel, CreateRefund):
 class DisplayRefund(DisplayModel, CreateRefund):
     id: str
     user_id: str
-    wallet_id: Optional[str]
-    destination: Optional[str]
-    wallet_currency: Optional[str] = None  # added at runtime
-    payout_id: Optional[str]
-    payout_status: Optional[str] = None
-    tx_hash: Optional[str] = None
+    wallet_id: str | None
+    destination: str | None
+    wallet_currency: str | None = None  # added at runtime
+    payout_id: str | None
+    payout_status: str | None = None
+    tx_hash: str | None = None
 
 
 # Files
@@ -659,7 +659,7 @@ class DisplayFile(DisplayModel, CreateFile):
 
 # Misc schemes
 class TxResponse(DisplayModel):
-    date: Optional[NonZuluDatetime]
+    date: NonZuluDatetime | None
     txid: str
     amount: str
 
@@ -755,13 +755,13 @@ class BackupsPolicy(DisplayModel):
 
 
 class BackupState(DisplayModel):
-    last_run: Optional[int] = None
+    last_run: int | None = None
 
 
 class BatchSettings(DisplayModel):
     ids: list[str]
     command: str
-    options: Optional[dict] = {}
+    options: dict | None = {}
 
 
 class OpenChannelScheme(DisplayModel):
@@ -784,52 +784,52 @@ class EventSystemMessage(DisplayModel):
 
 
 class ConfiguratorDomainSettings(DisplayModel):
-    domain: Optional[str] = ""
-    https: Optional[bool] = True
+    domain: str | None = ""
+    https: bool | None = True
 
 
 class ConfiguratorCoinDescription(DisplayModel):
-    enabled: Optional[bool] = True
-    network: Optional[str] = "mainnet"
-    lightning: Optional[bool] = False
+    enabled: bool | None = True
+    network: str | None = "mainnet"
+    lightning: bool | None = False
 
 
 class ConfiguratorAdvancedSettings(DisplayModel):
-    installation_pack: Optional[str] = "all"
-    bitcart_docker_repository: Optional[str] = ""
-    additional_components: Optional[list[str]] = []
+    installation_pack: str | None = "all"
+    bitcart_docker_repository: str | None = ""
+    additional_components: list[str] | None = []
 
 
 class ConfiguratorSSHSettings(DisplayModel):
-    host: Optional[str] = None
-    username: Optional[str] = None
-    password: Optional[str] = None
-    root_password: Optional[str] = None
+    host: str | None = None
+    username: str | None = None
+    password: str | None = None
+    root_password: str | None = None
 
 
 class ConfiguratorServerSettings(DisplayModel):
-    domain_settings: Optional[ConfiguratorDomainSettings] = ConfiguratorDomainSettings()
-    coins: Optional[dict[str, ConfiguratorCoinDescription]] = {}
-    additional_services: Optional[list[str]] = []
-    advanced_settings: Optional[ConfiguratorAdvancedSettings] = ConfiguratorAdvancedSettings()
+    domain_settings: ConfiguratorDomainSettings | None = ConfiguratorDomainSettings()
+    coins: dict[str, ConfiguratorCoinDescription] | None = {}
+    additional_services: list[str] | None = []
+    advanced_settings: ConfiguratorAdvancedSettings | None = ConfiguratorAdvancedSettings()
 
 
 class ConfiguratorDeploySettings(ConfiguratorServerSettings):
     mode: str
-    ssh_settings: Optional[ConfiguratorSSHSettings] = ConfiguratorSSHSettings()
+    ssh_settings: ConfiguratorSSHSettings | None = ConfiguratorSSHSettings()
 
 
 # This is different from ConfiguratorSSHSettings - it is an internal object which is used for ssh connection management
 # throughout the app
 class SSHSettings(DisplayModel):
-    host: Optional[str] = None
-    port: Optional[int] = 22
-    username: Optional[str] = None
-    password: Optional[str] = None
-    key_file: Optional[str] = None
-    key_file_password: Optional[str] = None
-    authorized_keys_file: Optional[str] = None
-    bash_profile_script: Optional[str] = None
+    host: str | None = None
+    port: int | None = 22
+    username: str | None = None
+    password: str | None = None
+    key_file: str | None = None
+    key_file_password: str | None = None
+    authorized_keys_file: str | None = None
+    bash_profile_script: str | None = None
 
     def create_ssh_client(self):
         client = paramiko.SSHClient()
@@ -860,7 +860,7 @@ class SubmitRefundData(CreateModel):
 
 
 class RateResult(DisplayModel):
-    rate: Optional[DecimalAsFloat] = Field(..., validate_default=True)
+    rate: DecimalAsFloat | None = Field(..., validate_default=True)
     message: str
 
     @field_validator("rate", mode="before")
@@ -877,4 +877,4 @@ class RatesResponse(DisplayModel):
 
 class EmailVerifyResponse(DisplayModel):
     success: bool
-    token: Optional[str]
+    token: str | None

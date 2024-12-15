@@ -12,7 +12,7 @@ if [ -z "$1" ]; then
 fi
 
 if [[ ! "$SYSTEM_PYTHON" ]]; then
-    SYSTEM_PYTHON=$(which python3.9) || printf ""
+    SYSTEM_PYTHON=$(which python3.11) || printf ""
 else
     SYSTEM_PYTHON=$(which $SYSTEM_PYTHON) || printf ""
 fi

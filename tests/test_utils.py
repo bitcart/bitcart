@@ -56,7 +56,6 @@ async def test_auth_dependency():
 async def test_make_subscriber():
     sub = await utils.redis.make_subscriber("test")
     assert isinstance(sub, PubSub)
-    await sub.subscribe("channel:test")
     utils.tasks.create_task(reader(sub))
     assert await utils.redis.publish_message("test", {"hello": "world"}) == 1
 

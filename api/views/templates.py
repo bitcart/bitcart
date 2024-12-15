@@ -1,5 +1,3 @@
-from typing import Optional
-
 from fastapi import APIRouter
 
 from api import models, schemes, settings, utils
@@ -9,7 +7,7 @@ router = APIRouter()
 
 
 @router.get("/list")
-async def get_template_list(applicable_to: Optional[str] = None, show_all: bool = False):
+async def get_template_list(applicable_to: str | None = None, show_all: bool = False):
     result_set = settings.settings.template_manager.templates_strings
     if applicable_to:
         result_set = result_set.get(applicable_to, [])

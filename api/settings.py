@@ -10,7 +10,7 @@ import traceback
 from collections import defaultdict
 from contextlib import asynccontextmanager
 from contextvars import ContextVar
-from typing import Annotated, DefaultDict, Optional
+from typing import Annotated, DefaultDict
 
 import fido2.features
 from aiohttp import ClientSession
@@ -61,25 +61,25 @@ class Settings(BaseSettings):
     admin_rootpath: str = Field("/", validation_alias="BITCART_ADMIN_ROOTPATH")
     reverseproxy: str = Field("nginx-https", validation_alias="BITCART_REVERSEPROXY")
     https_enabled: bool = Field(False, validation_alias="BITCART_HTTPS_ENABLED")
-    log_file: Optional[str] = None
-    log_file_name: Optional[str] = Field(None, validation_alias="LOG_FILE")
-    log_file_regex: Optional[re.Pattern] = None
-    ssh_settings: Optional[SSHSettings] = None
-    update_url: Optional[str] = Field(None, validation_alias="UPDATE_URL")
-    torrc_file: Optional[str] = Field(None, validation_alias="TORRC_FILE")
-    openapi_path: Optional[str] = Field(None, validation_alias="OPENAPI_PATH")
+    log_file: str | None = None
+    log_file_name: str | None = Field(None, validation_alias="LOG_FILE")
+    log_file_regex: re.Pattern | None = None
+    ssh_settings: SSHSettings | None = None
+    update_url: str | None = Field(None, validation_alias="UPDATE_URL")
+    torrc_file: str | None = Field(None, validation_alias="TORRC_FILE")
+    openapi_path: str | None = Field(None, validation_alias="OPENAPI_PATH")
     api_title: str = Field("Bitcart", validation_alias="API_TITLE")
-    cryptos: Optional[dict[str, Coin]] = None
-    crypto_settings: Optional[dict] = None
-    manager: Optional[APIManager] = None
-    notifiers: Optional[dict] = None
-    redis_pool: Optional[aioredis.Redis] = None
-    config: Optional[Config] = None
-    logger: Optional[logging.Logger] = None
-    template_manager: Optional[TemplateManager] = None
-    exchange_rates: Optional[RatesManager] = None
+    cryptos: dict[str, Coin] | None = None
+    crypto_settings: dict | None = None
+    manager: APIManager | None = None
+    notifiers: dict | None = None
+    redis_pool: aioredis.Redis | None = None
+    config: Config | None = None
+    logger: logging.Logger | None = None
+    template_manager: TemplateManager | None = None
+    exchange_rates: RatesManager | None = None
     locks: DefaultDict[str, Annotated[asyncio.Lock, Field(default_factory=asyncio.Lock)]] = defaultdict(asyncio.Lock)
-    plugins: Optional[list] = None
+    plugins: list | None = None
     plugins_schema: dict = {}
     is_worker: bool = False
 

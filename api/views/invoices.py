@@ -1,4 +1,3 @@
-from typing import Optional
 from urllib.parse import urljoin
 
 from fastapi import APIRouter, Depends, HTTPException, Response, Security
@@ -23,7 +22,7 @@ async def get_invoice_noauth(model_id: str):
 async def get_or_create_invoice_by_order_id(
     order_id: str,
     data: schemes.CreateInvoice,
-    user: Optional[models.User] = Security(utils.authorization.optional_auth_dependency, scopes=["invoice_management"]),
+    user: models.User | None = Security(utils.authorization.optional_auth_dependency, scopes=["invoice_management"]),
 ):
     item = await utils.database.get_object(
         models.Invoice,

@@ -1,6 +1,5 @@
 import asyncio
 import os
-from typing import Optional
 
 import aiofiles
 from bitcart.errors import BaseError as BitcartBaseError
@@ -74,7 +73,7 @@ async def get_daemons(user: models.User = Security(utils.authorization.auth_depe
 
 @router.get("/policies")
 async def get_policies(
-    user: Optional[models.User] = Security(utils.authorization.optional_auth_dependency, scopes=["server_management"]),
+    user: models.User | None = Security(utils.authorization.optional_auth_dependency, scopes=["server_management"]),
 ):
     data = await utils.policies.get_setting(schemes.Policy)
     exclude = set()

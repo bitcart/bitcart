@@ -1,6 +1,5 @@
 import math
 from decimal import Decimal
-from typing import Union
 
 from bitcart import BTC
 from bitcart.errors import BaseError as BitcartBaseError
@@ -52,7 +51,7 @@ async def get_wallet_history(model, response):
         response.append({"date": i["date"], "txid": i["txid"], "amount": i["bc_value"]})
 
 
-async def get_wallet_balance(wallet) -> Union[bool, Decimal]:
+async def get_wallet_balance(wallet) -> Decimal | bool:
     try:
         coin = await settings.settings.get_coin(
             wallet.currency, {"xpub": wallet.xpub, "contract": wallet.contract, **wallet.additional_xpub_data}
@@ -66,7 +65,7 @@ async def get_wallet_balance(wallet) -> Union[bool, Decimal]:
         return False, 8, {attr: Decimal(0) for attr in BTC.BALANCE_ATTRS}
 
 
-async def get_confirmed_wallet_balance(wallet) -> Union[bool, Decimal]:
+async def get_confirmed_wallet_balance(wallet) -> Decimal | bool:  # TODO: fix type hints
     success, divisibility, balance = await get_wallet_balance(wallet)
     return success, divisibility, balance["confirmed"]
 

@@ -1,5 +1,5 @@
 import asyncio
-from typing import Callable, Optional, Union
+from collections.abc import Callable
 
 import asyncpg
 from fastapi import Query
@@ -46,14 +46,14 @@ class Pagination:
         self.desc_s = "desc" if desc else ""
         self.model = None
 
-    def get_previous_url(self) -> Union[None, str]:
+    def get_previous_url(self) -> str | None:
         if self.offset <= 0:
             return None
         if self.offset - self.limit <= 0:
             return str(self.request.url.remove_query_params(keys=["offset"]))
         return str(self.request.url.include_query_params(limit=self.limit, offset=self.offset - self.limit))
 
-    def get_next_url(self, count) -> Union[None, str]:
+    def get_next_url(self, count) -> str | None:
         if self.offset + self.limit >= count or self.limit == -1:
             return None
         return str(self.request.url.include_query_params(limit=self.limit, offset=self.offset + self.limit))
@@ -101,14 +101,14 @@ class Pagination:
         min_price=None,
         max_price=None,
         sale=False,
-        postprocess: Optional[Callable] = None,
+        postprocess: Callable | None = None,
         app_id=None,
         redirect_url=None,
         permissions=None,
         count_only=False,
         *args,
         **kwargs,
-    ) -> Union[dict, int]:
+    ) -> dict | int:
         query = await self.get_queryset(
             model, user_id, sale, store_id, category, min_price, max_price, app_id, redirect_url, permissions, *args, **kwargs
         )

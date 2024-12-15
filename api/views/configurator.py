@@ -1,5 +1,4 @@
 import socket
-from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Security
 from starlette.requests import Request
@@ -35,8 +34,8 @@ async def get_deploy_result(deploy_id: str, request: Request):
 
 @router.post("/server-settings")
 async def get_server_settings(
-    ssh_settings: Optional[schemes.SSHSettings] = None,
-    user: Optional[models.User] = Security(utils.authorization.optional_auth_dependency, scopes=["server_management"]),
+    ssh_settings: schemes.SSHSettings | None = None,
+    user: models.User | None = Security(utils.authorization.optional_auth_dependency, scopes=["server_management"]),
 ):
     if not ssh_settings:
         if not user:

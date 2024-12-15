@@ -3,7 +3,6 @@ import signal
 from decimal import Decimal
 from queue import Queue
 
-import async_timeout
 import pytest
 from aiohttp import web
 from bitcart import BTC
@@ -43,7 +42,7 @@ async def get_status(client, obj_id, token):
 async def check_invoice_status(
     ws_client, invoice_id, expected_status, allow_next=False, exception_status=None, sent_amount=None
 ):
-    async with async_timeout.timeout(30):
+    async with asyncio.timeout(30):
         async with ws_client.websocket_connect(f"/ws/invoices/{invoice_id}") as ws:
             msg = await ws.receive_json()
             if allow_next:  # when there are two statuses in a row (zeroconf)
@@ -68,7 +67,7 @@ async def wait_for_balance(address, expected_balance):
 
 
 async def wait_for_local_tx(wallet, tx_hash):
-    async with async_timeout.timeout(30):
+    async with asyncio.timeout(30):
         while True:
             try:
                 confirmations = (await wallet.server.get_tx_status(tx_hash))["confirmations"]

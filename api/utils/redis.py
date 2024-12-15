@@ -2,6 +2,8 @@ import asyncio
 import json
 from contextlib import asynccontextmanager
 
+from redis.asyncio.client import PubSub
+
 from api import settings, utils
 
 
@@ -12,9 +14,14 @@ async def wait_for_redis():  # pragma: no cover
     yield
 
 
+class MyPubSub(PubSub):  # see https://github.com/redis/redis-py/issues/2912
+    async def execute_command(self, *args, **options):
+        return await asyncio.shield(super().execute_command(*args, **options))
+
+
 async def make_subscriber(name):
     async with wait_for_redis():
-        subscriber = settings.settings.redis_pool.pubsub(ignore_subscribe_messages=True)
+        subscriber = MyPubSub(settings.settings.redis_pool.connection_pool, ignore_subscribe_messages=True)
         await subscriber.subscribe(f"channel:{name}")
         return subscriber
 

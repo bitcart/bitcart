@@ -1,5 +1,4 @@
 import secrets
-from typing import Optional
 
 from aiohttp import ClientSession
 from fastapi import HTTPException
@@ -77,7 +76,7 @@ def check_selective_scopes(request, scope, token):
 
 
 class AuthDependency(OAuth2PasswordBearer):
-    def __init__(self, enabled: bool = True, token_required: bool = True, token: Optional[str] = None, return_token=False):
+    def __init__(self, enabled: bool = True, token_required: bool = True, token: str | None = None, return_token=False):
         self.enabled = enabled
         self.return_token = return_token
         self.token = token

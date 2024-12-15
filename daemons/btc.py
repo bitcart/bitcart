@@ -8,7 +8,6 @@ import traceback
 from collections import deque
 from decimal import Decimal
 from types import ModuleType
-from typing import Union
 from urllib.parse import urlparse
 
 from base import BaseDaemon
@@ -515,7 +514,7 @@ class BTCDaemon(BaseDaemon):
         return self.electrum.transaction.Transaction(raw_tx).txid()
 
     @rpc
-    def get_default_fee(self, tx: Union[str, int], wallet=None) -> float:
+    def get_default_fee(self, tx: str | int, wallet=None) -> float:
         return format_satoshis(self.electrum_config.estimate_fee(self.get_tx_size(tx) if isinstance(tx, str) else tx))
 
     @rpc

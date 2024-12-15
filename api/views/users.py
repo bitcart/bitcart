@@ -1,5 +1,4 @@
 import json
-from typing import Optional
 
 import pyotp
 from fastapi import APIRouter, HTTPException, Query, Request, Security
@@ -74,7 +73,7 @@ async def finalize_password_reset(code: str, data: schemes.ResetPasswordFinalize
 @router.post("/verify")
 async def send_verification_email(
     data: schemes.VerifyEmailData,
-    auth_user: Optional[models.User] = Security(utils.authorization.optional_auth_dependency, scopes=["token_management"]),
+    auth_user: models.User | None = Security(utils.authorization.optional_auth_dependency, scopes=["token_management"]),
 ):
     if not auth_user:
         await utils.authorization.captcha_flow(data.captcha_code)
@@ -110,7 +109,7 @@ async def finalize_email_verification(code: str, add_token: bool = Query(False))
 
 async def create_user(
     model: schemes.CreateUser,
-    auth_user: Optional[models.User] = Security(utils.authorization.optional_auth_dependency, scopes=[]),
+    auth_user: models.User | None = Security(utils.authorization.optional_auth_dependency, scopes=[]),
 ):
     user = await crud.users.create_user(model, auth_user)
     await events.event_handler.publish("send_verification_email", {"id": user.id})
