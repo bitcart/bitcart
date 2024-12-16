@@ -23,9 +23,9 @@ ignore = ["RET502", "RET503", "S104", "S507", "ASYNC110"]
 mccabe = { max-complexity = 12 }
 
 [tool.ruff.lint.per-file-ignores]
-'tests/*' = ["S"]
-'scripts/*' = ["S"]
-'.circleci/*' = ["S"]
+"tests/*" = ["S"]
+"scripts/*" = ["S"]
+".circleci/*" = ["S"]
 
 [tool.ruff.lint.isort]
 known-third-party = ["bitcart"]
