@@ -754,7 +754,7 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
     async def is_still_syncing(self, wallet=None):
         return wallet and not wallet.is_synchronized()
 
-    async def _get_wallet(self, id, req_method, xpub, contract, diskless=False, extra_params=None):
+    async def _get_wallet(self, req_id, req_method, xpub, contract, diskless=False, extra_params=None):
         if extra_params is None:
             extra_params = {}
         wallet = error = None
@@ -777,17 +777,17 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
                 error = JsonResponse(
                     code=self.get_error_code(error_message, fallback_code=-32005),
                     error=error_message,
-                    id=id,
+                    id=req_id,
                 )
         return wallet, error
 
-    async def get_exec_method(self, id, req_method):
+    async def get_exec_method(self, req_id, req_method):
         error = None
         exec_method = None
         if req_method in self.supported_methods:
             exec_method = self.supported_methods[req_method]
         else:
-            error = JsonResponse(code=-32601, error="Procedure not found", id=id)
+            error = JsonResponse(code=-32601, error="Procedure not found", id=req_id)
         return exec_method, error
 
     async def get_exec_result(self, xpub, req_args, req_kwargs, exec_method):
@@ -796,29 +796,29 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
             result = exec_method(*req_args, **req_kwargs)
             return await result if inspect.isawaitable(result) else result
 
-    async def execute_method(self, id, req_method, xpub, contract, extra_params, req_args, req_kwargs):
+    async def execute_method(self, req_id, req_method, xpub, contract, extra_params, req_args, req_kwargs):
         wallet_key = self.coin.get_wallet_key(xpub, contract, **extra_params)
         try:
             if xpub:
                 await self.wallet_locks[wallet_key].acquire()
             wallet, error = await self._get_wallet(
-                id, req_method, xpub, contract, diskless=extra_params.get("diskless", False), extra_params=extra_params
+                req_id, req_method, xpub, contract, diskless=extra_params.get("diskless", False), extra_params=extra_params
             )
             if error:
                 return error.send()
-            exec_method, error = await self.get_exec_method(id, req_method)
+            exec_method, error = await self.get_exec_method(req_id, req_method)
             if error:
                 return error.send()
             if self.get_method_data(req_method).requires_wallet and not xpub:
-                return JsonResponse(code=-32000, error="Wallet not loaded", id=id).send()
+                return JsonResponse(code=-32000, error="Wallet not loaded", id=req_id).send()
             try:
                 result = await self.get_exec_result(wallet_key, req_args, req_kwargs, exec_method)
-                return JsonResponse(result=result, id=id).send()
+                return JsonResponse(result=result, id=req_id).send()
             except BaseException as e:
                 if self.VERBOSE and not extra_params.get("quiet_mode"):
                     print(traceback.format_exc())
                 error_message = self.get_exception_message(e)
-                return JsonResponse(code=self.get_error_code(error_message), error=error_message, id=id).send()
+                return JsonResponse(code=self.get_error_code(error_message), error=error_message, id=req_id).send()
             finally:
                 if extra_params.get("one_time", False):
                     await self.close_wallet_impl(wallet_key, locked=True)

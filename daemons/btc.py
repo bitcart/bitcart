@@ -245,7 +245,7 @@ class BTCDaemon(BaseDaemon):
         method = self.ALIASES.get(method, method)
         return self.electrum.commands.known_commands[method]
 
-    async def _get_wallet(self, id, req_method, xpub, diskless=False):
+    async def _get_wallet(self, req_id, req_method, xpub, diskless=False):
         wallet = cmd = error = None
         try:
             wallet, cmd = await self.load_wallet(xpub, config=self.electrum_config, diskless=diskless)
@@ -259,11 +259,11 @@ class BTCDaemon(BaseDaemon):
                 error = JsonResponse(
                     code=self.get_error_code(error_message, fallback_code=-32005),
                     error=error_message,
-                    id=id,
+                    id=req_id,
                 )
         return wallet, cmd, error
 
-    async def get_exec_method(self, cmd, id, req_method):
+    async def get_exec_method(self, cmd, req_id, req_method):
         error = None
         exec_method = None
         if req_method in self.supported_methods:
@@ -274,7 +274,7 @@ class BTCDaemon(BaseDaemon):
             if hasattr(cmd, req_method):
                 exec_method = getattr(cmd, req_method)
             else:
-                error = JsonResponse(code=-32601, error="Procedure not found", id=id)
+                error = JsonResponse(code=-32601, error="Procedure not found", id=req_id)
         return exec_method, custom, error
 
     async def get_exec_result(self, xpub, req_method, req_args, req_kwargs, exec_method, custom, **kwargs):
@@ -294,25 +294,25 @@ class BTCDaemon(BaseDaemon):
             return get_exception_message(e.original_exception)
         return get_exception_message(e)
 
-    async def execute_method(self, id, req_method, xpub, contract, extra_params, req_args, req_kwargs):
-        wallet, cmd, error = await self._get_wallet(id, req_method, xpub, diskless=extra_params.get("diskless", False))
+    async def execute_method(self, req_id, req_method, xpub, contract, extra_params, req_args, req_kwargs):
+        wallet, cmd, error = await self._get_wallet(req_id, req_method, xpub, diskless=extra_params.get("diskless", False))
         if error:
             return error.send()
-        exec_method, custom, error = await self.get_exec_method(cmd, id, req_method)
+        exec_method, custom, error = await self.get_exec_method(cmd, req_id, req_method)
         if error:
             return error.send()
         if self.get_method_data(req_method, custom).requires_wallet and not xpub:
-            return JsonResponse(code=-32000, error="Wallet not loaded", id=id).send()
+            return JsonResponse(code=-32000, error="Wallet not loaded", id=req_id).send()
         try:
             result = await self.get_exec_result(
                 xpub, req_method, req_args, req_kwargs, exec_method, custom, wallet=wallet, config=self.electrum_config
             )
-            return JsonResponse(result=result, id=id).send()
+            return JsonResponse(result=result, id=req_id).send()
         except BaseException as e:
             if self.VERBOSE and not extra_params.get("quiet_mode"):
                 print(traceback.format_exc())
             error_message = self.get_exception_message(e)
-            return JsonResponse(code=self.get_error_code(error_message), error=error_message, id=id).send()
+            return JsonResponse(code=self.get_error_code(error_message), error=error_message, id=req_id).send()
 
     async def _process_events(self, event, *args):
         mapped_event = self.EVENT_MAPPING.get(event)

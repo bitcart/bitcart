@@ -3,7 +3,20 @@ target-version = "py311"
 line-length = 127
 
 [tool.ruff.lint]
-select = ["F", "E", "I", "UP", "YTT", "B", "T10", "C", "SIM", "RUF100", "RET"]
+select = [
+    "F",
+    "E",
+    "I",
+    "UP",
+    "YTT",
+    "B",
+    "T10",
+    "C",
+    "SIM",
+    "RUF100",
+    "RET",
+    "A",
+]
 ignore = ["RET502", "RET503"]
 mccabe = { max-complexity = 12 }
 

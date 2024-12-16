@@ -91,20 +91,20 @@ class BaseDaemon:
             data = await request.json()
         except json.decoder.JSONDecodeError:
             return None, None, None, None, None, None, None, JsonResponse(code=-32700, error="Parse error")
-        method, id, params = data.get("method"), data.get("id", None), data.get("params", [])
-        error = None if method else JsonResponse(code=-32601, error="Procedure not found", id=id)
+        method, req_id, params = data.get("method"), data.get("id", None), data.get("params", [])
+        error = None if method else JsonResponse(code=-32601, error="Procedure not found", id=req_id)
         args, kwargs = parse_params(params)
         xpub, contract, extra_params = self.parse_xpub(kwargs.pop("xpub", None))
-        return id, method, xpub, contract, extra_params, args, kwargs, error
+        return req_id, method, xpub, contract, extra_params, args, kwargs, error
 
     @authenticate
     async def handle_request(self, request):
-        id, req_method, xpub, contract, extra_params, req_args, req_kwargs, error = await self.get_handle_request_params(
+        req_id, req_method, xpub, contract, extra_params, req_args, req_kwargs, error = await self.get_handle_request_params(
             request
         )
         if error:
             return error.send()
-        return await self.execute_method(id, req_method, xpub, contract, extra_params, req_args, req_kwargs)
+        return await self.execute_method(req_id, req_method, xpub, contract, extra_params, req_args, req_kwargs)
 
     @authenticate
     async def handle_websocket(self, request):
@@ -190,13 +190,13 @@ class BaseDaemon:
         for ws in set(app["websockets"]):
             await ws.close(code=WSCloseCode.GOING_AWAY, message="Server shutdown")
 
-    async def execute_method(self, id, req_method, xpub, contract, extra_params, req_args, req_kwargs):
+    async def execute_method(self, req_id, req_method, xpub, contract, extra_params, req_args, req_kwargs):
         """Main entrypoint for executing methods your daemon provides
 
         Return JsonResponse(...).send() there to avoid building message manually
 
         Args:
-            id (int): jsonrpc id, return as is
+            req_id (int): jsonrpc id, return as is
             req_method (str): method to execute
             xpub (str): xpub of the wallet
             contract (str): smart contract address

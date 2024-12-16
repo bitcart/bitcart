@@ -27,16 +27,16 @@ def moneyfmt(value, places=2, curr="", sep=",", dp="."):
     sign, digits, _ = value.quantize(q).as_tuple()
     result = []
     digits = list(map(str, digits))
-    build, next = result.append, digits.pop
+    build, next_digit = result.append, digits.pop
     for _ in range(places):
-        build(next() if digits else "0")
+        build(next_digit() if digits else "0")
     if places:
         build(dp)
     if not digits:
         build("0")
     i = 0
     while digits:
-        build(next())
+        build(next_digit())
         i += 1
         if i == 3 and digits:
             i = 0
