@@ -193,9 +193,9 @@ bcrypt==4.2.1 \
     # via
     #   paramiko
     #   pwdlib
-bitcart==1.16.0.0 \
-    --hash=sha256:da141f0d598898ced8eeef89c6d7d11d946fb805998b1af24a8f36ecd8e0e29f \
-    --hash=sha256:e1d4d0a73dcd971d9761889b23fd0bf10339d7534e9daea2b7cf86e2aa7b5d2b
+bitcart==1.17.0.0 \
+    --hash=sha256:f5db9b3cccf73f60b4d37d22feb8df7909b7090ed706e2304d69a458506ba4ac \
+    --hash=sha256:f61d686c555a01dfefa34822214d9e3f7284f7c5190e0f71b3d3ec8aa826d32b
     # via -r requirements/web.txt
 certifi==2024.12.14 \
     --hash=sha256:1275f7a45be9464efc1173084eaa30f866fe2e47d389406136d332ed4967ec56 \
@@ -1518,9 +1518,9 @@ typing-extensions==4.12.2 \
     #   fastapi
     #   pydantic
     #   pydantic-core
-universalasync==0.4.0.0 \
-    --hash=sha256:5a34333f78a4a121cca2d320529fdcd22e815a7b79dd3b8e530bb3259c01e2aa \
-    --hash=sha256:7407f283bb14c0ec70d83672a967de9a06934bc4dd1c768ca817cbdff99c7425
+universalasync==0.4.0.1 \
+    --hash=sha256:55691b23f8265ff9a658d5eaee5a0375d75ac46432862198178c9a360062ba52 \
+    --hash=sha256:aadf1f20170366b76fb0317a343775c403842c8db25062f7d68184a09b3e882c
     # via bitcart
 urllib3==2.2.3 \
     --hash=sha256:ca899ca043dcb1bafa3e262d73aa25c465bfb49e0bd9dd5d59f1d0acba2f8fac \

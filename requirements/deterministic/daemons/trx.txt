@@ -1436,9 +1436,9 @@ tronpy==0.5.0 \
     --hash=sha256:04b28bc9bd49255ee48757db39c3df48affe8ab36bd7674c2e369ea34e02fc21 \
     --hash=sha256:2fe9bb26992dfc6a590dc30f3dcc4e631a91c2b5fa89eb785e9389e32d4891cb
     # via -r requirements/daemons/trx.txt
-trontxsize==1.1.0 \
-    --hash=sha256:3b57cc50ff9ea110e132cee77d19283af35e61f342f3fd4127f4eff6abd60c5b \
-    --hash=sha256:5bc9bc5821c4ca80a0255ef7c4ecb64949b61415e91ef6a8d13963722269f9ae
+trontxsize==1.1.1 \
+    --hash=sha256:52e8aa559185e81779906fe333cb56f950a87c21901a21c9623ecf57ed3ff8da \
+    --hash=sha256:7337fcf8f81315e15b5385dd2aafd5eb98a34e9ca207efd630a4623c1422b154
     # via -r requirements/daemons/trx.txt
 typing-extensions==4.12.2 \
     --hash=sha256:04e5ca0351e0f3f85c6853954072df659d0d13fac324d0072316b67d7794700d \
