@@ -26,16 +26,15 @@ class ShopifyClient:
 
     async def request(self, method, url, **kwargs):
         final_url = os.path.join(self.api_url, "admin/api/2022-04/" + url)
-        async with ClientSession(headers=self.headers) as session:
-            async with session.request(method, final_url, **kwargs) as response:
-                data = await response.text()
-                if "invalid api key or access token" in data.lower():
-                    raise ShopifyAPIError("Invalid API key or access token")
-                try:
-                    data = json.loads(data)
-                except json.JSONDecodeError as e:
-                    raise ShopifyAPIError("Invalid JSON data") from e
-                return data
+        async with ClientSession(headers=self.headers) as session, session.request(method, final_url, **kwargs) as response:
+            data = await response.text()
+            if "invalid api key or access token" in data.lower():
+                raise ShopifyAPIError("Invalid API key or access token")
+            try:
+                data = json.loads(data)
+            except json.JSONDecodeError as e:
+                raise ShopifyAPIError("Invalid JSON data") from e
+            return data
 
     async def get_order(self, order_id):
         return (

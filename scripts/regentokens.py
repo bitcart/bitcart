@@ -72,10 +72,7 @@ if platform not in NAMES:
 
 filters = NAMES[platform]
 
-if platform == "sep20":
-    token_symbols = fetch_top50_smartbch()
-else:
-    token_symbols = fetch_popular_tokens(filters)
+token_symbols = fetch_top50_smartbch() if platform == "sep20" else fetch_popular_tokens(filters)
 
 for token in token_symbols.copy():
     if not token_symbols[token]:

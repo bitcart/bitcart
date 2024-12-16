@@ -63,7 +63,7 @@ class BaseModel(PydanticBaseModel):
 
     @staticmethod
     def schema_extra(schema: dict, cls):
-        properties = dict()
+        properties = {}
         if cls.MODE != WorkingMode.DISPLAY:
             for k, v in schema.get("properties", {}).items():
                 hidden_create = v.get("hidden_create", v.get("hidden", False))
@@ -834,7 +834,13 @@ class SSHSettings(DisplayModel):
     def create_ssh_client(self):
         client = paramiko.SSHClient()
         client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        kwargs = dict(hostname=self.host, port=self.port, username=self.username, allow_agent=False, look_for_keys=False)
+        kwargs = {
+            "hostname": self.host,
+            "port": self.port,
+            "username": self.username,
+            "allow_agent": False,
+            "look_for_keys": False,
+        }
         if self.key_file:
             kwargs.update(key_filename=self.key_file, passphrase=self.key_file_password)
         else:

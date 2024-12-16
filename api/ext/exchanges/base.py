@@ -56,7 +56,7 @@ class BaseExchange(metaclass=ABCMeta):
 
     async def get_fiat_currencies(self):
         await self._check_fresh(True)
-        return list(map(lambda x: x.split("_")[1], self.quotes))
+        return [x.split("_")[1] for x in self.quotes]
 
     @abstractmethod
     async def refresh(self):

@@ -108,9 +108,8 @@ async def paginate_object(model, pagination, user, *args, **kwargs):
 
 @asynccontextmanager
 async def iterate_helper():
-    async with db.db.acquire() as conn:
-        async with conn.transaction():
-            yield
+    async with db.db.acquire() as conn, conn.transaction():
+        yield
 
 
 async def get_objects(model, ids, postprocess=True):  # TODO: maybe use iterate instead?

@@ -306,9 +306,8 @@ class Settings(BaseSettings):
             if plugins_schema["$id"] == PLUGINS_SCHEMA_URL:
                 self.plugins_schema = plugins_schema
                 return
-        async with ClientSession() as session:
-            async with session.get(PLUGINS_SCHEMA_URL) as resp:
-                self.plugins_schema = await resp.json()
+        async with ClientSession() as session, session.get(PLUGINS_SCHEMA_URL) as resp:
+            self.plugins_schema = await resp.json()
         with open(schema_path, "w") as f:
             f.write(json.dumps(self.plugins_schema))
 
@@ -350,10 +349,7 @@ def excepthook_handler(settings, excepthook):
 
 
 def handle_exception(settings, loop, context):
-    if "exception" in context:
-        msg = get_exception_message(context["exception"])
-    else:
-        msg = context["message"]
+    msg = get_exception_message(context["exception"]) if "exception" in context else context["message"]
     settings.logger.error(msg)
 
 
@@ -362,7 +358,7 @@ def log_startup_info():
     settings.logger.info(f"Bitcart version: {VERSION} - {WEBSITE} - {GIT_REPO_URL}")
     settings.logger.info(f"Python version: {sys.version}. On platform: {platform.platform()}")
     settings.logger.info(
-        f"BITCART_CRYPTOS={','.join([item for item in settings.enabled_cryptos])}; IN_DOCKER={settings.docker_env}; "
+        f"BITCART_CRYPTOS={','.join(list(settings.enabled_cryptos))}; IN_DOCKER={settings.docker_env}; "
         f"LOG_FILE={settings.log_file_name}"
     )
     settings.logger.info(f"Successfully loaded {len(settings.cryptos)} cryptos")

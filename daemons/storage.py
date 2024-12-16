@@ -250,10 +250,7 @@ class StoredDict(dict):
 
     @locked
     def pop(self, key, v=_RaiseKeyError):
-        if v is _RaiseKeyError:
-            r = super().pop(key)
-        else:
-            r = super().pop(key, v)
+        r = super().pop(key) if v is _RaiseKeyError else super().pop(key, v)
         if self.db:
             self.db.set_modified(True)
         return r

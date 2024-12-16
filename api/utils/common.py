@@ -160,11 +160,10 @@ def precise_decimal(v):  # pragma: no cover
 
 
 async def send_request(method, url, *args, return_json=True, **kwargs):  # pragma: no cover
-    async with ClientSession() as session:
-        async with session.request(method, url, *args, **kwargs) as resp:
-            if return_json:
-                return await resp.json()
-            return resp, await resp.text()
+    async with ClientSession() as session, session.request(method, url, *args, **kwargs) as resp:
+        if return_json:
+            return await resp.json()
+        return resp, await resp.text()
 
 
 class DecimalAwareJSONEncoder(json.JSONEncoder):  # pragma: no cover

@@ -158,15 +158,20 @@ class ViewTestMixin:
         assert (await client.get(f"/{self.name}/{object_id}", headers={"Authorization": f"Bearer {token}"})).status_code == 404
 
 
+def read_tests(path):
+    with open(path) as f:
+        return json_module.loads(f.read())
+
+
 class TestUsers(ViewTestMixin):
     name = "users"
     create_auth = False
-    tests = json_module.loads(open("tests/fixtures/data/users.json").read())
+    tests = read_tests("tests/fixtures/data/users.json")
 
 
 class TestDiscounts(ViewTestMixin):
     name = "discounts"
-    tests = json_module.loads(open("tests/fixtures/data/discounts.json").read())
+    tests = read_tests("tests/fixtures/data/discounts.json")
 
     @pytest.fixture(autouse=True)
     async def setup(self, state, user, client, token, anyio_backend):
@@ -181,7 +186,7 @@ class TestDiscounts(ViewTestMixin):
 
 class TestNotifications(ViewTestMixin):
     name = "notifications"
-    tests = json_module.loads(open("tests/fixtures/data/notifications.json").read())
+    tests = read_tests("tests/fixtures/data/notifications.json")
 
     @pytest.fixture(autouse=True)
     async def setup(self, state, user, client, token, anyio_backend):
@@ -196,7 +201,7 @@ class TestNotifications(ViewTestMixin):
 
 class TestTemplates(ViewTestMixin):
     name = "templates"
-    tests = json_module.loads(open("tests/fixtures/data/templates.json").read())
+    tests = read_tests("tests/fixtures/data/templates.json")
 
     @pytest.fixture(autouse=True)
     async def setup(self, state, user, client, token, anyio_backend):
@@ -211,12 +216,12 @@ class TestTemplates(ViewTestMixin):
 
 class TestWallets(ViewTestMixin):
     name = "wallets"
-    tests = json_module.loads(open("tests/fixtures/data/wallets.json").read())
+    tests = read_tests("tests/fixtures/data/wallets.json")
 
 
 class TestStores(ViewTestMixin):
     name = "stores"
-    tests = json_module.loads(open("tests/fixtures/data/stores.json").read())
+    tests = read_tests("tests/fixtures/data/stores.json")
     get_one_auth = False
 
     @pytest.fixture(autouse=True)
@@ -244,7 +249,7 @@ class TestStores(ViewTestMixin):
 
 class TestProducts(ViewTestMixin):
     name = "products"
-    tests = json_module.loads(open("tests/fixtures/data/products.json").read())
+    tests = read_tests("tests/fixtures/data/products.json")
     id_length = PUBLIC_ID_LENGTH
     get_one_auth = False
     json_encoding = False
@@ -274,7 +279,7 @@ class TestProducts(ViewTestMixin):
 
 class TestInvoices(ViewTestMixin):
     name = "invoices"
-    tests = json_module.loads(open("tests/fixtures/data/invoices.json").read())
+    tests = read_tests("tests/fixtures/data/invoices.json")
     id_length = PUBLIC_ID_LENGTH
     create_auth = False
     get_one_auth = False
@@ -337,7 +342,7 @@ class TestInvoices(ViewTestMixin):
 
 class TestPayouts(ViewTestMixin):
     name = "payouts"
-    tests = json_module.loads(open("tests/fixtures/data/payouts.json").read())
+    tests = read_tests("tests/fixtures/data/payouts.json")
 
     @pytest.fixture(autouse=True)
     async def setup(self, state, user, store, wallet, client, token, anyio_backend):

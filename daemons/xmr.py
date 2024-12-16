@@ -77,7 +77,7 @@ class MoneroRPC(RPCProvider):
 
     @staticmethod
     def _validate_hashes(hashes):
-        if any(map(lambda h: not is_valid_hash(h), hashes)):
+        if any(not is_valid_hash(h) for h in hashes):
             raise Exception("Invalid tx hash")
 
     async def get_transactions(self, hashes):
@@ -106,7 +106,7 @@ class MoneroRPC(RPCProvider):
                     fee=from_atomic(fee) if fee else None,
                     height=None if tx["in_pool"] else tx["block_height"],
                     timestamp=datetime.fromtimestamp(tx["block_timestamp"]) if "block_timestamp" in tx else None,
-                    output_indices=tx["output_indices"] if "output_indices" in tx else None,
+                    output_indices=tx.get("output_indices", None),
                     blob=binascii.unhexlify(tx["as_hex"]) or None,
                     json=as_json,
                 )
@@ -462,7 +462,7 @@ class XMRDaemon(BlockProcessorDaemon):
             payment_id[i] ^= shared_secret[i]
         return address_func(address).with_payment_id(binascii.hexlify(payment_id).decode())
 
-    async def process_transaction(self, tx, unconfirmed=False):  # noqa: C901
+    async def process_transaction(self, tx, unconfirmed=False):
         if tx.divisibility is None:
             tx.divisibility = self.DIVISIBILITY
         current_height = await self.coin.get_block_number()

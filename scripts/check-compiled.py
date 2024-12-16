@@ -41,7 +41,7 @@ def main():
     parser.add_argument("files", nargs="+")
     args = parser.parse_args()
     if not args.verbose:
-        sys.stdout = open(os.devnull, "w")
+        sys.stdout = open(os.devnull, "w")  # noqa: SIM115: can't use context manager here
     print("Check compiled piptools requirements... ", end="", flush=True)
     root = get_root(Path(sys.argv[0]))
     requirements_dir = str(root / "requirements")

@@ -1,3 +1,5 @@
+import contextlib
+
 from starlette.datastructures import CommaSeparatedStrings
 
 from api import constants
@@ -26,10 +28,8 @@ def parse_connection_string(connection_string):
         host = parts[0]
         port = 22
         if len(parts) == 2:
-            try:
+            with contextlib.suppress(ValueError):
                 port = int(parts[1])
-            except ValueError:
-                pass
         parts = host.split("@")
         if len(parts) == 2:
             username = parts[0]

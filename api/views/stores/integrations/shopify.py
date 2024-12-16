@@ -43,7 +43,7 @@ async def get_or_create_shopify_invoice(store_id: str, order_id: str, amount: De
         return {}
     if order["financial_status"] not in ["pending", "partially_paid"]:
         raise HTTPException(404, "Not found")
-    final_price = amount if amount < Decimal(order["total_outstanding"]) else Decimal(order["total_outstanding"])
+    final_price = min(Decimal(order["total_outstanding"]), amount)
     invoice = await crud.invoices.create_invoice(
         schemes.CreateInvoice(
             price=final_price, store_id=store.id, currency=order["presentment_currency"], order_id=invoice_order_id

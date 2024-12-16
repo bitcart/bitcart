@@ -92,10 +92,7 @@ class AuthDependency(OAuth2PasswordBearer):
             if self.return_token:  # pragma: no cover
                 return None, None
             return None
-        if security_scopes.scopes:
-            authenticate_value = f'Bearer scope="{security_scopes.scope_str}"'
-        else:
-            authenticate_value = "Bearer"
+        authenticate_value = f'Bearer scope="{security_scopes.scope_str}"' if security_scopes.scopes else "Bearer"
         token: str = self.token if self.token else await super().__call__(request)
         exc = HTTPException(
             status_code=HTTP_401_UNAUTHORIZED,
@@ -151,12 +148,14 @@ optional_auth_dependency = AuthDependency(token_required=False)
 
 async def verify_captcha(api_uri, code, secret):
     try:
-        async with ClientSession() as session:
-            async with session.post(
+        async with (
+            ClientSession() as session,
+            session.post(
                 api_uri,
                 data={"response": code, "secret": secret},
-            ) as resp:
-                return (await resp.json())["success"]
+            ) as resp,
+        ):
+            return (await resp.json())["success"]
     except Exception:  # pragma: no cover
         return False
 

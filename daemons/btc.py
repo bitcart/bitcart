@@ -1,5 +1,6 @@
 import argparse
 import asyncio
+import contextlib
 import functools
 import inspect
 import os
@@ -191,10 +192,8 @@ class BTCDaemon(BaseDaemon):
 
     def init_wallet(self, wallet):
         if self.LIGHTNING:
-            try:
+            with contextlib.suppress(AssertionError):
                 wallet.init_lightning(password=None)
-            except AssertionError:
-                pass
         wallet.start_network(self.network)
 
     def copy_config_settings(self, config):

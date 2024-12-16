@@ -17,9 +17,8 @@ async def send_ipn(obj, status):  # pragma: no cover
         base_log_message = f"Sending IPN with data {data} to {obj.notification_url}"
         try:
             await run_hook("send_ipn", obj, status, data)
-            async with ClientSession() as session:
-                async with session.post(obj.notification_url, json=data) as resp:  # noqa: F841
-                    pass
+            async with ClientSession() as session, session.post(obj.notification_url, json=data) as resp:  # noqa: F841
+                pass
             logger.info(f"{base_log_message}: success")
         except Exception:
             logger.info(f"{base_log_message}: error\n{traceback.format_exc()}")
@@ -29,7 +28,7 @@ async def send_ipn(obj, status):  # pragma: no cover
 def validate_data(provider, data):  # pragma: no cover
     for json_part in ("args", "tokens"):
         for k, v in provider["details"][json_part].items():
-            if "type" in v and k in data.keys():
+            if "type" in v and k in data:
                 field_type = v["type"]
                 try:
                     if field_type == "int":

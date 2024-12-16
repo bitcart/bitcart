@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 import time
 
 from api import schemes, utils
@@ -52,10 +53,8 @@ class BackupsManager:
         if self.task is not None:
             self.task.cancel()
             # wait for task cancellation
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self.task
-            except asyncio.CancelledError:
-                pass
             self.task = None
 
     async def reset(self):

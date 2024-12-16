@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 import os
 
 import aiofiles
@@ -47,10 +48,8 @@ async def cleanup_logs(user: models.User = Security(utils.authorization.auth_dep
         return {"status": "error", "message": "Log file unconfigured"}
     for f in os.listdir(settings.settings.log_dir):
         if utils.logging.log_filter(f):
-            try:
+            with contextlib.suppress(OSError):
                 os.remove(os.path.join(settings.settings.log_dir, f))
-            except OSError:  # pragma: no cover
-                pass
     return {"status": "success", "message": "Successfully cleaned up logs!"}
 
 

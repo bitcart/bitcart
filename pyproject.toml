@@ -3,7 +3,8 @@ target-version = "py311"
 line-length = 127
 
 [tool.ruff.lint]
-extend-select = ["I", "UP", "B"]
+select = ["F", "E", "I", "UP", "YTT", "B", "T10", "C", "SIM", "RUF100"]
+mccabe = { max-complexity = 12 }
 
 [tool.ruff.lint.isort]
 known-third-party = ["bitcart"]

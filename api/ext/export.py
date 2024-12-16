@@ -15,7 +15,7 @@ def process_invoice(invoice, add_payments=False):
 
 
 def db_to_json(data, add_payments=False):
-    return map(lambda x: process_invoice(DisplayInvoice.model_validate(x).model_dump(), add_payments), data)
+    return (process_invoice(DisplayInvoice.model_validate(x).model_dump(), add_payments) for x in data)
 
 
 def get_leaves(item, key=None):  # pragma: no cover
@@ -23,7 +23,7 @@ def get_leaves(item, key=None):  # pragma: no cover
         return {key: "[" + ",".join(map(str, item)) + "]"}
     elif isinstance(item, dict):
         leaves = {}
-        for i in item.keys():
+        for i in item:
             leaves.update(get_leaves(item[i], merge_keys(key, i)))
         return leaves
     elif isinstance(item, list):

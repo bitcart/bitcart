@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 import json
 import os
 import traceback
@@ -65,7 +66,7 @@ RPC_SOURCE = "Infura"
 class JSONEncoder(StorageJSONEncoder):
     def default(self, obj):
         if isinstance(obj, AttributeDict):
-            return {k: v for k, v in obj.items()}
+            return dict(obj.items())
         if isinstance(obj, HexBytes):
             return str(obj.hex())
         return super().default(obj)
@@ -398,26 +399,22 @@ class ETHDaemon(BlockProcessorDaemon):
                 debug_data = None
                 for _ in range(5):
                     async with self.archive_limiter:
-                        try:
+                        with contextlib.suppress(Exception):
                             debug_data = await self.archive_coin.debug_trace_block(block_number)
-                        except Exception:
-                            pass
                     if debug_data:
                         break
                     await asyncio.sleep(5)
                 if not debug_data:
                     raise Exception(f"Error getting debug trace for {block_number}")
-                txes = list(
-                    map(
-                        lambda x: Transaction(
-                            x[0],
-                            x[1],
-                            x[2],
-                            x[3],
-                        ),
-                        self.coin.find_all_trace_outputs(debug_data),
+                txes = [
+                    Transaction(
+                        x[0],
+                        x[1],
+                        x[2],
+                        x[3],
                     )
-                )
+                    for x in self.coin.find_all_trace_outputs(debug_data)
+                ]
                 [asyncio.ensure_future(self.process_transaction(tx)) for tx in txes]
             except Exception:
                 if self.VERBOSE:
@@ -676,9 +673,9 @@ class ETHDaemon(BlockProcessorDaemon):
             **(
                 await self.get_common_payto_params(
                     address,
-                    nonce=kwargs.get("nonce", None),
-                    gas_price=kwargs.get("gas_price", None),
-                    multiplier=kwargs.get("speed_multiplier", None),
+                    nonce=kwargs.get("nonce"),
+                    gas_price=kwargs.get("gas_price"),
+                    multiplier=kwargs.get("speed_multiplier"),
                 )
             ),
         }

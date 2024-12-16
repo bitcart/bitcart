@@ -219,7 +219,7 @@ async def create_token_fido2_begin(auth_data: schemes.FIDO2Auth):  # pragma: no 
     user = await utils.database.get_object(models.User, token_data.user_id, raise_exception=False)
     if not user:
         raise HTTPException(422, "Invalid token")
-    existing_credentials = list(map(lambda x: AttestedCredentialData(bytes.fromhex(x["device_data"])), user.fido2_devices))
+    existing_credentials = [AttestedCredentialData(bytes.fromhex(x["device_data"])) for x in user.fido2_devices]
     options, state = Fido2Server(PublicKeyCredentialRpEntity(name="Bitcart", id=auth_data.auth_host)).authenticate_begin(
         existing_credentials, user_verification="discouraged"
     )
@@ -242,7 +242,7 @@ async def create_token_fido2_complete(request: Request):  # pragma: no cover
     user = await utils.database.get_object(models.User, token_data.user_id, raise_exception=False)
     if not user:
         raise HTTPException(422, "Invalid token")
-    existing_credentials = list(map(lambda x: AttestedCredentialData(bytes.fromhex(x["device_data"])), user.fido2_devices))
+    existing_credentials = [AttestedCredentialData(bytes.fromhex(x["device_data"])) for x in user.fido2_devices]
     async with utils.redis.wait_for_redis():
         state = await settings.settings.redis_pool.get(f"{FIDO2_LOGIN_KEY}:{user.id}")
         state = json.loads(state) if state else None

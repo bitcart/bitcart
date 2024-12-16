@@ -62,7 +62,7 @@ async def init_db(request, app, anyio_backend):
         await db.status(f"CREATE DATABASE {db_name} TEMPLATE {template_db}")
     settings.settings.db_name = db_name
     await settings.settings.init()
-    yield
+    return
 
 
 @pytest.fixture
@@ -88,7 +88,7 @@ def torrc(service_dir):
 HiddenServiceDir {service_dir}
 HiddenServicePort 80 127.0.0.1:80"""
         )
-    yield filename
+    return filename
 
 
 def deleting_file_base(filename):

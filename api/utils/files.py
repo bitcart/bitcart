@@ -1,12 +1,11 @@
+import contextlib
 import os
 import shutil
 
 
 def safe_remove(filename):
-    try:
+    with contextlib.suppress(TypeError, OSError):
         os.remove(filename)
-    except (TypeError, OSError):
-        pass
 
 
 def ensure_exists(path):

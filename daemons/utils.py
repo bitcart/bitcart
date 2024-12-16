@@ -339,7 +339,7 @@ class MultipleProviderRPC(metaclass=ABCMeta):
             if prev_idx < 0:
                 continue
             is_stable = True
-            for _ in range(0, self.RPC_UP_CHECK_TIMES + 1):
+            for _ in range(self.RPC_UP_CHECK_TIMES + 1):
                 try:
                     await self.providers[prev_idx].send_ping_request()
                 except Exception:

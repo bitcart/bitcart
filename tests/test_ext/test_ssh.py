@@ -4,7 +4,7 @@ from api.ext.ssh import parse_connection_string
 
 
 @pytest.mark.parametrize(
-    "connection_str,host,port,username",
+    ("connection_str", "host", "port", "username"),
     [
         ("", "", 22, ""),
         ("test.com", "test.com", 22, "root"),

@@ -58,9 +58,7 @@ FAILED_STATUSES = [InvoiceStatus.EXPIRED, InvoiceStatus.INVALID]
 
 
 def convert_status(status):
-    if isinstance(status, int):
-        status = STATUS_MAPPING[status]
-    elif isinstance(status, str) and status in STATUS_MAPPING:
+    if status in STATUS_MAPPING and (isinstance(status, int | str)):
         status = STATUS_MAPPING[status]
     if not status:
         status = InvoiceStatus.EXPIRED
@@ -277,17 +275,22 @@ async def update_stock_levels(invoice):
 async def update_status(invoice, status, method=None, tx_hashes=None, sent_amount=Decimal(0), set_exception_status=None):
     if tx_hashes is None:
         tx_hashes = []
-    if status == InvoiceStatus.PENDING and invoice.status == InvoiceStatus.PENDING and method and sent_amount > 0:
-        if not invoice.payment_id or invoice.payment_id == method.id:
-            await invoice.update(
-                paid_currency=method.get_name(),
-                payment_id=method.id,
-                discount=method.discount,
-                tx_hashes=tx_hashes,
-                sent_amount=sent_amount,
-                exception_status=InvoiceExceptionStatus.PAID_PARTIAL,
-            ).apply()
-            await process_notifications(invoice)
+    if (
+        status == InvoiceStatus.PENDING
+        and invoice.status == InvoiceStatus.PENDING
+        and method
+        and sent_amount > 0
+        and (not invoice.payment_id or invoice.payment_id == method.id)
+    ):
+        await invoice.update(
+            paid_currency=method.get_name(),
+            payment_id=method.id,
+            discount=method.discount,
+            tx_hashes=tx_hashes,
+            sent_amount=sent_amount,
+            exception_status=InvoiceExceptionStatus.PAID_PARTIAL,
+        ).apply()
+        await process_notifications(invoice)
 
     if (
         invoice.status != status
@@ -307,14 +310,14 @@ async def update_status(invoice, status, method=None, tx_hashes=None, sent_amoun
                     if sent_amount == method.amount or method.lightning
                     else InvoiceExceptionStatus.PAID_OVER
                 )
-                kwargs = dict(
-                    paid_currency=full_method_name,
-                    payment_id=method.id,
-                    discount=method.discount,
-                    tx_hashes=tx_hashes,
-                    sent_amount=sent_amount,
-                    exception_status=exception_status,
-                )
+                kwargs = {
+                    "paid_currency": full_method_name,
+                    "payment_id": method.id,
+                    "discount": method.discount,
+                    "tx_hashes": tx_hashes,
+                    "sent_amount": sent_amount,
+                    "exception_status": exception_status,
+                }
                 if not invoice.paid_date:
                     kwargs["paid_date"] = utils.time.now()
                 await invoice.update(**kwargs).apply()

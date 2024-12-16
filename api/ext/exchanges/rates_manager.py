@@ -28,7 +28,7 @@ def worker_result(func):
 
 
 class RatesManager:
-    def __init__(self, settings_obj):  # noqa: C901
+    def __init__(self, settings_obj):
         self.exchanges = {}
         self._exchange_classes = {}
         self.contracts = {}
@@ -105,5 +105,5 @@ class RatesManager:
         async with self.lock:
             if contract not in self.contracts[currency]:
                 self.contracts[currency].append(contract)
-                for key in self.exchanges.copy().keys():
+                for key in self.exchanges.copy():
                     self.exchanges[key].last_refresh = 0

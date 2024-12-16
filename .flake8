@@ -1,4 +1,0 @@
-[flake8]
-max-complexity=12
-max-line-length=127
-ignore=E266, E203, W503

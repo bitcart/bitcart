@@ -123,9 +123,8 @@ def get_app():
     app.add_middleware(RawContextMiddleware)
 
     if settings.openapi_path:
-        with log_errors():
-            with open(settings.openapi_path) as f:
-                app.openapi_schema = json.loads(f.read())
+        with log_errors(), open(settings.openapi_path) as f:
+            app.openapi_schema = json.loads(f.read())
     return app
 
 

@@ -161,7 +161,7 @@ async def register_fido2(
     auth_data: schemes.LoginFIDOData,
     user: models.User = Security(utils.authorization.auth_dependency, scopes=["token_management"]),
 ):  # pragma: no cover
-    existing_credentials = list(map(lambda x: AttestedCredentialData(bytes.fromhex(x["device_data"])), user.fido2_devices))
+    existing_credentials = [AttestedCredentialData(bytes.fromhex(x["device_data"])) for x in user.fido2_devices]
     options, state = Fido2Server(PublicKeyCredentialRpEntity(name="Bitcart", id=auth_data.auth_host)).register_begin(
         PublicKeyCredentialUserEntity(
             id=user.id.encode(),

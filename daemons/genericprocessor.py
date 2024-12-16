@@ -147,9 +147,7 @@ class WalletDB(StorageWalletDB):
         return v
 
     def _should_convert_to_stored_dict(self, key) -> bool:
-        if key == "keystore":
-            return False
-        return True
+        return key != "keystore"
 
     def run_upgrades(self):
         self._convert_version_2()
@@ -275,10 +273,9 @@ class Invoice(CastingDataclass, StoredObject):
     @property
     def status_str(self):
         status_str = pr_tooltips[self.status]
-        if self.status == PR_UNPAID:
-            if self.exp > 0:
-                expiration = self.exp + self.time
-                status_str = "Expires at " + time.ctime(expiration)
+        if self.status == PR_UNPAID and self.exp > 0:
+            expiration = self.exp + self.time
+            status_str = "Expires at " + time.ctime(expiration)
         return status_str
 
 
@@ -447,7 +444,7 @@ class Wallet:
         return True
 
     def get_sorted_requests(self):
-        out = [self.get_request(x) for x in self.receive_requests.keys()]
+        out = [self.get_request(x) for x in self.receive_requests]
         out = [x for x in out if x is not None]
         out.sort(key=lambda x: x.time)
         return out
@@ -467,7 +464,7 @@ class Wallet:
         for kwarg in kwargs:
             setattr(req, kwarg, kwargs[kwarg])
         self.add_payment_request(req, save_db=False)
-        if status == PR_PAID or status == PR_EXPIRED:
+        if status in (PR_PAID, PR_EXPIRED):
             self.remove_from_detection_dict(req)
         self.save_db()
         return req

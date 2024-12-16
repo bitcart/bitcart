@@ -1393,7 +1393,7 @@ async def test_products_pagination_deleted_store(client: TestClient, token, stor
 
 
 @pytest.mark.parametrize(
-    "name,expected,updated",
+    ("name", "expected", "updated"),
     [
         ("buyer_email", "test@example.com", "test2@example.com"),
         ("shipping_address", "test", "test2"),
@@ -1459,9 +1459,7 @@ async def test_syncinfo(client: TestClient, token, mocker):
 
 async def test_create_invoice_randomize_wallets(client: TestClient, token, user):
     wallets = [await create_wallet(client, user["id"], token, xpub=xpub) for xpub in static_data.RANDOMIZE_TEST_XPUBS]
-    store = await create_store(
-        client, user["id"], token, custom_store_attrs={"wallets": list(map(lambda x: x["id"], wallets))}
-    )
+    store = await create_store(client, user["id"], token, custom_store_attrs={"wallets": [x["id"] for x in wallets]})
     invoice = await create_invoice(client, user["id"], token, store_id=store["id"])
     payments = invoice["payments"]
     idx = 1

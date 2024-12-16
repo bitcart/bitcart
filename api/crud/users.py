@@ -22,7 +22,7 @@ async def create_user(user: schemes.CreateUser, auth_user: schemes.User):
     is_superuser = False
     if auth_user is None:
         count = await user_count()
-        is_superuser = True if count == 0 else False
+        is_superuser = count == 0
     elif auth_user and auth_user.is_superuser:
         is_superuser = user.is_superuser
     d = user.model_dump()

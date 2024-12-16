@@ -11,10 +11,7 @@ async def get_setting(scheme: T) -> T:
     item = await utils.database.get_object(
         models.Setting, custom_query=models.Setting.query.where(models.Setting.name == name), raise_exception=False
     )
-    if not item:
-        data = scheme()
-    else:
-        data = scheme(**json.loads(item.value))
+    data = scheme() if not item else scheme(**json.loads(item.value))
     if hasattr(data, "async_init"):
         await data.async_init()
     return data
