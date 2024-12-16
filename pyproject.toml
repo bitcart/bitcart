@@ -59,6 +59,7 @@ filterwarnings = [
     "error::PendingDeprecationWarning",
     "ignore:Deprecated call to `pkg_resources.declare_namespace:DeprecationWarning",
     "ignore:pkg_resources is deprecated as an API:DeprecationWarning",               # sqlalchemy
+    "ignore:.*datetime.datetime.utcfromtimestamp().*:DeprecationWarning",            # sqlalchemy
 ]
 norecursedirs = ["tests/functional"]
 
