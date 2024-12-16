@@ -21,18 +21,17 @@ def db_to_json(data, add_payments=False):
 def get_leaves(item, key=None):  # pragma: no cover
     if isinstance(item, list) and key is not None and key != "payments":
         return {key: "[" + ",".join(map(str, item)) + "]"}
-    elif isinstance(item, dict):
+    if isinstance(item, dict):
         leaves = {}
         for i in item:
             leaves.update(get_leaves(item[i], merge_keys(key, i)))
         return leaves
-    elif isinstance(item, list):
+    if isinstance(item, list):
         leaves = {}
         for index, i in enumerate(item):
             leaves.update(get_leaves(i, merge_keys(key, index)))
         return leaves
-    else:
-        return {key: item}
+    return {key: item}
 
 
 def json_to_csv(json_data):

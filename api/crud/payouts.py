@@ -13,8 +13,7 @@ async def create_payout(payout: schemes.CreatePayout, user: schemes.User):
     store = await utils.database.get_object(models.Store, d["store_id"], user)
     d["currency"] = d["currency"] or store.default_currency or "USD"
     d["user_id"] = store.user_id
-    obj = await utils.database.create_object(models.Payout, d)
-    return obj
+    return await utils.database.create_object(models.Payout, d)
 
 
 async def batch_payout_action(

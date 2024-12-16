@@ -242,9 +242,8 @@ class BTCDaemon(BaseDaemon):
     def get_method_data(self, method, custom):
         if custom:
             return self.supported_methods[method]
-        else:
-            method = self.ALIASES.get(method, method)
-            return self.electrum.commands.known_commands[method]
+        method = self.ALIASES.get(method, method)
+        return self.electrum.commands.known_commands[method]
 
     async def _get_wallet(self, id, req_method, xpub, diskless=False):
         wallet = cmd = error = None
@@ -614,7 +613,7 @@ class BTCDaemon(BaseDaemon):
             return data
         if func in self.supported_methods:
             return get_function_header(func, self.supported_methods[func])
-        elif hasattr(commands, func):
+        if hasattr(commands, func):
             # WARNING: dark magic of introspection
             parser = self.electrum.commands.get_parser()
             all_actions = parser._actions
@@ -642,8 +641,7 @@ class BTCDaemon(BaseDaemon):
             )
             command_parser.prog = f"bitcart-cli {func}"
             return command_parser.format_help()
-        else:
-            raise Exception("Procedure not found")
+        raise Exception("Procedure not found")
 
     @rpc(requires_network=True)
     async def close_wallet(self, key=None, wallet=None):

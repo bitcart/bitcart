@@ -58,8 +58,7 @@ async def get_product_noauth(model_id: str, store: str | None = None):
     query = models.Product.query.where(models.Product.id == model_id)
     if store is not None:
         query = query.where(models.Product.store_id == store)
-    item = await utils.database.get_object(models.Product, model_id, custom_query=query)
-    return item
+    return await utils.database.get_object(models.Product, model_id, custom_query=query)
 
 
 async def patch_product(

@@ -731,9 +731,9 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
     def user_dir(self):
         if os.name == "posix":
             return os.path.join(os.environ["HOME"], f".bitcart-{self.name.lower()}")
-        elif "APPDATA" in os.environ:
+        if "APPDATA" in os.environ:
             return os.path.join(os.environ["APPDATA"], f"Bitcart-{self.name.upper()}")
-        elif "LOCALAPPDATA" in os.environ:
+        if "LOCALAPPDATA" in os.environ:
             return os.path.join(os.environ["LOCALAPPDATA"], f"Bitcart-{self.name.upper()}")
 
     def get_datadir(self):
@@ -1048,8 +1048,7 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
             return list(self.supported_methods.keys())
         if func in self.supported_methods:
             return get_function_header(func, self.supported_methods[func])
-        else:
-            raise Exception("Procedure not found")
+        raise Exception("Procedure not found")
 
     @rpc
     async def history(self, *args, **kwargs):

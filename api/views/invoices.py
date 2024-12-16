@@ -14,8 +14,7 @@ router = APIRouter()
 
 
 async def get_invoice_noauth(model_id: str):
-    item = await utils.database.get_object(models.Invoice, model_id)
-    return item
+    return await utils.database.get_object(models.Invoice, model_id)
 
 
 @router.post("/order_id/{order_id:path}", response_model=schemes.DisplayInvoice)
@@ -65,12 +64,11 @@ async def export_invoices(
     response.headers.update(headers)
     if export_format == "json":
         return data
-    else:
-        return StreamingResponse(
-            iter([export_ext.json_to_csv(data).getvalue()]),
-            media_type="application/csv",
-            headers=headers,
-        )
+    return StreamingResponse(
+        iter([export_ext.json_to_csv(data).getvalue()]),
+        media_type="application/csv",
+        headers=headers,
+    )
 
 
 @router.patch("/{model_id}/customer", response_model=schemes.DisplayInvoice)

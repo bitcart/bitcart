@@ -32,8 +32,7 @@ def get_kwargs(model, data, additional_kwargs, user=None):
 
 def prepare_create_kwargs(model, data, user=None, **additional_kwargs):
     kwargs = get_kwargs(model, data, additional_kwargs, user)
-    kwargs = model.prepare_create(kwargs)
-    return kwargs
+    return model.prepare_create(kwargs)
 
 
 async def create_object_core(model, kwargs):

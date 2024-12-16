@@ -132,8 +132,7 @@ class Pagination:
                 models.Invoice.join(models.PaymentMethod, models.Invoice.id == models.PaymentMethod.invoice_id, isouter=True)
             )
         queries = self.search()
-        query = query.where(queries) if queries != [] else query  # sqlalchemy core requires explicit checks
-        return query
+        return query.where(queries) if queries != [] else query  # sqlalchemy core requires explicit checks
 
     async def get_queryset(
         self,
@@ -157,8 +156,7 @@ class Pagination:
             query = self._filter_in_product(query, store_id, category, min_price, max_price, sale)
         elif model == models.Token:
             query = self._filter_in_token(query, app_id, redirect_url, permissions)
-        query = await apply_filters("search_filters", query, model, *args, **kwargs)
-        return query
+        return await apply_filters("search_filters", query, model, *args, **kwargs)
 
     @staticmethod
     def _filter_in_product(query, store_id, category, min_price, max_price, sale):

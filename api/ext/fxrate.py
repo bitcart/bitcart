@@ -119,13 +119,12 @@ class ExchangeTransformer(ast.NodeTransformer):
             args = [self.visit(arg) for arg in args]
         if node.func.id in self.functions:
             return self.functions[node.func.id](*args)
-        else:
-            self.exchanges.add(node.func.id)
-            if len(args) == 1:
-                pair = ExchangePair(args[0])
-                if pair.left == pair.right:
-                    return Decimal(1)
-            return self.rates[node.func.id].get(*args, NO_RATE)
+        self.exchanges.add(node.func.id)
+        if len(args) == 1:
+            pair = ExchangePair(args[0])
+            if pair.left == pair.right:
+                return Decimal(1)
+        return self.rates[node.func.id].get(*args, NO_RATE)
 
     def visit_BinOp(self, node):
         left = self.visit(node.left)

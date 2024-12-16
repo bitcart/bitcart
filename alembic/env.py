@@ -47,10 +47,9 @@ def include_object(obj, name, type_, reflected, compare_to):
             return False
         if not plugin_name:
             return not name.startswith("plugin_")
-        else:
-            if getattr(obj, "PUBLIC", False):
-                return True
-            return name.startswith(f"plugin_{plugin_name}_")
+        if getattr(obj, "PUBLIC", False):
+            return True
+        return name.startswith(f"plugin_{plugin_name}_")
     return True
 
 

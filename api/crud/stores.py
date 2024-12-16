@@ -22,7 +22,6 @@ async def create_store(create_store: schemes.CreateStore, user: schemes.User):
 async def get_store(model_id: str, user: schemes.User, item: models.Store, internal: bool = False):
     if internal:
         return item
-    elif user and user.id == item.user_id:
+    if user and user.id == item.user_id:
         return schemes.DisplayStore.model_validate(item)
-    else:
-        return schemes.PublicStore.model_validate(item)
+    return schemes.PublicStore.model_validate(item)

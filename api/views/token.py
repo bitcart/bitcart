@@ -152,8 +152,7 @@ async def create_token(
     token_data = schemes.CreateDBToken(**token_data, user_id=user.id).model_dump()
     if requires_extra:
         return await create_token_tfa_flow(token_data, user)
-    else:
-        return await create_token_normal(token_data)
+    return await create_token_normal(token_data)
 
 
 async def create_token_normal(token_data):

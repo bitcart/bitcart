@@ -101,8 +101,7 @@ class ViewTestMixin:
     def prepare_data(self, data):
         if self.json_encoding:
             return {"json": data}
-        else:
-            return {"data": {"data": json_module.dumps(data)}}
+        return {"data": {"data": json_module.dumps(data)}}
 
     async def test_get_all(self, client: TestClient, token: str, state):
         assert (await client.get(f"/{self.name}")).status_code == 401

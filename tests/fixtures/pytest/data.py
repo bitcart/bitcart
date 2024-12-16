@@ -24,8 +24,7 @@ if TYPE_CHECKING:
 @pytest.fixture(scope="session", autouse=True)
 def notification_template():
     with open("api/templates/notification.j2") as f:
-        text = f.read().strip()
-    return text
+        return f.read().strip()
 
 
 @pytest.fixture
@@ -90,5 +89,4 @@ async def notification(client: TestClient, user, token, anyio_backend):
 @pytest.fixture
 def image():
     with open("tests/fixtures/img/image.png", "rb") as f:
-        data = f.read()
-    return data
+        return f.read()

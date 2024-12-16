@@ -34,8 +34,7 @@ class RPCProvider:
 
     async def raw_request(self, method, **kwargs):
         async with self.session.post(f"{self.url}/{method}", json=kwargs, timeout=ClientTimeout(total=5 * 60)) as response:
-            data = await response.json()
-            return data
+            return await response.json()
 
     async def jsonrpc_request(self, method, **kwargs):
         async with self.session.post(
@@ -51,7 +50,6 @@ class RPCProvider:
     async def request(self, kind, method, **kwargs):
         if kind == "jsonrpc":
             return await self.jsonrpc_request(method, **kwargs)
-        elif kind == "raw":
+        if kind == "raw":
             return await self.raw_request(method, **kwargs)
-        else:
-            raise ValueError("Invalid request kind")
+        raise ValueError("Invalid request kind")

@@ -169,8 +169,7 @@ class StoredObject:
     def to_json(self):
         d = dict(vars(self))
         d.pop("db", None)
-        d = {k: v for k, v in d.items() if not k.startswith("_")}
-        return d
+        return {k: v for k, v in d.items() if not k.startswith("_")}
 
 
 class StoredDBProperty:
@@ -306,10 +305,9 @@ class WalletDB(JsonDB):
         cur_version = self.get_version()
         if cur_version > max_version:
             return False
-        elif cur_version < min_version:
+        if cur_version < min_version:
             raise DBFileException(f"storage upgrade: unexpected version {cur_version} (should be {min_version}-{max_version})")
-        else:
-            return True
+        return True
 
     @locked
     def get_version(self):

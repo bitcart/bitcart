@@ -317,8 +317,7 @@ class TRXDaemon(ETHDaemon):
             return []
         if balance:
             return [(address, self.coin.to_dict(addr_balance))]
-        else:
-            return [address]
+        return [address]
 
     @rpc(requires_network=True)
     async def broadcast(self, tx, wallet=None):

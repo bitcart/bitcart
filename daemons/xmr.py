@@ -546,8 +546,7 @@ class XMRDaemon(BlockProcessorDaemon):
             return []
         if balance:
             return [(address, self.coin.to_dict(addr_balance))]
-        else:
-            return [address]
+        return [address]
 
     @rpc
     def make_seed(self, nbits=128, language="english", wallet=None):

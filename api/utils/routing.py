@@ -176,8 +176,7 @@ class ModelView:
             params = utils.common.prepare_query_params(request)
             if self.custom_methods.get("get"):
                 return await self.custom_methods["get"](pagination, user, **params)  # pragma: no cover
-            else:
-                return await utils.database.paginate_object(self.orm_model, pagination, user, **params)
+            return await utils.database.paginate_object(self.orm_model, pagination, user, **params)
 
         return get
 
@@ -304,8 +303,7 @@ def get_redirect_url(url, **kwargs):
             url_dict[key].append(kwargs[key])
     url_new_query = urlparse.urlencode(url_dict, doseq=True)
     parsed = parsed._replace(query=url_new_query)
-    new_url = urlparse.urlunparse(parsed)
-    return new_url
+    return urlparse.urlunparse(parsed)
 
 
 def prepare_next_url(path):

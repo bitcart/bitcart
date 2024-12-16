@@ -126,8 +126,7 @@ class JsonResponse:
             raise ValueError(f"result={self.result} and error={self.error} cannot be both set")
         if self.error is not None:
             return self.send_error_response()
-        else:
-            return self.send_ok_response()
+        return self.send_ok_response()
 
     def send_error_response(self):
         return web.json_response({"jsonrpc": "2.0", "error": {"code": self.code, "message": self.error}, "id": self.id})
@@ -204,10 +203,9 @@ def exception_retry_middleware(make_request, errors, verbose, retries=5):
                         print(f"Retrying {get_func_name(make_request)} {args} {kwargs}, attempt {i + 1}")
                     await asyncio.sleep(1)
                     continue
-                else:
-                    if verbose:
-                        print(f"Failed after {retries} retries: {get_func_name(make_request)} {args} {kwargs}")
-                    raise
+                if verbose:
+                    print(f"Failed after {retries} retries: {get_func_name(make_request)} {args} {kwargs}")
+                raise
 
     return middleware
 
