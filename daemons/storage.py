@@ -59,8 +59,8 @@ class Storage:
             mode = os.stat(self.path).st_mode
         except FileNotFoundError:
             mode = stat.S_IREAD | stat.S_IWRITE
-        if not self.file_exists():
-            assert not os.path.exists(self.path)
+        if not self.file_exists() and os.path.exists(self.path):
+            raise DBFileException(f"File {self.path} should not exist")
         os.replace(temp_path, self.path)
         os.chmod(self.path, mode)
         self._file_exists = True
@@ -301,7 +301,8 @@ class WalletDB(JsonDB):
         self.data = StoredDict(self.data, self, [])
 
     def _is_upgrade_method_needed(self, min_version, max_version):
-        assert min_version <= max_version
+        if min_version > max_version:
+            raise DBFileException(f"Invalid version range: {min_version} > {max_version}")
         cur_version = self.get_version()
         if cur_version > max_version:
             return False

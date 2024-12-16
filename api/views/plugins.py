@@ -37,8 +37,8 @@ async def install_plugin(
     manifest_path = os.path.join(plugin_path, "manifest.json")
     if not os.path.exists(manifest_path):
         return {"status": "error", "message": "Invalid plugin archive: missing manifest.json"}
-    with open(manifest_path) as f:
-        manifest = f.read()
+    async with aiofiles.open(manifest_path) as f:
+        manifest = await f.read()
     try:
         manifest = plugin_ext.parse_manifest(manifest)
     except ValueError as e:

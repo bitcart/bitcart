@@ -2,6 +2,7 @@ import json
 import os
 from decimal import Decimal
 
+import aiofiles
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Security, UploadFile
 from pydantic import ValidationError
 from sqlalchemy import select
@@ -24,8 +25,8 @@ def get_image_local_path(model_id):
 
 async def save_image(model, image):
     filename = get_image_local_path(model.id)
-    with open(filename, "wb") as f:
-        f.write(await image.read())
+    async with aiofiles.open(filename, "wb") as f:
+        await f.write(await image.read())
 
 
 def parse_data(data, scheme):

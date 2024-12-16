@@ -533,7 +533,7 @@ class PaymentMethod(BaseModel):
         return data
 
     @classmethod
-    def parse_chain_id(self, url):  # pragma: no cover
+    def parse_chain_id(cls, url):  # pragma: no cover
         k = url.find("@")
         if k == -1:
             return None

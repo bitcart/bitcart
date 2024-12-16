@@ -1,5 +1,6 @@
 import os
 
+import aiofiles
 from fastapi import APIRouter, File, HTTPException, Security, UploadFile
 from fastapi.responses import RedirectResponse
 from sqlalchemy import select
@@ -22,8 +23,8 @@ async def create_file(
         raise HTTPException(403, "File uploads are not allowed")
     file_obj = await utils.database.create_object(models.File, {"filename": file.filename}, user)
     path = get_file_path(file_obj)
-    with open(path, "wb") as f:
-        f.write(await file.read())
+    async with aiofiles.open(path, "wb") as f:
+        await f.write(await file.read())
     return file_obj
 
 
@@ -39,8 +40,8 @@ async def patch_file(
     utils.files.safe_remove(get_file_path(item))
     await utils.database.modify_object(item, {"filename": file.filename})
     path = get_file_path(item)
-    with open(path, "wb") as f:
-        f.write(await file.read())
+    async with aiofiles.open(path, "wb") as f:
+        await f.write(await file.read())
     return item
 
 

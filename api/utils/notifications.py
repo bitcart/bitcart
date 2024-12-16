@@ -1,3 +1,4 @@
+import contextlib
 import traceback
 
 import apprise
@@ -30,15 +31,13 @@ def validate_data(provider, data):  # pragma: no cover
         for k, v in provider["details"][json_part].items():
             if "type" in v and k in data:
                 field_type = v["type"]
-                try:
+                with contextlib.suppress(Exception):
                     if field_type == "int":
                         data[k] = int(data[k])
                     elif field_type == "float":
                         data[k] = float(data[k])
                     elif field_type == "bool":
                         data[k] = utils.common.str_to_bool(data[k])
-                except Exception:
-                    pass
     data["schema"] = provider["details"]["tokens"]["schema"]["values"][0]
     return data
 

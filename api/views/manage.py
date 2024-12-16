@@ -119,8 +119,8 @@ async def get_log_contents(
     if not settings.settings.log_file:
         raise HTTPException(400, "Log file unconfigured")
     try:
-        with open(os.path.join(settings.settings.log_dir, log)) as f:
-            return f.read().strip()
+        async with aiofiles.open(os.path.join(settings.settings.log_dir, log)) as f:
+            return (await f.read()).strip()
     except OSError:
         raise HTTPException(404, "This log doesn't exist") from None
 

@@ -35,12 +35,12 @@ async def run_universal(func, *args, **kwargs):
     return result
 
 
-async def run_repeated(func, timeout, start_timeout=None):  # pragma: no cover
-    if start_timeout is None:
-        start_timeout = timeout
+async def run_repeated(func, interval, initial_delay=None):  # pragma: no cover
+    if initial_delay is None:
+        initial_delay = interval
     first_iter = True
     while True:
-        await asyncio.sleep(start_timeout if first_iter else timeout)
+        await asyncio.sleep(initial_delay if first_iter else interval)
         await run_universal(func)
         first_iter = False
 

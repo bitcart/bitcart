@@ -266,7 +266,8 @@ class MultipleProviderRPC(metaclass=ABCMeta):
     RESET = object()  # sentinel
 
     def __init__(self, providers: list[AbstractRPCProvider]):
-        assert isinstance(providers, list)
+        if not isinstance(providers, list):
+            raise TypeError("providers must be a list")
         self.providers = providers
         if not self.providers:
             raise ValueError("No urls provided")

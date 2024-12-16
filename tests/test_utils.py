@@ -174,18 +174,18 @@ async def test_notification_template(client, token, user):
 
 
 def test_run_host(mocker):
-    TEST_FILE = os.path.expanduser("~/test-output")
-    content = f"touch {TEST_FILE}"
+    test_file = os.path.expanduser("~/test-output")
+    content = f"touch {test_file}"
     # No valid ssh connection
     ok, error = utils.host.run_host(content)
     assert ok is False
-    assert not os.path.exists(TEST_FILE)
+    assert not os.path.exists(test_file)
     assert "Connection problem" in error
     assert utils.host.run_host_output(content, "good")["status"] == "error"
     # Same with key file
     settings.settings.ssh_settings.key_file = "something"
     assert utils.host.run_host(content)[0] is False
-    assert not os.path.exists(TEST_FILE)
+    assert not os.path.exists(test_file)
     settings.settings.ssh_settings.key_file = ""
     mocker.patch("paramiko.SSHClient.connect", return_value=True)
     mocker.patch(
@@ -197,8 +197,8 @@ def test_run_host(mocker):
     assert error is None
     assert utils.host.run_host_output(content, "good") == {"status": "success", "message": "good"}
     time.sleep(1)  # wait for command to execute (non-blocking)
-    assert os.path.exists(TEST_FILE)
-    os.remove(TEST_FILE)  # Cleanup
+    assert os.path.exists(test_file)
+    os.remove(test_file)  # Cleanup
 
 
 def test_versiontuple():

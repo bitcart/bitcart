@@ -95,7 +95,7 @@ def collect_server_settings(ssh_settings):  # pragma: no cover
     from api.utils.common import str_to_bool
 
     settings = ConfiguratorServerSettings()
-    try:
+    with contextlib.suppress(Exception):
         client = ssh_settings.create_ssh_client()
         env = ServerEnv(client)
         cryptos = CommaSeparatedStrings(env.get("BITCART_CRYPTOS", "btc"))
@@ -114,6 +114,4 @@ def collect_server_settings(ssh_settings):  # pragma: no cover
             installation_pack=installation_pack, additional_components=additional_components
         )
         client.close()
-    except Exception:
-        pass
     return settings

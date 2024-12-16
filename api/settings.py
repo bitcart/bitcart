@@ -12,6 +12,7 @@ from contextlib import asynccontextmanager
 from contextvars import ContextVar
 from typing import Annotated
 
+import aiofiles
 import fido2.features
 from aiohttp import ClientSession
 from bitcart import COINS, APIManager
@@ -151,42 +152,49 @@ class Settings(BaseSettings):
         return db
 
     @field_validator("datadir", mode="before")
+    @classmethod
     def set_datadir(cls, path):
         path = os.path.abspath(path)
         ensure_exists(path)
         return path
 
     @field_validator("backups_dir", mode="before")
+    @classmethod
     def set_backups_dir(cls, path):
         path = os.path.abspath(path)
         ensure_exists(path)
         return path
 
     @field_validator("backend_plugins_dir", mode="before")
+    @classmethod
     def set_backend_plugins_dir(cls, path):
         path = os.path.abspath(path)
         ensure_exists(path)
         return path
 
     @field_validator("admin_plugins_dir", mode="before")
+    @classmethod
     def set_admin_plugins_dir(cls, path):
         path = os.path.abspath(path)
         ensure_exists(path)
         return path
 
     @field_validator("store_plugins_dir", mode="before")
+    @classmethod
     def set_store_plugins_dir(cls, path):
         path = os.path.abspath(path)
         ensure_exists(path)
         return path
 
     @field_validator("daemon_plugins_dir", mode="before")
+    @classmethod
     def set_daemon_plugins_dir(cls, path):
         path = os.path.abspath(path)
         ensure_exists(path)
         return path
 
     @field_validator("docker_plugins_dir", mode="before")
+    @classmethod
     def set_docker_plugins_dir(cls, path):
         path = os.path.abspath(path)
         ensure_exists(path)
@@ -301,15 +309,15 @@ class Settings(BaseSettings):
     async def fetch_schema(self):
         schema_path = os.path.join(self.datadir, "plugins_schema.json")
         if os.path.exists(schema_path):
-            with open(schema_path) as f:
-                plugins_schema = json.loads(f.read())
+            async with aiofiles.open(schema_path) as f:
+                plugins_schema = json.loads(await f.read())
             if plugins_schema["$id"] == PLUGINS_SCHEMA_URL:
                 self.plugins_schema = plugins_schema
                 return
         async with ClientSession() as session, session.get(PLUGINS_SCHEMA_URL) as resp:
             self.plugins_schema = await resp.json()
-        with open(schema_path, "w") as f:
-            f.write(json.dumps(self.plugins_schema))
+        async with aiofiles.open(schema_path, "w") as f:
+            await f.write(json.dumps(self.plugins_schema))
 
     async def init(self):
         sys.excepthook = excepthook_handler(self, sys.excepthook)

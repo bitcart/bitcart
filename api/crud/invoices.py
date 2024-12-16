@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 import secrets
 import time
 from collections import defaultdict
@@ -245,11 +246,9 @@ async def update_invoice_payments(invoice, wallets_ids, discounts, store, produc
     if randomize_selection:
         symbols = defaultdict(list)
         for wallet in wallets:
-            try:
+            with contextlib.suppress(Exception):
                 symbol = await utils.wallets.get_wallet_symbol(wallet)
                 symbols[symbol].append(wallet)
-            except Exception:  # pragma: no cover
-                pass
         coros = [
             create_method_for_wallet(invoice, secrets.choice(symbols[symbol]), discounts, store, product, promocode)
             for symbol in symbols
