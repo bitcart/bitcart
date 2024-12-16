@@ -192,7 +192,7 @@ async def fido2_complete_registration(
     try:
         auth_data = Fido2Server(PublicKeyCredentialRpEntity(name="Bitcart", id=auth_host)).register_complete(state, data)
     except Exception as e:
-        raise HTTPException(422, str(e))
+        raise HTTPException(422, str(e)) from None
     async with utils.redis.wait_for_redis():
         await settings.settings.redis_pool.delete(f"{FIDO2_REGISTER_KEY}:{user.id}")
     user.fido2_devices.append(

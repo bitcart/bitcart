@@ -33,8 +33,8 @@ class ShopifyClient:
                     raise ShopifyAPIError("Invalid API key or access token")
                 try:
                     data = json.loads(data)
-                except json.JSONDecodeError:
-                    raise ShopifyAPIError("Invalid JSON data")
+                except json.JSONDecodeError as e:
+                    raise ShopifyAPIError("Invalid JSON data") from e
                 return data
 
     async def get_order(self, order_id):

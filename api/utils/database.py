@@ -19,7 +19,7 @@ def safe_db_write():
     try:
         yield
     except asyncpg.exceptions.IntegrityConstraintViolationError as e:  # pragma: no cover
-        raise HTTPException(422, str(e))
+        raise HTTPException(422, str(e)) from None
 
 
 def get_kwargs(model, data, additional_kwargs, user=None):
@@ -103,7 +103,7 @@ async def postprocess_func(items):
 
 
 async def paginate_object(model, pagination, user, *args, **kwargs):
-    return await pagination.paginate(model, user.id if user else None, postprocess=postprocess_func, *args, **kwargs)
+    return await pagination.paginate(model, user.id if user else None, *args, postprocess=postprocess_func, **kwargs)
 
 
 @asynccontextmanager

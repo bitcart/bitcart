@@ -331,7 +331,7 @@ class Settings(BaseSettings):
 
     async def shutdown(self):
         if self.redis_pool:
-            await self.redis_pool.close()
+            await self.redis_pool.aclose()
         await self.shutdown_db_engine()
 
     def init_logging(self, worker=True):

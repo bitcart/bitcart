@@ -36,7 +36,7 @@ class RatesManager:
             if filename.endswith(".py") and filename not in ("__init__.py", "base.py", "rates_manager.py", "coinrules.py"):
                 module_name = os.path.splitext(filename)[0]
                 module = importlib.import_module(f"api.ext.exchanges.{module_name}")
-                for name, obj in inspect.getmembers(module, inspect.isclass):
+                for _, obj in inspect.getmembers(module, inspect.isclass):
                     try:
                         if issubclass(obj, BaseExchange):
                             self._exchange_classes[module_name.lower()] = obj

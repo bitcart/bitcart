@@ -5,7 +5,9 @@ from api.logger import get_exception_message, get_logger
 logger = get_logger(__name__)
 
 
-def run_host(command, env={}, disown=True):
+def run_host(command, env=None, disown=True):
+    if env is None:
+        env = {}
     try:
         client = settings.settings.ssh_settings.create_ssh_client()
     except Exception as e:
@@ -32,7 +34,9 @@ def run_host(command, env={}, disown=True):
     return True, None
 
 
-def run_host_output(command, ok_output, env={}):
+def run_host_output(command, ok_output, env=None):
+    if env is None:
+        env = {}
     ok, error = run_host(command, env=env)
     if ok:
         return {"status": "success", "message": ok_output}

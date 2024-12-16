@@ -3,8 +3,8 @@ import tempfile
 
 import anyio
 import pytest
-from async_asgi_testclient import TestClient as WSClient
-from httpx import ASGITransport, AsyncClient
+from httpx import AsyncClient
+from httpx_ws.transport import ASGIWebSocketTransport
 
 from api import settings
 from api.db import db
@@ -67,15 +67,8 @@ async def init_db(request, app, anyio_backend):
 
 @pytest.fixture
 async def client(app, anyio_backend):
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver") as client:
+    async with AsyncClient(transport=ASGIWebSocketTransport(app=app), base_url="http://testserver") as client:
         yield client
-
-
-# TODO: remove when httpx supports websockets
-@pytest.fixture
-async def ws_client(app, anyio_backend):
-    client = WSClient(app)
-    yield client
 
 
 @pytest.fixture

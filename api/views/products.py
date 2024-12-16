@@ -32,11 +32,11 @@ def parse_data(data, scheme):
     try:
         data = json.loads(data)
     except json.JSONDecodeError:
-        raise HTTPException(422, "Invalid JSON")
+        raise HTTPException(422, "Invalid JSON") from None
     try:
         data = scheme(**data)
     except ValidationError as e:
-        raise HTTPException(422, e.errors())
+        raise HTTPException(422, e.errors()) from None
     return data
 
 

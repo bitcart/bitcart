@@ -89,7 +89,7 @@ async def open_wallet_channel(
     except (BitcartBaseError, HTTPException) as e:
         if isinstance(e, HTTPException) and e.status_code != 422:
             raise
-        raise HTTPException(400, "Failed to open channel")
+        raise HTTPException(400, "Failed to open channel") from None
 
 
 @router.post("/{model_id}/channels/close")
@@ -104,7 +104,7 @@ async def close_wallet_channel(
     except (BitcartBaseError, HTTPException) as e:
         if isinstance(e, HTTPException) and e.status_code != 422:
             raise
-        raise HTTPException(400, "Failed to close channel")
+        raise HTTPException(400, "Failed to close channel") from None
 
 
 @router.post("/{model_id}/lnpay")
@@ -119,7 +119,7 @@ async def wallet_lnpay(
     except (BitcartBaseError, HTTPException) as e:
         if isinstance(e, HTTPException) and e.status_code != 422:
             raise
-        raise HTTPException(400, "Failed to pay the invoice")
+        raise HTTPException(400, "Failed to pay the invoice") from None
 
 
 def prepare_output(data):

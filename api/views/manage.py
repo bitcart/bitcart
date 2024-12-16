@@ -124,7 +124,7 @@ async def get_log_contents(
             contents = f.read().strip()
         return contents
     except OSError:
-        raise HTTPException(404, "This log doesn't exist")
+        raise HTTPException(404, "This log doesn't exist") from None
 
 
 @router.delete("/logs/{log}")
@@ -139,7 +139,7 @@ async def delete_log(
         os.remove(os.path.join(settings.settings.log_dir, log))
         return True
     except OSError:
-        raise HTTPException(404, "This log doesn't exist")
+        raise HTTPException(404, "This log doesn't exist") from None
 
 
 @router.get("/backups", response_model=schemes.BackupsPolicy)

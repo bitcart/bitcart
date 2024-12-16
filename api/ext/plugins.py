@@ -28,12 +28,12 @@ def get_plugins():
 def parse_manifest(manifest):
     try:
         manifest = json.loads(manifest)
-    except json.JSONDecodeError:
-        raise ValueError("Invalid manifest.json: invalid JSON")
+    except json.JSONDecodeError as e:
+        raise ValueError("Invalid manifest.json: invalid JSON") from e
     try:
         validate(manifest, schema=settings.settings.plugins_schema)
     except Exception as e:
-        raise ValueError(f"Invalid manifest.json: {e}")
+        raise ValueError(f"Invalid manifest.json: {e}") from e
     # validate version constraints
     version_constraint = manifest["constraints"]["bitcart"]
     req = Requirement(f"bitcart{version_constraint}")

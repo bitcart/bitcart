@@ -245,8 +245,8 @@ class KeyStore(BaseKeyStore):
             return
         try:
             self.contract = daemon_ctx.get().coin.normalize_address(self.contract)
-        except Exception:
-            raise Exception("Error loading wallet: invalid address")
+        except Exception as e:
+            raise Exception("Error loading wallet: invalid address") from e
 
     def __post_init__(self):
         self.load_contract()
@@ -266,7 +266,7 @@ class KeyStore(BaseKeyStore):
                     self.address = self.public_key.to_checksum_address()
                 except Exception:
                     if not daemon_ctx.get().coin.is_address(self.key):
-                        raise Exception("Error loading wallet: invalid address")
+                        raise Exception("Error loading wallet: invalid address") from None
                     self.address = daemon_ctx.get().coin.normalize_address(self.key)
         if self.account:
             self.address = self.account.address
@@ -278,8 +278,8 @@ class KeyStore(BaseKeyStore):
     def add_privkey(self, privkey):
         try:
             account = Account.from_key(privkey)
-        except Exception:
-            raise Exception("Invalid key provided")
+        except Exception as e:
+            raise Exception("Invalid key provided") from e
         if account.address != self.address:
             raise Exception("Invalid private key imported: address mismatch")
         self.private_key = privkey
@@ -544,7 +544,9 @@ class ETHDaemon(BlockProcessorDaemon):
     def process_extra_params(self, wallet, extra_params):
         pass
 
-    async def load_wallet(self, xpub, contract, diskless=False, extra_params={}):
+    async def load_wallet(self, xpub, contract, diskless=False, extra_params=None):
+        if extra_params is None:
+            extra_params = {}
         wallet_key = self.coin.get_wallet_key(xpub, contract, **extra_params)
         if wallet_key in self.wallets:
             await self.add_contract(contract, wallet_key)
@@ -770,8 +772,8 @@ class ETHDaemon(BlockProcessorDaemon):
         try:
             divisibility = await self.readcontract(address, "decimals")
             value = to_wei(Decimal(value), divisibility)
-        except Exception:
-            raise Exception("Invalid arguments for transfer function")
+        except Exception as e:
+            raise Exception("Invalid arguments for transfer function") from e
         return await self.writecontract(
             address,
             "transfer",

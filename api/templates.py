@@ -39,7 +39,7 @@ class Template:
             with open(f"{self.prefix}/{name}.j2") as f:
                 self.template_text = f.read().strip()
         except OSError as e:
-            raise TemplateLoadError(f"Failed to load template {name}: {e.strerror}")
+            raise TemplateLoadError(f"Failed to load template {name}: {e.strerror}") from e
 
     def render(self, *args, **kwargs):
         try:

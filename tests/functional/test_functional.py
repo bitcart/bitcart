@@ -7,6 +7,7 @@ import pytest
 from aiohttp import web
 from bitcart import BTC
 from bitcart.utils import bitcoins
+from httpx_ws import aconnect_ws
 
 from api.constants import MAX_CONFIRMATION_WATCH
 from api.ext.moneyformat import truncate
@@ -39,11 +40,9 @@ async def get_status(client, obj_id, token):
     return resp.json()["status"]
 
 
-async def check_invoice_status(
-    ws_client, invoice_id, expected_status, allow_next=False, exception_status=None, sent_amount=None
-):
+async def check_invoice_status(client, invoice_id, expected_status, allow_next=False, exception_status=None, sent_amount=None):
     async with asyncio.timeout(30):
-        async with ws_client.websocket_connect(f"/ws/invoices/{invoice_id}") as ws:
+        async with aconnect_ws(f"/ws/invoices/{invoice_id}", client) as ws:
             msg = await ws.receive_json()
             if allow_next:  # when there are two statuses in a row (zeroconf)
                 msg = await ws.receive_json()
@@ -176,7 +175,7 @@ async def regtest_api_store(client, user, token, regtest_api_wallet, anyio_backe
 
 
 @pytest.mark.parametrize("speed", range(MAX_CONFIRMATION_WATCH + 1))
-async def test_onchain_pay_flow(client, ws_client, regtest_api_store, token, worker, queue, ipn_server, speed):
+async def test_onchain_pay_flow(client, regtest_api_store, token, worker, queue, ipn_server, speed):
     store_id = regtest_api_store["id"]
     resp = await client.patch(
         f"/stores/{store_id}/checkout_settings",
@@ -200,11 +199,11 @@ async def test_onchain_pay_flow(client, ws_client, regtest_api_store, token, wor
     zeroconf = speed == 0
     expected_status = "complete" if zeroconf else "paid"
     await check_invoice_status(
-        ws_client, invoice_id, expected_status, sent_amount=amount, exception_status="none", allow_next=zeroconf
+        client, invoice_id, expected_status, sent_amount=amount, exception_status="none", allow_next=zeroconf
     )
 
 
-async def test_exception_statuses(client, ws_client, regtest_api_store, token, worker, ipn_server):
+async def test_exception_statuses(client, regtest_api_store, token, worker, ipn_server):
     store_id = regtest_api_store["id"]
     invoice = (await client.post("/invoices", json={"price": INVOICE_AMOUNT, "currency": "BTC", "store_id": store_id})).json()
     pay_details = invoice["payments"][0]
@@ -215,16 +214,15 @@ async def test_exception_statuses(client, ws_client, regtest_api_store, token, w
     await asyncio.sleep(3)  # wait for the worker startup (remove when electrum fixes pending tx_hashes returning)
     await send_to_address(address, part1)
     invoice_id = invoice["id"]
-    await check_invoice_status(ws_client, invoice_id, "pending", exception_status="paid_partial", sent_amount=part1)
+    await check_invoice_status(client, invoice_id, "pending", exception_status="paid_partial", sent_amount=part1)
     await send_to_address(address, part2)
     await check_invoice_status(
-        ws_client, invoice_id, "complete", exception_status="none", sent_amount=pay_details["amount"], allow_next=True
+        client, invoice_id, "complete", exception_status="none", sent_amount=pay_details["amount"], allow_next=True
     )
 
 
 async def test_lightning_pay_flow(
     client,
-    ws_client,
     regtest_api_wallet,
     regtest_api_store,
     token,
@@ -253,7 +251,7 @@ async def test_lightning_pay_flow(
     pay_details = invoice["payments"][1]  # lightning methods are always created after onchain ones
     await regtest_lnnode.lnpay(pay_details["payment_address"])
     invoice_id = invoice["id"]
-    await check_invoice_status(ws_client, invoice_id, "complete", exception_status="none", sent_amount=pay_details["amount"])
+    await check_invoice_status(client, invoice_id, "complete", exception_status="none", sent_amount=pay_details["amount"])
     assert queue.qsize() == 1
     check_status(queue, {"id": invoice["id"], "status": "complete"})
     # check that it was paid with lightning actually
@@ -262,7 +260,9 @@ async def test_lightning_pay_flow(
     assert resp.json()["payment_id"] == pay_details["id"]
 
 
-async def apply_batch_payout_action(client, token, command, ids, options={}):
+async def apply_batch_payout_action(client, token, command, ids, options=None):
+    if options is None:
+        options = {}
     resp = await client.post(
         "/payouts/batch",
         json={"command": command, "ids": ids, "options": options},

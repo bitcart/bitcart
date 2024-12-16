@@ -270,8 +270,8 @@ class KeyStore(BaseKeyStore):
             private_key = seed.secret_spend_key()
             public_key = seed.secret_view_key()
             address = str(seed.public_address(net=daemon_ctx.get().network_const))
-        except Exception:
-            raise Exception("Invalid seed provided")
+        except Exception as e:
+            raise Exception("Invalid seed provided") from e
         if check_address and address != self.address:
             raise Exception("Invalid seed imported: address mismatch")
         self.seed = privkey
@@ -420,7 +420,9 @@ class XMRDaemon(BlockProcessorDaemon):
     def get_default_server_url(self):
         return ""
 
-    async def load_wallet(self, xpub, contract, diskless=False, extra_params={}):
+    async def load_wallet(self, xpub, contract, diskless=False, extra_params=None):
+        if extra_params is None:
+            extra_params = {}
         address = extra_params.get("address", None)
         wallet_key = self.coin.get_wallet_key(xpub, **extra_params)
         if wallet_key in self.wallets:

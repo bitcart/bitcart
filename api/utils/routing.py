@@ -51,18 +51,28 @@ class ModelView:
         create_model=None,
         display_model=None,
         allowed_methods: list[str] = ["GET_COUNT", "GET_ONE"] + HTTP_METHODS + ["BATCH_ACTION"],
-        custom_methods: dict[str, Callable] = {},
-        background_tasks_mapping: dict[str, Callable] = {},
-        request_handlers: dict[str, Callable] = {},
+        custom_methods: dict[str, Callable] = None,
+        background_tasks_mapping: dict[str, Callable] = None,
+        request_handlers: dict[str, Callable] = None,
         get_one_auth=True,
         post_auth=True,
         get_one_model=True,
         scopes=None,
-        custom_commands={},
+        custom_commands=None,
         using_router=True,
-        response_models: dict[str, BaseModel] = {},
+        response_models: dict[str, BaseModel] = None,
     ):
         # add to crud_models
+        if response_models is None:
+            response_models = {}
+        if custom_commands is None:
+            custom_commands = {}
+        if request_handlers is None:
+            request_handlers = {}
+        if background_tasks_mapping is None:
+            background_tasks_mapping = {}
+        if custom_methods is None:
+            custom_methods = {}
         if scopes is None:  # pragma: no cover
             scopes = {i: [] for i in ENDPOINTS}
         cls.crud_models.append(orm_model)

@@ -164,7 +164,9 @@ async def deploy_task(event, event_data):
     await set_task(task_id, task)
 
 
-async def authenticate_request(request, scopes=[]):
+async def authenticate_request(request, scopes=None):
+    if scopes is None:
+        scopes = []
     try:
         await utils.authorization.auth_dependency(request, SecurityScopes(scopes))
     except HTTPException:
@@ -172,7 +174,7 @@ async def authenticate_request(request, scopes=[]):
             raise
         allow_anonymous_configurator = (await utils.policies.get_setting(schemes.Policy)).allow_anonymous_configurator
         if not allow_anonymous_configurator:
-            raise HTTPException(422, "Anonymous configurator access disallowed")
+            raise HTTPException(422, "Anonymous configurator access disallowed") from None
 
 
 async def refresh_pending_deployments():

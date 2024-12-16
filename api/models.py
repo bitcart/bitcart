@@ -56,7 +56,7 @@ class BaseModelMeta(ModelType):
             if new_class.__table__ is None or is_public:  # public means plugin overrides an existing table
                 if is_public:  # pragma: no cover
                     new_class.__table_args__ = {"extend_existing": True}
-                new_class.__table__ = getattr(new_class, "_init_table")(new_class)
+                new_class.__table__ = new_class._init_table(new_class)
             if is_public:  # pragma: no cover
                 new_class.__table__.PUBLIC = True
         return new_class
@@ -298,7 +298,7 @@ class Wallet(BaseModel):
                     kwargs["contract"] = await coin.server.normalizeaddress(kwargs["contract"])
                 except BitcartBaseError as e:
                     logger.error(f"Failed to validate contract for currency {currency}:\n{get_exception_message(e)}")
-                    raise HTTPException(422, "Invalid contract")
+                    raise HTTPException(422, "Invalid contract") from None
 
     async def validate_xpub(self, coin, currency, xpub, additional_xpub_data):
         try:
@@ -306,7 +306,7 @@ class Wallet(BaseModel):
                 raise HTTPException(422, "Wallet key invalid")
         except BitcartBaseError as e:
             logger.error(f"Failed to validate xpub for currency {currency}:\n{get_exception_message(e)}")
-            raise HTTPException(422, "Wallet key invalid")
+            raise HTTPException(422, "Wallet key invalid") from None
 
 
 class Notification(BaseModel):

@@ -116,17 +116,19 @@ async def create_oauth2_token(
             email=form_data.username, password=form_data.password, permissions=form_data.scopes
         )
     except ValidationError as e:
-        raise HTTPException(422, e.errors())
+        raise HTTPException(422, e.errors()) from None
     return await create_token(token_data, auth_data)
 
 
 @router.post("")
 async def create_token(
-    token_data: schemes.HTTPCreateLoginToken | None = schemes.HTTPCreateLoginToken(),
+    token_data: schemes.HTTPCreateLoginToken | None = None,
     auth_data: tuple[models.User | None, str] | None = Security(
         utils.authorization.AuthDependency(token_required=False, return_token=True)
     ),
 ):
+    if token_data is None:  # pragma: no cover
+        token_data = schemes.HTTPCreateLoginToken()
     user, token = None, None
     if auth_data:
         user, token = auth_data
@@ -251,7 +253,7 @@ async def create_token_fido2_complete(request: Request):  # pragma: no cover
             data,
         )
     except Exception as e:
-        raise HTTPException(422, str(e))
+        raise HTTPException(422, str(e)) from None
     async with utils.redis.wait_for_redis():
         await settings.settings.redis_pool.delete(f"{FIDO2_LOGIN_KEY}:{user.id}")
         await settings.settings.redis_pool.delete(f"{TFA_REDIS_KEY}:{data['token']}")

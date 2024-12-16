@@ -74,8 +74,12 @@ async def create_wallet(client, user_id: str, token: str, **custom_attrs) -> dic
 
 
 async def create_store(
-    client, user_id: str, token: str, custom_store_attrs: dict = {}, custom_wallet_attrs: dict = {}
+    client, user_id: str, token: str, custom_store_attrs: dict = None, custom_wallet_attrs: dict = None
 ) -> dict:
+    if custom_wallet_attrs is None:
+        custom_wallet_attrs = {}
+    if custom_store_attrs is None:
+        custom_store_attrs = {}
     wallet = await create_wallet(client, user_id, token, **custom_wallet_attrs)
     name = f"dummy_store_{utils.common.unique_id()}"
     default_attrs = {
@@ -111,8 +115,12 @@ async def create_notification(client, user_id: str, token: str, **custom_attrs) 
 
 
 async def create_payout(
-    client, user_id: str, token: str, custom_payout_attrs: dict = {}, custom_store_attrs: dict = {}
+    client, user_id: str, token: str, custom_payout_attrs: dict = None, custom_store_attrs: dict = None
 ) -> dict:
+    if custom_store_attrs is None:
+        custom_store_attrs = {}
+    if custom_payout_attrs is None:
+        custom_payout_attrs = {}
     store = await create_store(client, user_id, token, **custom_store_attrs)
     default_attrs = {
         "amount": 5,
@@ -123,7 +131,9 @@ async def create_payout(
     return await create_model_obj(client, "payouts", default_attrs, custom_payout_attrs, token=token)
 
 
-async def create_model_obj(client, endpoint, default_attrs, custom_attrs={}, token: str = None):
+async def create_model_obj(client, endpoint, default_attrs, custom_attrs=None, token: str = None):
+    if custom_attrs is None:
+        custom_attrs = {}
     attrs = {**default_attrs, **custom_attrs}
     headers = {"Authorization": f"Bearer {token}"} if token else {}
     if endpoint in static_data.FILE_UPLOAD_ENDPOINTS:

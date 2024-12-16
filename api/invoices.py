@@ -138,8 +138,10 @@ async def process_electrum_status(invoice, method, wallet, electrum_status, tx_h
 
 
 async def new_payment_handler(
-    instance, event, address, status, status_str, tx_hashes=[], sent_amount=Decimal(0), contract=None
+    instance, event, address, status, status_str, tx_hashes=None, sent_amount=Decimal(0), contract=None
 ):
+    if tx_hashes is None:
+        tx_hashes = []
     with log_errors():
         sent_amount = Decimal(sent_amount)
         query = get_pending_invoices_query(instance.coin_name.lower()).where(models.PaymentMethod.lookup_field == address)
@@ -154,7 +156,9 @@ async def new_payment_handler(
         await process_electrum_status(invoice, method, wallet, status, tx_hashes, sent_amount)
 
 
-async def update_confirmations(invoice, method, confirmations, tx_hashes=[], sent_amount=Decimal(0)):
+async def update_confirmations(invoice, method, confirmations, tx_hashes=None, sent_amount=Decimal(0)):
+    if tx_hashes is None:
+        tx_hashes = []
     await method.update(confirmations=confirmations).apply()
     store = await utils.database.get_object(models.Store, invoice.store_id)
     status = invoice.status
@@ -270,7 +274,9 @@ async def update_stock_levels(invoice):
             )
 
 
-async def update_status(invoice, status, method=None, tx_hashes=[], sent_amount=Decimal(0), set_exception_status=None):
+async def update_status(invoice, status, method=None, tx_hashes=None, sent_amount=Decimal(0), set_exception_status=None):
+    if tx_hashes is None:
+        tx_hashes = []
     if status == InvoiceStatus.PENDING and invoice.status == InvoiceStatus.PENDING and method and sent_amount > 0:
         if not invoice.payment_id or invoice.payment_id == method.id:
             await invoice.update(

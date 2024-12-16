@@ -431,10 +431,8 @@ class Wallet:
         return d
 
     def get_request(self, key):
-        try:
-            key = self.request_addresses.get(key, key)
-        finally:
-            return self.receive_requests.get(key)
+        key = self.request_addresses.get(key, key)
+        return self.receive_requests.get(key)
 
     def remove_from_detection_dict(self, req):
         self.request_addresses.pop(req.payment_address, None)
@@ -609,7 +607,7 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
             if self.TX_SPEED not in self.SPEED_MULTIPLIERS:
                 raise ValueError(
                     f"Invalid TX_SPEED: {self.TX_SPEED}. Valid values: {', '.join(self.SPEED_MULTIPLIERS.keys())}"
-                )
+                ) from None
             self.SPEED_MULTIPLIER = self.SPEED_MULTIPLIERS[self.TX_SPEED]
         self.NO_DOWNTIME_PROCESSING = self.env("NO_DOWNTIME_PROCESSING", cast=bool, default=False)
 
@@ -753,13 +751,15 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
         return path
 
     @abstractmethod
-    async def load_wallet(self, xpub, contract, diskless=False, extra_params={}):
+    async def load_wallet(self, xpub, contract, diskless=False, extra_params=None):
         pass
 
     async def is_still_syncing(self, wallet=None):
         return wallet and not wallet.is_synchronized()
 
-    async def _get_wallet(self, id, req_method, xpub, contract, diskless=False, extra_params={}):
+    async def _get_wallet(self, id, req_method, xpub, contract, diskless=False, extra_params=None):
+        if extra_params is None:
+            extra_params = {}
         wallet = error = None
         try:
             should_skip = req_method not in self.supported_methods or not self.supported_methods[req_method].requires_network

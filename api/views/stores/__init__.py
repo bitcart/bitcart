@@ -52,7 +52,7 @@ async def set_store_rate_rules(
     try:
         result, resolved = await calculate_rules(rules, "BTC", "USD")
     except Exception as e:
-        raise HTTPException(422, str(e))
+        raise HTTPException(422, str(e)) from None
     await model.set_json_key("checkout_settings", model.checkout_settings)
     return f"BTC_USD: {result} resolved by {resolved}"
 

@@ -205,7 +205,7 @@ class KeyStore(ETHKeyStore):
                     self.public_key = keys.PublicKey.fromhex(self.key)
                 except Exception:
                     if not daemon_ctx.get().coin.is_address(self.key):
-                        raise Exception("Error loading wallet: invalid address")
+                        raise Exception("Error loading wallet: invalid address") from None
                     self.address = daemon_ctx.get().coin.normalize_address(self.key)
         if self.private_key is not None:
             self.public_key = self.private_key.public_key
@@ -217,8 +217,8 @@ class KeyStore(ETHKeyStore):
     def add_privkey(self, privkey):
         try:
             private_key = keys.PrivateKey.fromhex(privkey)
-        except Exception:
-            raise Exception("Invalid key provided")
+        except Exception as e:
+            raise Exception("Invalid key provided") from e
         address = private_key.public_key.to_base58check_address()
         if address != self.address:
             raise Exception("Invalid private key imported: address mismatch")

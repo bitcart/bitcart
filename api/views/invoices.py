@@ -119,7 +119,7 @@ async def update_payment_details(
     try:
         data.address = await coin.server.normalizeaddress(data.address)
     except Exception:
-        raise HTTPException(422, "Invalid address")
+        raise HTTPException(422, "Invalid address") from None
     if not await coin.server.setrequestaddress(method.lookup_field, data.address):
         raise HTTPException(422, "Invalid address")
     await run_hook("invoice_payment_address_set", item, method, data.address)

@@ -1,5 +1,5 @@
-async-asgi-testclient
 httpx
+httpx-ws
 pytest
 pytest-cov
 pytest-mock

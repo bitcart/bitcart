@@ -28,7 +28,7 @@ def moneyfmt(value, places=2, curr="", sep=",", dp="."):
     result = []
     digits = list(map(str, digits))
     build, next = result.append, digits.pop
-    for i in range(places):
+    for _ in range(places):
         build(next() if digits else "0")
     if places:
         build(dp)
