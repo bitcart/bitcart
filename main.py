@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
 from fastapi.requests import HTTPConnection
+from fastapi.responses import HTMLResponse
 from starlette.applications import Starlette
 from starlette.middleware.cors import CORSMiddleware
 from starlette.responses import PlainTextResponse
@@ -88,22 +89,26 @@ def get_app():
         lifespan=lifespan,
     )
 
-    @app.get("/swagger", include_in_schema=False)
-    async def swagger_docs():
+    async def swagger_docs(req: Request) -> HTMLResponse:
+        root_path = req.scope.get("root_path", "").rstrip("/")
+        openapi_url = root_path + app.openapi_url
         return get_swagger_ui_html(
-            openapi_url=app.openapi_url,
-            title=app.title + " - Swagger UI",
+            openapi_url=openapi_url,
+            title=f"{app.title} - Swagger UI",
             swagger_favicon_url="/static/favicon.ico",
         )
 
-    @app.get("/", include_in_schema=False)
-    async def redoc_docs():
+    async def redoc_docs(req: Request) -> HTMLResponse:
+        root_path = req.scope.get("root_path", "").rstrip("/")
+        openapi_url = root_path + app.openapi_url
         return get_redoc_html(
-            openapi_url=app.openapi_url,
-            title=app.title + " - ReDoc",
+            openapi_url=openapi_url,
+            title=f"{app.title} - ReDoc",
             redoc_favicon_url="/static/favicon.ico",
         )
 
+    app.add_api_route("/swagger", swagger_docs, include_in_schema=False)
+    app.add_api_route("/", redoc_docs, include_in_schema=False)
     patch_call(app)
     app.settings = settings
     app.mount("/static", StaticFiles(directory=settings.static_dir), name="static")
