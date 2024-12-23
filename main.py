@@ -3,7 +3,9 @@ import traceback
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
+from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
 from fastapi.requests import HTTPConnection
+from fastapi.responses import HTMLResponse
 from starlette.applications import Starlette
 from starlette.middleware.cors import CORSMiddleware
 from starlette.responses import PlainTextResponse
@@ -80,14 +82,36 @@ def get_app():
     app = FastAPI(
         title=settings.api_title,
         version=VERSION,
-        redoc_url="/",
-        docs_url="/swagger",
+        redoc_url=None,
+        docs_url=None,
         root_path=settings.root_path,
         description="Bitcart Merchants API",
         lifespan=lifespan,
     )
+
+    async def swagger_docs(req: Request) -> HTMLResponse:
+        root_path = req.scope.get("root_path", "").rstrip("/")
+        openapi_url = root_path + app.openapi_url
+        return get_swagger_ui_html(
+            openapi_url=openapi_url,
+            title=f"{app.title} - Swagger UI",
+            swagger_favicon_url="/static/favicon.ico",
+        )
+
+    async def redoc_docs(req: Request) -> HTMLResponse:
+        root_path = req.scope.get("root_path", "").rstrip("/")
+        openapi_url = root_path + app.openapi_url
+        return get_redoc_html(
+            openapi_url=openapi_url,
+            title=f"{app.title} - ReDoc",
+            redoc_favicon_url="/static/favicon.ico",
+        )
+
+    app.add_api_route("/swagger", swagger_docs, include_in_schema=False)
+    app.add_api_route("/", redoc_docs, include_in_schema=False)
     patch_call(app)
     app.settings = settings
+    app.mount("/static", StaticFiles(directory=settings.static_dir), name="static")
     app.mount("/images", StaticFiles(directory=settings.images_dir), name="images")
     app.mount("/files/localstorage", StaticFiles(directory=settings.files_dir), name="files")
     app.add_middleware(

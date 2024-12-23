@@ -51,6 +51,7 @@ class Settings(BaseSettings):
     db_password: str = Field("", validation_alias="DB_PASSWORD")
     db_host: str = Field("127.0.0.1", validation_alias="DB_HOST")
     db_port: int = Field(5432, validation_alias="DB_PORT")
+    static_dir: str = Field("static", validation_alias="BITCART_STATIC_DIR")
     datadir: str = Field("data", validation_alias="BITCART_DATADIR")
     backups_dir: str = Field("data/backups", validation_alias="BITCART_BACKUPS_DIR")
     backend_plugins_dir: str = Field("modules", validation_alias="BITCART_BACKEND_PLUGINS_DIR")
