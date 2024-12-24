@@ -11,8 +11,8 @@ executors:
         default: "3.11"
     docker:
       - image: cimg/python:<< parameters.v >>
-      - image: circleci/redis:alpine
-      - image: circleci/postgres:12-alpine-ram
+      - image: cimg/redis:7.4
+      - image: cimg/postgres:17.0
         environment:
           POSTGRES_DB: bitcart_test
           POSTGRES_HOST_AUTH_METHOD: trust
