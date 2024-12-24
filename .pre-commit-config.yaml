@@ -4,7 +4,7 @@ repos:
     hooks:
       - id: check-merge-conflict
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.8.3
+    rev: v0.8.4
     hooks:
       - id: ruff
       - id: ruff-format
@@ -32,14 +32,7 @@ repos:
       - id: prettier
         require_serial: true
         args: ["--cache-location=.prettiercache"]
-  - repo: local
+  - repo: https://github.com/astral-sh/uv-pre-commit
+    rev: 0.5.11
     hooks:
-      - id: check-compiled
-        name: Check compiled requirements
-        language: system
-        entry: ./scripts/check-compiled.py
-        files: >-
-          ^requirements/.*.txt$
-        exclude: >-
-          ^requirements/deterministic/.*.txt$
-        require_serial: true
+      - id: uv-lock

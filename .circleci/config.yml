@@ -21,49 +21,57 @@ executors:
 
 commands:
   install_dependencies:
+    parameters:
+      cache_dir:
+        type: string
+        default: /home/circleci/.cache/uv
+
     steps:
       - restore_cache:
           keys:
-            - v7-dependencies-{{ .Branch }}-{{ checksum "~/.pyenv/version" }}-{{ checksum "requirements/web.txt" }}-{{ checksum "requirements/test.txt" }}-{{ checksum "requirements/daemons/btc.txt" }}
+            - v1-dependencies-{{ .Branch }}-{{ checksum "~/.pyenv/version" }}-{{ checksum "uv.lock" }}
 
       - run:
-          name: install dependencies
+          name: Install dependencies
           command: |
-            virtualenv ~/venv
-            echo ". ~/venv/bin/activate" >> $BASH_ENV
-            source $BASH_ENV
             sudo apt update
             sudo apt install libsecp256k1-dev
-            pip install -U -r requirements.txt
-            pip install -U -r requirements/daemons/btc.txt
-            pip install -U -r requirements/test.txt
+            curl -LsSf https://astral.sh/uv/install.sh | sh
+            mkdir -p "<<parameters.cache_dir>>" && \
+            uv sync --frozen --compile-bytecode --no-group all --group web --group test --group btc --cache-dir <<parameters.cache_dir>>
+            echo ". ~/repo/.venv/bin/activate" >> $BASH_ENV
+            uv cache prune --ci --cache-dir <<parameters.cache_dir>>
 
       - save_cache:
           paths:
-            - ~/venv
-          key: v7-dependencies-{{ .Branch }}-{{ checksum "~/.pyenv/version" }}-{{ checksum "requirements/web.txt" }}-{{ checksum "requirements/test.txt" }}-{{ checksum "requirements/daemons/btc.txt" }}
+            - "<<parameters.cache_dir>>"
+          key: v1-dependencies-{{ .Branch }}-{{ checksum "~/.pyenv/version" }}-{{ checksum "uv.lock" }}
 
   install-lint-dependencies:
+    parameters:
+      cache_dir:
+        type: string
+        default: /home/circleci/.cache/uv
     steps:
       - checkout
 
       - restore_cache:
           keys:
-            - v2-lint-dependencies-{{ .Branch }}-{{ checksum "~/.pyenv/version" }}-{{ checksum "requirements/dev.txt" }}-{{ checksum "requirements/lint.txt" }}
+            - v1-dependencies-{{ .Branch }}-{{ checksum "~/.pyenv/version" }}-{{ checksum "uv.lock" }}
 
       - run:
           name: Install dependencies
           command: |
-            virtualenv ~/venv
-            echo ". ~/venv/bin/activate" >> $BASH_ENV
-            source $BASH_ENV
-            pip install -U -r requirements/dev.txt
-            pip install -U -r requirements/lint.txt
+            curl -LsSf https://astral.sh/uv/install.sh | sh
+            mkdir -p "<<parameters.cache_dir>>" && \
+            uv sync --frozen --compile-bytecode --no-group all --group lint --cache-dir <<parameters.cache_dir>>
+            echo ". ~/repo/.venv/bin/activate" >> $BASH_ENV
+            uv cache prune --ci --cache-dir <<parameters.cache_dir>>
 
       - save_cache:
           paths:
-            - ~/venv
-          key: v2-lint-dependencies-{{ .Branch }}-{{ checksum "~/.pyenv/version" }}-{{ checksum "requirements/dev.txt" }}-{{ checksum "requirements/lint.txt" }}
+            - "<<parameters.cache_dir>>"
+          key: v1-dependencies-{{ .Branch }}-{{ checksum "~/.pyenv/version" }}-{{ checksum "uv.lock" }}
 
   run-lint:
     steps:

@@ -6,7 +6,7 @@ requires-python = ">=3.11"
 dependencies = ["python-decouple"]
 
 [dependency-groups]
-lint = ["pre-commit", "uv", "ruff"]
+lint = ["pre-commit", "ruff"]
 test = [
     "httpx",
     "httpx-ws",
