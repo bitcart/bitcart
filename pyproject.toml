@@ -16,7 +16,6 @@ test = [
     "pytest-parametrization",
     "pytest-xdist",
 ]
-dev = [{ include-group = "lint" }, { include-group = "test" }]
 web = [
     "aiofiles",
     "alembic",
@@ -109,15 +108,15 @@ daemons = [
 ]
 
 # all groups
-all = [
-    { include-group = "dev" },
+dev = [
+    { include-group = "lint" },
+    { include-group = "test" },
     { include-group = "web" },
     { include-group = "daemons" },
     { include-group = "production" },
 ]
 
 [tool.uv]
-default-groups = ["all"]
 override-dependencies = ["protobuf>=4"]
 
 [tool.ruff]

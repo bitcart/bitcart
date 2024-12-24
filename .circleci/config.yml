@@ -38,7 +38,7 @@ commands:
             sudo apt install libsecp256k1-dev
             curl -LsSf https://astral.sh/uv/install.sh | sh
             mkdir -p "<<parameters.cache_dir>>" && \
-            uv sync --frozen --compile-bytecode --no-group all --group web --group test --group btc --cache-dir <<parameters.cache_dir>>
+            uv sync --frozen --compile-bytecode --no-dev --group web --group test --group btc --cache-dir <<parameters.cache_dir>>
             echo ". ~/repo/.venv/bin/activate" >> $BASH_ENV
             uv cache prune --ci --cache-dir <<parameters.cache_dir>>
 
@@ -64,7 +64,7 @@ commands:
           command: |
             curl -LsSf https://astral.sh/uv/install.sh | sh
             mkdir -p "<<parameters.cache_dir>>" && \
-            uv sync --frozen --compile-bytecode --no-group all --group lint --cache-dir <<parameters.cache_dir>>
+            uv sync --frozen --compile-bytecode --no-dev --group lint --cache-dir <<parameters.cache_dir>>
             echo ". ~/project/.venv/bin/activate" >> $BASH_ENV
             uv cache prune --ci --cache-dir <<parameters.cache_dir>>
 

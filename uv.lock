@@ -359,7 +359,60 @@ dependencies = [
 ]
 
 [package.dev-dependencies]
-all = [
+bch = [
+    { name = "aiohttp" },
+    { name = "electron-cash" },
+    { name = "protobuf" },
+]
+bnb = [
+    { name = "aiohttp" },
+    { name = "aiolimiter" },
+    { name = "bitarray" },
+    { name = "eth-account" },
+    { name = "eth-rlp" },
+    { name = "mnemonic" },
+    { name = "web3" },
+]
+bsty = [
+    { name = "aiohttp" },
+    { name = "electrum-bsty", extra = ["crypto"] },
+    { name = "protobuf" },
+]
+btc = [
+    { name = "aiohttp" },
+    { name = "electrum", extra = ["crypto"] },
+    { name = "protobuf" },
+]
+btc-based = [
+    { name = "aiohttp" },
+    { name = "protobuf" },
+]
+daemon-base = [
+    { name = "aiohttp" },
+]
+daemons = [
+    { name = "aiohttp" },
+    { name = "aiolimiter" },
+    { name = "async-lru" },
+    { name = "bitarray" },
+    { name = "electron-cash" },
+    { name = "electrum", extra = ["crypto"] },
+    { name = "electrum-bsty", extra = ["crypto"] },
+    { name = "electrum-grs", extra = ["crypto"] },
+    { name = "electrum-ltc", extra = ["crypto"] },
+    { name = "eth-account" },
+    { name = "eth-rlp" },
+    { name = "mnemonic" },
+    { name = "monero" },
+    { name = "oregano" },
+    { name = "protobuf" },
+    { name = "scrypt" },
+    { name = "tronpy" },
+    { name = "trontxsize" },
+    { name = "universalasync" },
+    { name = "web3" },
+]
+dev = [
     { name = "aiofiles" },
     { name = "aiohttp" },
     { name = "aiolimiter" },
@@ -416,70 +469,6 @@ all = [
     { name = "universalasync" },
     { name = "uvicorn", extra = ["standard"] },
     { name = "web3" },
-]
-bch = [
-    { name = "aiohttp" },
-    { name = "electron-cash" },
-    { name = "protobuf" },
-]
-bnb = [
-    { name = "aiohttp" },
-    { name = "aiolimiter" },
-    { name = "bitarray" },
-    { name = "eth-account" },
-    { name = "eth-rlp" },
-    { name = "mnemonic" },
-    { name = "web3" },
-]
-bsty = [
-    { name = "aiohttp" },
-    { name = "electrum-bsty", extra = ["crypto"] },
-    { name = "protobuf" },
-]
-btc = [
-    { name = "aiohttp" },
-    { name = "electrum", extra = ["crypto"] },
-    { name = "protobuf" },
-]
-btc-based = [
-    { name = "aiohttp" },
-    { name = "protobuf" },
-]
-daemon-base = [
-    { name = "aiohttp" },
-]
-daemons = [
-    { name = "aiohttp" },
-    { name = "aiolimiter" },
-    { name = "async-lru" },
-    { name = "bitarray" },
-    { name = "electron-cash" },
-    { name = "electrum", extra = ["crypto"] },
-    { name = "electrum-bsty", extra = ["crypto"] },
-    { name = "electrum-grs", extra = ["crypto"] },
-    { name = "electrum-ltc", extra = ["crypto"] },
-    { name = "eth-account" },
-    { name = "eth-rlp" },
-    { name = "mnemonic" },
-    { name = "monero" },
-    { name = "oregano" },
-    { name = "protobuf" },
-    { name = "scrypt" },
-    { name = "tronpy" },
-    { name = "trontxsize" },
-    { name = "universalasync" },
-    { name = "web3" },
-]
-dev = [
-    { name = "httpx" },
-    { name = "httpx-ws" },
-    { name = "pre-commit" },
-    { name = "pytest" },
-    { name = "pytest-cov" },
-    { name = "pytest-mock" },
-    { name = "pytest-parametrization" },
-    { name = "pytest-xdist" },
-    { name = "ruff" },
 ]
 eth = [
     { name = "aiohttp" },
@@ -599,7 +588,58 @@ xrg = [
 requires-dist = [{ name = "python-decouple" }]
 
 [package.metadata.requires-dev]
-all = [
+bch = [
+    { name = "aiohttp", specifier = "<4.0" },
+    { name = "electron-cash", url = "https://github.com/Electron-Cash/Electron-Cash/archive/cd4a0fe6cceb6ffc90dca5525c7e405387561506.zip" },
+    { name = "protobuf", specifier = "<4" },
+]
+bnb = [
+    { name = "aiohttp", specifier = "<4.0" },
+    { name = "aiolimiter" },
+    { name = "bitarray", specifier = "<3" },
+    { name = "eth-account", specifier = "<0.12" },
+    { name = "eth-rlp", specifier = "<2.0" },
+    { name = "mnemonic" },
+    { name = "web3", specifier = ">=6,<7" },
+]
+bsty = [
+    { name = "aiohttp", specifier = "<4.0" },
+    { name = "electrum-bsty", extras = ["crypto"], git = "https://github.com/GlobalBoost/electrum?rev=e5b267128464e7fa3298eb5615313ae7266dda7d#e5b267128464e7fa3298eb5615313ae7266dda7d" },
+    { name = "protobuf", specifier = "<4" },
+]
+btc = [
+    { name = "aiohttp", specifier = "<4.0" },
+    { name = "electrum", extras = ["crypto"], git = "https://github.com/spesmilo/electrum?rev=df1b9a223c77f4597a75df4e040754a58185151f#df1b9a223c77f4597a75df4e040754a58185151f" },
+    { name = "protobuf", specifier = "<4" },
+]
+btc-based = [
+    { name = "aiohttp", specifier = "<4.0" },
+    { name = "protobuf", specifier = "<4" },
+]
+daemon-base = [{ name = "aiohttp", specifier = "<4.0" }]
+daemons = [
+    { name = "aiohttp", specifier = "<4.0" },
+    { name = "aiolimiter" },
+    { name = "async-lru" },
+    { name = "bitarray", specifier = "<3" },
+    { name = "electron-cash", url = "https://github.com/Electron-Cash/Electron-Cash/archive/cd4a0fe6cceb6ffc90dca5525c7e405387561506.zip" },
+    { name = "electrum", extras = ["crypto"], git = "https://github.com/spesmilo/electrum?rev=df1b9a223c77f4597a75df4e040754a58185151f#df1b9a223c77f4597a75df4e040754a58185151f" },
+    { name = "electrum-bsty", extras = ["crypto"], git = "https://github.com/GlobalBoost/electrum?rev=e5b267128464e7fa3298eb5615313ae7266dda7d#e5b267128464e7fa3298eb5615313ae7266dda7d" },
+    { name = "electrum-grs", extras = ["crypto"], git = "https://github.com/Groestlcoin/electrum-grs?rev=3bbebc766b0d0f12eb69b226de723e6a6431cd80#3bbebc766b0d0f12eb69b226de723e6a6431cd80" },
+    { name = "electrum-ltc", extras = ["crypto"], git = "https://github.com/bitcart/electrum-ltc?rev=b0c8bf8dd6c829ec5e93ff85627083f43b3db857#b0c8bf8dd6c829ec5e93ff85627083f43b3db857" },
+    { name = "eth-account", specifier = "<0.12" },
+    { name = "eth-rlp", specifier = "<2.0" },
+    { name = "mnemonic" },
+    { name = "monero" },
+    { name = "oregano", url = "https://github.com/Ergon-moe/Oregano/archive/6fc11cd927eda956e7fe3738fbddd30c347920a1.zip" },
+    { name = "protobuf", specifier = "<4" },
+    { name = "scrypt", specifier = ">=0.6.0" },
+    { name = "tronpy" },
+    { name = "trontxsize" },
+    { name = "universalasync" },
+    { name = "web3", specifier = ">=6,<7" },
+]
+dev = [
     { name = "aiofiles" },
     { name = "aiohttp", specifier = "<4.0" },
     { name = "aiolimiter" },
@@ -656,68 +696,6 @@ all = [
     { name = "universalasync" },
     { name = "uvicorn", extras = ["standard"] },
     { name = "web3", specifier = ">=6,<7" },
-]
-bch = [
-    { name = "aiohttp", specifier = "<4.0" },
-    { name = "electron-cash", url = "https://github.com/Electron-Cash/Electron-Cash/archive/cd4a0fe6cceb6ffc90dca5525c7e405387561506.zip" },
-    { name = "protobuf", specifier = "<4" },
-]
-bnb = [
-    { name = "aiohttp", specifier = "<4.0" },
-    { name = "aiolimiter" },
-    { name = "bitarray", specifier = "<3" },
-    { name = "eth-account", specifier = "<0.12" },
-    { name = "eth-rlp", specifier = "<2.0" },
-    { name = "mnemonic" },
-    { name = "web3", specifier = ">=6,<7" },
-]
-bsty = [
-    { name = "aiohttp", specifier = "<4.0" },
-    { name = "electrum-bsty", extras = ["crypto"], git = "https://github.com/GlobalBoost/electrum?rev=e5b267128464e7fa3298eb5615313ae7266dda7d#e5b267128464e7fa3298eb5615313ae7266dda7d" },
-    { name = "protobuf", specifier = "<4" },
-]
-btc = [
-    { name = "aiohttp", specifier = "<4.0" },
-    { name = "electrum", extras = ["crypto"], git = "https://github.com/spesmilo/electrum?rev=df1b9a223c77f4597a75df4e040754a58185151f#df1b9a223c77f4597a75df4e040754a58185151f" },
-    { name = "protobuf", specifier = "<4" },
-]
-btc-based = [
-    { name = "aiohttp", specifier = "<4.0" },
-    { name = "protobuf", specifier = "<4" },
-]
-daemon-base = [{ name = "aiohttp", specifier = "<4.0" }]
-daemons = [
-    { name = "aiohttp", specifier = "<4.0" },
-    { name = "aiolimiter" },
-    { name = "async-lru" },
-    { name = "bitarray", specifier = "<3" },
-    { name = "electron-cash", url = "https://github.com/Electron-Cash/Electron-Cash/archive/cd4a0fe6cceb6ffc90dca5525c7e405387561506.zip" },
-    { name = "electrum", extras = ["crypto"], git = "https://github.com/spesmilo/electrum?rev=df1b9a223c77f4597a75df4e040754a58185151f#df1b9a223c77f4597a75df4e040754a58185151f" },
-    { name = "electrum-bsty", extras = ["crypto"], git = "https://github.com/GlobalBoost/electrum?rev=e5b267128464e7fa3298eb5615313ae7266dda7d#e5b267128464e7fa3298eb5615313ae7266dda7d" },
-    { name = "electrum-grs", extras = ["crypto"], git = "https://github.com/Groestlcoin/electrum-grs?rev=3bbebc766b0d0f12eb69b226de723e6a6431cd80#3bbebc766b0d0f12eb69b226de723e6a6431cd80" },
-    { name = "electrum-ltc", extras = ["crypto"], git = "https://github.com/bitcart/electrum-ltc?rev=b0c8bf8dd6c829ec5e93ff85627083f43b3db857#b0c8bf8dd6c829ec5e93ff85627083f43b3db857" },
-    { name = "eth-account", specifier = "<0.12" },
-    { name = "eth-rlp", specifier = "<2.0" },
-    { name = "mnemonic" },
-    { name = "monero" },
-    { name = "oregano", url = "https://github.com/Ergon-moe/Oregano/archive/6fc11cd927eda956e7fe3738fbddd30c347920a1.zip" },
-    { name = "protobuf", specifier = "<4" },
-    { name = "scrypt", specifier = ">=0.6.0" },
-    { name = "tronpy" },
-    { name = "trontxsize" },
-    { name = "universalasync" },
-    { name = "web3", specifier = ">=6,<7" },
-]
-dev = [
-    { name = "httpx" },
-    { name = "httpx-ws" },
-    { name = "pre-commit" },
-    { name = "pytest" },
-    { name = "pytest-cov" },
-    { name = "pytest-mock" },
-    { name = "pytest-parametrization" },
-    { name = "pytest-xdist" },
-    { name = "ruff" },
 ]
 eth = [
     { name = "aiohttp", specifier = "<4.0" },
