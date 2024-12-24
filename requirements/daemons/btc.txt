@@ -1,2 +1,0 @@
-electrum[crypto] @ https://github.com/spesmilo/electrum/archive/df1b9a223c77f4597a75df4e040754a58185151f.zip
-protobuf<4

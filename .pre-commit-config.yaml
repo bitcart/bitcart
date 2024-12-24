@@ -15,8 +15,6 @@ repos:
       - id: trailing-whitespace
       - id: mixed-line-ending
       - id: requirements-txt-fixer
-        exclude: >-
-          ^requirements/deterministic/.*.txt$
       - id: check-case-conflict
       - id: check-shebang-scripts-are-executable
       - id: check-json

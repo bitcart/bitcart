@@ -1,3 +1,0 @@
-electrum-ltc[crypto] @ https://github.com/bitcart/electrum-ltc/archive/b0c8bf8dd6c829ec5e93ff85627083f43b3db857.zip
-protobuf<4
-scrypt>=0.6.0

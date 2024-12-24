@@ -1,2 +1,0 @@
-electrum-bsty[crypto] @ https://github.com/GlobalBoost/electrum/archive/e5b267128464e7fa3298eb5615313ae7266dda7d.zip
-protobuf<4

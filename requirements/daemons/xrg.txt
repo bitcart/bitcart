@@ -1,3 +1,0 @@
-aiohttp<4.0
-https://github.com/Ergon-moe/Oregano/archive/6fc11cd927eda956e7fe3738fbddd30c347920a1.zip
-protobuf<4

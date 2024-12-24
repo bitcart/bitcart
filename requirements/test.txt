@@ -1,7 +1,0 @@
-httpx
-httpx-ws
-pytest
-pytest-cov
-pytest-mock
-pytest-parametrization
-pytest-xdist
