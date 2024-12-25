@@ -7,128 +7,65 @@
             "alembic.ini",
             "main.py",
             "gunicorn.conf.py",
-            "requirements/base.txt",
-            "requirements/web.txt",
-            "requirements/production.txt",
-            "requirements.txt"
+            "uv.lock"
         ]
     },
     "bitcart-btc": {
         "dockerfile": "btc.Dockerfile",
-        "files": [
-            "daemons/base.py",
-            "daemons/btc.py",
-            "requirements/base.txt",
-            "requirements/daemons/btc.txt"
-        ]
+        "files": ["daemons/base.py", "daemons/btc.py", "uv.lock"]
     },
     "bitcart-bch": {
         "dockerfile": "bch.Dockerfile",
-        "files": [
-            "daemons/base.py",
-            "daemons/bch.py",
-            "requirements/base.txt",
-            "requirements/daemons/bch.txt"
-        ],
+        "files": ["daemons/base.py", "daemons/bch.py", "uv.lock"],
         "bases": "bch",
         "name": "electron-cash"
     },
     "bitcart-xmr": {
         "dockerfile": "xmr.Dockerfile",
-        "files": [
-            "daemons/base.py",
-            "daemons/xmr.py",
-            "requirements/base.txt",
-            "requirements/daemons/xmr.txt"
-        ],
+        "files": ["daemons/base.py", "daemons/xmr.py", "uv.lock"],
         "bases": "eth"
     },
     "bitcart-eth": {
         "dockerfile": "eth.Dockerfile",
-        "files": [
-            "daemons/base.py",
-            "daemons/eth.py",
-            "requirements/base.txt",
-            "requirements/daemons/eth.txt"
-        ],
+        "files": ["daemons/base.py", "daemons/eth.py", "uv.lock"],
         "bases": "eth"
     },
     "bitcart-bnb": {
         "dockerfile": "bnb.Dockerfile",
-        "files": [
-            "daemons/base.py",
-            "daemons/bnb.py",
-            "requirements/base.txt",
-            "requirements/daemons/bnb.txt"
-        ],
+        "files": ["daemons/base.py", "daemons/bnb.py", "uv.lock"],
         "bases": "eth"
     },
     "bitcart-sbch": {
         "dockerfile": "sbch.Dockerfile",
-        "files": [
-            "daemons/base.py",
-            "daemons/sbch.py",
-            "requirements/base.txt",
-            "requirements/daemons/sbch.txt"
-        ],
+        "files": ["daemons/base.py", "daemons/sbch.py", "uv.lock"],
         "bases": "eth"
     },
     "bitcart-matic": {
         "dockerfile": "matic.Dockerfile",
-        "files": [
-            "daemons/base.py",
-            "daemons/matic.py",
-            "requirements/base.txt",
-            "requirements/daemons/matic.txt"
-        ],
+        "files": ["daemons/base.py", "daemons/matic.py", "uv.lock"],
         "bases": "eth"
     },
     "bitcart-trx": {
         "dockerfile": "trx.Dockerfile",
-        "files": [
-            "daemons/base.py",
-            "daemons/trx.py",
-            "requirements/base.txt",
-            "requirements/daemons/trx.txt"
-        ],
+        "files": ["daemons/base.py", "daemons/trx.py", "uv.lock"],
         "bases": "eth"
     },
     "bitcart-xrg": {
         "dockerfile": "xrg.Dockerfile",
-        "files": [
-            "daemons/base.py",
-            "daemons/xrg.py",
-            "requirements/base.txt",
-            "requirements/daemons/xrg.txt"
-        ],
+        "files": ["daemons/base.py", "daemons/xrg.py", "uv.lock"],
         "bases": "bch",
         "name": "oregano"
     },
     "bitcart-ltc": {
         "dockerfile": "ltc.Dockerfile",
-        "files": [
-            "daemons/base.py",
-            "daemons/ltc.py",
-            "requirements/base.txt",
-            "requirements/daemons/ltc.txt"
-        ]
+        "files": ["daemons/base.py", "daemons/ltc.py", "uv.lock"]
     },
     "bitcart-bsty": {
         "dockerfile": "bsty.Dockerfile",
-        "files": [
-            "daemons/base.py",
-            "daemons/bsty.py",
-            "requirements/base.txt",
-            "requirements/daemons/bsty.txt"
-        ]
+        "files": ["daemons/base.py", "daemons/bsty.py", "uv.lock"]
     },
     "bitcart-grs": {
         "dockerfile": "grs.Dockerfile",
-        "files": [
-            "daemons/base.py",
-            "daemons/grs.py",
-            "requirements/base.txt",
-            "requirements/daemons/grs.txt"
-        ]
+        "files": ["daemons/base.py", "daemons/grs.py", "uv.lock"]
     }
 }
