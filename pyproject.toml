@@ -20,7 +20,7 @@ web = [
     "aiofiles",
     "alembic",
     "apprise",
-    "asyncpg==0.29.0",
+    "asyncpg==0.30.0",
     "bitcart",
     "email-validator",
     "fastapi",
@@ -41,19 +41,19 @@ web = [
     "python-multipart",
     "redis",
     "setuptools",
-    "sqlalchemy<1.4",
+    "sqlalchemy<1.5",
     "uvicorn[standard]",
 ]
 production = ["gunicorn"]
 
 # daemons
 daemon-base = ["aiohttp<4.0"]
-btc-based = [{ include-group = "daemon-base" }, "protobuf<4"]
+btc-based = [{ include-group = "daemon-base" }, "protobuf<6"]
 eth-based = [
     { include-group = "daemon-base" },
     "aiolimiter",
     "bitarray<3",                      # electrum requires this
-    "eth-account<0.12",                # web3 broke this
+    "eth-account<0.14",                # web3 broke this
     "eth-rlp<2.0",                     # web3 broke this
     "mnemonic",
     "web3>=6,<7",                      # TODO: upgrade
