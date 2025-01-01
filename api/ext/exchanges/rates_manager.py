@@ -17,7 +17,7 @@ logger = get_logger(__name__)
 
 def worker_result(func):
     async def wrapper(self, *args, **kwargs):
-        if settings.settings.is_worker or settings.settings.functional_tests:
+        if settings.settings.is_worker or settings.settings.test:
             return await func(self, *args, **kwargs)
         async with utils.redis.wait_for_redis():
             task_id = utils.common.unique_id()
@@ -75,7 +75,7 @@ class RatesManager:
             if currency not in final_contracts:
                 final_contracts[currency] = []
         self.contracts = final_contracts
-        if settings.settings.functional_tests:
+        if settings.settings.test:
             self.exchanges["coingecko"] = self._exchange_classes["coingecko"](coins, final_contracts)
             return
         for name, exchange_cls in self._exchange_classes.items():
@@ -87,6 +87,10 @@ class RatesManager:
                     self.exchanges[exchange["id"]] = coingecko_based_exchange(exchange["id"])(coins, final_contracts)
         except Exception as e:
             logger.error(f"Error while fetching coingecko exchanges:\n{get_exception_message(e)}")
+
+    async def start(self):
+        for exchange in self.exchanges.values():
+            await exchange.start()
 
     @worker_result
     async def get_rate(self, exchange, pair=None):

@@ -104,3 +104,37 @@ def deleting_file_base(filename):
 @pytest.fixture
 def log_file():
     yield from deleting_file_base("tests/fixtures/logs/bitcart20210821.log")
+
+
+def pytest_configure(config):
+    """Register custom markers"""
+    config.addinivalue_line(
+        "markers",
+        (
+            "exchange_rates: mark test as requiring exchange rates mocking. For now in all tests it is mocked, you can use"
+            " cryptos param to specify which cryptos to enable"
+        ),
+    )
+
+
+async def mock_fetch_delayed(*args, **kwargs):
+    req_url = args[1]
+    if "simple/supported_vs_currencies" in req_url:
+        return ["btc", "usd", "eur"]
+    if "coins/list" in req_url:
+        coins = []
+        for crypto in settings.settings.cryptos:
+            coins.append({"id": crypto, "symbol": crypto, "name": crypto.upper()})
+        return coins
+    if "simple/price" in req_url:
+        return {crypto: {"usd": 50000, "eur": 45000} for crypto in settings.settings.cryptos}
+    return {}
+
+
+@pytest.fixture(autouse=True)
+def mock_coingecko_api(request, mocker):
+    marker = request.node.get_closest_marker("exchange_rates")
+    cryptos = marker.kwargs.get("cryptos") if marker else None
+    if cryptos is not None:
+        mocker.patch.object(settings.settings, "cryptos", cryptos)
+    mocker.patch("api.ext.exchanges.coingecko.fetch_delayed", side_effect=mock_fetch_delayed)

@@ -29,7 +29,6 @@ class BaseExchange(metaclass=ABCMeta):
         self.last_refresh = 0
         self.last_called = 0
         self.lock = asyncio.Lock()
-        asyncio.create_task(self.refresh_task())
 
     async def _check_fresh(self, called=False):
         async with self.lock:
@@ -67,3 +66,6 @@ class BaseExchange(metaclass=ABCMeta):
             if time.time() - self.last_called <= EXCHANGE_ACTIVE_TIME:
                 await self._check_fresh()
             await asyncio.sleep(REFRESH_TIME + 1)
+
+    async def start(self):
+        asyncio.create_task(self.refresh_task())

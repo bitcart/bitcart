@@ -43,7 +43,6 @@ class Settings(BaseSettings):
     enabled_cryptos: Annotated[CommaSeparatedStrings, NoDecode] = Field("btc", validation_alias="BITCART_CRYPTOS")
     redis_host: str = Field("redis://localhost", validation_alias="REDIS_HOST")
     test: bool = Field("pytest" in sys.modules, validation_alias="TEST")
-    functional_tests: bool = Field(False, validation_alias="FUNCTIONAL_TESTS")
     docker_env: bool = Field(False, validation_alias="IN_DOCKER")
     root_path: str = Field("", validation_alias="BITCART_BACKEND_ROOTPATH")
     db_name: str = Field("bitcart", validation_alias="DB_DATABASE")
@@ -328,8 +327,10 @@ class Settings(BaseSettings):
         self.redis_pool = aioredis.from_url(self.redis_host, decode_responses=True)
         await self.redis_pool.ping()
         await self.create_db_engine()
-        if self.is_worker or self.functional_tests:
+        if self.is_worker or self.test:
             await self.exchange_rates.init()
+            if not self.test:
+                await self.exchange_rates.start()
 
     async def post_plugin_init(self):
         from api.plugins import apply_filters, register_filter

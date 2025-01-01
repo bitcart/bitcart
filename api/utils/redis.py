@@ -36,7 +36,7 @@ async def listen_channel(channel):
         yield json.loads(message["data"])
 
 
-async def wait_for_task_result(task_id):
+async def wait_for_task_result(task_id):  # pragma: no cover
     async with wait_for_redis():
         while True:
             result = await settings.settings.redis_pool.get(f"task:{task_id}")

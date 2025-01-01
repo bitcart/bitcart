@@ -173,7 +173,7 @@ class DecimalAwareJSONEncoder(json.JSONEncoder):  # pragma: no cover
         return super().default(obj)
 
 
-def decimal_aware_object_hook(obj):
+def decimal_aware_object_hook(obj):  # pragma: no cover
     if isinstance(obj, dict) and obj.get("__type__") == "Decimal":
         return Decimal(obj["value"])
     return obj

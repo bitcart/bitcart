@@ -135,13 +135,6 @@ jobs:
       - install_dependencies
 
       - run:
-          name: prepare worker
-          command: |
-            TEST=true make migrate
-            TEST=true python3 worker.py
-          background: true
-
-      - run:
           name: prepare daemon
           command: |
             make testnet

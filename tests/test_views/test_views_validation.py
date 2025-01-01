@@ -176,6 +176,7 @@ async def test_invalid_backup_policies(client: TestClient, token, data, error):
 
 class MockBTC:
     coin_name = "BTC"
+    is_eth_based = False
 
     async def list_fiat(self):
         raise BitcartBaseError("Doesn't work")
@@ -184,15 +185,18 @@ class MockBTC:
         raise BitcartBaseError("Broken")
 
 
-async def test_edge_fiatlist_cases(client: TestClient, token, mocker):
-    mocker.patch("api.settings.settings.cryptos", {})
+@pytest.mark.exchange_rates(cryptos={})
+async def test_edge_fiatlist_cases_no_cryptos(client: TestClient, token, mocker):
     resp = await client.get("/cryptos/fiatlist")
     assert resp.status_code == 200
-    assert len(resp.json()) > 30  # no longer dependent on cryptos
-    mocker.patch("api.settings.settings.cryptos", {"btc": MockBTC()})
+    assert len(resp.json()) == 0
+
+
+@pytest.mark.exchange_rates(cryptos={"btc": MockBTC()})
+async def test_edge_fiatlist_cases_faulty(client: TestClient, token, mocker):
     resp = await client.get("/cryptos/fiatlist")
     assert resp.status_code == 200
-    assert len(resp.json()) > 30
+    assert len(resp.json()) == 3
 
 
 async def test_edge_invoice_cases(client: TestClient, token, store, mocker, caplog):

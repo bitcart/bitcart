@@ -43,7 +43,7 @@ async def test_rate(client: TestClient):
     data = resp.json()
     assert resp.status_code == 200
     assert isinstance(data, int | float)
-    assert data > 0
+    assert data == 50000
     assert (await client.get("/cryptos/rate?fiat_currency=eur")).status_code == 200
     assert (await client.get("/cryptos/rate?fiat_currency=EUR")).status_code == 200
     assert (await client.get("/cryptos/rate?fiat_currency=test")).status_code == 422
@@ -54,7 +54,7 @@ async def test_wallet_rate(client: TestClient, token: str, wallet):
     data = resp.json()
     assert resp.status_code == 200
     assert isinstance(data, int | float)
-    assert data > 0
+    assert data == 50000
     assert (await client.get(f"/wallets/{wallet['id']}/rate?currency=eur")).status_code == 200
     assert (await client.get(f"/wallets/{wallet['id']}/rate?currency=EUR")).status_code == 200
     assert (await client.get(f"/wallets/{wallet['id']}/rate?currency=test")).status_code == 422
@@ -146,10 +146,10 @@ async def test_fiatlist(client: TestClient):
     assert "USD" in j3
 
 
-async def test_fiatlist_multi_coins(client: TestClient, mocker):
-    mocker.patch.object(settings.settings, "cryptos", {"btc": BTC(), "ltc": LTC()})
+@pytest.mark.exchange_rates(cryptos={"btc": BTC(), "ltc": LTC()})
+async def test_fiatlist_multi_coins(client: TestClient):
     resp = await client.get("/cryptos/fiatlist")
-    assert len(resp.json()) > 30
+    assert len(resp.json()) == 4
 
 
 async def check_ws_response(ws, sent_amount):

@@ -42,6 +42,6 @@ fulcrum:
 	tests/functional/bootstrap/start_fulcrum.sh
 
 functional:
-	BTC_LIGHTNING=true FUNCTIONAL_TESTS=true pytest tests/functional/ --cov-append -n 0 ${TEST_ARGS}
+	BTC_LIGHTNING=true pytest tests/functional/ --cov-append -n 0 ${TEST_ARGS}
 
 ci: checkformat lint test
