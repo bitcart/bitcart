@@ -1,9 +1,10 @@
-import sys
 from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config, pool
 
 from alembic import context
+from api.models import db
+from api.settings import Settings
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -20,9 +21,6 @@ if not config.get_main_option("no_logs"):
 # target_metadata = mymodel.Base.metadata
 # target_metadata = None
 
-sys.path.insert(0, ".")
-from api.models import db  # noqa: E402: sys.path imports
-from api.settings import Settings  # noqa: E402: sys.path imports
 
 settings = Settings()
 settings.init_logging(worker=False)
@@ -53,7 +51,7 @@ def include_object(obj, name, type_, reflected, compare_to):
     return True
 
 
-def run_migrations_offline():
+def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode.
 
     This configures the context with just a URL
@@ -83,7 +81,7 @@ def run_migrations_offline():
         context.run_migrations()
 
 
-def run_migrations_online():
+def run_migrations_online() -> None:
     """Run migrations in 'online' mode.
 
     In this scenario we need to create an Engine
