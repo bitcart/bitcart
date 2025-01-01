@@ -520,6 +520,7 @@ class PaymentMethod(BaseModel):
     node_id = Column(Text)
     label = Column(Text, nullable=False)
     hint = Column(Text)
+    is_used = Column(Boolean(), default=False)
     created = Column(DateTime(True), nullable=False)
 
     def to_dict(self, currency, index: int = None):
@@ -571,7 +572,6 @@ class Invoice(BaseModel):
     sent_amount = Column(Numeric(36, 18))
     exception_status = Column(Text)
     currency = Column(Text)
-    payment_id = Column(Text, ForeignKey("paymentmethods.id", ondelete="SET NULL", use_alter=True))
     paid_currency = Column(Text)
     status = Column(Text, nullable=False)
     expiration = Column(Integer)
@@ -603,6 +603,8 @@ class Invoice(BaseModel):
         self.payments = [
             method.to_dict(self.currency, index) for index, method in crud.invoices.get_methods_inds(payment_methods)
         ]
+        used_payment = next((payment for payment in payment_methods if payment.is_used), None)
+        self.payment_id = used_payment.id if used_payment else None
 
         await super().add_related()
 

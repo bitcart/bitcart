@@ -282,14 +282,15 @@ async def update_status(invoice, status, method=None, tx_hashes=None, sent_amoun
         and sent_amount > 0
         and (not invoice.payment_id or invoice.payment_id == method.id)
     ):
+        await method.update(is_used=True).apply()
         await invoice.update(
             paid_currency=method.get_name(),
-            payment_id=method.id,
             discount=method.discount,
             tx_hashes=tx_hashes,
             sent_amount=sent_amount,
             exception_status=InvoiceExceptionStatus.PAID_PARTIAL,
         ).apply()
+        invoice.payment_id = method.id
         await process_notifications(invoice)
 
     if (
@@ -312,7 +313,6 @@ async def update_status(invoice, status, method=None, tx_hashes=None, sent_amoun
                 )
                 kwargs = {
                     "paid_currency": full_method_name,
-                    "payment_id": method.id,
                     "discount": method.discount,
                     "tx_hashes": tx_hashes,
                     "sent_amount": sent_amount,
@@ -320,7 +320,9 @@ async def update_status(invoice, status, method=None, tx_hashes=None, sent_amoun
                 }
                 if not invoice.paid_date:
                     kwargs["paid_date"] = utils.time.now()
+                await method.update(is_used=True).apply()
                 await invoice.update(**kwargs).apply()
+                invoice.payment_id = method.id
             log_text += f" with payment method {full_method_name}"
         logger.info(f"{log_text} to {status}")
         kwargs = {"status": status}
