@@ -5,9 +5,9 @@ import time
 from multiprocessing import Process
 
 import sqlalchemy
-
 from alembic import config, script
 from alembic.runtime import migration
+
 from api import events, invoices, tasks
 from api import settings as settings_module
 from api.ext import backups as backup_ext

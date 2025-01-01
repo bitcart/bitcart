@@ -4,11 +4,11 @@ import os
 from abc import ABCMeta, abstractmethod
 from collections import defaultdict
 
+from alembic import command
+from alembic.config import Config
 from fastapi import FastAPI
 from fastapi.encoders import jsonable_encoder
 
-from alembic import command
-from alembic.config import Config
 from api import events, models, settings, utils
 from api.logger import get_logger
 from api.templates import Template
