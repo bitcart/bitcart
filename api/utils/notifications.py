@@ -56,6 +56,8 @@ async def notify(store, text):  # pragma: no cover
         appr.add(provider)
     with apprise.LogCapture(level=apprise.logging.INFO) as output:
         if not await appr.async_notify(text):
-            logger.error(f"Failed to send some notifications of store {store.id}:\n{output.getvalue().strip()}")
+            error_message = output.getvalue().strip()
+            if "There are no service(s) to notify" not in error_message:
+                logger.error(f"Failed to send some notifications of store {store.id}:\n{error_message}")
             return False
     return True
