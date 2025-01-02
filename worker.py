@@ -4,6 +4,7 @@ import sys
 import time
 from multiprocessing import Process
 
+import sentry_sdk
 import sqlalchemy
 from alembic import config, script
 from alembic.runtime import migration
@@ -40,6 +41,11 @@ def check_db():
 async def main():
     settings = settings_module.settings_ctx.get()
     settings.is_worker = True
+    if settings.sentry_dsn:
+        sentry_sdk.init(
+            dsn=settings.sentry_dsn,
+            traces_sample_rate=1.0,
+        )
     try:
         settings.init_logging()
         await settings.init()

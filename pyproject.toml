@@ -40,6 +40,7 @@ web = [
     "python-dotenv",
     "python-multipart",
     "redis",
+    "sentry-sdk[fastapi]",
     "setuptools",
     "sqlalchemy<1.4",
     "uvicorn[standard]",

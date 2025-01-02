@@ -2,6 +2,7 @@ import json
 import traceback
 from contextlib import asynccontextmanager
 
+import sentry_sdk
 from fastapi import FastAPI, Request
 from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
 from fastapi.requests import HTTPConnection
@@ -68,6 +69,12 @@ def patch_call(instance):
 
 def get_app():
     settings = Settings()
+
+    if settings.sentry_dsn:
+        sentry_sdk.init(
+            dsn=settings.sentry_dsn,
+            traces_sample_rate=1.0,
+        )
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):

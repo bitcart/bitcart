@@ -462,6 +462,7 @@ dev = [
     { name = "redis" },
     { name = "ruff" },
     { name = "scrypt" },
+    { name = "sentry-sdk", extra = ["fastapi"] },
     { name = "setuptools" },
     { name = "sqlalchemy" },
     { name = "tronpy" },
@@ -569,6 +570,7 @@ web = [
     { name = "python-dotenv" },
     { name = "python-multipart" },
     { name = "redis" },
+    { name = "sentry-sdk", extra = ["fastapi"] },
     { name = "setuptools" },
     { name = "sqlalchemy" },
     { name = "uvicorn", extra = ["standard"] },
@@ -689,6 +691,7 @@ dev = [
     { name = "redis" },
     { name = "ruff" },
     { name = "scrypt", specifier = ">=0.6.0" },
+    { name = "sentry-sdk", extras = ["fastapi"] },
     { name = "setuptools" },
     { name = "sqlalchemy", specifier = "<1.4" },
     { name = "tronpy" },
@@ -794,6 +797,7 @@ web = [
     { name = "python-dotenv" },
     { name = "python-multipart" },
     { name = "redis" },
+    { name = "sentry-sdk", extras = ["fastapi"] },
     { name = "setuptools" },
     { name = "sqlalchemy", specifier = "<1.4" },
     { name = "uvicorn", extras = ["standard"] },
@@ -2957,6 +2961,24 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/e3/ba/7cb4d1988b7f575760705817b2f130e8f5361952c441713a0cf98d3e5420/scrypt-0.8.27-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:3a81967724f5d8fb41b9b55fd23e67e6a849bef461af5cb0bc2cdd8476762f48", size = 1194719 },
     { url = "https://files.pythonhosted.org/packages/74/69/87d4d4a50354e4e55df76f1189bebc5289005939cf456573a2d46b3d073d/scrypt-0.8.27-cp313-cp313-musllinux_1_2_i686.whl", hash = "sha256:cc31c3c7d7aa14b95d29b3720d2a0fcf26214f60c00e9e5efe5fed6a782a6b24", size = 1585208 },
     { url = "https://files.pythonhosted.org/packages/45/5b/e0befea422345eb5b15cb75ad756b6529ad03e433eda1c92c8dd1a41938a/scrypt-0.8.27-cp313-cp313-musllinux_1_2_x86_64.whl", hash = "sha256:6fa596f16c7b93af70764ffe19e5686848b03f2eeb91f197fd85608ede1a7ce4", size = 1755996 },
+]
+
+[[package]]
+name = "sentry-sdk"
+version = "2.19.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "certifi" },
+    { name = "urllib3" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/36/4a/eccdcb8c2649d53440ae1902447b86e2e2ad1bc84207c80af9696fa07614/sentry_sdk-2.19.2.tar.gz", hash = "sha256:467df6e126ba242d39952375dd816fbee0f217d119bf454a8ce74cf1e7909e8d", size = 299047 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/31/4d/74597bb6bcc23abc774b8901277652c61331a9d4d0a8d1bdb20679b9bbcb/sentry_sdk-2.19.2-py2.py3-none-any.whl", hash = "sha256:ebdc08228b4d131128e568d696c210d846e5b9d70aa0327dec6b1272d9d40b84", size = 322942 },
+]
+
+[package.optional-dependencies]
+fastapi = [
+    { name = "fastapi" },
 ]
 
 [[package]]

@@ -83,6 +83,7 @@ class Settings(BaseSettings):
     plugins: list | None = None
     plugins_schema: dict = {}
     is_worker: bool = False
+    sentry_dsn: str | None = Field(None, validation_alias="SENTRY_DSN")
 
     model_config = SettingsConfigDict(env_file="conf/.env", extra="ignore")
 
