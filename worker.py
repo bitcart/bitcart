@@ -45,6 +45,9 @@ async def main():
         sentry_sdk.init(
             dsn=settings.sentry_dsn,
             traces_sample_rate=1.0,
+            _experiments={
+                "continuous_profiling_auto_start": True,
+            },
         )
     try:
         settings.init_logging()
