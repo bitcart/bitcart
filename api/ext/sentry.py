@@ -14,3 +14,4 @@ def configure_sentry(settings: Settings):
             },
         )
         ignore_logger("paramiko.transport")
+        ignore_logger("apprise")
