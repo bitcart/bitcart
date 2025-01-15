@@ -4,7 +4,6 @@ import sys
 import time
 from multiprocessing import Process
 
-import sentry_sdk
 import sqlalchemy
 from alembic import config, script
 from alembic.runtime import migration
@@ -15,6 +14,7 @@ from api.ext import backups as backup_ext
 from api.ext import configurator as configurator_ext
 from api.ext import tor as tor_ext
 from api.ext import update as update_ext
+from api.ext.sentry import configure_sentry
 from api.logserver import main as start_logserver
 from api.logserver import wait_for_port
 from api.settings import Settings
@@ -41,14 +41,7 @@ def check_db():
 async def main():
     settings = settings_module.settings_ctx.get()
     settings.is_worker = True
-    if settings.sentry_dsn:
-        sentry_sdk.init(
-            dsn=settings.sentry_dsn,
-            traces_sample_rate=1.0,
-            _experiments={
-                "continuous_profiling_auto_start": True,
-            },
-        )
+    configure_sentry(settings)
     try:
         settings.init_logging()
         await settings.init()

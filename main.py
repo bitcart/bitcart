@@ -2,7 +2,6 @@ import json
 import traceback
 from contextlib import asynccontextmanager
 
-import sentry_sdk
 from fastapi import FastAPI, Request
 from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
 from fastapi.requests import HTTPConnection
@@ -17,6 +16,7 @@ from api import settings as settings_module
 from api import utils
 from api.constants import VERSION
 from api.ext import tor as tor_ext
+from api.ext.sentry import configure_sentry
 from api.logger import get_logger
 from api.settings import Settings
 from api.utils.logging import log_errors
@@ -69,15 +69,7 @@ def patch_call(instance):
 
 def get_app():
     settings = Settings()
-
-    if settings.sentry_dsn:
-        sentry_sdk.init(
-            dsn=settings.sentry_dsn,
-            traces_sample_rate=1.0,
-            _experiments={
-                "continuous_profiling_auto_start": True,
-            },
-        )
+    configure_sentry(settings)
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
