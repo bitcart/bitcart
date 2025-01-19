@@ -36,10 +36,10 @@ async def get_template(name, user_id=None, obj=None):
         query = query.where(models.Template.user_id == user_id)
     custom_template = await utils.database.get_object(models.Template, custom_query=query, raise_exception=False)
     if custom_template:
-        logger.info(f'{get_template_matching_str(name,obj)} selected custom template "{custom_template.name}"')
+        logger.info(f'{get_template_matching_str(name, obj)} selected custom template "{custom_template.name}"')
         return templates.Template(name, custom_template.text)
     if name in settings.settings.template_manager.templates:
-        logger.info(f"{get_template_matching_str(name,obj)} selected default template")
+        logger.info(f"{get_template_matching_str(name, obj)} selected default template")
         return settings.settings.template_manager.templates[name]
     raise exceptions.TemplateDoesNotExistError(f"Template {name} does not exist and has no default")
 

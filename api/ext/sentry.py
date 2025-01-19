@@ -4,7 +4,7 @@ from sentry_sdk.integrations.logging import ignore_logger
 from api.settings import Settings
 
 
-def configure_sentry(settings: Settings):
+def configure_sentry(settings: Settings):  # pragma: no cover
     if settings.sentry_dsn:
         sentry_sdk.init(
             dsn=settings.sentry_dsn,

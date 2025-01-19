@@ -142,7 +142,14 @@ select = [
     "ASYNC",
 ]
 unfixable = ["F401"] # Prevent to remove unused imports when saving file
-ignore = ["RET502", "RET503", "S104", "S507", "ASYNC110"]
+ignore = [
+    "RET502",
+    "RET503",
+    "S104",
+    "S507",
+    "ASYNC110",
+    "A005",     # TODO: fix A005
+]
 mccabe = { max-complexity = 12 }
 
 [tool.ruff.lint.per-file-ignores]
