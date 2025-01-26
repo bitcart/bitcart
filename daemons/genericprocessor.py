@@ -1222,3 +1222,13 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
     @rpc
     def getabi(self, wallet=None):
         return []
+
+    @rpc
+    def debuglocks(self, wallet=None):
+        locked_wallets = {}
+        total_locks = 0
+        for key, value in list(self.wallet_locks.items()):
+            if value.locked():
+                locked_wallets[key] = str(value)
+                total_locks += 1
+        return {"locked_wallets": locked_wallets, "total_locks": total_locks}
