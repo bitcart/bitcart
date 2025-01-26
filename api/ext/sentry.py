@@ -12,6 +12,7 @@ def configure_sentry(settings: Settings):  # pragma: no cover
             _experiments={
                 "continuous_profiling_auto_start": True,
             },
+            add_full_stack=True,
         )
         ignore_logger("paramiko.transport")
         ignore_logger("apprise")
