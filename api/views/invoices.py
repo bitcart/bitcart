@@ -215,8 +215,7 @@ async def get_network_fee(wallet_id: str, currency: str = "btc"):
     coin = await settings.settings.get_coin(currency)
     wallet = await utils.database.get_object(models.Wallet, wallet_id)
     divisibility = await utils.wallets.get_divisibility(wallet, coin)
-    network_fee = await crud.invoices.determine_network_fee(coin, wallet, None, None, divisibility)
-    return network_fee
+    return await crud.invoices.determine_network_fee(coin, wallet, None, None, divisibility)
 
 
 crud_routes = utils.routing.ModelView.register(
