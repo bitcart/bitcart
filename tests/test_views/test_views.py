@@ -1839,3 +1839,11 @@ async def test_refund_functionality(client: TestClient, user, token, mocker):
     resp2 = await client.get(f"/invoices/refunds/{refund_id}")
     assert resp2.json()["payout_status"] == "sent"
     assert resp2.json()["tx_hash"] == "test"
+
+
+async def test_get_network_fee(client: TestClient, token: str, wallet):
+    resp = await client.get(f"/invoices/fee?wallet_id={wallet["id"]}&currency=btc", headers={"Authorization": f"Bearer {token}"})
+    data = resp.json()
+    assert resp.status_code == 200
+    assert isinstance(data, int | float)
+    assert (await client.get(f"/invoices/fee?wallet_id={wallet['id']}&currency=test", headers={"Authorization": f"Bearer {token}"})).status_code == 422
