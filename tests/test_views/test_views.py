@@ -1842,12 +1842,8 @@ async def test_refund_functionality(client: TestClient, user, token, mocker):
 
 
 async def test_get_network_fee(client: TestClient):
-    resp = await client.get(
-        "/cryptos/fee?currency=btc"
-    )
+    resp = await client.get("/cryptos/fee?currency=btc")
     data = resp.json()
     assert resp.status_code == 200
     assert isinstance(data, int | float)
-    assert (
-        await client.get("/cryptos/fee?currency=test")
-    ).status_code == 422
+    assert (await client.get("/cryptos/fee?currency=test")).status_code == 422
