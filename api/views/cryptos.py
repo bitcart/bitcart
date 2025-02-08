@@ -3,7 +3,7 @@ import re
 
 from fastapi import APIRouter, HTTPException
 
-from api import constants, settings
+from api import constants, crud, settings
 from api.logger import get_logger
 from api.plugins import apply_filters
 from api.utils.common import prepare_compliant_response
@@ -36,6 +36,12 @@ async def rate(currency: str = "btc", fiat_currency: str = "USD"):
     if math.isnan(rate):
         raise HTTPException(422, "Unsupported fiat currency")
     return rate
+
+
+@router.get("/fee")
+async def get_network_fee(currency: str):
+    coin = await settings.settings.get_coin(currency)
+    return await crud.invoices.determine_network_fee(coin, None, None, None, None)
 
 
 @router.get("/fiatlist")
