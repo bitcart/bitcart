@@ -148,7 +148,7 @@ async def _create_payment_method(invoice, wallet, product, store, discounts, pro
         request_price = currency_table.normalize(wallet.currency, request_price, divisibility=divisibility)
         price = currency_table.normalize(wallet.currency, price, divisibility=divisibility)
     method = await apply_filters(
-        "create_payment_method", None, wallet.currency, coin, request_price, invoice, product, store, lightning
+        "create_payment_method", None, wallet, coin, request_price, invoice, product, store, lightning
     )
     if method is SKIP_PAYMENT_METHOD:  # pragma: no cover
         return method

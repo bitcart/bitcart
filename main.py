@@ -1,3 +1,4 @@
+import asyncio
 import json
 import traceback
 from contextlib import asynccontextmanager
@@ -12,8 +13,8 @@ from starlette.responses import PlainTextResponse
 from starlette.staticfiles import StaticFiles
 from starlette.types import Receive, Scope, Send
 
+from api import events, tasks, utils
 from api import settings as settings_module
-from api import utils
 from api.constants import VERSION
 from api.ext import tor as tor_ext
 from api.ext.sentry import configure_sentry
@@ -76,6 +77,8 @@ def get_app():
         app.ctx_token = settings_module.settings_ctx.set(app.settings)  # for events context
         await settings.init()
         await settings.plugins.startup()
+        coro = events.start_listening(tasks.event_handler)  # to avoid deleted task errors
+        asyncio.ensure_future(coro)
         yield
         await app.settings.shutdown()
         await settings.plugins.shutdown()

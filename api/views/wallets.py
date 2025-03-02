@@ -49,6 +49,14 @@ async def get_wallet_balance(
     return response
 
 
+@router.get("/{model_id}/symbol")
+async def get_wallet_symbol(
+    model_id: str, user: models.User = Security(utils.authorization.auth_dependency, scopes=["wallet_management"])
+):
+    wallet = await utils.database.get_object(models.Wallet, model_id, user)
+    return await utils.wallets.get_wallet_symbol(wallet)
+
+
 @router.get("/{model_id}/checkln")
 async def check_wallet_lightning(
     model_id: str,

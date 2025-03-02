@@ -1839,3 +1839,13 @@ async def test_refund_functionality(client: TestClient, user, token, mocker):
     resp2 = await client.get(f"/invoices/refunds/{refund_id}")
     assert resp2.json()["payout_status"] == "sent"
     assert resp2.json()["tx_hash"] == "test"
+
+
+async def test_wallet_symbol(client: TestClient, token, wallet):
+    response = await client.get(f"/wallets/{wallet['id']}/symbol", headers={"Authorization": f"Bearer {token}"})
+    assert response.status_code == 200
+    assert response.json() == "btc"
+    response = await client.get(f"/wallets/{wallet['id']}/symbol")
+    assert response.status_code == 401
+    response = await client.get("/wallets/non-existent/symbol", headers={"Authorization": f"Bearer {token}"})
+    assert response.status_code == 404

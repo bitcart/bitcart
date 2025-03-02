@@ -344,6 +344,7 @@ async def create_expired_tasks():
 
 
 async def check_pending(currency, process_func=process_electrum_status):
+    await run_hook("check_pending", currency)
     coros = []
     coros.append(payout_ext.process_new_block(currency.lower()))
     async for method, invoice, wallet in iterate_pending_invoices(currency):

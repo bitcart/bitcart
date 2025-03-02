@@ -3,10 +3,11 @@ import shutil
 import tempfile
 
 import aiofiles
-from fastapi import APIRouter, File, Security, UploadFile
+from fastapi import APIRouter, File, HTTPException, Security, UploadFile
 
-from api import models, schemes, settings, utils
+from api import models, plugins, schemes, settings, utils
 from api.ext import plugins as plugin_ext
+from api.plugins import run_hook
 
 router = APIRouter()
 
@@ -65,4 +66,79 @@ async def uninstall_plugin(
         plugin_ext.uninstall_plugin(data.author, data.name)
     except ValueError:
         return False
+    return True
+
+
+@router.get("/settings/list")
+async def get_plugins_list(user: models.User = Security(utils.authorization.auth_dependency, scopes=["server_management"])):
+    return plugins.get_registered_plugins()
+
+
+@router.get("/settings/{plugin_name}")
+async def get_plugin_settings(
+    plugin_name: str,
+    user: models.User = Security(utils.authorization.auth_dependency, scopes=["server_management"]),
+):
+    settings = await plugins.get_plugin_settings(plugin_name)
+    if not settings:
+        raise HTTPException(404, "Plugin settings not found")
+    return settings
+
+
+@router.post("/settings/{plugin_name}")
+async def update_plugin_settings(
+    plugin_name: str,
+    settings: dict,
+    user: models.User = Security(utils.authorization.auth_dependency, scopes=["server_management"]),
+):
+    success, settings_obj = await plugins.set_plugin_settings_dict(plugin_name, settings)
+    if not success:
+        raise HTTPException(404, "Plugin settings not found")
+    return settings_obj
+
+
+@router.post("/licenses")
+async def add_license(
+    request: schemes.AddLicenseRequest,
+    user: models.User = Security(utils.authorization.auth_dependency, scopes=["server_management"]),
+):
+    state = await utils.policies.get_setting(schemes.PluginsState)
+    license_keys = state.license_keys
+    if request.license_key in license_keys:
+        raise HTTPException(status_code=400, detail="License key already added")
+    try:
+        license_info = await utils.common.send_request(
+            "GET", f"{settings.settings.license_server_url}/licenses/{request.license_key}", return_json=False
+        )
+        if license_info[0].status != 200:
+            raise HTTPException(status_code=400, detail="Invalid license key")
+        license_info = await license_info[0].json()
+        license_keys[request.license_key] = license_info
+        state = schemes.PluginsState(**state.model_dump(exclude={"license_keys"}), license_keys=license_keys)
+        await utils.policies.set_setting(state)
+        await run_hook("license_changed", request.license_key, license_info)
+        return license_info
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Invalid license key: {str(e)}") from None
+
+
+@router.get("/licenses")
+async def get_licenses(user: models.User = Security(utils.authorization.auth_dependency, scopes=["server_management"])):
+    state = await utils.policies.get_setting(schemes.PluginsState)
+    return list(state.license_keys.values())
+
+
+@router.delete("/licenses/{license_key}")
+async def delete_license(
+    license_key: str,
+    user: models.User = Security(utils.authorization.auth_dependency, scopes=["server_management"]),
+):
+    state = await utils.policies.get_setting(schemes.PluginsState)
+    license_info = state.license_keys.get(license_key)
+    state.license_keys.pop(license_key, None)
+    await utils.policies.set_setting(state)
+    if license_info:
+        await run_hook("license_changed", None, license_info)
     return True

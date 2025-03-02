@@ -136,8 +136,8 @@ class TRXFeatures(BlockchainFeatures):
     async def get_peer_list(self):
         return await self.web3.list_nodes()
 
-    async def get_payment_uri(self, req, divisibility, contract=None):
-        return f"tron:{req.address}"
+    async def get_payment_uri(self, address, amount, divisibility, contract=None):
+        return f"tron:{address}"
 
     async def process_tx_data(self, full_data):
         if len(full_data["raw_data"]["contract"]) == 0 or full_data["ret"][0]["contractRet"] != "SUCCESS":
@@ -330,7 +330,7 @@ class TRXDaemon(ETHDaemon):
             return (await self.coin.web3.get_contract(address)).abi
         return self.ABI
 
-    @rpc(requires_wallet=True, requires_network=True)
+    @rpc(requires_network=True)
     async def payto(self, destination, amount, fee=None, feerate=None, unsigned=False, wallet=None, *args, **kwargs):
         address = kwargs["src_address"] if "src_address" in kwargs else self.wallets[wallet].address
         txn = self.coin.web3.trx.transfer(address, destination, to_wei(amount, self.DIVISIBILITY))
@@ -372,7 +372,7 @@ class TRXDaemon(ETHDaemon):
         exec_function = await self.load_contract_exec_function(address, function, *args, **kwargs)
         return await exec_function
 
-    @rpc(requires_wallet=True, requires_network=True)
+    @rpc(requires_network=True)
     async def writecontract(self, address, function, *args, **kwargs):
         kwargs.pop("gas", None)
         kwargs.pop("nonce", None)

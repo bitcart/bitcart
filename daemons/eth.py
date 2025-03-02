@@ -30,7 +30,7 @@ from genericprocessor import Wallet as BaseWallet
 from hexbytes import HexBytes
 from mnemonic import Mnemonic
 from storage import JSONEncoder as StorageJSONEncoder
-from storage import Storage
+from storage import Storage, decimal_to_string
 from utils import (
     AbstractRPCProvider,
     MultipleProviderRPC,
@@ -148,15 +148,15 @@ class ETHFeatures(BlockchainFeatures):
     async def get_peer_list(self):
         return await self.web3.geth.admin.peers()
 
-    async def get_payment_uri(self, req, divisibility, contract=None):
+    async def get_payment_uri(self, address, amount, divisibility, contract=None):
         chain_id = await self.chain_id()
-        amount_wei = to_wei(req.amount, divisibility)
+        amount_wei = to_wei(amount, divisibility)
         if contract:
-            base_url = f"ethereum:{contract.address}@{chain_id}/transfer?address={req.address}"
+            base_url = f"ethereum:{contract.address}@{chain_id}/transfer?address={address}"
             if amount_wei:
                 base_url += f"&uint256={amount_wei}"
             return base_url
-        base_url = f"ethereum:{req.address}@{chain_id}"
+        base_url = f"ethereum:{address}@{chain_id}"
         if amount_wei:
             base_url += f"?value={amount_wei}"
         return base_url
@@ -578,6 +578,14 @@ class ETHDaemon(BlockProcessorDaemon):
         return self.coin.to_dict(await self.coin.web3.eth.send_raw_transaction(tx))
 
     @rpc(requires_network=True)
+    async def getaddressbalance_contract(self, address, contract, wallet=None):
+        divisibility = await self.readcontract(contract, "decimals")
+        return {
+            "balance": decimal_to_string(from_wei(await self.readcontract(contract, "balanceOf", address), divisibility)),
+            "divisibility": divisibility,
+        }
+
+    @rpc(requires_network=True)
     async def get_default_gas(self, tx, wallet=None):
         tx_dict = load_json_dict(tx, "Invalid transaction").copy()
         tx_dict.pop("chainId", None)
@@ -649,8 +657,16 @@ class ETHDaemon(BlockProcessorDaemon):
         return [address]
 
     @rpc
-    def make_seed(self, nbits=128, language="english", wallet=None):
-        return Mnemonic(language).generate(nbits)
+    def make_seed(self, nbits=128, language="english", full_info=False, wallet=None):
+        seed = Mnemonic(language).generate(nbits)
+        if not full_info:
+            return seed
+        keystore = self.KEYSTORE_CLASS(key=seed)
+        return {
+            "seed": seed,
+            "private_key": keystore.private_key,
+            "address": keystore.address,
+        }
 
     async def get_common_payto_params(self, address, nonce=None, gas_price=None, multiplier=None):
         nonce = nonce or await self.coin.web3.eth.get_transaction_count(address, block_identifier="pending")
@@ -661,7 +677,7 @@ class ETHDaemon(BlockProcessorDaemon):
             **(await self.get_fee_params(gas_price=gas_price, multiplier=multiplier)),
         }
 
-    @rpc(requires_wallet=True, requires_network=True)
+    @rpc(requires_network=True)
     async def payto(self, destination, amount, fee=None, feerate=None, gas=None, unsigned=False, wallet=None, *args, **kwargs):
         address = kwargs["src_address"] if "src_address" in kwargs else self.wallets[wallet].address
         tx_dict = {
@@ -796,7 +812,7 @@ class ETHDaemon(BlockProcessorDaemon):
             Account.recover_message(encode_defunct(text=message), signature=signature)
         ) == self.coin.normalize_address(address)
 
-    @rpc(requires_wallet=True, requires_network=True)
+    @rpc(requires_network=True)
     async def writecontract(self, address, function, *args, **kwargs):
         wallet = kwargs.pop("wallet", None)
         unsigned = kwargs.pop("unsigned", False)

@@ -214,10 +214,10 @@ class XMRFeatures(BlockchainFeatures):
     async def get_peer_list(self):
         return []
 
-    async def get_payment_uri(self, req, divisibility, contract=None):
-        base_url = f"monero:{req.address}"
-        if req.amount:
-            base_url += f"?tx_amount={decimal_to_string(req.amount, XMRDaemon.DIVISIBILITY)}"
+    async def get_payment_uri(self, address, amount, divisibility, contract=None):
+        base_url = f"monero:{address}"
+        if amount:
+            base_url += f"?tx_amount={decimal_to_string(amount, XMRDaemon.DIVISIBILITY)}"
         return base_url
 
     async def process_tx_data(self, data):
@@ -549,8 +549,16 @@ class XMRDaemon(BlockProcessorDaemon):
         return [address]
 
     @rpc
-    def make_seed(self, nbits=128, language="english", wallet=None):
-        return Seed().phrase
+    def make_seed(self, nbits=128, language="english", full_info=False, wallet=None):
+        seed = Seed().phrase
+        if not full_info:
+            return seed
+        keystore = self.KEYSTORE_CLASS(key=seed)
+        return {
+            "seed": seed,
+            "private_key": keystore.private_key,
+            "address": keystore.address,
+        }
 
     @rpc(requires_wallet=True, requires_network=True)
     async def payto(self, destination, amount, fee=None, feerate=None, gas=None, unsigned=False, wallet=None, *args, **kwargs):

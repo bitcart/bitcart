@@ -8,24 +8,66 @@ from alembic import command
 from alembic.config import Config
 from fastapi import FastAPI
 from fastapi.encoders import jsonable_encoder
+from pydantic import BaseModel
 
-from api import events, models, settings, utils
+from api import events, models, schemes, settings, utils
 from api.logger import get_logger
 from api.templates import Template
+from api.utils import policies
 from api.utils.common import run_universal
 from api.utils.logging import get_exception_message
 
 logger = get_logger(__name__)
 
+_plugin_settings: dict[str, type[BaseModel]] = {}
+
+
+def register_settings(plugin_name: str, settings_class: type[BaseModel]):
+    """Register plugin settings class"""
+    _plugin_settings[plugin_name] = settings_class
+
+
+async def get_plugin_settings(plugin_name: str) -> BaseModel | None:
+    """Get settings for specific plugin"""
+    if plugin_name not in _plugin_settings:
+        return None
+    return await policies.get_setting(_plugin_settings[plugin_name], name=f"plugin:{plugin_name}")
+
+
+async def set_plugin_settings_dict(plugin_name: str, settings: dict) -> tuple[bool, BaseModel | None]:
+    """Set settings for specific plugin"""
+    if plugin_name not in _plugin_settings:
+        return False, None
+    settings_class = _plugin_settings[plugin_name]
+    settings_obj = settings_class(**settings)
+    await policies.set_setting(settings_obj, name=f"plugin:{plugin_name}")
+    return True, settings_obj
+
+
+def get_registered_plugins() -> list[str]:
+    """Get list of plugins that have registered settings"""
+    return list(_plugin_settings.keys())
+
 
 class BasePlugin(metaclass=ABCMeta):
     name: str
+    lookup_name: str | None = None
+    lookup_org: str | None = None
 
     def __init__(self, path):
         self.path = path
+        self.license_key = None
 
     def __repr__(self):
         return f"<{self.__class__.__name__} {self.name}>"
+
+    def set_license_key(self, license_key):
+        self.license_key = license_key
+
+    @classmethod
+    def data_dir(cls) -> str:
+        """Get plugin's data directory"""
+        return settings.settings.get_plugin_data_dir(cls.name)
 
     @abstractmethod
     def setup_app(self, app: FastAPI):
@@ -47,6 +89,9 @@ class BasePlugin(metaclass=ABCMeta):
         settings.settings.template_manager.add_template(
             Template(name, text, applicable_to, prefix=os.path.join(self.path, "templates"))
         )
+
+    async def license_changed(self, license_key, license_info):
+        self.license_key = license_key
 
 
 class CoinServer:
@@ -127,6 +172,17 @@ class PluginsManager:
         if not test:
             self.load_plugins()
 
+    async def handle_license_changed(self, license_key, license_info):
+        if not settings.settings.is_worker:
+            await publish_event("license_changed", {"license_key": license_key, "license_info": license_info})
+            return
+        for plugin in self.plugins.values():
+            if (
+                getattr(plugin, "lookup_name", None) == license_info["plugin_name"]
+                and getattr(plugin, "lookup_org", None) == license_info["plugin_author"]
+            ):
+                await plugin.license_changed(license_key, license_info)
+
     def load_plugins(self):
         plugins_list = glob.glob("modules/**/plugin.py")
         plugins_list.extend(glob.glob("modules/**/**/plugin.py"))
@@ -159,10 +215,13 @@ class PluginsManager:
                 logger.error(f"Plugin {plugin} failed to configure app: {get_exception_message(e)}")
 
     async def startup(self):
+        register_hook("license_changed", self.handle_license_changed)
         for plugin in self.plugins.values():
             try:
                 if os.path.exists(os.path.join(plugin.path, "versions")):
                     self.run_migrations(plugin)
+                if plugin.lookup_name and plugin.lookup_org:
+                    plugin.set_license_key(await get_plugin_key_by_lookup(plugin.lookup_name, plugin.lookup_org))
                 await plugin.startup()
             except Exception as e:
                 logger.error(f"Plugin {plugin} failed to start: {get_exception_message(e)}")
@@ -220,8 +279,8 @@ def register_event_handler(name, handler):
     events.event_handler.add_handler(name, handler)
 
 
-async def publish_event(name, data):
-    await events.event_handler.publish(name, data)
+async def publish_event(name, data, for_worker=True):
+    await events.event_handler.publish(name, data, for_worker)
 
 
 json_encode = jsonable_encoder
@@ -266,3 +325,11 @@ def register_model_override(name, obj):
     setattr(models, name, obj)
     models.all_tables[name] = obj
     views.users.crud_routes.orm_model = obj
+
+
+async def get_plugin_key_by_lookup(lookup_name, lookup_org):
+    state = await utils.policies.get_setting(schemes.PluginsState)
+    for plugin_info in list(state.license_keys.values()):
+        if plugin_info["plugin_name"] == lookup_name and plugin_info["plugin_author"] == lookup_org:
+            return plugin_info["license_key"]
+    return None

@@ -61,5 +61,10 @@ async def rates_action(event, event_data):
         await utils.redis.set_task_result(event_data["task_id"], result)
 
 
+@event_handler.on("license_changed")
+async def license_changed(event, event_data):
+    await run_hook("license_changed", event_data["license_key"], event_data["license_info"])
+
+
 event_handler.add_handler("deploy_task", deploy_task)
 event_handler.add_handler("invoice_status", shopify_invoice_update)

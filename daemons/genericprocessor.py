@@ -94,7 +94,7 @@ class BlockchainFeatures(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    async def get_payment_uri(self, req, divisibility, contract=None) -> str:
+    async def get_payment_uri(self, address, amount, divisibility, contract=None) -> str:
         pass
 
     @abstractmethod
@@ -424,8 +424,11 @@ class Wallet:
             d["confirmations"] = await self.coin.get_confirmations(req.tx_hashes[0])
         d[f"amount_{daemon_ctx.get().UNIT}"] = to_wei(req.amount, self.divisibility)
         d["address"] = req.address
-        d["URI"] = await self.coin.get_payment_uri(req, self.divisibility, contract=getattr(self, "contract", None))
+        d["URI"] = await self.get_payment_uri(req.address, req.amount)
         return d
+
+    async def get_payment_uri(self, address, amount):
+        return await self.coin.get_payment_uri(address, amount, self.divisibility, contract=getattr(self, "contract", None))
 
     def get_request(self, key):
         key = self.request_addresses.get(key, key)
@@ -921,6 +924,10 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
     async def get_default_fee(self, tx, wallet=None):
         pass
 
+    @rpc(requires_wallet=True)
+    async def get_payment_uri(self, address, amount, wallet):
+        return await self.wallets[wallet].get_payment_uri(address, amount)
+
     @rpc
     @abstractmethod
     def get_tx_hash(self, tx_data, wallet=None):
@@ -996,6 +1003,16 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
             "synchronized": not await self.coin.is_syncing() and self.synchronized,
             "total_wallets": len(self.wallets),
             "version": self.VERSION,
+        }
+
+    @rpc
+    async def get_key_info(self, key, wallet=None):
+        keystore = self.KEYSTORE_CLASS(key=key)
+        return {
+            "address": keystore.address,
+            "public_key": keystore.public_key,
+            "private_key": keystore.private_key,
+            "seed": keystore.seed,
         }
 
     @rpc
@@ -1101,14 +1118,14 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
 
     @rpc
     @abstractmethod
-    def make_seed(self, nbits=128, language="english", wallet=None):
+    def make_seed(self, nbits=128, language="english", full_info=False, wallet=None):
         pass
 
     @rpc
     def normalizeaddress(self, address, wallet=None):
         return self.coin.normalize_address(address)
 
-    @rpc(requires_wallet=True, requires_network=True)
+    @rpc(requires_network=True)
     @abstractmethod
     async def payto(self, destination, amount, fee=None, feerate=None, gas=None, unsigned=False, wallet=None, *args, **kwargs):
         pass

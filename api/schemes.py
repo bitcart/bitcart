@@ -781,6 +781,7 @@ class LNPayScheme(DisplayModel):
 class EventSystemMessage(DisplayModel):
     event: str
     data: dict
+    for_worker: bool = True
 
 
 class ConfiguratorDomainSettings(DisplayModel):
@@ -884,3 +885,11 @@ class RatesResponse(DisplayModel):
 class EmailVerifyResponse(DisplayModel):
     success: bool
     token: str | None
+
+
+class AddLicenseRequest(CreateModel):
+    license_key: str
+
+
+class PluginsState(DisplayModel):
+    license_keys: dict[str, dict] = {}

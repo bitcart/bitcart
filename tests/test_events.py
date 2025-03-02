@@ -46,11 +46,11 @@ async def test_process_message(event_handler):
     event_handler.add_handler("test_event", handler)
     await events.process_message("test", event_handler)
     assert queue.empty()
-    await events.process_message({"event": "invalid_event", "data": {}}, event_handler)
+    await events.process_message({"event": "invalid_event", "data": {}, "for_worker": False}, event_handler)
     assert queue.empty()
-    await events.process_message({"event": "test_event", "data": {"test": "test"}}, event_handler)
+    await events.process_message({"event": "test_event", "data": {"test": "test"}, "for_worker": False}, event_handler)
     assert queue.empty()
     sample_data = {"param1": 1, "param2": 2}
-    await events.process_message({"event": "test_event", "data": sample_data}, event_handler)
+    await events.process_message({"event": "test_event", "data": sample_data, "for_worker": False}, event_handler)
     assert queue.qsize() == 1
     assert queue.get() == sample_data

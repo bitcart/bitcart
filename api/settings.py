@@ -58,6 +58,7 @@ class Settings(BaseSettings):
     store_plugins_dir: str = Field("data/store_plugins", validation_alias="BITCART_STORE_PLUGINS_DIR")
     daemon_plugins_dir: str = Field("data/daemon_plugins", validation_alias="BITCART_DAEMON_PLUGINS_DIR")
     docker_plugins_dir: str = Field("data/docker_plugins", validation_alias="BITCART_DOCKER_PLUGINS_DIR")
+    api_host: str = Field("localhost:8000", validation_alias="BITCART_HOST")
     admin_host: str = Field("localhost:3000", validation_alias="BITCART_ADMIN_HOST")
     admin_rootpath: str = Field("/", validation_alias="BITCART_ADMIN_ROOTPATH")
     reverseproxy: str = Field("nginx-https", validation_alias="BITCART_REVERSEPROXY")
@@ -84,6 +85,8 @@ class Settings(BaseSettings):
     plugins_schema: dict = {}
     is_worker: bool = False
     sentry_dsn: str | None = Field(None, validation_alias="SENTRY_DSN")
+
+    license_server_url: str = Field("https://licensing.bitcart.ai", validation_alias="LICENSE_SERVER_URL")
 
     model_config = SettingsConfigDict(env_file="conf/.env", extra="ignore")
 
@@ -125,6 +128,11 @@ class Settings(BaseSettings):
         ensure_exists(path)
         return path
 
+    def get_plugin_data_dir(self, plugin_name: str) -> str:
+        path = os.path.join(self.datadir, "plugin_data", plugin_name)
+        ensure_exists(path)
+        return path
+
     @property
     def connection_str(self):
         return f"postgresql://{self.db_user}:{self.db_password}@{self.db_host}:{self.db_port}/{self.db_name}"
@@ -139,6 +147,11 @@ class Settings(BaseSettings):
     def admin_url(self):
         rootpath = "" if self.admin_rootpath == "/" else self.admin_rootpath
         return f"{self.protocol}://{self.admin_host}{rootpath}"
+
+    @property
+    def api_url(self):
+        rootpath = "" if self.root_path == "/" else self.root_path
+        return f"{self.protocol}://{self.api_host}{rootpath}"
 
     @field_validator("enabled_cryptos", mode="before")
     @classmethod

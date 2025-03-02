@@ -12,6 +12,8 @@ from api.constants import VERSION
 def get_plugins():
     plugins = []
     for author in os.listdir(settings.settings.plugins_dir):
+        if not os.path.isdir(os.path.join(settings.settings.plugins_dir, author)):
+            continue
         for plugin in os.listdir(os.path.join(settings.settings.plugins_dir, author)):
             manifest_path = os.path.join(settings.settings.plugins_dir, author, plugin, "manifest.json")
             if not os.path.exists(manifest_path):

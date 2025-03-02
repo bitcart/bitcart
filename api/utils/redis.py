@@ -1,7 +1,8 @@
 import asyncio
 import json
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 
+import redis
 from redis.asyncio.client import PubSub
 
 from api import settings, utils
@@ -32,8 +33,12 @@ async def publish_message(channel, message):
 
 
 async def listen_channel(channel):
-    async for message in channel.listen():
-        yield json.loads(message["data"])
+    try:
+        async for message in channel.listen():
+            with suppress(Exception):
+                yield json.loads(message["data"])
+    except redis.exceptions.ConnectionError:  # pragma: no cover
+        pass
 
 
 async def wait_for_task_result(task_id):  # pragma: no cover

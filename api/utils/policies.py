@@ -6,8 +6,8 @@ from api import models, utils
 T = TypeVar("T")
 
 
-async def get_setting(scheme: T) -> T:
-    name = scheme.__name__.lower()
+async def get_setting(scheme: T, name: str | None = None) -> T:
+    name = name or scheme.__name__.lower()
     item = await utils.database.get_object(
         models.Setting, custom_query=models.Setting.query.where(models.Setting.name == name), raise_exception=False
     )
@@ -17,8 +17,8 @@ async def get_setting(scheme: T) -> T:
     return data
 
 
-async def set_setting(scheme):
-    name = scheme.__class__.__name__.lower()
+async def set_setting(scheme, name: str | None = None):
+    name = name or scheme.__class__.__name__.lower()
     json_data = scheme.model_dump(exclude_unset=True)
     data = {"name": name, "value": json_data}
     model = await utils.database.get_object(

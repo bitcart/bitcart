@@ -7,6 +7,7 @@ from sqlalchemy import distinct, select
 from api import db, models, settings, utils
 from api.constants import VERSION
 from api.ext.plugins import get_plugins
+from api.ext.tor import get_data as get_tor_data
 from api.logger import get_exception_message, get_logger
 from api.plugins import apply_filters
 
@@ -52,6 +53,7 @@ async def collect_stats():
     return {
         "version": VERSION,
         "hostname": os.getenv("BITCART_HOST", ""),
+        "tor_services": await get_tor_data("anonymous_services_dict", {}, json_decode=True),
         "plugins": plugins,
         "total_invoices": total_invoices,
         "complete_invoices": complete_invoices,

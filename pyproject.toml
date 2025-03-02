@@ -34,6 +34,7 @@ web = [
     "paramiko",
     "psycopg2-binary",
     "pwdlib[bcrypt]",
+    "py-machineid",
     "pydantic-settings",
     "pyotp",
     "python-dateutil",
@@ -43,6 +44,7 @@ web = [
     "sentry-sdk[fastapi]",
     "setuptools",
     "sqlalchemy<1.4",
+    "universalasync",
     "uvicorn[standard]",
 ]
 production = ["gunicorn"]

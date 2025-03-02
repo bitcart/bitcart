@@ -1,6 +1,4 @@
-import inspect
 import secrets
-import sys
 from datetime import timedelta
 
 import pyotp
@@ -33,6 +31,8 @@ UniqueConstraint = db.UniqueConstraint
 
 logger = get_logger(__name__)
 
+all_tables = {}  # Set by the metaclass
+
 
 async def create_relations(model_id, related_ids, key_info):
     data = [{key_info["current_id"]: model_id, key_info["related_id"]: related_id} for related_id in related_ids]
@@ -59,6 +59,9 @@ class BaseModelMeta(ModelType):
                 new_class.__table__ = new_class._init_table(new_class)
             if is_public:  # pragma: no cover
                 new_class.__table__.PUBLIC = True
+            # Register all models in all_tables for validation
+            if name != "BaseModel":  # Don't register the base class itself
+                all_tables[name] = new_class
         return new_class
 
 
@@ -119,8 +122,9 @@ class BaseModel(db.Model, metaclass=BaseModelMeta):
             if col.name in kwargs:
                 # we assume i.e. user_id -> User
                 table_name = col.name.replace("_id", "").capitalize()
+                user_id = getattr(self, "user_id", None)
                 if not await utils.database.get_object(
-                    all_tables[table_name], kwargs[col.name], user_id=self.user_id, raise_exception=False
+                    all_tables[table_name], kwargs[col.name], user_id=user_id, raise_exception=False
                 ):
                     raise exc
 
@@ -746,10 +750,3 @@ class Refund(BaseModel):
     destination = Column(Text)
     user_id = Column(Text, ForeignKey(User.id, ondelete="SET NULL"))
     created = Column(DateTime(True), nullable=False)
-
-
-all_tables = {
-    name: table
-    for (name, table) in inspect.getmembers(sys.modules[__name__], inspect.isclass)
-    if issubclass(table, BaseModel) and table is not BaseModel
-}

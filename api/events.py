@@ -4,7 +4,7 @@ import asyncio
 
 from pydantic import ValidationError
 
-from api import constants, utils
+from api import constants, settings, utils
 
 
 class EventHandler:
@@ -35,6 +35,11 @@ class EventHandler:
     async def process(self, message):
         event = message.event
         data = message.data
+        for_worker = message.for_worker
+        if (
+            for_worker and not settings.settings.is_worker or (not for_worker and settings.settings.is_worker)
+        ):  # pragma: no cover
+            return
         if event not in self.events:
             return
         event_data = self.events[event]
@@ -43,8 +48,8 @@ class EventHandler:
         coros = (handler(event, data) for handler in event_data["handlers"])
         await asyncio.gather(*coros, return_exceptions=False)
 
-    async def publish(self, name, data):
-        await send_message({"event": name, "data": data})
+    async def publish(self, name, data, for_worker=True):
+        await send_message({"event": name, "data": data, "for_worker": for_worker})
 
 
 async def process_message(message, custom_event_handler=None):
@@ -94,6 +99,9 @@ event_handler = EventHandler(
         },
         "rates_action": {
             "params": {"func", "args", "task_id"},
+        },
+        "license_changed": {
+            "params": {"license_key", "license_info"},
         },
     }
 )

@@ -19,3 +19,4 @@ modules/*
 !modules/.gitkeep
 venv
 .prettiercache
+.DS_Store
