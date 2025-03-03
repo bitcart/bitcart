@@ -167,11 +167,17 @@ async def update_confirmations(invoice, method, confirmations, tx_hashes=None, s
     await update_status(invoice, status, method, tx_hashes, sent_amount)
 
 
+async def get_request(coin, method):
+    if result := await apply_filters("get_request", None, coin, method):
+        return result
+    return await coin.get_request(method.lookup_field)
+
+
 async def get_confirmations(method, wallet):
     coin = await settings.settings.get_coin(
         method.currency, {"xpub": wallet.xpub, "contract": method.contract, **wallet.additional_xpub_data}
     )
-    invoice_data = await coin.get_request(method.lookup_field)
+    invoice_data = await get_request(coin, method)
     return min(
         constants.MAX_CONFIRMATION_WATCH, invoice_data.get("confirmations", 0)
     )  # don't store arbitrary number of confirmations
@@ -358,7 +364,7 @@ async def check_pending(currency, process_func=process_electrum_status):
                 if method.lightning:
                     invoice_data = await coin.get_invoice(method.lookup_field)
                 else:
-                    invoice_data = await coin.get_request(method.lookup_field)
+                    invoice_data = await get_request(coin, method)
             except errors.RequestNotFoundError:  # invoice dropped from mempool
                 await update_status(invoice, InvoiceStatus.INVALID, set_exception_status=InvoiceExceptionStatus.FAILED_CONFIRM)
                 continue
