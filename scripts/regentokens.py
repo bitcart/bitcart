@@ -31,9 +31,9 @@ def get_next_data(resp):
 def get_token_address(slug, data, filters):
     if not filters:
         return data["platform.token_address"]
-    platforms = get_next_data(requests.get(f"https://coinmarketcap.com/currencies/{slug}"))["props"]["pageProps"]["info"][
-        "platforms"
-    ]
+    platforms = get_next_data(requests.get(f"https://coinmarketcap.com/currencies/{slug}"))["props"]["pageProps"]["detailRes"][
+        "detail"
+    ]["platforms"]
     for platform in platforms:
         if platform.items() >= filters.items():
             return platform["contractAddress"]
