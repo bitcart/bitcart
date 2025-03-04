@@ -415,6 +415,8 @@ class XMRDaemon(BlockProcessorDaemon):
         self.coin = XMRFeatures(provider)
 
     async def shutdown_coin(self, final=False, archive_only=False):
+        if not hasattr(self, "coin"):
+            return
         await self.coin.rpc.rpc.stop()
 
     def get_default_server_url(self):

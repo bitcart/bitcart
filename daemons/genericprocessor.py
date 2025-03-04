@@ -12,6 +12,7 @@ from contextvars import ContextVar
 from dataclasses import dataclass, field
 from decimal import Decimal
 
+from aiohttp import ClientSession
 from base import BaseDaemon
 from storage import ConfigDB as StorageConfigDB
 from storage import JSONEncoder as StorageJSONEncoder
@@ -561,6 +562,7 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
     latest_height = StoredProperty("latest_height", -1)
 
     def __init__(self):
+        self._should_check_seed_server = False
         super().__init__()
         daemon_ctx.set(self)
         self.latest_blocks = deque(maxlen=self.MAX_SYNC_BLOCKS)
@@ -577,8 +579,10 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
         self.loop = None
         self.synchronized = False
 
-    async def update_server(self):
+    async def update_server(self, start_new=True):
         self.SERVER = self.SERVER.split(",")
+        if not start_new:
+            return
         await self.shutdown_coin()
         await self.create_coin()
 
@@ -596,7 +600,10 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
 
     def load_env(self):
         super().load_env()
+        self.SEED_SERVER = self.env("SEED_SERVER", default="")
         self.SERVER = self.env("SERVER", default=self.get_default_server_url()).split(",")
+        if len(self.SERVER) == 1 and self.SERVER[0] == self.SEED_SERVER:
+            self._should_check_seed_server = True
         max_sync_hours = self.env("MAX_SYNC_HOURS", cast=int, default=1)
         self.MAX_SYNC_BLOCKS = max_sync_hours * self.DEFAULT_MAX_SYNC_BLOCKS
         self.NO_SYNC_WAIT = self.env("EXPERIMENTAL_NOSYNC", cast=bool, default=False)
@@ -613,11 +620,41 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
 
     async def on_startup(self, app):
         await super().on_startup(app)
-        await self.create_coin()
+        if not await self.maybe_update_seed_server():
+            await self.create_coin()
         self.loop = asyncio.get_event_loop()
         if self.latest_height == -1:
             self.latest_height = await self.coin.get_block_number()
         self.loop.create_task(self.process_pending())
+        self.loop.create_task(self.update_seed_servers())
+
+    async def maybe_update_seed_server(self, start_new=True):
+        if self.SEED_SERVER and self._should_check_seed_server:
+            try:
+                async with ClientSession() as session, session.get(f"{self.SEED_SERVER}/{self.name.lower()}") as response:
+                    response.raise_for_status()
+                    self.SERVER = await response.json()
+                    if hasattr(self, "ARCHIVE_SERVER") and getattr(self, "_should_archive_seed_server", False):
+                        self.ARCHIVE_SERVER = self.SERVER
+                        await self.update_archive_server(start_new=start_new)
+                    await self.update_server(start_new=start_new)
+                    return True
+            except Exception:
+                if self.VERBOSE:
+                    print("Error updating seed servers:")
+                    print(traceback.format_exc())
+                self.SERVER = self.get_default_server_url()
+                if hasattr(self, "ARCHIVE_SERVER") and getattr(self, "_should_archive_seed_server", False):
+                    self.ARCHIVE_SERVER = self.SERVER
+                    await self.update_archive_server(start_new=start_new)
+                await self.update_server(start_new=start_new)
+                return True
+        return False
+
+    async def update_seed_servers(self):
+        while self.running:
+            await self.maybe_update_seed_server()
+            await asyncio.sleep(60 * 60)
 
     def get_fx_contract(self, contract):
         return contract.lower()

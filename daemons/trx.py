@@ -274,6 +274,8 @@ class TRXDaemon(ETHDaemon):
         self.coin = TRXFeatures(AsyncTron(provider, conf={"fee_limit": DEFAULT_FEE_LIMIT}))
 
     async def shutdown_coin(self, final=False, archive_only=False):
+        if not hasattr(self, "coin"):
+            return
         await self.coin.web3.provider.rpc.stop()
 
     async def check_contract_logs(self, contract, divisibility, from_block=None, to_block=None):
