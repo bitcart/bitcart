@@ -383,6 +383,7 @@ async def test_management_commands(client: TestClient, log_file: str, token: str
     assert (await client.post("/manage/update", headers={"Authorization": f"Bearer {limited_token}"})).status_code == 403
     assert (await client.post("/manage/update", headers={"Authorization": f"Bearer {token}"})).status_code == 200
     assert (await client.post("/manage/restart", headers={"Authorization": f"Bearer {token}"})).status_code == 200
+    assert (await client.post("/manage/plugin-reload", headers={"Authorization": f"Bearer {token}"})).status_code == 200
     assert (await client.post("/manage/cleanup/images", headers={"Authorization": f"Bearer {token}"})).status_code == 200
     assert (await client.post("/manage/cleanup/logs", headers={"Authorization": f"Bearer {token}"})).status_code == 200
     assert (await client.post("/manage/cleanup", headers={"Authorization": f"Bearer {token}"})).status_code == 200

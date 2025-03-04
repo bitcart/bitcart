@@ -24,6 +24,14 @@ async def restart_server(user: models.User = Security(utils.authorization.auth_d
     return {"status": "error", "message": "Not running in docker"}
 
 
+@router.post("/plugin-reload")
+async def plugin_reload(user: models.User = Security(utils.authorization.auth_dependency, scopes=["server_management"])):
+    if settings.settings.docker_env:  # pragma: no cover
+        await run_hook("plugin_reload")
+        return utils.host.run_host_output("./start.sh", "Successfully started plugin reload process!")
+    return {"status": "error", "message": "Not running in docker"}
+
+
 @router.post("/update")
 async def update_server(user: models.User = Security(utils.authorization.auth_dependency, scopes=["server_management"])):
     if settings.settings.docker_env:  # pragma: no cover
