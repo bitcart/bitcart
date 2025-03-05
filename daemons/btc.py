@@ -443,7 +443,16 @@ class BTCDaemon(BaseDaemon):
 
     @rpc
     def validatekey(self, key, wallet=None):
-        return self.electrum.keystore.is_master_key(key) or self.electrum.keystore.is_seed(key)
+        try:
+            if self.electrum.keystore.is_master_key(key):
+                self.electrum.keystore.from_master_key(key)
+                return True
+            if self.electrum.keystore.is_seed(key):
+                self.electrum.keystore.from_seed(key, None)
+                return True
+        except Exception:
+            return False
+        return False
 
     @rpc(requires_wallet=True)
     def get_updates(self, wallet):
