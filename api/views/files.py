@@ -55,7 +55,7 @@ async def delete_file(item: schemes.DisplayFile, user: schemes.User) -> schemes.
 async def handle_file(model_id: str):
     item = await utils.database.get_object(models.File, model_id)
     final_name = os.path.basename(get_file_path(item))
-    return RedirectResponse(f"/files/localstorage/{final_name}")
+    return RedirectResponse(f"{settings.settings.api_url}/files/localstorage/{final_name}")
 
 
 async def batch_file_action(query, batch_settings: schemes.BatchSettings, user: schemes.User):

@@ -1757,7 +1757,7 @@ async def test_files_functionality(client: TestClient, token, limited_user):
     assert os.path.exists(os.path.join(settings.settings.files_dir, stored_fname))
     assert (
         await client.get(f"/files/handle/{file_id}")
-    ).next_request.url == f"http://testserver/files/localstorage/{stored_fname}"
+    ).next_request.url == f"{settings.settings.api_url}/files/localstorage/{stored_fname}"
     assert (await client.delete(f"/files/{file_id}", headers={"Authorization": f"Bearer {token}"})).status_code == 200
     assert not os.path.exists(os.path.join(settings.settings.files_dir, stored_fname))
     assert (
