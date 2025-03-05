@@ -9,7 +9,9 @@
     },
     "bch": {
         "mainnet": "https://blockexplorer.one/bitcoin-cash/mainnet/tx/{}",
-        "testnet": "https://blockexplorer.one/bitcoin-cash/testnet/tx/{}"
+        "testnet": "https://blockexplorer.one/bitcoin-cash/testnet/tx/{}",
+        "testnet4": "https://testnet4.chaingraph.cash/tx/{}",
+        "chipnet": "https://chipnet.chaingraph.cash/tx/{}"
     },
     "xmr": {
         "mainnet": "",

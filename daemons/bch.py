@@ -23,6 +23,10 @@ class BCHDaemon(BTCDaemon):
         self.NETWORK_MAPPING = {
             "mainnet": self.electrum.networks.set_mainnet,
             "testnet": self.electrum.networks.set_testnet,
+            "testnet4": self.electrum.networks.set_testnet4,
+            "scalenet": self.electrum.networks.set_scalenet,
+            "regtest": self.electrum.networks.set_regtest,
+            "chipnet": self.electrum.networks.set_chipnet,
         }
 
     def add_wallet_to_command(self, wallet, req_method, exec_method, **kwargs):
