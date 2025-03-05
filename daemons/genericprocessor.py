@@ -643,12 +643,13 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
                 if self.VERBOSE:
                     print("Error updating seed servers:")
                     print(traceback.format_exc())
-                self.SERVER = self.get_default_server_url()
-                if hasattr(self, "ARCHIVE_SERVER") and getattr(self, "_should_archive_seed_server", False):
-                    self.ARCHIVE_SERVER = self.SERVER
-                    await self.update_archive_server(start_new=start_new)
-                await self.update_server(start_new=start_new)
-                return True
+                if len(self.SERVER) == 1 and self.SERVER[0] == self.SEED_SERVER:
+                    self.SERVER = self.get_default_server_url()
+                    if hasattr(self, "ARCHIVE_SERVER") and getattr(self, "_should_archive_seed_server", False):
+                        self.ARCHIVE_SERVER = self.SERVER
+                        await self.update_archive_server(start_new=start_new)
+                    await self.update_server(start_new=start_new)
+                    return True
         return False
 
     async def update_seed_servers(self):
