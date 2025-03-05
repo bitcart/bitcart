@@ -559,6 +559,8 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
     coin: BlockchainFeatures  # set by create_coin()
     UNIT: str
 
+    ARCHIVE_SUPPORTED = False
+
     latest_height = StoredProperty("latest_height", -1)
 
     def __init__(self):
@@ -634,8 +636,11 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
             try:
                 async with ClientSession() as session, session.get(f"{self.SEED_SERVER}/{self.name.lower()}") as response:
                     response.raise_for_status()
-                    self.SERVER = await response.json()
-                    if hasattr(self, "ARCHIVE_SERVER") and getattr(self, "_should_archive_seed_server", False):
+                    new_servers = await response.json()
+                    if new_servers.split(",") == self.SERVER:
+                        return False
+                    self.SERVER = new_servers
+                    if self.ARCHIVE_SUPPORTED and getattr(self, "_should_archive_seed_server", False):
                         self.ARCHIVE_SERVER = self.SERVER
                         await self.update_archive_server(start_new=start_new)
                     await self.update_server(start_new=start_new)

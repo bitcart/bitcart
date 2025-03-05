@@ -242,6 +242,8 @@ class TRXDaemon(ETHDaemon):
     EIP1559_SUPPORTED = False
     DEFAULT_MAX_SYNC_BLOCKS = 300  # (60/3)=20*60 (a block every 3 seconds, keep up to 15 minutes of data)
 
+    ARCHIVE_SUPPORTED = False
+
     CONTRACT_TYPE = AsyncContract
 
     KEYSTORE_CLASS = KeyStore
@@ -256,11 +258,12 @@ class TRXDaemon(ETHDaemon):
         self.DECIMALS_CACHE = {}
 
     async def create_coin(self, archive=False):
-        for idx in range(len(self.SERVER)):
-            if not self.SERVER[idx].endswith("/"):
-                self.SERVER[idx] += "/"
+        server_list = self.SERVER[:]
+        for idx in range(len(server_list)):
+            if not server_list[idx].endswith("/"):
+                server_list[idx] += "/"
         server_providers = []
-        for server in self.SERVER:
+        for server in server_list:
             server_provider = TronRPCProvider(server)
             server_provider.make_request = exception_retry_middleware(
                 server_provider.make_request,

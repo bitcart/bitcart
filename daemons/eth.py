@@ -354,6 +354,8 @@ class ETHDaemon(BlockProcessorDaemon):
 
     CONTRACT_TYPE = AsyncContract
 
+    ARCHIVE_SUPPORTED = True
+
     def __init__(self):
         self._should_archive_seed_server = False
         super().__init__()
