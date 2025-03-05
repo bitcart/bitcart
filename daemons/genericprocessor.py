@@ -601,6 +601,7 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
     def load_env(self):
         super().load_env()
         self.SEED_SERVER = self.env("SEED_SERVER", default="")
+        self.SEED_SERVER_REFRESH_INTERVAL = self.env("SEED_SERVER_REFRESH_INTERVAL", cast=int, default=60 * 60)
         self.SERVER = self.env("SERVER", default=self.get_default_server_url()).split(",")
         if len(self.SERVER) == 1 and self.SERVER[0] == self.SEED_SERVER:
             self._should_check_seed_server = True
@@ -655,7 +656,7 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
     async def update_seed_servers(self):
         while self.running:
             await self.maybe_update_seed_server()
-            await asyncio.sleep(60 * 60)
+            await asyncio.sleep(self.SEED_SERVER_REFRESH_INTERVAL)
 
     def get_fx_contract(self, contract):
         return contract.lower()
