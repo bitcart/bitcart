@@ -2,6 +2,133 @@
 
 ## Latest changes
 
+## 0.9.0.0
+
+### The long-awaited release
+
+After almost 2 years, we now have a new release. It's not like we had no changes, we had over 200 commits of changes.
+
+The thing is, after addition of `./install-master.sh` script, it was sometimes easier to just run it without issuing a release.
+
+But now it's the right time to make all new users receive proper Bitcart version by default
+
+### ETH payments plugin
+
+As you may probably know, ETH payments is a complex topic. After years of research, we've checked all solutions available.
+
+Bitcart by default uses detection of incoming payments by asking for address of the sender beforehand.
+
+This works well detection-wise, but provides bad UX especially because exchange users can't send you payments. It doesn't require paying any network fees, but UX is suboptimal.
+
+That's why we have created a plugin which allows to make UX the best possible, and also save on network fees more than any solution existing.
+
+Check out plugins marketplace in your admin panel to get the plugin!
+
+### Plugins marketplace
+
+Before this release, plugins were installed manually, often shared as files in our community.
+
+Now, all plugins are listed in your admin panel's plugins page, and you can install it with a single click! (and another click to reload plugins).
+
+Also marketplace added the licensing server, which allows us to sell paid plugins and make it possible to make Bitcart development sustainable for many-many years.
+
+### Seed server in daemons
+
+Another issue that has occurred during years of helping users was that, some RPCs for non-BTC-based coins are unreliable. Sometimes they get closed, or it hits rate limits.
+
+And because of that, many users complained about X coin not running error. Which means we would have to forward the same message over and over again because we can't instantly update RPC url in all instances quickly.
+
+So now we've launched the seed server at https://seed-server.bitcart.ai (e.g. https://seed-server.bitcart.ai/eth)
+
+By default daemons are configured to use the seed server, and every hour (configurable) it will check for updates in server list and update it in runtime.
+
+Which means, if any issues occur, in at most 1 hour your daemons will be working properly.
+
+It allowed us to insert some servers we didn't want to commit to bitcart repositories, which means better RPC quality by default as well.
+
+If you want to opt out of that behaviour, you just need to set `COIN_SERVER` to some specific RPC url not equal to seed server URL, and it will work the old way.
+
+### Daemons RPC multiple providers support
+
+As an additional feature to the daemons, you can now configure multiple RPC servers per coin. When sending requests, if one RPC fails, it tries the next from the list. If one RPC fails too many times, the default RPC for next requests is switched to the next RPC in the list as well.
+
+You can set multiple servers via `COIN_SERVER=server1,server2,server3`. But note that by default seed server is used, which already provides multiple RPC urls for most coins.
+
+### Support using a separate archive node for internal transactions
+
+For ETH-based coins, the issue was that bitcart actually wasn't parsing all transactions existing. For example some exchanges like Coinbase may use internal transactions sometimes. Internal transactions are special type which isn't returned by any of the default RPCs in any API call. It requires calling a special method which isn't available in most places.
+
+But if you do have access to one, you can set `COIN_ARCHIVE_SERVER` and if the server supports tracing, it will also parse internal transactions.
+
+Because it's a separate server it is used only for tracing calls, because those RPCs are rare and we really don't want to use their total requests limit.
+
+It is assumed that `COIN_SERVER` is a fast, almost-unlimited server which can serve many requests we have, while `COIN_ARCHIVE_SERVER` is used only for it's main purpose.
+
+### Better notification providers
+
+We've replaced the old notifications library with Apprise, which allows to use a variety of different notification providers.
+
+Now you can even send SMS if you want to.
+
+**NOTE**: you may need to re-check your notification provider settings as data format has changed.
+
+### New captcha provider
+
+Now you can use Cloudflare Turnstile as a captcha provider, which is easier to use for end users. HCaptcha isn't removed, and now you can switch between different options.
+
+### Optional Sentry integration
+
+If you want to use Sentry for error tracking, you can now do so by setting `BITCART_SENTRY_DSN` environment variable.
+
+### Better email settings
+
+Before it was confusing to configure email servers with the "SSL/TLS" switch, which was not reflecting what it actually did. Now you can choose between a list of auth modes.
+
+### Other changes
+
+There are too many changes to list, but here's some of them:
+
+- Payment ID field to invoices for better matching of paid methods
+- Add favicon to API docs
+- New commands in daemon: `rescan_blocks`, `batch_load`
+- Support for one-time calls in xpub data. This allows to execute request and close wallet right away.
+- Refactored email utilities
+- Better email verification on sign up
+- Refactored schemes with Python 3.9+ type hints
+- Upgraded to Pydantic v2
+- Changed from passlib to pwdlib
+- Require Python 3.11+ (with Python 3.12 support)
+- Use Ruff for linting and formatting
+- Use uv instead of pip-compile
+- Use human-readable migration names
+- Renamed alembic folder to migrations
+- Upgraded all dependencies
+- Electrums upgrade
+- Fixed TRX contract sending
+- Fixed processing of invoices dropped from mempool
+- Fixed explorers for BCH
+- Fixed DKIM signing of emails
+- Fixed USDT exchange rate when only Tron is enabled
+- Fixed network fee estimation
+- Fixed SMTP port 465 issues
+- Fixed contract getting
+- Fixed BNB payouts
+- Fixed currency-api link
+- Fixed HTML mode in notifications
+- Fixed ETH max amount payouts
+- Fixed quotes with more than one underscore
+- Fixed verification emails sending
+- Fixed XMR amount formatting for underpaid detection
+- Fixed TRX daemon startup
+- Fixed setting fields to empty string
+- Fixed sign up when email is required
+- Fixed XMR invoices stuck on paid
+- More robust handling of Decimals
+- Allow to edit global templates
+- Optimize daemon shutdown
+- Reduce log spam in notifications
+- Add BCH testnet4 and chipnet support
+
 ## 0.8.0.0
 
 ### Name change: from BitcartCC to Bitcart
