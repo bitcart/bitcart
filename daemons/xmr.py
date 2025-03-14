@@ -211,9 +211,6 @@ class XMRFeatures(BlockchainFeatures):
     def normalize_address(self, address):
         return address
 
-    async def get_peer_list(self):
-        return []
-
     async def get_payment_uri(self, address, amount, divisibility, contract=None):
         base_url = f"monero:{address}"
         if amount:

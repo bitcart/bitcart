@@ -91,10 +91,6 @@ class BlockchainFeatures(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def get_peer_list(self) -> list:
-        pass
-
-    @abstractmethod
     async def get_payment_uri(self, address, amount, divisibility, contract=None) -> str:
         pass
 
@@ -1031,10 +1027,6 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
         path = self.get_datadir()
         if not await self.coin.is_connected():
             return {"connected": False, "path": path, "version": self.VERSION}
-        try:
-            nodes = len(await self.coin.get_peer_list())
-        except Exception:
-            nodes = 0
         numblocks = await self.coin.get_block_number()
         return {
             "blockchain_height": self.latest_height,
@@ -1043,7 +1035,7 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
             "path": path,
             "server": self.coin.current_server(),
             "server_height": numblocks,
-            "spv_nodes": nodes,
+            "spv_nodes": 0,
             "synchronized": not await self.coin.is_syncing() and self.synchronized,
             "total_wallets": len(self.wallets),
             "version": self.VERSION,
@@ -1130,7 +1122,7 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
 
     @rpc(requires_network=True)
     async def list_peers(self, wallet=None):
-        return self.coin.to_dict(await self.coin.get_peer_list())
+        return []
 
     @rpc(requires_wallet=True, requires_network=True)
     async def list_requests(self, pending=False, expired=False, paid=False, wallet=None):

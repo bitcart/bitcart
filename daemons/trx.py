@@ -133,9 +133,6 @@ class TRXFeatures(BlockchainFeatures):
     def normalize_address(self, address):
         return keys.to_base58check_address(address)
 
-    async def get_peer_list(self):
-        return await self.web3.list_nodes()
-
     async def get_payment_uri(self, address, amount, divisibility, contract=None):
         return f"tron:{address}"
 

@@ -145,9 +145,6 @@ class ETHFeatures(BlockchainFeatures):
     def normalize_address(self, address):
         return AsyncWeb3.to_checksum_address(address)
 
-    async def get_peer_list(self):
-        return await self.web3.geth.admin.peers()
-
     async def get_payment_uri(self, address, amount, divisibility, contract=None):
         chain_id = await self.chain_id()
         amount_wei = to_wei(amount, divisibility)
