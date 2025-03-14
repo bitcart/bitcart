@@ -99,9 +99,6 @@ class TRXFeatures(BlockchainFeatures):
         params = await self.web3.get_chain_parameters()
         return self.find_chain_param(params, "getEnergyFee", 1)
 
-    async def is_syncing(self):
-        return False
-
     async def get_transaction(self, tx):
         return await self.web3.get_transaction(tx)
 

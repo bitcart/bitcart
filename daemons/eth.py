@@ -115,12 +115,6 @@ class ETHFeatures(BlockchainFeatures):
     async def get_gas_price(self):
         return await self.web3.eth.gas_price
 
-    async def is_syncing(self):
-        try:
-            return await self.web3.eth.syncing
-        except Exception:
-            return False
-
     async def get_transaction(self, tx):
         return await self.web3.eth.get_transaction(tx)
 

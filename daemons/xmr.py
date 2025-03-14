@@ -177,9 +177,6 @@ class XMRFeatures(BlockchainFeatures):
     async def get_gas_price(self):
         return await self.rpc.get_fee_estimate()
 
-    async def is_syncing(self):
-        return False
-
     async def get_transaction(self, tx):
         data = await self.rpc.get_transactions([tx])
         if not data:

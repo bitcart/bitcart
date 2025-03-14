@@ -55,10 +55,6 @@ class BlockchainFeatures(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    async def is_syncing(self) -> bool:
-        pass
-
-    @abstractmethod
     def get_transaction(self, tx) -> dict:
         pass
 
@@ -1025,18 +1021,19 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
     @rpc
     async def getinfo(self, wallet=None):
         path = self.get_datadir()
-        if not await self.coin.is_connected():
+        is_connected = await self.coin.is_connected()
+        if not is_connected:
             return {"connected": False, "path": path, "version": self.VERSION}
         numblocks = await self.coin.get_block_number()
         return {
             "blockchain_height": self.latest_height,
-            "connected": await self.coin.is_connected(),
+            "connected": is_connected,
             "gas_price": await self.getfeerate(),
             "path": path,
             "server": self.coin.current_server(),
             "server_height": numblocks,
             "spv_nodes": 0,
-            "synchronized": not await self.coin.is_syncing() and self.synchronized,
+            "synchronized": self.synchronized,
             "total_wallets": len(self.wallets),
             "version": self.VERSION,
         }
