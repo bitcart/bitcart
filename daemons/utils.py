@@ -204,7 +204,11 @@ def exception_retry_middleware(make_request, errors, verbose, retries=5):
                     await asyncio.sleep(1)
                     continue
                 if verbose:
-                    print(f"Failed after {retries} retries: {get_func_name(make_request)} {args} {kwargs}")
+                    error_msg = (
+                        f"Failed after {retries} retries: {get_func_name(make_request)} {args} {kwargs}"
+                        f" with error:\n{traceback.format_exc()}"
+                    )
+                    print(error_msg)
                 raise
 
     return middleware
