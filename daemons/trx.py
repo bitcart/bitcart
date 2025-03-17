@@ -141,9 +141,7 @@ class TRXFeatures(BlockchainFeatures):
         from_address = self.normalize_address(value["owner_address"])
         if contract["type"] == "TriggerSmartContract":
             contract_address = self.normalize_address(value["contract_address"])
-            try:
-                contract = await daemon_ctx.get().create_web3_contract(contract_address)
-            except Exception:
+            if not (contract := daemon_ctx.get().contracts.get(contract_address)):
                 return
             divisibility = daemon_ctx.get().DECIMALS_CACHE[contract_address]
             data = bytes.fromhex(value["data"])
@@ -275,9 +273,6 @@ class TRXDaemon(ETHDaemon):
             return
         await self.coin.web3.provider.rpc.stop()
 
-    async def check_contract_logs(self, contract, divisibility, from_block=None, to_block=None):
-        pass  # we do it right during block processing
-
     @alru_cache(maxsize=32)
     async def create_web3_contract(self, contract):
         try:
@@ -290,12 +285,6 @@ class TRXDaemon(ETHDaemon):
             return value
         except Exception as e:
             raise Exception("Invalid contract address or non-TRC20 token") from e
-
-    async def start_contract_listening(self, contract):  # we don't start it here
-        return await self.create_web3_contract(contract)
-
-    def get_fx_contract(self, contract):
-        return self.coin.normalize_address(contract)
 
     @rpc(requires_network=True)
     async def add_peer(self, url, wallet=None):

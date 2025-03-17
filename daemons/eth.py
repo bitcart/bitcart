@@ -3,7 +3,7 @@ import contextlib
 import json
 import os
 import traceback
-from collections import deque
+from collections import deque, namedtuple
 from contextvars import ContextVar
 from dataclasses import dataclass
 from decimal import Decimal
@@ -161,6 +161,23 @@ class ETHFeatures(BlockchainFeatures):
     async def process_tx_data(self, data):
         if "to" not in data:
             return
+        if "input" in data and data["input"].hex() != "0x" and (contract := daemon_ctx.get().contracts.get(data["to"])):
+            try:
+                function, args = contract.decode_function_input(data["input"])
+                to_key = daemon_ctx.get().transfer_args.to
+                value_key = daemon_ctx.get().transfer_args.value
+                if function.fn_name != "transfer" or to_key not in args or value_key not in args:
+                    return
+                return Transaction(
+                    str(data["hash"].hex()),
+                    data["from"],
+                    args[to_key],
+                    args[value_key],
+                    contract.address,
+                    contract.divisibility,
+                )
+            except Exception:
+                return
         return Transaction(str(data["hash"].hex()), data["from"], data["to"], data["value"])
 
     def find_all_trace_tx_outputs(self, tx_hash, from_addr, debug_data, depth=0):
@@ -304,22 +321,14 @@ class Wallet(BaseWallet):
         if self.contract and not self._token_fetched:
             await self.fetch_token_info()
 
-    async def _start_process_pending(self, blocks, current_height):
-        await super()._start_process_pending(blocks, current_height)
-        if self.contract:
-            # process token transactions
-            await daemon_ctx.get().check_contract_logs(
-                self.contract,
-                self.divisibility,
-                from_block=self.latest_height + 1,
-                to_block=min(self.latest_height + daemon_ctx.get().MAX_SYNC_BLOCKS, current_height),
-            )
-
     async def balance(self, address=None):
         address = address or self.address
         if self.contract:
             return from_wei(await daemon_ctx.get().readcontract(self.contract, "balanceOf", address), self.divisibility)
         return await self.coin.get_balance(address)
+
+
+TransferParams = namedtuple("TransferParams", ["to", "value"])
 
 
 class ETHDaemon(BlockProcessorDaemon):
@@ -352,8 +361,14 @@ class ETHDaemon(BlockProcessorDaemon):
         super().__init__()
         self.env_update_hooks = {"server": self.update_server, "archive_server": self.update_archive_server}
         self.contracts = {}
-        self.contract_heights = self.config.get_dict("contract_heights")
         self.contract_cache = {"decimals": {}, "symbol": {}}
+        self.transfer_args = self.parse_transfer_abi_args()
+
+    def parse_transfer_abi_args(self):
+        for obj in self.ABI:
+            if obj["name"] == "transfer" and obj["type"] == "function":
+                return TransferParams(obj["inputs"][0]["name"], obj["inputs"][1]["name"])
+        raise Exception("Transfer function not found in ABI")
 
     async def update_archive_server(self, start_new=True):
         self.ARCHIVE_SERVER = self.ARCHIVE_SERVER.split(",")
@@ -417,28 +432,6 @@ class ETHDaemon(BlockProcessorDaemon):
                     print(f"Error processing debug trace for {block_number}:")
                     print(traceback.format_exc())
 
-    async def check_contract_logs(self, contract, divisibility, from_block=None, to_block=None):
-        try:
-            for tx_data in await contract.events.Transfer.get_logs(fromBlock=from_block, toBlock=to_block):
-                try:
-                    tx = Transaction(
-                        str(tx_data["transactionHash"].hex()),
-                        tx_data["args"]["from"],
-                        tx_data["args"]["to"],
-                        tx_data["args"]["value"],
-                        contract.address,
-                        divisibility,
-                    )
-                    await self.process_transaction(tx)
-                except Exception:
-                    if self.VERBOSE:
-                        print(f"Error processing transaction {tx_data['transactionHash'].hex()}:")
-                        print(traceback.format_exc())
-        except Exception:
-            if self.VERBOSE:
-                print(f"Error getting logs on contract {contract.address}:")
-                print(traceback.format_exc())
-
     async def create_coin(self, archive=False):
         server_providers = []
         server_list = self.ARCHIVE_SERVER if archive else self.SERVER
@@ -488,41 +481,17 @@ class ETHDaemon(BlockProcessorDaemon):
         if contract in self.contracts:
             self.wallets[wallet].contract = self.contracts[contract]
             return
-        if contract not in self.contract_heights:
-            self.contract_heights[contract] = await self.coin.get_block_number()
-        self.contracts[contract] = await self.start_contract_listening(contract)
+        self.contracts[contract] = await self.create_web3_contract(contract)
         self.wallets[wallet].contract = self.contracts[contract]
         await self.wallets[wallet].fetch_token_info()
 
-    async def start_contract_listening(self, contract):
-        contract_obj = await self.create_web3_contract(contract)
-        divisibility = await self.readcontract(contract_obj, "decimals")
-        self.loop.create_task(self.check_contracts(contract_obj, divisibility))
-        return contract_obj
-
     async def create_web3_contract(self, contract):
         try:
-            return self.coin.web3.eth.contract(address=contract, abi=self.ABI)
+            contract_obj = self.coin.web3.eth.contract(address=contract, abi=self.ABI)
+            contract_obj.divisibility = await self.readcontract(contract_obj, "decimals")
+            return contract_obj
         except Exception as e:
             raise Exception("Invalid contract address or non-ERC20 token") from e
-
-    async def check_contracts(self, contract, divisibility):
-        while self.running:
-            try:
-                current_height = await self.coin.get_block_number()
-                if current_height > self.contract_heights[contract.address]:
-                    await self.check_contract_logs(
-                        contract,
-                        divisibility,
-                        from_block=self.contract_heights[contract.address] + 1,
-                        to_block=min(self.contract_heights[contract.address] + self.MAX_SYNC_BLOCKS, current_height),
-                    )
-                    self.contract_heights[contract.address] = current_height
-            except Exception:
-                if self.VERBOSE:
-                    print("Error processing contract logs:")
-                    print(traceback.format_exc())
-            await asyncio.sleep(self.BLOCK_TIME)
 
     def _process_param(self, wallet, extra_params, key):
         if key in extra_params:

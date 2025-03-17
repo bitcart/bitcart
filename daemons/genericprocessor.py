@@ -626,6 +626,7 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
     async def maybe_update_seed_server(self, start_new=True):
         if self.SEED_SERVER and self._should_check_seed_server:
             try:
+                # TODO: exponential backoff
                 async with ClientSession() as session, session.get(f"{self.SEED_SERVER}/{self.name.lower()}") as response:
                     response.raise_for_status()
                     new_servers = await response.json()
@@ -654,9 +655,6 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
         while self.running:
             await self.maybe_update_seed_server()
             await asyncio.sleep(self.SEED_SERVER_REFRESH_INTERVAL)
-
-    def get_fx_contract(self, contract):
-        return contract.lower()
 
     async def process_transaction(self, tx):
         if tx.divisibility is None:
