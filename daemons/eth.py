@@ -95,6 +95,9 @@ class EthereumRPCProvider(AbstractRPCProvider, AsyncWeb3.AsyncHTTPProvider):
         return await self.send_single_request(ETHRPC.web3_clientVersion, [])
 
 
+RPC_SOURCE_URL = "infura.io"
+
+
 class ETHFeatures(BlockchainFeatures):
     web3: AsyncWeb3
     MAX_TRACE_DEPTH = 8
@@ -102,6 +105,9 @@ class ETHFeatures(BlockchainFeatures):
     def __init__(self, web3):
         self.web3 = web3
         self.get_block_safe = exception_retry_middleware(self.get_block, (BlockNotFound,), daemon_ctx.get().VERBOSE)
+        self.get_block_receipts_safe = exception_retry_middleware(
+            self.get_block_receipts, (BlockNotFound,), daemon_ctx.get().VERBOSE
+        )
         self.get_tx_receipt_safe = exception_retry_middleware(
             self.get_tx_receipt, (TransactionNotFound,), daemon_ctx.get().VERBOSE
         )
@@ -127,8 +133,20 @@ class ETHFeatures(BlockchainFeatures):
     async def get_block(self, block, *args, **kwargs):
         return await self.web3.eth.get_block(block, *args, **kwargs)
 
+    async def get_block_receipts(self, block):
+        return await self.web3.manager.coro_request("eth_getBlockReceipts", [hex(block)])
+
     async def get_block_txes(self, block):
-        return (await self.get_block_safe(block, full_transactions=True))["transactions"]
+        txes = (await self.get_block_safe(block, full_transactions=True))["transactions"]
+        try:
+            block_receipts = await self.get_block_receipts_safe(block)
+            block_receipts = {x["transactionHash"]: x for x in block_receipts}
+        except Exception:
+            return txes
+        for tx in txes:
+            with contextlib.suppress(Exception):
+                tx["status"] = block_receipts[self.get_tx_hash(tx)]["status"]
+        return txes
 
     async def chain_id(self):
         return await self.web3.eth.chain_id
@@ -160,6 +178,8 @@ class ETHFeatures(BlockchainFeatures):
 
     async def process_tx_data(self, data):
         if "to" not in data:
+            return
+        if "status" in data and data["status"] == "0x0":
             return
         if "input" in data and data["input"].hex() != "0x" and (contract := daemon_ctx.get().contracts.get(data["to"])):
             try:
@@ -247,7 +267,7 @@ async def async_http_retry_request_middleware(make_request, w3):
 
 
 RPC_ORIGIN = "metamask"
-RPC_DEST = "metamask"
+RPC_DEST = "internal"
 
 
 @dataclass
@@ -442,13 +462,10 @@ class ETHDaemon(BlockProcessorDaemon):
         server_list = self.ARCHIVE_SERVER if archive else self.SERVER
         for server in server_list:
             # optimize requests by using correct headers
-            provider = EthereumRPCProvider(
-                server,
-                request_kwargs={
-                    "timeout": 5 * 60,
-                    "headers": {f"{RPC_SOURCE}-Source": f"{RPC_ORIGIN}/{RPC_DEST}"},
-                },
-            )
+            request_kwargs = {"timeout": 5 * 60}
+            if RPC_SOURCE_URL in server:
+                request_kwargs["headers"] = {f"{RPC_SOURCE}-Source": f"{RPC_ORIGIN}/{RPC_DEST}"}
+            provider = EthereumRPCProvider(server, request_kwargs=request_kwargs)
             provider.middlewares = [async_http_retry_request_middleware]
             server_providers.append(provider)
         provider = MultipleProviderRPC(server_providers)
