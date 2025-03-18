@@ -193,7 +193,7 @@ class ETHFeatures(BlockchainFeatures):
     def find_all_trace_outputs(self, debug_data):
         result = []
         for tx in debug_data:
-            if tx["result"]["input"] != "0x" and tx["result"]["to"] is not None:
+            if tx["result"]["input"] != "0x" and tx["result"].get("to") is not None:
                 try:
                     self.web3.eth.contract(
                         address=self.normalize_address(tx["result"]["to"]), abi=daemon_ctx.get().ABI
