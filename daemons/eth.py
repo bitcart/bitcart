@@ -166,11 +166,16 @@ class ETHFeatures(BlockchainFeatures):
                 function, args = contract.decode_function_input(data["input"])
                 to_key = daemon_ctx.get().transfer_args.to
                 value_key = daemon_ctx.get().transfer_args.value
-                if function.fn_name != "transfer" or to_key not in args or value_key not in args:
+                if (
+                    (function.fn_name != "transfer" and function.fn_name != "transferFrom")
+                    or to_key not in args
+                    or value_key not in args
+                ):
                     return
+                from_addr = data["from"] if function.fn_name == "transfer" else args[daemon_ctx.get().transfer_args.from_addr]
                 return Transaction(
                     str(data["hash"].hex()),
-                    data["from"],
+                    from_addr,
                     args[to_key],
                     args[value_key],
                     contract.address,
@@ -328,7 +333,7 @@ class Wallet(BaseWallet):
         return await self.coin.get_balance(address)
 
 
-TransferParams = namedtuple("TransferParams", ["to", "value"])
+TransferParams = namedtuple("TransferParams", ["from_addr", "to", "value"])
 
 
 class ETHDaemon(BlockProcessorDaemon):
@@ -366,8 +371,8 @@ class ETHDaemon(BlockProcessorDaemon):
 
     def parse_transfer_abi_args(self):
         for obj in self.ABI:
-            if obj["name"] == "transfer" and obj["type"] == "function":
-                return TransferParams(obj["inputs"][0]["name"], obj["inputs"][1]["name"])
+            if obj["name"] == "transferFrom" and obj["type"] == "function":
+                return TransferParams(obj["inputs"][0]["name"], obj["inputs"][1]["name"], obj["inputs"][2]["name"])
         raise Exception("Transfer function not found in ABI")
 
     async def update_archive_server(self, start_new=True):
