@@ -95,9 +95,6 @@ class EthereumRPCProvider(AbstractRPCProvider, AsyncWeb3.AsyncHTTPProvider):
         return await self.send_single_request(ETHRPC.web3_clientVersion, [])
 
 
-RPC_SOURCE_URL = "infura.io"
-
-
 class ETHFeatures(BlockchainFeatures):
     web3: AsyncWeb3
     MAX_TRACE_DEPTH = 8
@@ -462,10 +459,16 @@ class ETHDaemon(BlockProcessorDaemon):
         server_list = self.ARCHIVE_SERVER if archive else self.SERVER
         for server in server_list:
             # optimize requests by using correct headers
-            request_kwargs = {"timeout": 5 * 60}
-            if RPC_SOURCE_URL in server:
-                request_kwargs["headers"] = {f"{RPC_SOURCE}-Source": f"{RPC_ORIGIN}/{RPC_DEST}"}
-            provider = EthereumRPCProvider(server, request_kwargs=request_kwargs)
+            provider = EthereumRPCProvider(
+                server,
+                request_kwargs={
+                    "timeout": 5 * 60,
+                    "headers": {
+                        f"{RPC_SOURCE}-Source": f"{RPC_ORIGIN}/{RPC_DEST}",
+                        "Content-Type": "application/json",
+                    },
+                },
+            )
             provider.middlewares = [async_http_retry_request_middleware]
             server_providers.append(provider)
         provider = MultipleProviderRPC(server_providers)
