@@ -625,30 +625,34 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
 
     async def maybe_update_seed_server(self, start_new=True):
         if self.SEED_SERVER and self._should_check_seed_server:
-            try:
-                # TODO: exponential backoff
-                async with ClientSession() as session, session.get(f"{self.SEED_SERVER}/{self.name.lower()}") as response:
-                    response.raise_for_status()
-                    new_servers = await response.json()
-                    if new_servers.split(",") == self.SERVER:
-                        return False
-                    self.SERVER = new_servers
-                    if self.ARCHIVE_SUPPORTED and getattr(self, "_should_archive_seed_server", False):
-                        self.ARCHIVE_SERVER = self.SERVER
-                        await self.update_archive_server(start_new=start_new)
-                    await self.update_server(start_new=start_new)
-                    return True
-            except Exception:
-                if self.VERBOSE:
-                    print("Error updating seed servers:")
-                    print(traceback.format_exc())
-                if len(self.SERVER) == 1 and self.SERVER[0] == self.SEED_SERVER:
-                    self.SERVER = self.get_default_server_url()
-                    if hasattr(self, "ARCHIVE_SERVER") and getattr(self, "_should_archive_seed_server", False):
-                        self.ARCHIVE_SERVER = self.SERVER
-                        await self.update_archive_server(start_new=start_new)
-                    await self.update_server(start_new=start_new)
-                    return True
+            max_attempts = 7
+            for attempt in range(max_attempts):
+                try:
+                    async with ClientSession() as session, session.get(f"{self.SEED_SERVER}/{self.name.lower()}") as response:
+                        response.raise_for_status()
+                        new_servers = await response.json()
+                        if new_servers.split(",") == self.SERVER:
+                            return False
+                        self.SERVER = new_servers
+                        if self.ARCHIVE_SUPPORTED and getattr(self, "_should_archive_seed_server", False):
+                            self.ARCHIVE_SERVER = self.SERVER
+                            await self.update_archive_server(start_new=start_new)
+                        await self.update_server(start_new=start_new)
+                        return True
+                except Exception:
+                    if self.VERBOSE:
+                        print(f"Error updating seed servers (attempt {attempt + 1}/{max_attempts}):")
+                        print(traceback.format_exc())
+                    if attempt < max_attempts - 1:
+                        await asyncio.sleep(2**attempt)
+                        continue
+                    if len(self.SERVER) == 1 and self.SERVER[0] == self.SEED_SERVER:
+                        self.SERVER = self.get_default_server_url()
+                        if hasattr(self, "ARCHIVE_SERVER") and getattr(self, "_should_archive_seed_server", False):
+                            self.ARCHIVE_SERVER = self.SERVER
+                            await self.update_archive_server(start_new=start_new)
+                        await self.update_server(start_new=start_new)
+                        return True
         return False
 
     async def update_seed_servers(self):
