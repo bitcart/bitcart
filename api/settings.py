@@ -85,6 +85,7 @@ class Settings(BaseSettings):
     plugins_schema: dict = {}
     is_worker: bool = False
     sentry_dsn: str | None = Field(None, validation_alias="SENTRY_DSN")
+    coingecko_apikey: str | None = Field(None, validation_alias="COINGECKO_APIKEY")
 
     license_server_url: str = Field("https://licensing.bitcart.ai", validation_alias="LICENSE_SERVER_URL")
 
