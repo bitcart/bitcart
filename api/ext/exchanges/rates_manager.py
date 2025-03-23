@@ -82,7 +82,11 @@ class RatesManager:
             self.exchanges[name] = exchange_cls(coins, final_contracts)
         try:
             if settings.settings.coingecko_apikey:
-                coingecko_exchanges = await utils.common.send_request("GET", "https://pro-api.coingecko.com/api/v3/exchanges/list", headers={"x-cg-pro-api-key": settings.settings.coingecko_apikey})
+                coingecko_exchanges = await utils.common.send_request(
+                    "GET",
+                    "https://pro-api.coingecko.com/api/v3/exchanges/list",
+                    headers={"x-cg-pro-api-key": settings.settings.coingecko_apikey},
+                )
             else:
                 coingecko_exchanges = await utils.common.send_request("GET", "https://api.coingecko.com/api/v3/exchanges/list")
             for exchange in coingecko_exchanges:
