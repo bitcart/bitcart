@@ -48,9 +48,9 @@ class CoingeckoExchange(BaseExchange):
     def __init__(self, coins, contracts):
         super().__init__(coins, contracts)
         self.coins_cache = {}
-        if settings.coingecko_apikey:
+        if settings.settings.coingecko_apikey:
             self.coins_api = "https://pro-api.coingecko.com" 
-            self.headers = {"x-cg-pro-api-key": settings.coingecko_apikey}
+            self.headers = {"x-cg-pro-api-key": settings.settings.coingecko_apikey}
         else:
             self.coins_api = "https://api.coingecko.com"
             self.headers = {}
