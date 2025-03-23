@@ -57,11 +57,11 @@ class CoingeckoExchange(BaseExchange):
 
     async def refresh(self):
         vs_currencies = await fetch_delayed(
-            "GET", "https://" + self.coins_api + "/api/v3/simple/supported_vs_currencies", headers=self.headers
+            "GET", "https://{self.coins_api}/api/v3/simple/supported_vs_currencies", headers=self.headers
         )
         if not self.coins_cache:
             self.coins_cache = await fetch_delayed(
-                "GET", "https://" + self.coins_api + "/api/v3/coins/list?include_platform=true", headers=self.headers
+                "GET", f"https://{self.coins_api}/api/v3/coins/list?include_platform=true", headers=self.headers
             )
         coins = []
         for coin in self.coins.copy():
@@ -75,7 +75,7 @@ class CoingeckoExchange(BaseExchange):
                     coins.append(currency["id"])
         data = await fetch_delayed(
             "GET",
-            f"https://" + self.coins_api + ".com/api/v3/simple/price?ids={','.join(coins)}"
+            f"https://{self.coins_api}.com/api/v3/simple/price?ids={','.join(coins)}"
             f"&vs_currencies={','.join(vs_currencies)}&precision=full",
             headers=self.headers,
         )
@@ -95,7 +95,7 @@ def coingecko_based_exchange(name):
         async def refresh(self):
             if not self.coins_cache:
                 self.coins_cache = await fetch_delayed(
-                    "GET", "https://" + self.coins_api + "/api/v3/coins/list", headers=self.headers
+                    "GET", f"https://{self.coins_api}/api/v3/coins/list", headers=self.headers
                 )
             coins = []
             for coin in self.coins.copy():
@@ -105,7 +105,7 @@ def coingecko_based_exchange(name):
             self.quotes = await self.fetch_rates(coins)
 
         async def fetch_rates(self, coins, page=1):
-            base_url = f"https://" + self.coins_api + "/api/v3/exchanges/{name}/tickers"
+            base_url = f"https://{self.coins_api}/api/v3/exchanges/{name}/tickers"
             resp, data = await fetch_delayed(
                 "GET", f"{base_url}?page={page}&coin_ids={','.join(coins)}", return_json=False, headers=self.headers
             )
