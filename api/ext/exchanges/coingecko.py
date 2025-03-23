@@ -57,7 +57,7 @@ class CoingeckoExchange(BaseExchange):
 
     async def refresh(self):
         vs_currencies = await fetch_delayed(
-            "GET", "https://{self.coins_api}/api/v3/simple/supported_vs_currencies", headers=self.headers
+            "GET", f"https://{self.coins_api}/api/v3/simple/supported_vs_currencies", headers=self.headers
         )
         if not self.coins_cache:
             self.coins_cache = await fetch_delayed(
