@@ -49,10 +49,10 @@ class CoingeckoExchange(BaseExchange):
         super().__init__(coins, contracts)
         self.coins_cache = {}
         if settings.settings.coingecko_apikey:
-            self.coins_api = "https://pro-api.coingecko.com"
+            self.coins_api = "pro-api.coingecko.com"
             self.headers = {"x-cg-pro-api-key": settings.settings.coingecko_apikey}
         else:
-            self.coins_api = "https://api.coingecko.com"
+            self.coins_api = "api.coingecko.com"
             self.headers = {}
 
     async def refresh(self):
@@ -75,7 +75,7 @@ class CoingeckoExchange(BaseExchange):
                     coins.append(currency["id"])
         data = await fetch_delayed(
             "GET",
-            f"https://{self.coins_api}.com/api/v3/simple/price?ids={','.join(coins)}"
+            f"https://{self.coins_api}/api/v3/simple/price?ids={','.join(coins)}"
             f"&vs_currencies={','.join(vs_currencies)}&precision=full",
             headers=self.headers,
         )
