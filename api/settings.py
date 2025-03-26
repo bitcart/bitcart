@@ -154,6 +154,18 @@ class Settings(BaseSettings):
         rootpath = "" if self.root_path == "/" else self.root_path
         return f"{self.protocol}://{self.api_host}{rootpath}"
 
+    @property
+    def coingecko_api_url(self):
+        if self.coingecko_apikey:
+            return "https://pro-api.coingecko.com/api/v3"
+        return "https://api.coingecko.com/api/v3"
+
+    @property
+    def coingecko_headers(self):
+        if self.coingecko_apikey:
+            return {"x-cg-pro-api-key": self.coingecko_apikey}
+        return {}
+
     @field_validator("enabled_cryptos", mode="before")
     @classmethod
     def validate_enabled_cryptos(cls, v):
