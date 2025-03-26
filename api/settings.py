@@ -85,6 +85,7 @@ class Settings(BaseSettings):
     plugins_schema: dict = {}
     is_worker: bool = False
     sentry_dsn: str | None = Field(None, validation_alias="SENTRY_DSN")
+    coingecko_api_key: str | None = Field(None, validation_alias="COINGECKO_API_KEY")
 
     license_server_url: str = Field("https://licensing.bitcart.ai", validation_alias="LICENSE_SERVER_URL")
 
@@ -152,6 +153,18 @@ class Settings(BaseSettings):
     def api_url(self):
         rootpath = "" if self.root_path == "/" else self.root_path
         return f"{self.protocol}://{self.api_host}{rootpath}"
+
+    @property
+    def coingecko_api_url(self):
+        if self.coingecko_api_key:
+            return "https://pro-api.coingecko.com/api/v3"
+        return "https://api.coingecko.com/api/v3"
+
+    @property
+    def coingecko_headers(self):
+        if self.coingecko_api_key:
+            return {"x-cg-pro-api-key": self.coingecko_api_key}
+        return {}
 
     @field_validator("enabled_cryptos", mode="before")
     @classmethod

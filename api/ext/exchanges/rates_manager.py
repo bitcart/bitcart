@@ -81,7 +81,11 @@ class RatesManager:
         for name, exchange_cls in self._exchange_classes.items():
             self.exchanges[name] = exchange_cls(coins, final_contracts)
         try:
-            coingecko_exchanges = await utils.common.send_request("GET", "https://api.coingecko.com/api/v3/exchanges/list")
+            coingecko_exchanges = await utils.common.send_request(
+                "GET",
+                f"{settings.settings.coingecko_api_url}/exchanges/list",
+                headers=settings.settings.coingecko_headers,
+            )
             for exchange in coingecko_exchanges:
                 if exchange["id"] not in self.exchanges:
                     self.exchanges[exchange["id"]] = coingecko_based_exchange(exchange["id"])(coins, final_contracts)

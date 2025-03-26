@@ -6,7 +6,7 @@ from api.ext.exchanges.base import BaseExchange
 
 
 async def fetch_delayed(*args, delay=1, **kwargs):
-    resp, data = await utils.common.send_request(*args, return_json=False)
+    resp, data = await utils.common.send_request(*args, return_json=False, **kwargs)
     if resp.status == 429:
         if delay < 60:
             await asyncio.sleep(delay)
@@ -50,9 +50,17 @@ class CoingeckoExchange(BaseExchange):
         self.coins_cache = {}
 
     async def refresh(self):
-        vs_currencies = await fetch_delayed("GET", "https://api.coingecko.com/api/v3/simple/supported_vs_currencies")
+        vs_currencies = await fetch_delayed(
+            "GET",
+            f"{settings.settings.coingecko_api_url}/simple/supported_vs_currencies",
+            headers=settings.settings.coingecko_headers,
+        )
         if not self.coins_cache:
-            self.coins_cache = await fetch_delayed("GET", "https://api.coingecko.com/api/v3/coins/list?include_platform=true")
+            self.coins_cache = await fetch_delayed(
+                "GET",
+                f"{settings.settings.coingecko_api_url}/coins/list?include_platform=true",
+                headers=settings.settings.coingecko_headers,
+            )
         coins = []
         for coin in self.coins.copy():
             currency = find_by_coin(self.coins_cache, coin)
@@ -65,8 +73,9 @@ class CoingeckoExchange(BaseExchange):
                     coins.append(currency["id"])
         data = await fetch_delayed(
             "GET",
-            f"https://api.coingecko.com/api/v3/simple/price?ids={','.join(coins)}"
+            f"{settings.settings.coingecko_api_url}/simple/price?ids={','.join(coins)}"
             f"&vs_currencies={','.join(vs_currencies)}&precision=full",
+            headers=settings.settings.coingecko_headers,
         )
         self.quotes = {
             f"{find_id(self.coins_cache, k).upper()}_{k2.upper()}": utils.common.precise_decimal(v2)
@@ -83,7 +92,9 @@ def coingecko_based_exchange(name):
 
         async def refresh(self):
             if not self.coins_cache:
-                self.coins_cache = await fetch_delayed("GET", "https://api.coingecko.com/api/v3/coins/list")
+                self.coins_cache = await fetch_delayed(
+                    "GET", f"{settings.settings.coingecko_api_url}/coins/list", headers=settings.settings.coingecko_headers
+                )
             coins = []
             for coin in self.coins.copy():
                 currency = find_by_coin(self.coins_cache, coin)
@@ -92,8 +103,13 @@ def coingecko_based_exchange(name):
             self.quotes = await self.fetch_rates(coins)
 
         async def fetch_rates(self, coins, page=1):
-            base_url = f"https://api.coingecko.com/api/v3/exchanges/{name}/tickers"
-            resp, data = await fetch_delayed("GET", f"{base_url}?page={page}&coin_ids={','.join(coins)}", return_json=False)
+            base_url = f"{settings.settings.coingecko_api_url}/exchanges/{name}/tickers"
+            resp, data = await fetch_delayed(
+                "GET",
+                f"{base_url}?page={page}&coin_ids={','.join(coins)}",
+                return_json=False,
+                headers=settings.settings.coingecko_headers,
+            )
             result = {f"{x['base']}_{x['target']}": utils.common.precise_decimal(x["last"]) for x in data["tickers"]}
             total = resp.headers.get("total")
             per_page = resp.headers.get("per-page")
