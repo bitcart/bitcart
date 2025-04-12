@@ -26,7 +26,10 @@ class WorkingMode(StrEnum):
 
 def iter_attributes(obj):  # to do the from_attributes job because pydantic doesn't do it before validator
     for k in dir(obj):
-        if not k.startswith("_"):
+        if not k.startswith("_") and k not in (
+            "model_fields",
+            "model_computed_fields",
+        ):  # pydantic deprecated access on the instance
             v = getattr(obj, k)
             if not callable(v):
                 yield k, v
