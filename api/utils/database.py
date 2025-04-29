@@ -96,8 +96,10 @@ async def get_scalar(query, func, column, use_distinct=True):
 
 
 async def postprocess_func(items):
-    for item in items:
-        await item.load_data()
+    if not items:
+        return items
+    model_class = items[0].__class__
+    await model_class.batch_load_data(items)
     return items
 
 

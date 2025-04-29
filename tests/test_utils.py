@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 import os
 import shlex
 import subprocess
@@ -175,6 +176,8 @@ async def test_notification_template(client, token, user):
 
 def test_run_host(mocker):
     test_file = os.path.expanduser("~/test-output")
+    with contextlib.suppress(OSError):  # prepare for test
+        os.remove(test_file)
     content = f"touch {test_file}"
     # No valid ssh connection
     ok, error = utils.host.run_host(content)

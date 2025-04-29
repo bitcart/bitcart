@@ -1,3 +1,4 @@
+import asyncio
 import secrets
 from datetime import timedelta
 
@@ -67,6 +68,8 @@ class BaseModelMeta(ModelType):
 
 class BaseModel(db.Model, metaclass=BaseModelMeta):
     JSON_KEYS: dict = {}
+    FKEY_MAPPING: dict = {}
+    FK_PREFETCH: dict = {}
 
     @property
     def M2M_KEYS(self):
@@ -79,28 +82,69 @@ class BaseModel(db.Model, metaclass=BaseModelMeta):
             related_ids = getattr(self, key, [])
             await create_relations(self.id, related_ids, self.M2M_KEYS[key])
 
-    async def add_related(self):
-        for key in self.M2M_KEYS:
-            key_info = self.M2M_KEYS[key]
-            result = (
-                await key_info["table"]
-                .select(key_info["related_id"])
-                .where(getattr(key_info["table"], key_info["current_id"]) == self.id)
+    async def add_related(self):  # kept to add some misc values to single objects
+        pass
+
+    @classmethod
+    async def batch_add_related(cls, models):
+        if not models:  # pragma: no cover
+            return models
+        for key in models[0].M2M_KEYS:
+            key_info = models[0].M2M_KEYS[key]
+            model_ids = [model.id for model in models]
+            related_pairs = (
+                await select(
+                    [
+                        getattr(key_info["table"], key_info["current_id"]),
+                        getattr(key_info["table"], key_info["related_id"]),
+                    ]
+                )
+                .where(getattr(key_info["table"], key_info["current_id"]).in_(model_ids))
                 .gino.all()
             )
-            setattr(self, key, [obj_id for (obj_id,) in result if obj_id])
+            related_by_model = {}
+            for model_id, related_id in related_pairs:
+                if not related_id:  # pragma: no cover
+                    continue
+                if model_id not in related_by_model:
+                    related_by_model[model_id] = []
+                related_by_model[model_id].append(related_id)
+            for model in models:
+                setattr(model, key, related_by_model.get(model.id, []))
+        for model in models:
+            await model.add_related()
+        return models
+
+    async def add_fields(self):  # kept to add some misc values to single objects
+        pass
+
+    @classmethod
+    async def batch_add_fields(cls, models):
+        if not models:  # pragma: no cover
+            return models
+        for field, scheme in cls.JSON_KEYS.items():
+            for model in models:
+                setattr(model, field, model.get_json_key(field, scheme))
+        for model in models:
+            await model.add_fields()
+        return models
+
+    async def load_data(self, prefetch=True):
+        await self.__class__.batch_load_data([self], prefetch=prefetch)
+
+    @classmethod
+    async def batch_load_data(cls, models, prefetch=True):
+        if not models:  # pragma: no cover
+            return models
+        await cls.batch_add_related(models)
+        await cls.batch_add_fields(models)
+        if prefetch:
+            await cls.prefetch_fk_fields(models)
+        return models
 
     async def delete_related(self):
         for key_info in self.M2M_KEYS.values():
             await delete_relations(self.id, key_info)
-
-    async def add_fields(self):
-        for field, scheme in self.JSON_KEYS.items():
-            setattr(self, field, self.get_json_key(field, scheme))
-
-    async def load_data(self):
-        await self.add_related()
-        await self.add_fields()
 
     async def _delete(self, *args, **kwargs):
         await self.delete_related()
@@ -113,7 +157,104 @@ class BaseModel(db.Model, metaclass=BaseModelMeta):
         await model.load_data()
         return model
 
-    async def validate(self, kwargs):
+    @classmethod
+    async def prefetch_fk_fields(cls, models):
+        if not models:  # pragma: no cover
+            return models
+        fk_columns = [col for col in cls.__table__.columns if col.foreign_keys]
+        if not fk_columns:
+            return models
+        for col in fk_columns:
+            await cls._prefetch_single_fk(models, col)
+        return models
+
+    @classmethod
+    async def _prefetch_single_fk(cls, models, col):
+        table_name = cls._get_related_table_name(col)
+        if not table_name or table_name not in all_tables:  # pragma: no cover
+            return
+        related_table = all_tables[table_name]
+        fields_to_load, field_mappings, defaults = cls._get_fk_prefetch_config(col, related_table)
+        if not fields_to_load:  # pragma: no cover
+            return
+        fk_values = {getattr(model, col.name) for model in models if getattr(model, col.name, None) is not None}
+        related_dict = await cls._fetch_related_data(related_table, fields_to_load, fk_values)
+        cls._process_json_fields(related_table, related_dict)
+        cls._map_related_data_to_models(models, col, field_mappings, related_dict, defaults)
+
+    @classmethod
+    def _process_json_fields(cls, related_table, related_dict):
+        if not related_dict or not related_table.JSON_KEYS:
+            return related_dict
+        for obj_data in related_dict.values():
+            for field_name, field_value in list(obj_data.items()):
+                if field_name in related_table.JSON_KEYS:  # pragma: no cover
+                    scheme = related_table.JSON_KEYS[field_name]
+                    obj_data[field_name] = scheme(**field_value)
+        return related_dict
+
+    @classmethod
+    def _get_related_table_name(cls, col):
+        return cls.FKEY_MAPPING.get(col.name, col.name.replace("_id", "").capitalize())
+
+    @classmethod
+    def _get_fk_prefetch_config(cls, col, related_table):
+        fields_to_load = ["id", "name"]
+        field_mappings = {}
+        defaults = {}
+        if col.name in cls.FK_PREFETCH:
+            prefetch_config = cls.FK_PREFETCH[col.name]
+            if "fields" in prefetch_config:
+                custom_fields = list(prefetch_config["fields"])
+                if "id" not in custom_fields:
+                    custom_fields.insert(0, "id")
+                fields_to_load = custom_fields
+            if "mapping" in prefetch_config:
+                field_mappings = prefetch_config["mapping"]
+            if "defaults" in prefetch_config:
+                defaults = prefetch_config["defaults"]
+        if "name" in fields_to_load and "name" not in field_mappings:
+            display_field_name = f"{col.name.replace('_id', '')}_name"
+            field_mappings["name"] = display_field_name
+        valid_fields = [field for field in fields_to_load if hasattr(related_table, field)]
+        return valid_fields, field_mappings, defaults
+
+    @classmethod
+    async def _fetch_related_data(cls, related_table, fields, fk_values):
+        select_cols = [getattr(related_table, field) for field in fields]
+        results = await select(select_cols).where(related_table.id.in_(fk_values)).gino.all()
+        related_dict = {}
+        for result in results:
+            result_dict = dict(zip(fields, result, strict=False))
+            related_dict[result_dict["id"]] = result_dict
+        return related_dict
+
+    @classmethod
+    def _format_target_field(cls, field_mappings, col, field_name):
+        return field_mappings.get(field_name, f"{col.name.replace('_id', '')}_{field_name}")
+
+    @classmethod
+    def _map_related_data_to_models(cls, models, col, field_mappings, related_dict, defaults):
+        for model in models:
+            fk_value = getattr(model, col.name, None)
+            if not fk_value:
+                for field_name, default_value in defaults.items():
+                    target_field = cls._format_target_field(field_mappings, col, field_name)
+                    setattr(model, target_field, default_value)
+                continue
+            if fk_value in related_dict:
+                related_obj_fields = related_dict[fk_value]
+                for field_name, field_value in related_obj_fields.items():
+                    if field_name == "id":
+                        continue
+                    target_field = cls._format_target_field(field_mappings, col, field_name)
+                    setattr(model, target_field, field_value)
+            else:  # pragma: no cover
+                for field_name, default_value in defaults.items():
+                    target_field = cls._format_target_field(field_mappings, col, field_name)
+                    setattr(model, target_field, default_value)
+
+    async def validate(self, kwargs, user=None):
         from api import utils
 
         fkey_columns = (col for col in self.__table__.columns if col.foreign_keys)
@@ -121,7 +262,7 @@ class BaseModel(db.Model, metaclass=BaseModelMeta):
         for col in fkey_columns:
             if col.name in kwargs:
                 # we assume i.e. user_id -> User
-                table_name = col.name.replace("_id", "").capitalize()
+                table_name = self._get_related_table_name(col)
                 user_id = getattr(self, "user_id", None)
                 if not await utils.database.get_object(
                     all_tables[table_name], kwargs[col.name], user_id=user_id, raise_exception=False
@@ -168,6 +309,7 @@ class BaseModel(db.Model, metaclass=BaseModelMeta):
         json_data = jsonable_encoder(getattr(self, key).model_copy(update=scheme.model_dump(exclude_unset=True)))
         kwargs = {key: json_data}
         await self.update(**kwargs).apply()
+        setattr(self, key, scheme.model_validate(json_data))
 
 
 # Abstract class to easily implement many-to-many update behaviour
@@ -264,16 +406,31 @@ class Wallet(BaseModel):
             kwargs["additional_xpub_data"] = {}
         return kwargs
 
-    async def add_fields(self):
-        await super().add_fields()
+    @classmethod
+    async def batch_add_fields(cls, models):
+        models = await super().batch_add_fields(models)
+        return await cls.batch_add_balance(models)
+
+    @classmethod
+    async def _fetch_balance(cls, semaphore, model):
         from api import utils
 
-        success, self.divisibility, self.balance = await utils.wallets.get_confirmed_wallet_balance(self)
-        self.error = not success
-        try:
-            self.xpub_name = getattr(await settings.settings.get_coin(self.currency), "xpub_name", "Xpub")
-        except HTTPException:  # pragma: no cover
-            self.xpub_name = COINS[self.currency.upper()].xpub_name if self.currency.upper() in COINS else "Xpub"
+        async with semaphore:
+            success, model.divisibility, model.balance = await utils.wallets.get_confirmed_wallet_balance(model)
+            model.error = not success
+            try:
+                model.xpub_name = getattr(await settings.settings.get_coin(model.currency), "xpub_name", "Xpub")
+            except HTTPException:  # pragma: no cover
+                model.xpub_name = COINS[model.currency.upper()].xpub_name if model.currency.upper() in COINS else "Xpub"
+
+    @classmethod
+    async def batch_add_balance(cls, models):
+        if not models:  # pragma: no cover
+            return models
+        semaphore = asyncio.BoundedSemaphore(5)
+        tasks = [cls._fetch_balance(semaphore, model) for model in models]
+        await asyncio.gather(*tasks, return_exceptions=True)
+        return models
 
     @classmethod
     def process_kwargs(cls, kwargs):
@@ -452,6 +609,14 @@ class Product(BaseModel):
     __tablename__ = "products"
     _update_request_cls = ProductUpdateRequest
 
+    FK_PREFETCH = {
+        "store_id": {
+            "fields": ["default_currency"],
+            "mapping": {"default_currency": "currency"},
+            "defaults": {"default_currency": "USD"},
+        }
+    }
+
     id = Column(Text, primary_key=True, index=True)
     name = Column(Text, index=True)
     price = Column(Numeric(36, 18), nullable=False)
@@ -477,17 +642,6 @@ class Product(BaseModel):
         kwargs = super().prepare_create(kwargs)
         kwargs["id"] = utils.common.unique_id(PUBLIC_ID_LENGTH)
         return kwargs
-
-    async def add_fields(self):
-        await super().add_fields()
-        from api import utils
-
-        # TODO: rework logic of deleting related objects, maybe we need cascade delete?
-        try:
-            store = await utils.database.get_object(Store, self.store_id)
-            self.currency = store.default_currency
-        except HTTPException:  # for products associated with deleted stores
-            self.currency = "USD"
 
 
 class ProductxInvoice(BaseModel):
@@ -598,19 +752,32 @@ class Invoice(BaseModel):
     paid_date = Column(DateTime(True))
     created = Column(DateTime(True), nullable=False)
 
-    async def add_related(self):
+    @classmethod
+    async def batch_add_related(cls, models):
         from api import crud
 
-        payment_methods = (
-            await PaymentMethod.query.where(PaymentMethod.invoice_id == self.id).order_by(PaymentMethod.created).gino.all()
+        models = await super().batch_add_related(models)
+        if not models:  # pragma: no cover
+            return models
+        invoice_ids = [model.id for model in models]
+        all_payment_methods = (
+            await PaymentMethod.query.where(PaymentMethod.invoice_id.in_(invoice_ids))
+            .order_by(PaymentMethod.created)
+            .gino.all()
         )
-        self.payments = [
-            method.to_dict(self.currency, index) for index, method in crud.invoices.get_methods_inds(payment_methods)
-        ]
-        used_payment = next((payment for payment in payment_methods if payment.is_used), None)
-        self.payment_id = used_payment.id if used_payment else None
-
-        await super().add_related()
+        payment_methods_by_invoice = {}
+        for method in all_payment_methods:
+            if method.invoice_id not in payment_methods_by_invoice:
+                payment_methods_by_invoice[method.invoice_id] = []
+            payment_methods_by_invoice[method.invoice_id].append(method)
+        for model in models:
+            methods = payment_methods_by_invoice.get(model.id, [])
+            model.payments = [
+                method.to_dict(model.currency, index) for index, method in crud.invoices.get_methods_inds(methods)
+            ]
+            used_payment = next((payment for payment in methods if payment.is_used), None)
+            model.payment_id = used_payment.id if used_payment else None
+        return models
 
     async def create_related(self):
         # NOTE: we don't call super() here, as the ProductxInvoice creation is delegated to CRUD utils
@@ -640,9 +807,24 @@ class Invoice(BaseModel):
     async def add_fields(self):
         await super().add_fields()
         self.add_invoice_expiration()
-        names = await select([Product.id, Product.name]).where(Product.id.in_(self.products)).gino.all()
-        self.product_names = {name[0]: name[1] for name in names}
-        self.refund_id = await select([Refund.id]).where(Refund.invoice_id == self.id).gino.scalar()
+
+    @classmethod
+    async def batch_add_fields(cls, models):
+        models = await super().batch_add_fields(models)
+        if not models:  # pragma: no cover
+            return models
+        all_product_ids = set()
+        for model in models:
+            all_product_ids.update(model.products)
+        product_results = await select([Product.id, Product.name]).where(Product.id.in_(all_product_ids)).gino.all()
+        product_names = dict(product_results)
+        invoice_ids = [model.id for model in models]
+        refund_results = await select([Refund.invoice_id, Refund.id]).where(Refund.invoice_id.in_(invoice_ids)).gino.all()
+        refunds_by_invoice = dict(refund_results)
+        for model in models:
+            model.product_names = {pid: product_names.get(pid, "") for pid in model.products}
+            model.refund_id = refunds_by_invoice.get(model.id)
+        return models
 
 
 class Setting(BaseModel):
@@ -701,6 +883,8 @@ class File(BaseModel):
 class Payout(BaseModel):
     __tablename__ = "payouts"
 
+    FK_PREFETCH = {"wallet_id": {"fields": ["currency"], "defaults": {"currency": None}}}
+
     id = Column(Text, primary_key=True, index=True)
     amount = Column(Numeric(36, 18), nullable=False)
     destination = Column(Text)
@@ -726,16 +910,6 @@ class Payout(BaseModel):
             if not await coin.server.validateaddress(destination):
                 raise HTTPException(422, "Invalid destination address")
             kwargs["destination"] = await coin.server.normalizeaddress(destination)
-
-    async def add_related(self):
-        from api import utils
-
-        await super().add_related()
-        try:
-            wallet = await utils.database.get_object(Wallet, self.wallet_id, load_data=False)
-            self.wallet_currency = wallet.currency
-        except HTTPException:
-            self.wallet_currency = None
 
 
 class Refund(BaseModel):
