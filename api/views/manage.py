@@ -9,7 +9,7 @@ from fastapi.responses import FileResponse
 
 from api import constants, models, schemes, settings, utils
 from api.ext import backups as backups_ext
-from api.plugins import run_hook
+from api.plugins import apply_filters, run_hook
 
 router = APIRouter()
 
@@ -86,7 +86,7 @@ async def get_policies(
     exclude = set()
     if not user:
         exclude = data._SECRET_FIELDS
-    return data.model_dump(exclude=exclude)
+    return await apply_filters("get_global_policies", data.model_dump(exclude=exclude))
 
 
 @router.post("/policies", response_model=schemes.Policy)

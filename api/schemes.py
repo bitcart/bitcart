@@ -683,6 +683,7 @@ class CaptchaType(StrEnum):
 class Policy(DisplayModel):
     _SECRET_FIELDS = {"captcha_secretkey", "email_settings"}
 
+    allow_powered_by_bitcart: bool = False
     disable_registration: bool = False
     require_verified_email: bool = False
     allow_file_uploads: bool = True

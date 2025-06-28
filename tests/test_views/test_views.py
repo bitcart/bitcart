@@ -406,6 +406,7 @@ async def test_policies(client: TestClient, token: str):
     resp = await client.get("/manage/policies")
     assert resp.status_code == 200
     assert resp.json() == {
+        "allow_powered_by_bitcart": False,
         "allow_anonymous_configurator": True,
         "disable_registration": False,
         "require_verified_email": False,
@@ -434,6 +435,7 @@ async def test_policies(client: TestClient, token: str):
     )
     assert resp.status_code == 200
     assert resp.json() == {
+        "allow_powered_by_bitcart": False,
         "allow_anonymous_configurator": True,
         "disable_registration": True,
         "require_verified_email": False,
@@ -459,6 +461,7 @@ async def test_policies(client: TestClient, token: str):
     assert (await client.post("/users", json=static_data.POLICY_USER)).status_code == 422  # registration is off
     # Test for loading data from db instead of loading scheme's defaults
     assert (await client.get("/manage/policies")).json() == {
+        "allow_powered_by_bitcart": False,
         "allow_anonymous_configurator": True,
         "disable_registration": True,
         "require_verified_email": False,
@@ -486,6 +489,7 @@ async def test_policies(client: TestClient, token: str):
     )
     assert resp.status_code == 200
     assert resp.json() == {
+        "allow_powered_by_bitcart": False,
         "allow_anonymous_configurator": True,
         "disable_registration": False,
         "require_verified_email": False,
