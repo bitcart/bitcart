@@ -50,7 +50,7 @@ async def create_invoice(invoice: schemes.CreateInvoice, user: schemes.User):
     d["expiration"] = d["expiration"] or store.checkout_settings.expiration
     products = d.pop("products", {})
     if isinstance(products, list):
-        products = {k: 1 for k in products}
+        products = dict.fromkeys(products, 1)
     # validate stock levels
     if products:
         await validate_stock_levels(products)

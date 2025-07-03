@@ -79,7 +79,7 @@ class ModelView:
         # set scopes
         if isinstance(scopes, list):
             scopes_list = scopes.copy()
-            scopes = {i: scopes_list for i in ENDPOINTS}
+            scopes = dict.fromkeys(ENDPOINTS, scopes_list)
         scopes = defaultdict(list, **scopes)
 
         if not create_model:

@@ -7,7 +7,7 @@ sys.path.insert(0, ".")
 
 from alembic.config import CommandLine, Config
 
-from api import settings  # noqa: F401: to avoid circular import
+from api import settings  # noqa: F401 # to avoid circular import
 from api.plugins import PluginsManager
 
 if len(sys.argv) < 3:

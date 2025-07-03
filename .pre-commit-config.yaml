@@ -29,7 +29,7 @@ repos:
       - id: prettier
         name: prettier
         types: [text]
-        language: system
+        language: node
         require_serial: true
         entry: npx prettier --write --ignore-unknown
   - repo: https://github.com/astral-sh/uv-pre-commit
