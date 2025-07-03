@@ -19,7 +19,6 @@ All daemons must inherit from `base.py`.
   for example, passing `{"id": 0, "method": "method", "params": ["x", "y", {"xpub": "xpub..."}]}` is equivalent to calling `method("x", "y", xpub="xpub...")`
 
 - Daemon exposes 3 endpoints
-
   - `POST /` - main execution endpoint, used for calling different methods provided. Override `execute_method` in your subclass to support it
   - `GET /ws` - websocket endpoint, used to listen for events. Where needed, call `notify_websockets` in your subclass to trigger notification on all websockets
   - `GET /spec` - returns daemon specification, for more details see [daemon spec directory](spec/README.md)

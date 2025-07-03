@@ -4,9 +4,9 @@ repos:
     hooks:
       - id: check-merge-conflict
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.9.9
+    rev: v0.12.2
     hooks:
-      - id: ruff
+      - id: ruff-check
       - id: ruff-format
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0
@@ -24,13 +24,15 @@ repos:
       - id: debug-statements
       - id: fix-byte-order-marker
       - id: detect-private-key
-  - repo: https://github.com/pre-commit/mirrors-prettier
-    rev: v4.0.0-alpha.8
+  - repo: local
     hooks:
       - id: prettier
+        name: prettier
+        types: [text]
+        language: system
         require_serial: true
-        args: ["--cache-location=.prettiercache"]
+        entry: npx prettier --write --ignore-unknown
   - repo: https://github.com/astral-sh/uv-pre-commit
-    rev: 0.6.3
+    rev: 0.7.19
     hooks:
       - id: uv-lock
