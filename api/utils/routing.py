@@ -306,5 +306,7 @@ def get_redirect_url(url, **kwargs):
     return urlparse.urlunparse(parsed)
 
 
-def prepare_next_url(path):
-    return urlparse.urljoin(settings.settings.admin_url, path)
+def prepare_next_url(path: str) -> str:
+    base = settings.settings.admin_url.rstrip("/")
+    tail = path.lstrip("/")
+    return f"{base}/{tail}"
