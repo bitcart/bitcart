@@ -57,6 +57,7 @@ class BTCDaemon(BaseDaemon):
         import electrum
 
         self.electrum = electrum
+        self.electrum.lnutil.MIN_FUNDING_SAT = 20_000  # TODO: submit upstream
 
     def __init__(self):
         self.load_electrum()
