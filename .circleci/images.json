@@ -35,11 +35,6 @@
         "files": ["daemons/base.py", "daemons/bnb.py", "uv.lock"],
         "bases": "eth"
     },
-    "bitcart-sbch": {
-        "dockerfile": "sbch.Dockerfile",
-        "files": ["daemons/base.py", "daemons/sbch.py", "uv.lock"],
-        "bases": "eth"
-    },
     "bitcart-matic": {
         "dockerfile": "matic.Dockerfile",
         "files": ["daemons/base.py", "daemons/matic.py", "uv.lock"],

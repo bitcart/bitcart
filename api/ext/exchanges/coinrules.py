@@ -34,10 +34,6 @@ class BNB:
     coingecko_id = "binancecoin"
 
 
-class SBCH:
-    default_rule = "SBCH_X = BCH_X"
-
-
 class MATIC:
     coingecko_id = "matic-network"
 

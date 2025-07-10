@@ -32,10 +32,6 @@
         "mainnet": "https://bscscan.com/tx/{}",
         "testnet": "https://testnet.bscscan.com/tx/{}"
     },
-    "sbch": {
-        "mainnet": "https://smartscan.cash/tx/{}",
-        "testnet": "https://testnet.sonar.cash/tx/{}"
-    },
     "matic": {
         "mainnet": "https://polygonscan.com/tx/{}",
         "testnet": "https://mumbai.polygonscan.com/tx/{}"

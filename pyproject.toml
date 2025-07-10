@@ -83,7 +83,6 @@ ltc = [
     "scrypt>=0.6.0",
 ]
 matic = [{ include-group = "eth-based" }]
-sbch = [{ include-group = "eth-based" }]
 trx = [{ include-group = "eth-based" }, "async-lru", "tronpy", "trontxsize"]
 xmr = [{ include-group = "daemon-base" }, "monero", "universalasync"]
 xrg = [
@@ -99,7 +98,6 @@ daemons = [
     { include-group = "grs" },
     { include-group = "ltc" },
     { include-group = "matic" },
-    { include-group = "sbch" },
     { include-group = "trx" },
     { include-group = "xmr" },
     { include-group = "xrg" },

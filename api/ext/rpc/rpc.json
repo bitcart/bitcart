@@ -11,9 +11,6 @@
         "mainnet": "https://bsc-dataseed.binance.org",
         "testnet": "https://data-seed-prebsc-1-s1.binance.org:8545"
     },
-    "sbch": {
-        "mainnet": "https://smartbch.fountainhead.cash/mainnet"
-    },
     "matic": {
         "mainnet": "https://polygon-rpc.com",
         "testnet": "https://matic-mumbai.chainstacklabs.com"

@@ -511,15 +511,6 @@ matic = [
 production = [
     { name = "gunicorn" },
 ]
-sbch = [
-    { name = "aiohttp" },
-    { name = "aiolimiter" },
-    { name = "bitarray" },
-    { name = "eth-account" },
-    { name = "eth-rlp" },
-    { name = "mnemonic" },
-    { name = "web3" },
-]
 test = [
     { name = "httpx" },
     { name = "httpx-ws" },
@@ -734,15 +725,6 @@ matic = [
     { name = "web3", specifier = ">=6,<7" },
 ]
 production = [{ name = "gunicorn" }]
-sbch = [
-    { name = "aiohttp", specifier = "<4.0" },
-    { name = "aiolimiter" },
-    { name = "bitarray", specifier = "<3" },
-    { name = "eth-account", specifier = "<0.12" },
-    { name = "eth-rlp", specifier = "<2.0" },
-    { name = "mnemonic" },
-    { name = "web3", specifier = ">=6,<7" },
-]
 test = [
     { name = "httpx" },
     { name = "httpx-ws" },
