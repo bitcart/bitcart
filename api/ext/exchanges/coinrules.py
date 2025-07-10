@@ -14,10 +14,6 @@ class LTC:
     coingecko_id = "litecoin"
 
 
-class BSTY:
-    coingecko_id = "globalboost"
-
-
 class XRGExchange(BaseExchange):
     async def refresh(self):
         result = await utils.common.send_request("GET", "https://explorer.ergon.network/ext/summary")

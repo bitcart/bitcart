@@ -294,11 +294,6 @@
         "divisibility": 8,
         "crypto": true
     },
-    "BSTY": {
-        "name": "BSTY",
-        "divisibility": 8,
-        "crypto": true
-    },
     "ETH": {
         "name": "Ethereum",
         "divisibility": 8,

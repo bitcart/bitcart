@@ -374,11 +374,6 @@ bnb = [
     { name = "mnemonic" },
     { name = "web3" },
 ]
-bsty = [
-    { name = "aiohttp" },
-    { name = "electrum-bsty", extra = ["crypto"] },
-    { name = "protobuf" },
-]
 btc = [
     { name = "aiohttp" },
     { name = "electrum", extra = ["crypto"] },
@@ -398,7 +393,6 @@ daemons = [
     { name = "bitarray" },
     { name = "electron-cash" },
     { name = "electrum", extra = ["crypto"] },
-    { name = "electrum-bsty", extra = ["crypto"] },
     { name = "electrum-grs", extra = ["crypto"] },
     { name = "electrum-ltc", extra = ["crypto"] },
     { name = "eth-account" },
@@ -425,7 +419,6 @@ dev = [
     { name = "bitcart" },
     { name = "electron-cash" },
     { name = "electrum", extra = ["crypto"] },
-    { name = "electrum-bsty", extra = ["crypto"] },
     { name = "electrum-grs", extra = ["crypto"] },
     { name = "electrum-ltc", extra = ["crypto"] },
     { name = "email-validator" },
@@ -608,11 +601,6 @@ bnb = [
     { name = "mnemonic" },
     { name = "web3", specifier = ">=6,<7" },
 ]
-bsty = [
-    { name = "aiohttp", specifier = "<4.0" },
-    { name = "electrum-bsty", extras = ["crypto"], git = "https://github.com/GlobalBoost/electrum?rev=e5b267128464e7fa3298eb5615313ae7266dda7d" },
-    { name = "protobuf", specifier = "<4" },
-]
 btc = [
     { name = "aiohttp", specifier = "<4.0" },
     { name = "electrum", extras = ["crypto"], git = "https://github.com/spesmilo/electrum?rev=df1b9a223c77f4597a75df4e040754a58185151f" },
@@ -630,7 +618,6 @@ daemons = [
     { name = "bitarray", specifier = "<3" },
     { name = "electron-cash", url = "https://github.com/Electron-Cash/Electron-Cash/archive/cd4a0fe6cceb6ffc90dca5525c7e405387561506.zip" },
     { name = "electrum", extras = ["crypto"], git = "https://github.com/spesmilo/electrum?rev=df1b9a223c77f4597a75df4e040754a58185151f" },
-    { name = "electrum-bsty", extras = ["crypto"], git = "https://github.com/GlobalBoost/electrum?rev=e5b267128464e7fa3298eb5615313ae7266dda7d" },
     { name = "electrum-grs", extras = ["crypto"], git = "https://github.com/Groestlcoin/electrum-grs?rev=3bbebc766b0d0f12eb69b226de723e6a6431cd80" },
     { name = "electrum-ltc", extras = ["crypto"], git = "https://github.com/bitcart/electrum-ltc?rev=b0c8bf8dd6c829ec5e93ff85627083f43b3db857" },
     { name = "eth-account", specifier = "<0.12" },
@@ -657,7 +644,6 @@ dev = [
     { name = "bitcart" },
     { name = "electron-cash", url = "https://github.com/Electron-Cash/Electron-Cash/archive/cd4a0fe6cceb6ffc90dca5525c7e405387561506.zip" },
     { name = "electrum", extras = ["crypto"], git = "https://github.com/spesmilo/electrum?rev=df1b9a223c77f4597a75df4e040754a58185151f" },
-    { name = "electrum-bsty", extras = ["crypto"], git = "https://github.com/GlobalBoost/electrum?rev=e5b267128464e7fa3298eb5615313ae7266dda7d" },
     { name = "electrum-grs", extras = ["crypto"], git = "https://github.com/Groestlcoin/electrum-grs?rev=3bbebc766b0d0f12eb69b226de723e6a6431cd80" },
     { name = "electrum-ltc", extras = ["crypto"], git = "https://github.com/bitcart/electrum-ltc?rev=b0c8bf8dd6c829ec5e93ff85627083f43b3db857" },
     { name = "email-validator" },
@@ -1260,29 +1246,6 @@ provides-extras = ["hardware", "gui", "all"]
 name = "electrum"
 version = "4.5.0b1"
 source = { git = "https://github.com/spesmilo/electrum?rev=df1b9a223c77f4597a75df4e040754a58185151f#df1b9a223c77f4597a75df4e040754a58185151f" }
-dependencies = [
-    { name = "aiohttp" },
-    { name = "aiohttp-socks" },
-    { name = "aiorpcx" },
-    { name = "attrs" },
-    { name = "bitstring" },
-    { name = "certifi" },
-    { name = "dnspython" },
-    { name = "jsonpatch" },
-    { name = "protobuf" },
-    { name = "qdarkstyle" },
-    { name = "qrcode" },
-]
-
-[package.optional-dependencies]
-crypto = [
-    { name = "cryptography" },
-]
-
-[[package]]
-name = "electrum-bsty"
-version = "4.5.0b1"
-source = { git = "https://github.com/GlobalBoost/electrum?rev=e5b267128464e7fa3298eb5615313ae7266dda7d#e5b267128464e7fa3298eb5615313ae7266dda7d" }
 dependencies = [
     { name = "aiohttp" },
     { name = "aiohttp-socks" },

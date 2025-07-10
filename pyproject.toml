@@ -68,10 +68,6 @@ bch = [
     "electron-cash @ https://github.com/Electron-Cash/Electron-Cash/archive/cd4a0fe6cceb6ffc90dca5525c7e405387561506.zip",
 ]
 bnb = [{ include-group = "eth-based" }]
-bsty = [
-    { include-group = "btc-based" },
-    "electrum-bsty[crypto] @ git+https://github.com/GlobalBoost/electrum@e5b267128464e7fa3298eb5615313ae7266dda7d",
-]
 btc = [
     { include-group = "btc-based" },
     "electrum[crypto] @ git+https://github.com/spesmilo/electrum@df1b9a223c77f4597a75df4e040754a58185151f",
@@ -98,7 +94,6 @@ xrg = [
 daemons = [
     { include-group = "bch" },
     { include-group = "bnb" },
-    { include-group = "bsty" },
     { include-group = "btc" },
     { include-group = "eth" },
     { include-group = "grs" },

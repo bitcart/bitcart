@@ -60,10 +60,6 @@
         "dockerfile": "ltc.Dockerfile",
         "files": ["daemons/base.py", "daemons/ltc.py", "uv.lock"]
     },
-    "bitcart-bsty": {
-        "dockerfile": "bsty.Dockerfile",
-        "files": ["daemons/base.py", "daemons/bsty.py", "uv.lock"]
-    },
     "bitcart-grs": {
         "dockerfile": "grs.Dockerfile",
         "files": ["daemons/base.py", "daemons/grs.py", "uv.lock"]

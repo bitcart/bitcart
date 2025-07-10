@@ -20,9 +20,6 @@
     "xrg": {
         "mainnet": "https://explorer.ergon.network/tx/{}"
     },
-    "bsty": {
-        "mainnet": "https://bstyexplorer.globalboost.info/tx/{}"
-    },
     "eth": {
         "mainnet": "https://etherscan.io/tx/{}",
         "kovan": "https://kovan.etherscan.io/tx/{}",
