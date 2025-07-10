@@ -16,8 +16,10 @@ from tests.helper import create_store, create_wallet
 
 REGTEST_XPUB = "dutch field mango comfort symptom smooth wide senior tongue oyster wash spoon"
 REGTEST_XPUB2 = "hungry ordinary similar more spread math general wire jealous valve exhaust emotion"
-LIGHTNING_CHANNEL_AMOUNT = Decimal("0.1")
+LIGHTNING_CHANNEL_AMOUNT = bitcoins(80_000)
 LNPAY_AMOUNT = LIGHTNING_CHANNEL_AMOUNT / 10
+LIGHTNING_INVOICE_AMOUNT = str(LNPAY_AMOUNT / 2)
+PAYOUTS_FUND_AMOUNT = Decimal("1.0")
 
 INVOICE_AMOUNT = "0.00018"  # as of 2 Apr 2023, we do this to avoid calling coingecko
 
@@ -126,7 +128,8 @@ async def prepare_ln_channels(regtest_wallet, regtest_lnnode):
     await wait_for_channel_opening(regtest_wallet, channel_point)
     # transfer some amount to the other node to be able to receive
     invoice = (await regtest_lnnode.add_invoice(LNPAY_AMOUNT))["lightning_invoice"]
-    await regtest_wallet.lnpay(invoice)
+    lnpay_result = await regtest_wallet.lnpay(invoice)
+    assert lnpay_result["success"], lnpay_result
     yield
     await regtest_wallet.close_channel(channel_point)
 
@@ -244,12 +247,13 @@ async def test_lightning_pay_flow(
     invoice = (
         await client.post(
             "/invoices",
-            json={"price": INVOICE_AMOUNT, "currency": "BTC", "store_id": store_id, "notification_url": ipn_server},
+            json={"price": LIGHTNING_INVOICE_AMOUNT, "currency": "BTC", "store_id": store_id, "notification_url": ipn_server},
         )
     ).json()
     assert invoice["status"] == "pending"
     pay_details = invoice["payments"][1]  # lightning methods are always created after onchain ones
-    await regtest_lnnode.lnpay(pay_details["payment_address"])
+    lnpay_result = await regtest_lnnode.lnpay(pay_details["payment_address"])
+    assert lnpay_result["success"], lnpay_result
     invoice_id = invoice["id"]
     await check_invoice_status(client, invoice_id, "complete", exception_status="none", sent_amount=pay_details["amount"])
     assert queue.qsize() == 1
@@ -282,6 +286,7 @@ async def test_payouts(client, regtest_wallet, regtest_api_wallet, regtest_api_s
     wallet_id = regtest_api_wallet["id"]
     store_id = regtest_api_store["id"]
     address = (await regtest_wallet.add_request())["address"]
+    await send_to_address(address, PAYOUTS_FUND_AMOUNT, confirm=True, wait_balance=True)
     payout = (
         await client.post(
             "/payouts",
