@@ -110,7 +110,7 @@ class BTCDaemon(BaseDaemon):
                     "user": str(parsed.username),
                     "password": str(parsed.password),
                 }
-                proxy = self.electrum.network.serialize_proxy(proxy)
+                proxy = self.electrum.network.serialize_proxy_cfgstr(proxy)
             except Exception:
                 sys.exit(f"Invalid proxy URL. Original traceback:\n{traceback.format_exc()}")
         return {"proxy": proxy}
