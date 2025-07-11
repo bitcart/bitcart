@@ -114,9 +114,11 @@ dev = [
 
 [tool.uv]
 override-dependencies = ["protobuf<6"]
+config-settings = { "--build-option" = "electrum_ecc.dont_compile" }
 
 [tool.uv.sources]
 bitcart = { path = "../bitcart-sdk" }
+electrum-ecc = { git = "https://github.com/bitcart/electrum-ecc.git", rev = "f9a5a753b6955236481ef0a7bb29e56cd263798e" }
 
 [tool.ruff]
 target-version = "py311"
