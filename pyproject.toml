@@ -52,6 +52,7 @@ production = ["gunicorn"]
 # daemons
 daemon-base = ["aiohttp<4.0"]
 btc-based = [{ include-group = "daemon-base" }]
+btc-derived = [{ include-group = "btc-based" }, "electrum-ecc"]
 eth-based = [
     { include-group = "daemon-base" },
     "aiolimiter",
@@ -69,16 +70,16 @@ bch = [
 ]
 bnb = [{ include-group = "eth-based" }]
 btc = [
-    { include-group = "btc-based" },
+    { include-group = "btc-derived" },
     "electrum[crypto] @ git+https://github.com/spesmilo/electrum@0f4d8d6d57bbff3428950cf531bc98eae473beec",
 ]
 eth = [{ include-group = "eth-based" }]
 grs = [
-    { include-group = "btc-based" },
+    { include-group = "btc-derived" },
     "electrum-grs[crypto] @ git+https://github.com/Groestlcoin/electrum-grs@a10de858525b7045b835a840200cf9fcff3bfe9e",
 ]
 ltc = [
-    { include-group = "btc-based" },
+    { include-group = "btc-derived" },
     "electrum-ltc[crypto] @ git+https://github.com/bitcart/electrum-ltc@fa196d3635364dd2a51e9f1f3c9a130ac61acfda",
     "scrypt>=0.6.0",
 ]
