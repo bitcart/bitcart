@@ -45,10 +45,9 @@ from web3._utils.rpc_abi import RPC as ETHRPC
 from web3.contract import AsyncContract
 from web3.datastructures import AttributeDict
 from web3.exceptions import ABIFunctionNotFound, BlockNotFound, TransactionNotFound, Web3Exception
-from web3.exceptions import ValidationError as Web3ValidationError
-from web3.middleware import async_simple_cache_middleware
-from web3.middleware.geth_poa import async_geth_poa_middleware
-from web3.providers.rpc import get_default_http_endpoint
+from web3.middleware import ExtraDataToPOAMiddleware, Web3Middleware
+from web3.middleware.base import MiddlewareOnion
+from web3.providers.rpc.async_rpc import HTTPSessionManager
 from web3.types import RPCEndpoint, RPCResponse
 
 Account.enable_unaudited_hdwallet_features()
@@ -68,7 +67,7 @@ class JSONEncoder(StorageJSONEncoder):
         if isinstance(obj, AttributeDict):
             return dict(obj.items())
         if isinstance(obj, HexBytes):
-            return str(obj.hex())
+            return str(obj.to_0x_hex())
         return super().default(obj)
 
 
@@ -86,7 +85,8 @@ class EthereumRPCProvider(AbstractRPCProvider, AsyncWeb3.AsyncHTTPProvider):
     cooked_func = None
 
     async def prepare_for_requests(self):
-        self.cooked_func = await self.request_func(self.web3, self.web3.middleware_onion)
+        custom_onion = MiddlewareOnion([AsyncHTTPRetryMiddleware])
+        self.cooked_func = await self.request_func(self.web3, custom_onion)
 
     async def send_single_request(self, *args, **kwargs):
         return await self.cooked_func(*args, **kwargs)
@@ -178,7 +178,7 @@ class ETHFeatures(BlockchainFeatures):
             return
         if "status" in data and data["status"] == "0x0":
             return
-        if "input" in data and data["input"].hex() != "0x" and (contract := daemon_ctx.get().contracts.get(data["to"])):
+        if "input" in data and data["input"].to_0x_hex() != "0x" and (contract := daemon_ctx.get().contracts.get(data["to"])):
             try:
                 function, args = contract.decode_function_input(data["input"])
                 to_key = daemon_ctx.get().transfer_args.to
@@ -191,7 +191,7 @@ class ETHFeatures(BlockchainFeatures):
                     return
                 from_addr = data["from"] if function.fn_name == "transfer" else args[daemon_ctx.get().transfer_args.from_addr]
                 return Transaction(
-                    str(data["hash"].hex()),
+                    str(data["hash"].to_0x_hex()),
                     from_addr,
                     args[to_key],
                     args[value_key],
@@ -200,19 +200,25 @@ class ETHFeatures(BlockchainFeatures):
                 )
             except Exception:
                 return
-        return Transaction(str(data["hash"].hex()), data["from"], data["to"], data["value"])
-
-    def find_all_trace_tx_outputs(self, tx_hash, from_addr, debug_data, depth=0):
-        if debug_data["input"] == "0x" and "to" in debug_data:
-            return [(tx_hash, from_addr, self.normalize_address(debug_data["to"]), int(debug_data.get("value", "0x0"), 16))]
-        if depth + 1 >= self.MAX_TRACE_DEPTH:
-            return []
-        result = []
-        for call in debug_data.get("calls", []):
-            result.extend(self.find_all_trace_tx_outputs(tx_hash, from_addr, call, depth + 1))
-        return result
+        return Transaction(str(data["hash"].to_0x_hex()), data["from"], data["to"], data["value"])
 
     def find_all_trace_outputs(self, debug_data):
+        return self._find_all_trace_outputs_geth(debug_data)
+
+    def _find_all_trace_tx_outputs_geth(self, tx_hash, from_addr, debug_data, depth=0):
+        if depth >= self.MAX_TRACE_DEPTH:
+            return []
+        result = []
+        to_addr = debug_data.get("to")
+        call_type = debug_data.get("type", "CALL").upper()
+        if call_type == "CALL" and debug_data["input"] == "0x" and to_addr:
+            result.append((tx_hash, from_addr, self.normalize_address(to_addr), int(debug_data.get("value", "0x0"), 16)))
+        child_from_addr = from_addr if call_type == "DELEGATECALL" else to_addr
+        for call in debug_data.get("calls", []):
+            result.extend(self._find_all_trace_tx_outputs_geth(tx_hash, child_from_addr, call, depth + 1))
+        return result
+
+    def _find_all_trace_outputs_geth(self, debug_data):
         result = []
         for tx in debug_data:
             if tx["result"]["input"] != "0x" and tx["result"].get("to") is not None:
@@ -221,11 +227,12 @@ class ETHFeatures(BlockchainFeatures):
                         address=self.normalize_address(tx["result"]["to"]), abi=daemon_ctx.get().ABI
                     ).decode_function_input(tx["result"]["input"])
                 except Exception:
-                    result.extend(self.find_all_trace_tx_outputs(tx["txHash"], tx["result"]["from"], tx["result"]))
+                    if "txHash" in tx:
+                        result.extend(self._find_all_trace_tx_outputs_geth(tx["txHash"], tx["result"]["from"], tx["result"]))
         return result
 
     def get_tx_hash(self, tx_data):
-        return tx_data["hash"].hex()
+        return tx_data["hash"].to_0x_hex()
 
     def to_dict(self, obj):
         return json.loads(JSONEncoder(precision=daemon_ctx.get().DIVISIBILITY).encode(obj))
@@ -255,12 +262,13 @@ with open("daemons/tokens/erc20.json") as f:
 # NOTE: there are 2 types of retry middlewares installed
 # This middleware handles network error and unexpected RPC failures
 # For BlockNotFound and TransactionNotFound we create _safe variants where needed
-async def async_http_retry_request_middleware(make_request, w3):
-    return exception_retry_middleware(
-        make_request,
-        (AsyncClientError, TimeoutError, asyncio.TimeoutError, Web3Exception),
-        daemon_ctx.get().VERBOSE,
-    )
+class AsyncHTTPRetryMiddleware(Web3Middleware):
+    async def async_wrap_make_request(self, make_request):
+        return exception_retry_middleware(
+            make_request,
+            (AsyncClientError, TimeoutError, asyncio.TimeoutError, Web3Exception),
+            daemon_ctx.get().VERBOSE,
+        )
 
 
 RPC_ORIGIN = "metamask"
@@ -301,7 +309,7 @@ class KeyStore(BaseKeyStore):
                     self.address = daemon_ctx.get().coin.normalize_address(self.key)
         if self.account:
             self.address = self.account.address
-            self.private_key = self.account.key.hex()
+            self.private_key = self.account.key.to_0x_hex()
             self.public_key = PublicKey.from_private(PrivateKey(AsyncWeb3.to_bytes(hexstr=self.private_key)))
         if self.public_key:
             self.public_key = AsyncWeb3.to_hex(self.public_key.to_compressed_bytes())
@@ -468,19 +476,18 @@ class ETHDaemon(BlockProcessorDaemon):
                         "Content-Type": "application/json",
                     },
                 },
+                cache_allowed_requests=True,
+                request_cache_validation_threshold=None,
             )
-            provider.middlewares = [async_http_retry_request_middleware]
             server_providers.append(provider)
         provider = MultipleProviderRPC(server_providers)
         await provider.start()
         web3 = AsyncWeb3(MultipleRPCEthereumProvider(provider))
-        web3.provider.middlewares = []
         web3.middleware_onion.clear()
         for provider in web3.provider.rpc.providers:
             provider.web3 = web3
             await provider.prepare_for_requests()  # required to call retry middlewares individually
-        web3.middleware_onion.inject(async_geth_poa_middleware, layer=0)
-        web3.middleware_onion.add(async_simple_cache_middleware)
+        web3.middleware_onion.inject(ExtraDataToPOAMiddleware, layer=0)
         if archive:
             self.archive_coin = ETHFeatures(web3)
         else:
@@ -497,7 +504,7 @@ class ETHDaemon(BlockProcessorDaemon):
             await self.archive_coin.web3.provider.rpc.stop()
 
     def get_default_server_url(self):
-        return get_default_http_endpoint()
+        return HTTPSessionManager.get_default_http_endpoint()
 
     async def add_contract(self, contract, wallet):
         if not contract:
@@ -729,7 +736,7 @@ class ETHDaemon(BlockProcessorDaemon):
             raise Exception(f"Contract ABI is missing {function} function") from e
         try:
             exec_function = exec_function(*args, **kwargs)
-        except Web3ValidationError as e:
+        except Web3Exception as e:
             raise Exception(f"Invalid arguments for {function} function") from e
         return exec_function
 
@@ -759,7 +766,7 @@ class ETHDaemon(BlockProcessorDaemon):
         if private_key is None:
             raise Exception("This is a watching-only wallet")
         tx_dict = load_json_dict(tx, "Invalid transaction")
-        return self.coin.to_dict(Account.sign_transaction(tx_dict, private_key=private_key).rawTransaction)
+        return self.coin.to_dict(Account.sign_transaction(tx_dict, private_key=private_key).raw_transaction)
 
     @rpc(requires_wallet=True, requires_network=True)
     async def transfer(

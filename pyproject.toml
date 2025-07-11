@@ -59,11 +59,8 @@ btc-derived = [
 eth-based = [
     { include-group = "daemon-base" },
     "aiolimiter",
-    "bitarray<3",                      # electrum requires this
-    "eth-account<0.12",                # web3 broke this
-    "eth-rlp<2.0",                     # web3 broke this
     "mnemonic",
-    "web3>=6,<7",                      # TODO: upgrade
+    "web3>=7,<8",
 ]
 
 # sort alphabetically

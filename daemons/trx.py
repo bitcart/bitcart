@@ -186,7 +186,7 @@ class KeyStore(ETHKeyStore):
     def load_account_from_key(self):
         try:
             self.private_key = keys.PrivateKey.fromhex(
-                Account.from_mnemonic(self.key, account_path=TRX_ACCOUNT_PATH).key.hex()[2:]
+                Account.from_mnemonic(self.key, account_path=TRX_ACCOUNT_PATH).key.to_0x_hex()[2:]
             )
             self.seed = self.key
         except Exception:
