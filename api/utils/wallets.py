@@ -46,7 +46,7 @@ async def get_wallet_history(model, response):
     coin = await settings.settings.get_coin(
         model.currency, {"xpub": model.xpub, "contract": model.contract, **model.additional_xpub_data}
     )
-    txes = (await coin.history())["transactions"]
+    txes = await coin.history()
     for i in txes:
         response.append({"date": i["date"], "txid": i["txid"], "amount": i["bc_value"]})
 

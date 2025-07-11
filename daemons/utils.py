@@ -24,7 +24,7 @@ def noop_cast(v):
 
 
 def format_satoshis(x):
-    return f"{(Decimal(x) / CONVERT_RATE):.08f}"
+    return f"{(Decimal(x) / CONVERT_RATE):.08f}" if x is not None else None
 
 
 def load_spec(spec_file, exit_on_error=True):

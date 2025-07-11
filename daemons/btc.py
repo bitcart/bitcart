@@ -84,15 +84,18 @@ class BTCDaemon(BaseDaemon):
         self.LIGHTNING = self.env("LIGHTNING", cast=bool, default=False) if self.LIGHTNING_SUPPORTED else False
         self.LIGHTNING_LISTEN = self.env("LIGHTNING_LISTEN", cast=str, default="") if self.LIGHTNING_SUPPORTED else ""
         self.LIGHTNING_GOSSIP = self.env("LIGHTNING_GOSSIP", cast=bool, default=False) if self.LIGHTNING_SUPPORTED else False
+        self.LIGHTNING_PUBLIC_CHANNELS = (
+            self.env("LIGHTNING_PUBLIC_CHANNELS", cast=bool, default=False) if self.LIGHTNING_SUPPORTED else False
+        )
         self.SERVER = self.env("SERVER", default="")
         self.ONESERVER = self.env("ONESERVER", cast=bool, default=False)
         self.PROXY_URL = self.env("PROXY_URL", default=None)
         self.NETWORK_MAPPING = self.NETWORK_MAPPING or {
-            "mainnet": self.electrum.constants.set_mainnet,
-            "testnet": self.electrum.constants.set_testnet,
-            "regtest": self.electrum.constants.set_regtest,
-            "simnet": self.electrum.constants.set_simnet,
-            "signet": self.electrum.constants.set_signet,
+            "mainnet": self.electrum.constants.BitcoinMainnet.set_as_network,
+            "testnet": self.electrum.constants.BitcoinTestnet.set_as_network,
+            "regtest": self.electrum.constants.BitcoinRegtest.set_as_network,
+            "simnet": self.electrum.constants.BitcoinSimnet.set_as_network,
+            "signet": self.electrum.constants.BitcoinSignet.set_as_network,
         }
 
     def get_proxy_settings(self):
@@ -133,6 +136,7 @@ class BTCDaemon(BaseDaemon):
             "use_exchange_rate": False,
             "forget_config": True,
             "electrum_path": self.DATA_PATH,
+            "lightning_forward_payments": self.LIGHTNING_PUBLIC_CHANNELS,
             self.NET.lower(): True,
         }
         options.update(self.get_proxy_settings())
@@ -449,7 +453,7 @@ class BTCDaemon(BaseDaemon):
                 self.electrum.keystore.from_master_key(key)
                 return True
             if self.electrum.keystore.is_seed(key):
-                self.electrum.keystore.from_seed(key, None)
+                self.electrum.keystore.from_seed(key, passphrase=None)
                 return True
         except Exception:
             return False
@@ -468,7 +472,7 @@ class BTCDaemon(BaseDaemon):
         merkle_branch = merkle.get("merkle")
         header = self.network.blockchain().read_header(tx_height)
         if header is None and tx_height <= self.network.get_local_height():
-            await self.network.request_chunk(tx_height, None, can_return_early=True)
+            await self.network.request_chunk(tx_height, can_return_early=True)
             header = self.network.blockchain().read_header(tx_height)
         self.electrum.verifier.verify_tx_is_in_block(tx_hash, merkle_branch, pos, header, tx_height)
 
@@ -523,11 +527,15 @@ class BTCDaemon(BaseDaemon):
 
     @rpc
     def get_default_fee(self, tx: str | int, wallet=None) -> float:
-        return format_satoshis(self.electrum_config.estimate_fee(self.get_tx_size(tx) if isinstance(tx, str) else tx))
+        return format_satoshis(
+            self.electrum.fee_policy.FeePolicy(self.electrum_config.FEE_POLICY).estimate_fee(
+                self.get_tx_size(tx) if isinstance(tx, str) else tx, network=self.network
+            )
+        )
 
     @rpc
     def recommended_fee(self, target, wallet=None) -> float:
-        return self.electrum_config.eta_target_to_fee(target)
+        return self.network.fee_estimates.eta_target_to_fee(target)
 
     @rpc(requires_wallet=True)
     def get_invoice(self, key, wallet):
