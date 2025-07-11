@@ -51,7 +51,7 @@ production = ["gunicorn"]
 
 # daemons
 daemon-base = ["aiohttp<4.0"]
-btc-based = [{ include-group = "daemon-base" }, "protobuf<4"]
+btc-based = [{ include-group = "daemon-base" }]
 eth-based = [
     { include-group = "daemon-base" },
     "aiolimiter",
@@ -65,21 +65,21 @@ eth-based = [
 # sort alphabetically
 bch = [
     { include-group = "btc-based" },
-    "electron-cash @ https://github.com/Electron-Cash/Electron-Cash/archive/cd4a0fe6cceb6ffc90dca5525c7e405387561506.zip",
+    "electron-cash @ https://github.com/Electron-Cash/Electron-Cash/archive/9fcc5b52e737cb1f34ed258c83cbfb62c31fc70d.zip",
 ]
 bnb = [{ include-group = "eth-based" }]
 btc = [
     { include-group = "btc-based" },
-    "electrum[crypto] @ git+https://github.com/spesmilo/electrum@df1b9a223c77f4597a75df4e040754a58185151f",
+    "electrum[crypto] @ git+https://github.com/spesmilo/electrum@0f4d8d6d57bbff3428950cf531bc98eae473beec",
 ]
 eth = [{ include-group = "eth-based" }]
 grs = [
     { include-group = "btc-based" },
-    "electrum-grs[crypto] @ git+https://github.com/Groestlcoin/electrum-grs@3bbebc766b0d0f12eb69b226de723e6a6431cd80",
+    "electrum-grs[crypto] @ git+https://github.com/Groestlcoin/electrum-grs@a10de858525b7045b835a840200cf9fcff3bfe9e",
 ]
 ltc = [
     { include-group = "btc-based" },
-    "electrum-ltc[crypto] @ git+https://github.com/bitcart/electrum-ltc@b0c8bf8dd6c829ec5e93ff85627083f43b3db857",
+    "electrum-ltc[crypto] @ git+https://github.com/bitcart/electrum-ltc@fa196d3635364dd2a51e9f1f3c9a130ac61acfda",
     "scrypt>=0.6.0",
 ]
 matic = [{ include-group = "eth-based" }]
@@ -87,7 +87,7 @@ trx = [{ include-group = "eth-based" }, "async-lru", "tronpy", "trontxsize"]
 xmr = [{ include-group = "daemon-base" }, "monero", "universalasync"]
 xrg = [
     { include-group = "btc-based" },
-    "oregano @ https://github.com/Ergon-moe/Oregano/archive/6fc11cd927eda956e7fe3738fbddd30c347920a1.zip",
+    "oregano @ https://github.com/Ergon-moe/Oregano/archive/6bf78d3be864c053c95ee332c6ab366e5695d8a4.zip",
 ]
 
 daemons = [
@@ -113,7 +113,10 @@ dev = [
 ]
 
 [tool.uv]
-override-dependencies = ["protobuf>=4"]
+override-dependencies = ["protobuf<6"]
+
+[tool.uv.sources]
+bitcart = { path = "../bitcart-sdk" }
 
 [tool.ruff]
 target-version = "py311"

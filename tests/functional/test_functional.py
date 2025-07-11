@@ -16,7 +16,7 @@ from tests.helper import create_store, create_wallet
 
 REGTEST_XPUB = "dutch field mango comfort symptom smooth wide senior tongue oyster wash spoon"
 REGTEST_XPUB2 = "hungry ordinary similar more spread math general wire jealous valve exhaust emotion"
-LIGHTNING_CHANNEL_AMOUNT = bitcoins(80_000)
+LIGHTNING_CHANNEL_AMOUNT = bitcoins(200_000)
 LNPAY_AMOUNT = LIGHTNING_CHANNEL_AMOUNT / 10
 LIGHTNING_INVOICE_AMOUNT = str(LNPAY_AMOUNT / 2)
 PAYOUTS_FUND_AMOUNT = Decimal("1.0")

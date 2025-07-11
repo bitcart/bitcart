@@ -7,10 +7,6 @@ from aiohttp import WSCloseCode, WSMsgType, web
 from decouple import AutoConfig
 from utils import JsonResponse, authenticate, load_spec, maybe_update_key, noop_cast, parse_params
 
-os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = (
-    "python"  # TODO: remove when all protobufs are re-generated for version 4 in electrums
-)
-
 
 class BaseDaemon:
     # Coin name (symbol), used for coin identification across Bitcart

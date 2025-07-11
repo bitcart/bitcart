@@ -155,6 +155,10 @@ class BCHDaemon(BTCDaemon):
         return result
 
     @rpc
+    def get_default_fee(self, tx: str | int, wallet=None) -> float:
+        return format_satoshis(self.electrum_config.estimate_fee(self.get_tx_size(tx) if isinstance(tx, str) else tx))
+
+    @rpc
     def recommended_fee(self, target, wallet=None) -> float:  # no fee estimation for BCH
         return 0
 
