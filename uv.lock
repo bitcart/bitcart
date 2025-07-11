@@ -612,7 +612,7 @@ daemons = [
     { name = "electrum", extras = ["crypto"], git = "https://github.com/spesmilo/electrum?rev=0f4d8d6d57bbff3428950cf531bc98eae473beec" },
     { name = "electrum-ecc", git = "https://github.com/bitcart/electrum-ecc?rev=d90e8c79fb7d83fdea9ad0de94dce07f836f69bb" },
     { name = "electrum-grs", extras = ["crypto"], git = "https://github.com/Groestlcoin/electrum-grs?rev=a10de858525b7045b835a840200cf9fcff3bfe9e" },
-    { name = "electrum-ltc", extras = ["crypto"], git = "https://github.com/bitcart/electrum-ltc?rev=5d27597b36a4a597a45269a9a47f7ac3630b2488" },
+    { name = "electrum-ltc", extras = ["crypto"], git = "https://github.com/bitcart/electrum-ltc?rev=5fd99314de302d9ed3c90537643f2e0ba82c1f02" },
     { name = "eth-account", specifier = "<0.12" },
     { name = "eth-rlp", specifier = "<2.0" },
     { name = "mnemonic" },
@@ -638,7 +638,7 @@ dev = [
     { name = "electrum", extras = ["crypto"], git = "https://github.com/spesmilo/electrum?rev=0f4d8d6d57bbff3428950cf531bc98eae473beec" },
     { name = "electrum-ecc", git = "https://github.com/bitcart/electrum-ecc?rev=d90e8c79fb7d83fdea9ad0de94dce07f836f69bb" },
     { name = "electrum-grs", extras = ["crypto"], git = "https://github.com/Groestlcoin/electrum-grs?rev=a10de858525b7045b835a840200cf9fcff3bfe9e" },
-    { name = "electrum-ltc", extras = ["crypto"], git = "https://github.com/bitcart/electrum-ltc?rev=5d27597b36a4a597a45269a9a47f7ac3630b2488" },
+    { name = "electrum-ltc", extras = ["crypto"], git = "https://github.com/bitcart/electrum-ltc?rev=5fd99314de302d9ed3c90537643f2e0ba82c1f02" },
     { name = "email-validator" },
     { name = "eth-account", specifier = "<0.12" },
     { name = "eth-rlp", specifier = "<2.0" },
@@ -713,7 +713,7 @@ lint = [
 ltc = [
     { name = "aiohttp", specifier = "<4.0" },
     { name = "electrum-ecc", git = "https://github.com/bitcart/electrum-ecc?rev=d90e8c79fb7d83fdea9ad0de94dce07f836f69bb" },
-    { name = "electrum-ltc", extras = ["crypto"], git = "https://github.com/bitcart/electrum-ltc?rev=5d27597b36a4a597a45269a9a47f7ac3630b2488" },
+    { name = "electrum-ltc", extras = ["crypto"], git = "https://github.com/bitcart/electrum-ltc?rev=5fd99314de302d9ed3c90537643f2e0ba82c1f02" },
     { name = "scrypt", specifier = ">=0.6.0" },
 ]
 matic = [
@@ -1285,7 +1285,7 @@ crypto = [
 [[package]]
 name = "electrum-ltc"
 version = "4.6.0b1"
-source = { git = "https://github.com/bitcart/electrum-ltc?rev=5d27597b36a4a597a45269a9a47f7ac3630b2488#5d27597b36a4a597a45269a9a47f7ac3630b2488" }
+source = { git = "https://github.com/bitcart/electrum-ltc?rev=5fd99314de302d9ed3c90537643f2e0ba82c1f02#5fd99314de302d9ed3c90537643f2e0ba82c1f02" }
 dependencies = [
     { name = "aiohttp" },
     { name = "aiohttp-socks" },
