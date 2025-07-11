@@ -91,6 +91,9 @@ class BCHDaemon(BTCDaemon):
     def get_exception_message(self, e):
         return get_exception_message(e)
 
+    def _serialize_proxy(self, proxy_dict):
+        return self.electrum.network.serialize_proxy(proxy_dict)
+
     @rpc
     async def get_transaction(self, tx, wallet=None):
         result = self.network.synchronous_get(("blockchain.transaction.get", [tx, True]))

@@ -98,6 +98,9 @@ class BTCDaemon(BaseDaemon):
             "signet": self.electrum.constants.BitcoinSignet.set_as_network,
         }
 
+    def _serialize_proxy(self, proxy_dict):
+        return self.electrum.network.ProxySettings.from_dict(proxy_dict).serialize_proxy_cfgstr()
+
     def get_proxy_settings(self):
         proxy = None
         if self.PROXY_URL:
@@ -110,7 +113,7 @@ class BTCDaemon(BaseDaemon):
                     "user": str(parsed.username),
                     "password": str(parsed.password),
                 }
-                proxy = self.electrum.network.serialize_proxy_cfgstr(proxy)
+                proxy = self._serialize_proxy(proxy)
             except Exception:
                 sys.exit(f"Invalid proxy URL. Original traceback:\n{traceback.format_exc()}")
         return {"proxy": proxy}
