@@ -633,12 +633,12 @@ bnb = [
 btc = [
     { name = "aiohttp", specifier = "<4.0" },
     { name = "electrum", extras = ["crypto"], git = "https://github.com/spesmilo/electrum?rev=0f4d8d6d57bbff3428950cf531bc98eae473beec" },
-    { name = "electrum-ecc", git = "https://github.com/bitcart/electrum-ecc.git?rev=f9a5a753b6955236481ef0a7bb29e56cd263798e" },
+    { name = "electrum-ecc", git = "https://github.com/bitcart/electrum-ecc?rev=6fb87e7c90f7abb1c775b77eb64bede61d0e8279" },
 ]
 btc-based = [{ name = "aiohttp", specifier = "<4.0" }]
 btc-derived = [
     { name = "aiohttp", specifier = "<4.0" },
-    { name = "electrum-ecc", git = "https://github.com/bitcart/electrum-ecc.git?rev=f9a5a753b6955236481ef0a7bb29e56cd263798e" },
+    { name = "electrum-ecc", git = "https://github.com/bitcart/electrum-ecc?rev=6fb87e7c90f7abb1c775b77eb64bede61d0e8279" },
 ]
 daemon-base = [{ name = "aiohttp", specifier = "<4.0" }]
 daemons = [
@@ -648,7 +648,7 @@ daemons = [
     { name = "bitarray", specifier = "<3" },
     { name = "electron-cash", url = "https://github.com/Electron-Cash/Electron-Cash/archive/9fcc5b52e737cb1f34ed258c83cbfb62c31fc70d.zip" },
     { name = "electrum", extras = ["crypto"], git = "https://github.com/spesmilo/electrum?rev=0f4d8d6d57bbff3428950cf531bc98eae473beec" },
-    { name = "electrum-ecc", git = "https://github.com/bitcart/electrum-ecc.git?rev=f9a5a753b6955236481ef0a7bb29e56cd263798e" },
+    { name = "electrum-ecc", git = "https://github.com/bitcart/electrum-ecc?rev=6fb87e7c90f7abb1c775b77eb64bede61d0e8279" },
     { name = "electrum-grs", extras = ["crypto"], git = "https://github.com/Groestlcoin/electrum-grs?rev=a10de858525b7045b835a840200cf9fcff3bfe9e" },
     { name = "electrum-ltc", extras = ["crypto"], git = "https://github.com/bitcart/electrum-ltc?rev=fa196d3635364dd2a51e9f1f3c9a130ac61acfda" },
     { name = "eth-account", specifier = "<0.12" },
@@ -674,7 +674,7 @@ dev = [
     { name = "bitcart", directory = "../bitcart-sdk" },
     { name = "electron-cash", url = "https://github.com/Electron-Cash/Electron-Cash/archive/9fcc5b52e737cb1f34ed258c83cbfb62c31fc70d.zip" },
     { name = "electrum", extras = ["crypto"], git = "https://github.com/spesmilo/electrum?rev=0f4d8d6d57bbff3428950cf531bc98eae473beec" },
-    { name = "electrum-ecc", git = "https://github.com/bitcart/electrum-ecc.git?rev=f9a5a753b6955236481ef0a7bb29e56cd263798e" },
+    { name = "electrum-ecc", git = "https://github.com/bitcart/electrum-ecc?rev=6fb87e7c90f7abb1c775b77eb64bede61d0e8279" },
     { name = "electrum-grs", extras = ["crypto"], git = "https://github.com/Groestlcoin/electrum-grs?rev=a10de858525b7045b835a840200cf9fcff3bfe9e" },
     { name = "electrum-ltc", extras = ["crypto"], git = "https://github.com/bitcart/electrum-ltc?rev=fa196d3635364dd2a51e9f1f3c9a130ac61acfda" },
     { name = "email-validator" },
@@ -741,7 +741,7 @@ eth-based = [
 ]
 grs = [
     { name = "aiohttp", specifier = "<4.0" },
-    { name = "electrum-ecc", git = "https://github.com/bitcart/electrum-ecc.git?rev=f9a5a753b6955236481ef0a7bb29e56cd263798e" },
+    { name = "electrum-ecc", git = "https://github.com/bitcart/electrum-ecc?rev=6fb87e7c90f7abb1c775b77eb64bede61d0e8279" },
     { name = "electrum-grs", extras = ["crypto"], git = "https://github.com/Groestlcoin/electrum-grs?rev=a10de858525b7045b835a840200cf9fcff3bfe9e" },
 ]
 lint = [
@@ -750,7 +750,7 @@ lint = [
 ]
 ltc = [
     { name = "aiohttp", specifier = "<4.0" },
-    { name = "electrum-ecc", git = "https://github.com/bitcart/electrum-ecc.git?rev=f9a5a753b6955236481ef0a7bb29e56cd263798e" },
+    { name = "electrum-ecc", git = "https://github.com/bitcart/electrum-ecc?rev=6fb87e7c90f7abb1c775b77eb64bede61d0e8279" },
     { name = "electrum-ltc", extras = ["crypto"], git = "https://github.com/bitcart/electrum-ltc?rev=fa196d3635364dd2a51e9f1f3c9a130ac61acfda" },
     { name = "scrypt", specifier = ">=0.6.0" },
 ]
@@ -1292,8 +1292,8 @@ sdist = { url = "https://files.pythonhosted.org/packages/9b/54/1e6d5b3745a681b34
 
 [[package]]
 name = "electrum-ecc"
-version = "0.0.5"
-source = { git = "https://github.com/bitcart/electrum-ecc.git?rev=f9a5a753b6955236481ef0a7bb29e56cd263798e#f9a5a753b6955236481ef0a7bb29e56cd263798e" }
+version = "0.0.6"
+source = { git = "https://github.com/bitcart/electrum-ecc?rev=6fb87e7c90f7abb1c775b77eb64bede61d0e8279#6fb87e7c90f7abb1c775b77eb64bede61d0e8279" }
 
 [[package]]
 name = "electrum-grs"

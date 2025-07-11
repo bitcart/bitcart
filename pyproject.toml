@@ -52,7 +52,10 @@ production = ["gunicorn"]
 # daemons
 daemon-base = ["aiohttp<4.0"]
 btc-based = [{ include-group = "daemon-base" }]
-btc-derived = [{ include-group = "btc-based" }, "electrum-ecc"]
+btc-derived = [
+    { include-group = "btc-based" },
+    "electrum-ecc @ git+https://github.com/bitcart/electrum-ecc@6fb87e7c90f7abb1c775b77eb64bede61d0e8279",
+]
 eth-based = [
     { include-group = "daemon-base" },
     "aiolimiter",
@@ -115,11 +118,10 @@ dev = [
 
 [tool.uv]
 override-dependencies = ["protobuf<6"]
-config-settings = { "--build-option" = "electrum_ecc.dont_compile" }
+config-settings = { "electrum_ecc.dont_compile" = "true" }
 
 [tool.uv.sources]
 bitcart = { path = "../bitcart-sdk" }
-electrum-ecc = { git = "https://github.com/bitcart/electrum-ecc.git", rev = "f9a5a753b6955236481ef0a7bb29e56cd263798e" }
 
 [tool.ruff]
 target-version = "py311"
