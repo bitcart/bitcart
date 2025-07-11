@@ -83,7 +83,7 @@ grs = [
 ]
 ltc = [
     { include-group = "btc-derived" },
-    "electrum-ltc[crypto] @ git+https://github.com/bitcart/electrum-ltc@fa196d3635364dd2a51e9f1f3c9a130ac61acfda",
+    "electrum-ltc[crypto] @ git+https://github.com/bitcart/electrum-ltc@5d27597b36a4a597a45269a9a47f7ac3630b2488",
     "scrypt>=0.6.0",
 ]
 matic = [{ include-group = "eth-based" }]
