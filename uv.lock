@@ -339,54 +339,16 @@ wheels = [
 
 [[package]]
 name = "bitcart"
-source = { directory = "../bitcart-sdk" }
+version = "1.18.0.0"
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp" },
     { name = "jsonrpcclient" },
     { name = "universalasync" },
 ]
-
-[package.metadata]
-requires-dist = [
-    { name = "aiohttp" },
-    { name = "aiohttp-socks", marker = "extra == 'proxy'" },
-    { name = "jsonrpcclient" },
-    { name = "universalasync" },
-]
-provides-extras = ["proxy"]
-
-[package.metadata.requires-dev]
-all = [
-    { name = "commonmark" },
-    { name = "mock" },
-    { name = "mypy" },
-    { name = "pillow" },
-    { name = "pre-commit" },
-    { name = "pytest" },
-    { name = "pytest-asyncio" },
-    { name = "pytest-cov" },
-    { name = "pytest-mock" },
-    { name = "recommonmark" },
-    { name = "ruff" },
-    { name = "sphinx" },
-    { name = "sphinx-rtd-theme" },
-]
-dev = [
-    { name = "mypy" },
-    { name = "pre-commit" },
-    { name = "pytest" },
-    { name = "pytest-asyncio" },
-    { name = "pytest-cov" },
-    { name = "pytest-mock" },
-    { name = "ruff" },
-]
-docs = [
-    { name = "commonmark" },
-    { name = "mock" },
-    { name = "pillow" },
-    { name = "recommonmark" },
-    { name = "sphinx" },
-    { name = "sphinx-rtd-theme" },
+sdist = { url = "https://files.pythonhosted.org/packages/8c/de/bb971c2a2d0d66af036f72135d421f7c6d4901597dd6367d6583f00333ce/bitcart-1.18.0.0.tar.gz", hash = "sha256:c6ca6438bcd439882cf608db7a53dbe5756e4dd47124f6594b16ccc147d7b1a0", size = 146919, upload-time = "2025-07-11T13:26:20.775Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/14/76/91d4a7519c2e09a8f4aa4e2bdbeddc17ee23365db9ba256dd0eae9d6c4a0/bitcart-1.18.0.0-py3-none-any.whl", hash = "sha256:18d9c4dd4a8b6433b49e8f673cbd19f0d68dfe5efc9c87b8b289ee2c4fb3f202", size = 20909, upload-time = "2025-07-11T13:26:19.52Z" },
 ]
 
 [[package]]
@@ -671,7 +633,7 @@ dev = [
     { name = "async-lru" },
     { name = "asyncpg", specifier = "==0.29.0" },
     { name = "bitarray", specifier = "<3" },
-    { name = "bitcart", directory = "../bitcart-sdk" },
+    { name = "bitcart" },
     { name = "electron-cash", url = "https://github.com/Electron-Cash/Electron-Cash/archive/9fcc5b52e737cb1f34ed258c83cbfb62c31fc70d.zip" },
     { name = "electrum", extras = ["crypto"], git = "https://github.com/spesmilo/electrum?rev=0f4d8d6d57bbff3428950cf531bc98eae473beec" },
     { name = "electrum-ecc", git = "https://github.com/bitcart/electrum-ecc?rev=d90e8c79fb7d83fdea9ad0de94dce07f836f69bb" },
@@ -790,7 +752,7 @@ web = [
     { name = "alembic" },
     { name = "apprise" },
     { name = "asyncpg", specifier = "==0.29.0" },
-    { name = "bitcart", directory = "../bitcart-sdk" },
+    { name = "bitcart" },
     { name = "email-validator" },
     { name = "fastapi" },
     { name = "fido2" },

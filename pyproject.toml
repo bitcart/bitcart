@@ -120,9 +120,6 @@ dev = [
 override-dependencies = ["protobuf<6"]
 config-settings = { "electrum_ecc.dont_compile" = "1" }
 
-[tool.uv.sources]
-bitcart = { path = "../bitcart-sdk" }
-
 [tool.ruff]
 target-version = "py311"
 line-length = 127
