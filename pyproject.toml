@@ -54,7 +54,7 @@ daemon-base = ["aiohttp<4.0"]
 btc-based = [{ include-group = "daemon-base" }]
 btc-derived = [
     { include-group = "btc-based" },
-    "electrum-ecc @ git+https://github.com/bitcart/electrum-ecc@6fb87e7c90f7abb1c775b77eb64bede61d0e8279",
+    "electrum-ecc @ git+https://github.com/bitcart/electrum-ecc@d90e8c79fb7d83fdea9ad0de94dce07f836f69bb",
 ]
 eth-based = [
     { include-group = "daemon-base" },
@@ -118,7 +118,7 @@ dev = [
 
 [tool.uv]
 override-dependencies = ["protobuf<6"]
-config-settings = { "electrum_ecc.dont_compile" = "true" }
+config-settings = { "electrum_ecc.dont_compile" = "1" }
 
 [tool.uv.sources]
 bitcart = { path = "../bitcart-sdk" }
