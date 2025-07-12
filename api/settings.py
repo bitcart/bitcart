@@ -13,7 +13,6 @@ from contextvars import ContextVar
 from typing import Annotated
 
 import aiofiles
-import fido2.features
 from aiohttp import ClientSession
 from bitcart import COINS, APIManager
 from bitcart.coin import Coin
@@ -35,8 +34,6 @@ from api.logger import configure_logserver, get_exception_message, get_logger
 from api.schemes import SSHSettings
 from api.templates import TemplateManager
 from api.utils.files import ensure_exists
-
-fido2.features.webauthn_json_mapping.enabled = True
 
 
 class Settings(BaseSettings):

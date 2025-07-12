@@ -42,7 +42,7 @@ web = [
     "python-multipart",
     "redis",
     "sentry-sdk[fastapi]",
-    "setuptools",
+    "setuptools<80",       # TODO: we need to upgrade sqlalchemy
     "sqlalchemy<1.4",
     "universalasync",
     "uvicorn[standard]",
