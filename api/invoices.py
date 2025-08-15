@@ -162,7 +162,9 @@ async def update_confirmations(invoice, method, confirmations, tx_hashes=None, s
     status = invoice.status
     if confirmations >= 1:
         status = InvoiceStatus.CONFIRMED
-    if confirmations >= store.checkout_settings.transaction_speed:
+    wallet = await utils.database.get_object(models.Wallet, method.wallet_id)
+    transaction_speed = wallet.transaction_speed if wallet.transaction_speed else store.checkout_settings.transaction_speed
+    if confirmations >= transaction_speed:
         status = InvoiceStatus.COMPLETE
     await update_status(invoice, status, method, tx_hashes, sent_amount)
 

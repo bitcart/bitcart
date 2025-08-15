@@ -13,7 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import ARRAY
 
 from api import schemes, settings
-from api.constants import PUBLIC_ID_LENGTH
+from api.constants import PUBLIC_ID_LENGTH, MAX_CONFIRMATION_WATCH
 from api.db import db
 from api.ext.moneyformat import currency_table
 from api.logger import get_exception_message, get_logger
@@ -399,6 +399,7 @@ class Wallet(BaseModel):
     hint = Column(Text)
     contract = Column(Text)
     additional_xpub_data = Column(JSON)
+    transaction_speed = Column(Integer, default=None, nullable=True)
 
     def prepare_edit(self, kwargs):  # pragma: no cover
         super().prepare_edit(kwargs)
@@ -460,6 +461,14 @@ class Wallet(BaseModel):
                 except BitcartBaseError as e:
                     logger.error(f"Failed to validate contract for currency {currency}:\n{get_exception_message(e)}")
                     raise HTTPException(422, "Invalid contract") from None
+            if "transaction_speed" in kwargs:
+                try:
+                    transaction_speed = int(kwargs["transaction_speed"])
+                except ValueError:
+                    raise HTTPException(422, "Invalid transaction_speed") from None
+
+                if transaction_speed < 0 or transaction_speed > MAX_CONFIRMATION_WATCH:
+                    raise HTTPException(422, "Invalid transaction_speed") from None
 
     async def validate_xpub(self, coin, currency, xpub, additional_xpub_data):
         try:
