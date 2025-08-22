@@ -399,6 +399,7 @@ class Wallet(BaseModel):
     hint = Column(Text)
     contract = Column(Text)
     additional_xpub_data = Column(JSON)
+    transaction_speed = Column(Integer)
 
     def prepare_edit(self, kwargs):  # pragma: no cover
         super().prepare_edit(kwargs)

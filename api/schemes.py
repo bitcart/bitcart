@@ -228,6 +228,7 @@ class CreateWallet(CreateModel, CreatedMixin):
     hint: str = ""
     contract: str = ""
     additional_xpub_data: dict = {}
+    transaction_speed: int | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -235,6 +236,13 @@ class CreateWallet(CreateModel, CreatedMixin):
     @classmethod
     def validate_currency(cls, v):
         return v.lower()
+
+    @field_validator("transaction_speed")
+    @classmethod
+    def validate_transaction_speed(cls, v):  # TODO: remove duplication
+        if v is not None and (v < 0 or v > MAX_CONFIRMATION_WATCH):
+            raise HTTPException(422, f"Transaction speed must be in range from 0 to {MAX_CONFIRMATION_WATCH}")
+        return v
 
 
 # used for xpub generation
