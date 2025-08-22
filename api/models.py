@@ -13,7 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import ARRAY
 
 from api import schemes, settings
-from api.constants import PUBLIC_ID_LENGTH, MAX_CONFIRMATION_WATCH
+from api.constants import MAX_CONFIRMATION_WATCH, PUBLIC_ID_LENGTH
 from api.db import db
 from api.ext.moneyformat import currency_table
 from api.logger import get_exception_message, get_logger
