@@ -59,7 +59,7 @@ async def test_wallet_invalid_xpub(client: TestClient, token):
 
 @Parametrization.autodetect_parameters()
 @Parametrization.case(name="Too low transaction speed", data={"transaction_speed": -1}, error=BAD_TX_SPEED_MESSAGE)
-@Parametrization.case(name="Too high transaction speed", data={"transaction_speed": 7}, error=BAD_TX_SPEED_MESSAGE)
+@Parametrization.case(name="Too high transaction speed", data={"transaction_speed": 11}, error=BAD_TX_SPEED_MESSAGE)
 @Parametrization.case(
     name="Too low underpaid percentage",
     data={"underpaid_percentage": -1},
