@@ -9,7 +9,7 @@ Bitcart is a platform for merchants, users and developers which offers easy setu
 
 ## Linked repositories
 
-Our ecosystem consists of a few packages, this is our central repository.
+Our ecosystem consists of a few packages, this is our central repository..
 
 It is recommended to propose feature requests to Bitcart ecosystem as a whole on that repository.
 
