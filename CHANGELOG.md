@@ -2,6 +2,10 @@
 
 ## Latest changes
 
+## 0.9.1.0
+
+Last release containing some fixes before the new backend is going to be pushed
+
 ## 0.9.0.0
 
 ### The long-awaited release
