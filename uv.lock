@@ -634,7 +634,7 @@ dev = [
     { name = "electrum-ltc", extras = ["crypto"], git = "https://github.com/bitcart/electrum-ltc?rev=5fd99314de302d9ed3c90537643f2e0ba82c1f02" },
     { name = "fakeredis", specifier = ">=2.31.1" },
     { name = "fastapi", specifier = ">=0.115.6" },
-    { name = "faststream", extras = ["redis"], specifier = "<=0.5.42" },
+    { name = "faststream", extras = ["redis"], specifier = "<=0.5.48" },
     { name = "fido2", specifier = ">=2.0.0" },
     { name = "filelock", specifier = ">=3.19.1" },
     { name = "gunicorn", specifier = ">=23.0.0" },
@@ -751,7 +751,7 @@ web = [
     { name = "bitcart", specifier = ">=1.18.0.0" },
     { name = "dishka", specifier = ">=1.4.2" },
     { name = "fastapi", specifier = ">=0.115.6" },
-    { name = "faststream", extras = ["redis"], specifier = "<=0.5.42" },
+    { name = "faststream", extras = ["redis"], specifier = "<=0.5.48" },
     { name = "fido2", specifier = ">=2.0.0" },
     { name = "jinja2", specifier = ">=3.1.6" },
     { name = "jsonschema", specifier = ">=4.25.1" },
@@ -1487,16 +1487,16 @@ wheels = [
 
 [[package]]
 name = "faststream"
-version = "0.5.42"
+version = "0.5.48"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
     { name = "fast-depends" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/57/d0/dc00fcdb5cfc128cf6305f9b9aa2cf8bc76333d2042fb2e36c45c1a600ba/faststream-0.5.42.tar.gz", hash = "sha256:7f115dc4c9eb53a76a5ee1194191179f8161ed678ad0cb744ace2743bfd5002e", size = 296482, upload-time = "2025-05-22T18:49:46.542Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/9e/05/5edd840d3b5bfa1713985665b11c0ba9e918bc84539a69e8888b8485f48c/faststream-0.5.48.tar.gz", hash = "sha256:b7082552e626afd832410752da5d26714f893148fd9f3d2ce431117b3ba5cdb1", size = 303368, upload-time = "2025-07-21T18:53:29.522Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ee/e1/51f479c153990b3ad2625e0191fbc0ce4fea016c0c65f6ffc464bb980d18/faststream-0.5.42-py3-none-any.whl", hash = "sha256:dbbbbca36bc22ac017c0cca2acffb81dc6569c1813055367bf7acd6c46c6cbb9", size = 396869, upload-time = "2025-05-22T18:49:44.354Z" },
+    { url = "https://files.pythonhosted.org/packages/89/cc/0d558289e944b8708add28e7e532a7bf7ad41639866e7635ab54fe4a7992/faststream-0.5.48-py3-none-any.whl", hash = "sha256:ee48956405019f82847ba5e1ef5a90ad648338d86bcc377eb8938edd1615c928", size = 404492, upload-time = "2025-07-21T18:53:27.727Z" },
 ]
 
 [package.optional-dependencies]
