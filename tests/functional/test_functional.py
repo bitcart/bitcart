@@ -1,18 +1,25 @@
+from __future__ import annotations
+
 import asyncio
 import signal
+from collections.abc import AsyncIterator, Awaitable, Callable, Iterator
 from decimal import Decimal
 from queue import Queue
+from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 from aiohttp import web
-from bitcart import BTC
+from bitcart import BTC  # type: ignore
 from bitcart.utils import bitcoins
-from httpx_ws import aconnect_ws
+from httpx_ws import AsyncWebSocketSession, aconnect_ws
 
 from api.constants import MAX_CONFIRMATION_WATCH
 from api.ext.moneyformat import truncate
 from tests.functional import utils
 from tests.helper import create_store, create_wallet
+
+if TYPE_CHECKING:
+    from httpx import AsyncClient as TestClient
 
 REGTEST_XPUB = "dutch field mango comfort symptom smooth wide senior tongue oyster wash spoon"
 REGTEST_XPUB2 = "hungry ordinary similar more spread math general wire jealous valve exhaust emotion"
@@ -27,14 +34,14 @@ pytestmark = pytest.mark.anyio
 
 
 @pytest.fixture
-def worker():
+def worker() -> Iterator[None]:
     process = utils.start_worker()
     yield
     process.send_signal(signal.SIGINT)
     process.wait()
 
 
-async def get_status(client, obj_id, token):
+async def get_status(client: TestClient, obj_id: str, token: str) -> str:
     resp1 = await client.get(f"/invoices/{obj_id}")
     resp2 = await client.get(f"/payouts/{obj_id}", headers={"Authorization": f"Bearer {token}"})
     resp = resp1 if resp1.status_code == 200 else resp2
@@ -42,9 +49,20 @@ async def get_status(client, obj_id, token):
     return resp.json()["status"]
 
 
-async def check_invoice_status(client, invoice_id, expected_status, allow_next=False, exception_status=None, sent_amount=None):
+async def check_invoice_status(
+    action_func: Callable[[], Awaitable[Any]],
+    client: TestClient,
+    invoice_id: str,
+    expected_status: str,
+    allow_next: bool = False,
+    exception_status: str | None = None,
+    sent_amount: Decimal | None = None,
+) -> None:
     async with asyncio.timeout(30):
+        ws: AsyncWebSocketSession
         async with aconnect_ws(f"/ws/invoices/{invoice_id}", client) as ws:
+            await action_func()
+            ws = cast(AsyncWebSocketSession, ws)
             msg = await ws.receive_json()
             if allow_next:  # when there are two statuses in a row (zeroconf)
                 msg = await ws.receive_json()
@@ -56,7 +74,7 @@ async def check_invoice_status(client, invoice_id, expected_status, allow_next=F
     await asyncio.sleep(1)  # ensure IPNs are already sent
 
 
-async def wait_for_balance(address, expected_balance):
+async def wait_for_balance(address: str, expected_balance: Decimal) -> None:
     wallet = BTC(xpub=address)
     while True:
         balance = await wallet.balance()
@@ -67,7 +85,7 @@ async def wait_for_balance(address, expected_balance):
     await asyncio.sleep(3)
 
 
-async def wait_for_local_tx(wallet, tx_hash):
+async def wait_for_local_tx(wallet: BTC, tx_hash: str) -> None:
     async with asyncio.timeout(30):
         while True:
             try:
@@ -80,7 +98,7 @@ async def wait_for_local_tx(wallet, tx_hash):
     await asyncio.sleep(3)
 
 
-async def send_to_address(address, amount, confirm=False, wait_balance=False):
+async def send_to_address(address: str, amount: Decimal, confirm: bool = False, wait_balance: bool = False) -> str:
     tx_hash = utils.run_shell(["sendtoaddress", address, str(amount)])
     if confirm:
         utils.run_shell(["newblocks", "1"])
@@ -89,13 +107,14 @@ async def send_to_address(address, amount, confirm=False, wait_balance=False):
     return tx_hash
 
 
-def find_channel(channels, channel_point):
+def find_channel(channels: list[dict[str, Any]], channel_point: str) -> dict[str, Any]:
     for channel in channels:
         if channel["channel_point"] == channel_point:
             return channel
+    raise ValueError(f"Channel {channel_point} not found")
 
 
-async def wait_for_channel_opening(regtest_wallet, channel_point):
+async def wait_for_channel_opening(regtest_wallet: BTC, channel_point: str) -> None:
     while True:
         channels = await regtest_wallet.list_channels()
         channel = find_channel(channels, channel_point)
@@ -106,17 +125,17 @@ async def wait_for_channel_opening(regtest_wallet, channel_point):
 
 
 @pytest.fixture
-async def regtest_wallet():
+async def regtest_wallet() -> BTC:
     return BTC(xpub=REGTEST_XPUB)
 
 
 @pytest.fixture
-async def regtest_lnnode():
+async def regtest_lnnode() -> BTC:
     return BTC(xpub=REGTEST_XPUB2, rpc_url="http://localhost:5110")
 
 
 @pytest.fixture
-async def prepare_ln_channels(regtest_wallet, regtest_lnnode):
+async def prepare_ln_channels(regtest_wallet: BTC, regtest_lnnode: BTC) -> AsyncIterator[None]:
     node_id = await regtest_lnnode.node_id
     # first fund the channel opener
     fund_amount = 10 * LIGHTNING_CHANNEL_AMOUNT
@@ -134,17 +153,20 @@ async def prepare_ln_channels(regtest_wallet, regtest_lnnode):
     await regtest_wallet.close_channel(channel_point)
 
 
+type MPQueue = Queue[tuple[dict[str, Any], str]]
+
+
 @pytest.fixture
-def queue():
+def queue() -> MPQueue:
     return Queue()
 
 
 @pytest.fixture
-async def ipn_server(queue, client, token):
+async def ipn_server(queue: MPQueue, client: TestClient, token: str) -> AsyncIterator[str]:
     host = "0.0.0.0"
     port = 8080
 
-    async def handle_post(request):
+    async def handle_post(request: web.Request) -> web.Response:
         data = await request.json()
         # to ensure status during IPN matches the one sent
         status = await get_status(client, data["id"], token=token)
@@ -161,24 +183,37 @@ async def ipn_server(queue, client, token):
     await runner.cleanup()
 
 
-def check_status(queue, data):
+def check_status(queue: MPQueue, data: dict[str, Any]) -> None:
     queue_data = queue.get()
     assert queue_data[0] == data
     assert queue_data[0]["status"] == queue_data[1]
 
 
 @pytest.fixture
-async def regtest_api_wallet(client, user, token, anyio_backend):
-    return await create_wallet(client, user["id"], token, xpub=REGTEST_XPUB)
+async def regtest_api_wallet(client: TestClient, token: str, anyio_backend: tuple[str, dict[str, Any]]) -> dict[str, Any]:
+    return await create_wallet(client, token, xpub=REGTEST_XPUB)
 
 
 @pytest.fixture
-async def regtest_api_store(client, user, token, regtest_api_wallet, anyio_backend):
-    return await create_store(client, user["id"], token, custom_store_attrs={"wallets": [regtest_api_wallet["id"]]})
+async def regtest_api_store(
+    client: TestClient,
+    token: str,
+    regtest_api_wallet: dict[str, Any],
+    anyio_backend: tuple[str, dict[str, Any]],
+) -> dict[str, Any]:
+    return await create_store(client, token, custom_store_attrs={"wallets": [regtest_api_wallet["id"]]})
 
 
 @pytest.mark.parametrize("speed", range(MAX_CONFIRMATION_WATCH + 1))
-async def test_onchain_pay_flow(client, regtest_api_store, token, worker, queue, ipn_server, speed):
+async def test_onchain_pay_flow(
+    client: TestClient,
+    regtest_api_store: dict[str, Any],
+    token: str,
+    worker: None,
+    queue: MPQueue,
+    ipn_server: str,
+    speed: int,
+) -> None:
     store_id = regtest_api_store["id"]
     resp = await client.patch(
         f"/stores/{store_id}/checkout_settings",
@@ -197,16 +232,27 @@ async def test_onchain_pay_flow(client, regtest_api_store, token, worker, queue,
     pay_details = invoice["payments"][0]
     address = pay_details["payment_address"]
     amount = pay_details["amount"]
-    await send_to_address(address, amount)
     invoice_id = invoice["id"]
     zeroconf = speed == 0
     expected_status = "complete" if zeroconf else "paid"
     await check_invoice_status(
-        client, invoice_id, expected_status, sent_amount=amount, exception_status="none", allow_next=zeroconf
+        lambda: send_to_address(address, amount),
+        client,
+        invoice_id,
+        expected_status,
+        sent_amount=amount,
+        exception_status="none",
+        allow_next=zeroconf,
     )
 
 
-async def test_exception_statuses(client, regtest_api_store, token, worker, ipn_server):
+async def test_exception_statuses(
+    client: TestClient,
+    regtest_api_store: dict[str, Any],
+    token: str,
+    worker: None,
+    ipn_server: str,
+) -> None:
     store_id = regtest_api_store["id"]
     invoice = (await client.post("/invoices", json={"price": INVOICE_AMOUNT, "currency": "BTC", "store_id": store_id})).json()
     pay_details = invoice["payments"][0]
@@ -215,26 +261,37 @@ async def test_exception_statuses(client, regtest_api_store, token, worker, ipn_
     part1 = truncate(amount / 2, 8)
     part2 = amount - part1
     await asyncio.sleep(3)  # wait for the worker startup (remove when electrum fixes pending tx_hashes returning)
-    await send_to_address(address, part1)
     invoice_id = invoice["id"]
-    await check_invoice_status(client, invoice_id, "pending", exception_status="paid_partial", sent_amount=part1)
-    await send_to_address(address, part2)
     await check_invoice_status(
-        client, invoice_id, "complete", exception_status="none", sent_amount=pay_details["amount"], allow_next=True
+        lambda: send_to_address(address, part1),
+        client,
+        invoice_id,
+        "pending",
+        exception_status="paid_partial",
+        sent_amount=part1,
+    )
+    await check_invoice_status(
+        lambda: send_to_address(address, part2),
+        client,
+        invoice_id,
+        "complete",
+        exception_status="none",
+        sent_amount=pay_details["amount"],
+        allow_next=True,
     )
 
 
 async def test_lightning_pay_flow(
-    client,
-    regtest_api_wallet,
-    regtest_api_store,
-    token,
-    worker,
-    queue,
-    ipn_server,
-    prepare_ln_channels,
-    regtest_lnnode,
-):
+    client: TestClient,
+    regtest_api_wallet: dict[str, Any],
+    regtest_api_store: dict[str, Any],
+    token: str,
+    worker: None,
+    queue: MPQueue,
+    ipn_server: str,
+    prepare_ln_channels: None,
+    regtest_lnnode: BTC,
+) -> None:
     wallet_id = regtest_api_wallet["id"]
     store_id = regtest_api_store["id"]
     resp = await client.patch(
@@ -252,10 +309,15 @@ async def test_lightning_pay_flow(
     ).json()
     assert invoice["status"] == "pending"
     pay_details = invoice["payments"][1]  # lightning methods are always created after onchain ones
-    lnpay_result = await regtest_lnnode.lnpay(pay_details["payment_address"])
-    assert lnpay_result["success"], lnpay_result
+
+    async def pay_invoice() -> None:
+        lnpay_result = await regtest_lnnode.lnpay(pay_details["payment_address"])
+        assert lnpay_result["success"], lnpay_result
+
     invoice_id = invoice["id"]
-    await check_invoice_status(client, invoice_id, "complete", exception_status="none", sent_amount=pay_details["amount"])
+    await check_invoice_status(
+        pay_invoice, client, invoice_id, "complete", exception_status="none", sent_amount=pay_details["amount"]
+    )
     assert queue.qsize() == 1
     check_status(queue, {"id": invoice["id"], "status": "complete"})
     # check that it was paid with lightning actually
@@ -264,7 +326,9 @@ async def test_lightning_pay_flow(
     assert resp.json()["payment_id"] == pay_details["id"]
 
 
-async def apply_batch_payout_action(client, token, command, ids, options=None):
+async def apply_batch_payout_action(
+    client: TestClient, token: str, command: str, ids: list[str], options: dict[str, Any] | None = None
+) -> None:
     if options is None:
         options = {}
     resp = await client.post(
@@ -276,13 +340,22 @@ async def apply_batch_payout_action(client, token, command, ids, options=None):
     assert resp.json() is True
 
 
-async def check_payout_status(client, token, obj_id, expected_status):
+async def check_payout_status(client: TestClient, token: str, obj_id: str, expected_status: str) -> None:
     resp = await client.get(f"/payouts/{obj_id}", headers={"Authorization": f"Bearer {token}"})
     assert resp.status_code == 200
     assert resp.json()["status"] == expected_status
 
 
-async def test_payouts(client, regtest_wallet, regtest_api_wallet, regtest_api_store, user, token, worker, queue, ipn_server):
+async def test_payouts(
+    client: TestClient,
+    regtest_wallet: BTC,
+    regtest_api_wallet: dict[str, Any],
+    regtest_api_store: dict[str, Any],
+    token: str,
+    worker: None,
+    queue: MPQueue,
+    ipn_server: str,
+) -> None:
     wallet_id = regtest_api_wallet["id"]
     store_id = regtest_api_store["id"]
     address = (await regtest_wallet.add_request())["address"]
@@ -334,7 +407,7 @@ async def test_payouts(client, regtest_wallet, regtest_api_wallet, regtest_api_s
     check_status(queue, {"id": payout["id"], "status": "complete"})
     # Check signing on watch-only wallet
     xpub = await regtest_wallet.server.getmpk()
-    watchonly_wallet = await create_wallet(client, user["id"], token, xpub=xpub)
+    watchonly_wallet = await create_wallet(client, token, xpub=xpub)
     payout = (
         await client.post(
             "/payouts",

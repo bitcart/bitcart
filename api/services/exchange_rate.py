@@ -1,0 +1,160 @@
+import asyncio
+import importlib
+import inspect
+import json
+import os
+from collections.abc import Callable
+from decimal import Decimal
+from pathlib import Path
+from typing import Any
+
+from sqlalchemy import distinct, func, select
+
+from api import models, utils
+from api.db import AsyncSessionMaker
+from api.ext.exchanges.base import BaseExchange
+from api.ext.exchanges.coingecko import coingecko_based_exchange
+from api.logging import get_exception_message, get_logger
+from api.redis import Redis
+from api.schemas.tasks import RatesActionMessage
+from api.services.coins import CoinService
+from api.settings import Settings
+from api.types import TasksBroker
+
+logger = get_logger(__name__)
+
+# Make sure to update it if the file is moved
+EXCHANGES_PATH = Path(os.path.dirname(__file__)).parent / "ext" / "exchanges"
+
+
+def worker_result(func: Callable[..., Any]) -> Callable[..., Any]:
+    async def wrapper(self: "ExchangeRateService", *args: Any, **kwargs: Any) -> Any:
+        if self.settings.IS_WORKER or self.settings.is_testing():
+            return await func(self, *args, **kwargs)
+        task_id = utils.common.unique_id()
+        await self.broker.publish(RatesActionMessage(func=func.__name__, args=args, task_id=task_id), "rates_action")
+        return await self.wait_for_task_result(task_id)
+
+    return wrapper
+
+
+class ExchangeRateService:
+    def __init__(
+        self,
+        async_sessionmaker: AsyncSessionMaker,
+        settings: Settings,
+        coin_service: CoinService,
+        broker: TasksBroker,
+        redis_pool: Redis,
+    ) -> None:
+        self.async_sessionmaker = async_sessionmaker
+        self.settings = settings
+        self.coin_service = coin_service
+        self.broker = broker
+        self.redis_pool = redis_pool
+        self.load_exchanges()
+
+    def load_exchanges(self) -> None:
+        self.exchanges: dict[str, BaseExchange] = {}
+        self._exchange_classes = {}
+        self.contracts: dict[str, list[str]] = {}
+        for filename in os.listdir(EXCHANGES_PATH):
+            if filename.endswith(".py") and filename not in ("__init__.py", "base.py", "rates_manager.py", "coinrules.py"):
+                module_name = os.path.splitext(filename)[0]
+                module = importlib.import_module(f"api.ext.exchanges.{module_name}")
+                for _, obj in inspect.getmembers(module, inspect.isclass):
+                    try:
+                        if issubclass(obj, BaseExchange):
+                            self._exchange_classes[module_name.lower()] = obj
+                    except TypeError:
+                        pass
+        self.default_rules = ""
+        self.coingecko_ids = {}
+        coin_rules = importlib.import_module("api.ext.exchanges.coinrules")
+        for currency, coin in self.coin_service.cryptos.items():
+            if hasattr(coin_rules, currency.upper()):
+                rules_obj = getattr(coin_rules, currency.upper())
+                if hasattr(rules_obj, "default_rule"):
+                    self.default_rules += rules_obj.default_rule + "\n"
+                if hasattr(rules_obj, "coingecko_id"):
+                    self.coingecko_ids[currency] = rules_obj.coingecko_id
+                if hasattr(rules_obj, "provides_exchange"):
+                    result = rules_obj.provides_exchange
+                    self._exchange_classes[result["name"]] = result["class"]
+            if hasattr(coin, "rate_rules"):
+                self.default_rules += coin.rate_rules + "\n"
+
+    async def init(self) -> None:
+        self.lock = asyncio.Lock()
+        coins = list(self.coin_service.cryptos.values())
+        async with self.async_sessionmaker() as session:
+            contracts = (
+                await session.execute(
+                    select(func.array_agg(distinct(models.Wallet.contract)), models.Wallet.currency).group_by(
+                        models.Wallet.currency
+                    )
+                )
+            ).all()
+        final_contracts: dict[str, list[str]] = {}
+        for tokens, currency in contracts:
+            if currency not in self.coin_service.cryptos:
+                continue
+            final_contracts[currency] = list(filter(None, tokens))
+        for currency in self.coin_service.cryptos:
+            if currency not in final_contracts:
+                final_contracts[currency] = []
+        self.contracts = final_contracts
+        if self.settings.is_testing():
+            self.exchanges["coingecko"] = self._exchange_classes["coingecko"](self.settings, self, coins, final_contracts)
+            return
+        for name, exchange_cls in self._exchange_classes.items():
+            self.exchanges[name] = exchange_cls(self.settings, self, coins, final_contracts)
+        try:
+            coingecko_exchanges = await utils.common.send_request(
+                "GET",
+                f"{self.settings.coingecko_api_url}/exchanges/list",
+                headers=self.settings.coingecko_headers,
+            )
+            for exchange in coingecko_exchanges:
+                if exchange["id"] not in self.exchanges:
+                    self.exchanges[exchange["id"]] = coingecko_based_exchange(exchange["id"])(
+                        self.settings, self, coins, final_contracts
+                    )
+        except Exception as e:
+            logger.error(f"Error while fetching coingecko exchanges:\n{get_exception_message(e)}")
+
+    async def start(self) -> None:
+        await self.init()
+        for exchange in self.exchanges.values():
+            await exchange.start()
+
+    async def wait_for_task_result(self, task_id: str) -> Any:  # pragma: no cover
+        while True:
+            result = await self.redis_pool.get(f"task:{task_id}")
+            if result:
+                await self.redis_pool.delete(f"task:{task_id}")
+                return json.loads(result, object_hook=utils.common.decimal_aware_object_hook)
+            await asyncio.sleep(0.01)
+
+    async def set_task_result(self, task_id: str, result: Any) -> None:  # pragma: no cover
+        await self.redis_pool.set(f"task:{task_id}", json.dumps(result, cls=utils.common.DecimalAwareJSONEncoder))
+
+    @worker_result
+    async def get_rate(self, exchange: str, pair: str | None = None) -> Decimal | dict[str, Decimal]:
+        if exchange.lower() not in self.exchanges:
+            if pair is None:
+                return {}
+            return Decimal("NaN")
+        return await self.exchanges[exchange.lower()].get_rate(pair)
+
+    @worker_result
+    async def get_fiatlist(self) -> list[str]:
+        return await self.exchanges["coingecko"].get_fiat_currencies()
+
+    @worker_result
+    async def add_contract(self, contract: str, currency: str) -> None:
+        async with self.lock:
+            if contract not in self.contracts[currency]:
+                self.contracts[currency].append(contract)
+                for key in self.exchanges.copy():
+                    self.exchanges[key].last_refresh = 0

@@ -1,25 +1,12 @@
-from fastapi import APIRouter
+from api.constants import AuthScopes
+from api.schemas.payouts import CreatePayout, DisplayPayout, UpdatePayout
+from api.services.crud.payouts import PayoutService
+from api.utils.routing import create_crud_router
 
-from api import crud, models, schemes, utils
-
-router = APIRouter()
-
-
-crud_routes = utils.routing.ModelView.register(
-    router,
-    "/",
-    models.Payout,
-    schemes.UpdatePayout,
-    schemes.CreatePayout,
-    schemes.DisplayPayout,
-    custom_methods={
-        "post": crud.payouts.create_payout,
-        "batch_action": crud.payouts.batch_payout_action,
-    },
-    scopes=["payout_management"],
-    custom_commands={
-        "approve": crud.payouts.approve_payouts,
-        "send": crud.payouts.send_payouts,
-        "cancel": crud.payouts.cancel_payouts,
-    },
+router = create_crud_router(
+    CreatePayout,
+    UpdatePayout,
+    DisplayPayout,
+    PayoutService,
+    required_scopes=[AuthScopes.PAYOUT_MANAGEMENT],
 )

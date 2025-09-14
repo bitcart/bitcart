@@ -8,7 +8,7 @@ executors:
     parameters:
       v:
         type: string
-        default: "3.11"
+        default: "3.12"
     docker:
       - image: cimg/python:<< parameters.v >>
       - image: cimg/redis:7.4
@@ -202,7 +202,6 @@ workflows:
           matrix:
             parameters:
               v:
-                - "3.11"
                 - "3.12"
       - bitcart/functional-tests:
           name: functional-tests

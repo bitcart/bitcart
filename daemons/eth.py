@@ -571,7 +571,9 @@ class ETHDaemon(BlockProcessorDaemon):
         await wallet.start(self.latest_blocks.copy())
         return wallet
 
-    ### Methods ###
+    #########
+    # Methods
+    #########
     @rpc(requires_network=True)
     async def add_peer(self, url, wallet=None):
         await self.coin.web3.geth.admin.add_peer(url)

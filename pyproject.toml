@@ -2,52 +2,61 @@
 name = "bitcart-api"
 version = "1.0.0"
 description = "Bitcart Merchants API"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 dependencies = ["python-decouple"]
 
 [dependency-groups]
-lint = ["pre-commit", "ruff"]
+lint = ["mypy>=1.13.0", "pre-commit>=4.3.0", "ruff>=0.9.5"]
 test = [
-    "httpx",
-    "httpx-ws",
-    "pytest",
-    "pytest-cov",
-    "pytest-mock",
-    "pytest-parametrization",
-    "pytest-xdist",
+    "fakeredis>=2.31.1",
+    "filelock>=3.19.1",
+    "httpx>=0.28.1",
+    "httpx-ws>=0.7.2",
+    "pytest>=8.3.5",
+    "pytest-cov>=6.2.1",
+    "pytest-mock>=3.15.0",
+    "pytest-parametrization>=2022.2.1", # TODO: drop it
+    "pytest-xdist>=3.8.0",
+]
+types = [
+    "types-aiofiles>=24.1.0.20250822",
+    "types-paramiko>=4.0.0.20250822",
+    "types-python-dateutil>=2.9.0.20250822",
 ]
 web = [
-    "aiofiles",
-    "alembic",
-    "apprise",
-    "asyncpg==0.29.0",
-    "bitcart",
-    "email-validator",
-    "fastapi",
-    "fido2",
-    "gino[pg]==1.1.0rc1",
-    "hiredis",
-    "Jinja2",
-    "jsonschema",
-    "msgpack",
-    "packaging",
-    "paramiko",
-    "psycopg2-binary",
-    "pwdlib[bcrypt]",
-    "py-machineid",
-    "pydantic-settings",
-    "pyotp",
-    "python-dateutil",
-    "python-dotenv",
-    "python-multipart",
-    "redis",
-    "sentry-sdk[fastapi]",
-    "setuptools<80",       # TODO: we need to upgrade sqlalchemy
-    "sqlalchemy<1.4",
-    "universalasync",
-    "uvicorn[standard]",
+    "advanced-alchemy>=0.26.2",
+    "aiofiles>=24.1.0",
+    "alembic>=1.16.1",
+    "apprise>=1.9.4",
+    "asyncpg>=0.30.0",
+    "bitcart>=1.18.0.0",
+    "dishka>=1.4.2",
+    "fastapi>=0.115.6",
+    "faststream[redis]<=0.5.42",                # TODO: update when dishka integration is fixed
+    "fido2>=2.0.0",
+    "jinja2>=3.1.6",
+    "jsonschema>=4.25.1",
+    "logfire[fastapi,redis,sqlalchemy]>=2.7.1",
+    "msgpack>=1.1.1",
+    "paramiko>=4.0.0",
+    "psycopg2-binary>=2.9.10",
+    "pwdlib[bcrypt]>=0.2.1",
+    "py-machineid>=0.8.0",
+    "pydantic-settings>=2.7.0",
+    "pydantic[email]>=2.10.3",
+    "pyotp>=2.9.0",
+    "python-dateutil>=2.9.0",
+    "python-multipart>=0.0.20",
+    "python-ulid[pydantic]>=3.0.0",
+    "redis[hiredis]>=5.2.1",
+    "scalar-fastapi>=1.4.0",
+    "sentry-sdk[fastapi,sqlalchemy]",
+    "sqlalchemy-utils>=0.41.2",
+    "sqlalchemy[asyncio]>=2.0.36",
+    "structlog>=24.4.0",
+    "uvicorn[standard]>=0.34.0",
 ]
-production = ["gunicorn"]
+production = ["gunicorn>=23.0.0"]
 
 # daemons
 daemon-base = ["aiohttp<4.0"]
@@ -109,16 +118,33 @@ dev = [
     { include-group = "lint" },
     { include-group = "test" },
     { include-group = "web" },
+    { include-group = "types" },
     { include-group = "daemons" },
     { include-group = "production" },
+    "taskipy>=1.14.1",
 ]
 
 [tool.uv]
-override-dependencies = ["protobuf<6"]
+override-dependencies = ["protobuf<6", "python-dateutil>=2.9.0"]
 config-settings = { "electrum_ecc.dont_compile" = "1" }
 
+[tool.taskipy.tasks]
+api = { cmd = "uvicorn --factory main:configure_production_app --timeout-graceful-shutdown 1 --reload", help = "run api service" }
+worker = { cmd = "python3 worker.py", help = "run worker service" }
+production = { cmd = "gunicorn -c gunicorn.conf.py \"main:configure_production_app()\"", help = "run api service in production" }
+lint = { cmd = "ruff format . && ruff check --fix .", help = "run linters with autofix" }
+lint_check = { cmd = "ruff format --check . && ruff check .", help = "run ruff linter" }
+lint_types = { cmd = "mypy api tests main.py worker.py", help = "run mypy type verify" }
+test = { cmd = "pytest ${TEST_ARGS}", help = "run tests" }
+functional = { cmd = "BTC_LIGHTNING=true pytest tests/functional/ --cov-append -n 0 ${TEST_ARGS}", help = "run functional tests" }
+new_migration = { cmd = "alembic revision --autogenerate -m \"${MESSAGE}\"", help = "create new migration" }
+db_migration = { cmd = "task new_migration", help = "create new migration" }
+db_migrate = { cmd = "alembic upgrade head", help = "run alembic upgrade" }
+db_rollback = { cmd = "alembic downgrade -1", help = "run alembic downgrade" }
+ci = { cmd = "task lint_check && task lint_types && task test", help = "run ci checks" }
+
 [tool.ruff]
-target-version = "py311"
+target-version = "py312"
 line-length = 127
 
 [tool.ruff.lint]
@@ -137,22 +163,29 @@ select = [
     "A",
     "S",
     "ASYNC",
+    "TID",
+    "PLC0415",
+    "T201",
 ]
-unfixable = ["F401"] # Prevent to remove unused imports when saving file
+preview = true
+unfixable = ["F401"]
 ignore = [
     "RET502",
     "RET503",
     "S104",
     "S507",
     "ASYNC110",
-    "A005",     # TODO: fix A005
-]
+    "A005",
+    "PLC0415",
+] # Enable PLC0415 when ready
 mccabe = { max-complexity = 12 }
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["S"]
-"scripts/*" = ["S"]
+"scripts/*" = ["S", "T201"]
 ".circleci/*" = ["S"]
+"daemons/*" = ["T201"]
+"backups/*" = ["T201"]
 
 [tool.ruff.lint.isort]
 known-third-party = ["bitcart"]
@@ -179,44 +212,30 @@ extend-immutable-calls = [
     "fastapi.params.Security",
 ]
 
+[tool.mypy]
+ignore_missing_imports = true
+plugins = ["pydantic.mypy"]
+warn_redundant_casts = true
+warn_unused_ignores = true
+disallow_any_generics = true
+check_untyped_defs = true
+no_implicit_reexport = true
+strict_equality = true
+disallow_untyped_defs = true
+skip_cache_mtime_checks = true
+exclude = ["daemons", "backups"]
+
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = true
+warn_required_dynamic_aliases = true
+warn_untyped_fields = true
+
 [tool.pytest.ini_options]
-addopts = ["-n", "auto", "--cov=.", "--cov-report", "term-missing"]
+addopts = ["-n", "auto", "--cov=api", "--cov-report", "term-missing"]
 filterwarnings = [
     "error::DeprecationWarning",
     "error::PendingDeprecationWarning",
-    "ignore:Deprecated call to `pkg_resources.declare_namespace:DeprecationWarning",
-    "ignore:pkg_resources is deprecated as an API:DeprecationWarning",               # sqlalchemy
-    "ignore:.*datetime.datetime.utcfromtimestamp().*:DeprecationWarning",            # sqlalchemy
+    "ignore:Support for class-based `config` is deprecated:DeprecationWarning", # scalar-fastapi
 ]
 norecursedirs = ["tests/functional"]
-
-[tool.coverage.run]
-source = ["."]
-omit = [
-    "main.py",
-    "worker.py",
-    "alembic/**",
-    "settings/**",
-    "tests/**",
-    "modules/**",
-    "venv/**",
-    "env/**",
-    "api/ext/update.py",
-    "api/ext/configurator.py",
-    "api/ext/backups.py",
-    "api/ext/shopify.py",
-    "api/ext/payouts.py",
-    "api/views/stores/integrations/shopify.py",
-    "api/logger.py",
-    "api/logserver.py",
-    "api/invoices.py",
-    "api/plugins.py",
-    "api/tasks.py",
-    "api/settings.py",
-    "*__init__.py",
-    # TODO: try to have tests for plugins somehow later
-    "api/views/plugins.py",
-    "api/ext/plugins.py",
-    "api/ext/exchanges/**",
-    "api/ext/fxrate.py",
-]

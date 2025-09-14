@@ -1,51 +1,71 @@
-import asyncio
-import json
-import traceback
-from contextlib import asynccontextmanager
+import contextlib
+from collections.abc import AsyncIterator, Awaitable, Callable
+from typing import Any
 
+import structlog
+from advanced_alchemy.exceptions import AdvancedAlchemyError, NotFoundError
+from dishka import make_async_container
 from fastapi import FastAPI, Request
 from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
-from fastapi.requests import HTTPConnection
-from fastapi.responses import HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
+from scalar_fastapi import get_scalar_api_reference
+from sqlalchemy.exc import IntegrityError
 from starlette.applications import Starlette
 from starlette.middleware.cors import CORSMiddleware
-from starlette.responses import PlainTextResponse
+from starlette.responses import Response
 from starlette.staticfiles import StaticFiles
-from starlette.types import Receive, Scope, Send
+from starlette.types import ASGIApp, Receive, Scope, Send
 
-from api import events, tasks, utils
-from api import settings as settings_module
-from api.constants import VERSION
-from api.ext import tor as tor_ext
-from api.ext.sentry import configure_sentry
-from api.logger import get_logger
+from api.ioc import get_providers, setup_dishka
+from api.ioc.services import ServicesProvider
+from api.logfire import (
+    configure_logfire,
+    instrument_fastapi,
+)
+from api.logging import configure as configure_logging
+from api.logging import generate_correlation_id, get_logger
+from api.openapi import get_openapi_parameters, set_openapi_generator
+from api.plugins import PluginClasses, extract_di_providers, load_plugins
+from api.sentry import configure_sentry
+from api.services.ext.tor import TorService
+from api.services.plugin_registry import PluginRegistry
 from api.settings import Settings
-from api.utils.logging import log_errors
 from api.views import router
 
-logger = get_logger(__name__)
+logger = get_logger("api")
 
 
-class RawContextMiddleware:
-    def __init__(self, app):
+@contextlib.asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    plugin_registry = await app.state.dishka_container.get(PluginRegistry)
+    plugin_registry.setup_app(app)
+    for service in ServicesProvider.TO_PRELOAD:
+        await app.state.dishka_container.get(service)
+    await plugin_registry.startup()
+    yield
+    await plugin_registry.shutdown()
+    await app.state.dishka_container.close()
+
+
+class LogCorrelationIdMiddleware:
+    def __init__(self, app: ASGIApp) -> None:
         self.app = app
 
-    async def __call__(self, scope, receive, send) -> None:
-        if scope["type"] not in ("http", "websocket"):
-            await self.app(scope, receive, send)
-            return
-
-        request = HTTPConnection(scope, receive)
-        token = settings_module.settings_ctx.set(request.app.settings)
-        try:
-            await self.app(scope, receive, send)
-        finally:
-            settings_module.settings_ctx.reset(token)
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            return await self.app(scope, receive, send)
+        structlog.contextvars.bind_contextvars(
+            correlation_id=generate_correlation_id(),
+            method=scope["method"],
+            path=scope["path"],
+        )
+        await self.app(scope, receive, send)
+        structlog.contextvars.unbind_contextvars("correlation_id", "method", "path")
 
 
 # TODO: remove when https://github.com/fastapi/fastapi/pull/11160 is merged
-def patch_call(instance):
-    class _(type(instance)):
+def patch_call(instance: FastAPI) -> None:
+    class _(type(instance)):  # type: ignore[misc]
         async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
             if self.root_path:
                 root_path = scope.get("root_path", "")
@@ -68,57 +88,90 @@ def patch_call(instance):
     instance.__class__ = _
 
 
-def get_app():
-    settings = Settings()
-    configure_sentry(settings)
-
-    @asynccontextmanager
-    async def lifespan(app: FastAPI):
-        app.ctx_token = settings_module.settings_ctx.set(app.settings)  # for events context
-        await settings.init()
-        await settings.plugins.startup()
-        coro = events.start_listening(tasks.event_handler)  # to avoid deleted task errors
-        asyncio.ensure_future(coro)
-        yield
-        await app.settings.shutdown()
-        await settings.plugins.shutdown()
-        settings_module.settings_ctx.reset(app.ctx_token)
-
-    app = FastAPI(
-        title=settings.api_title,
-        version=VERSION,
-        redoc_url=None,
-        docs_url=None,
-        root_path=settings.root_path,
-        description="Bitcart Merchants API",
-        lifespan=lifespan,
+async def db_exception_handler(request: Request, exc: AdvancedAlchemyError) -> JSONResponse:
+    logger.error("Database error", exc_info=exc)
+    return JSONResponse(
+        status_code=422,
+        content={"error": "Database error", "detail": exc.detail},
     )
 
+
+async def db_integrity_error_handler(request: Request, exc: IntegrityError) -> JSONResponse:
+    return JSONResponse(
+        status_code=422,
+        content={"error": "Database error", "detail": str(exc.orig)},
+    )
+
+
+async def db_not_found_error_handler(request: Request, exc: NotFoundError) -> JSONResponse:
+    return JSONResponse(
+        status_code=404,
+        content={"error": "Not found", "detail": str(exc)},
+    )
+
+
+def add_exception_handlers(app: FastAPI) -> None:
+    app.add_exception_handler(IntegrityError, db_integrity_error_handler)  # type: ignore[arg-type] # https://github.com/encode/starlette/pull/2403
+    app.add_exception_handler(NotFoundError, db_not_found_error_handler)  # type: ignore[arg-type] # https://github.com/encode/starlette/pull/2403
+    app.add_exception_handler(
+        AdvancedAlchemyError,
+        db_exception_handler,  # type: ignore[arg-type] # https://github.com/encode/starlette/pull/2403
+    )
+
+
+def get_app(settings: Settings) -> FastAPI:
+    app = FastAPI(
+        lifespan=lifespan, root_path=settings.ROOT_PATH, root_path_in_servers=False, **get_openapi_parameters(settings)
+    )
+
+    @app.get("/", include_in_schema=False)
+    async def scalar_html(req: Request) -> Any:
+        root_path = req.scope.get("root_path", "").rstrip("/")
+        openapi_url = root_path + app.openapi_url
+        return get_scalar_api_reference(
+            openapi_url=openapi_url,
+            title=app.title,
+            servers=list(reversed(app.servers)),
+            scalar_favicon_url="/favicon.ico",
+            dark_mode=False,
+        )
+
+    @app.get("/favicon.ico", include_in_schema=False)
+    async def favicon() -> Any:
+        return FileResponse("static/favicon.ico")
+
+    @app.get("/swagger", include_in_schema=False)
     async def swagger_docs(req: Request) -> HTMLResponse:
         root_path = req.scope.get("root_path", "").rstrip("/")
         openapi_url = root_path + app.openapi_url
         return get_swagger_ui_html(
             openapi_url=openapi_url,
             title=f"{app.title} - Swagger UI",
-            swagger_favicon_url="/static/favicon.ico",
+            swagger_favicon_url="/favicon.ico",
+            swagger_ui_parameters=app.swagger_ui_parameters,
         )
 
+    @app.get("/redoc", include_in_schema=False)
     async def redoc_docs(req: Request) -> HTMLResponse:
         root_path = req.scope.get("root_path", "").rstrip("/")
         openapi_url = root_path + app.openapi_url
         return get_redoc_html(
             openapi_url=openapi_url,
             title=f"{app.title} - ReDoc",
-            redoc_favicon_url="/static/favicon.ico",
+            redoc_favicon_url="/favicon.ico",
         )
 
-    app.add_api_route("/swagger", swagger_docs, include_in_schema=False)
-    app.add_api_route("/", redoc_docs, include_in_schema=False)
-    patch_call(app)
-    app.settings = settings
-    app.mount("/static", StaticFiles(directory=settings.static_dir), name="static")
-    app.mount("/images", StaticFiles(directory=settings.images_dir), name="images")
-    app.mount("/files/localstorage", StaticFiles(directory=settings.files_dir), name="files")
+    @app.middleware("http")
+    async def add_onion_host(request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
+        tor_service = await request.state.dishka_container.get(TorService)
+        response = await call_next(request)
+        host = request.headers.get("host", "").split(":")[0]
+        onion_host = await tor_service.get_data("onion_host", "")
+        if onion_host and not tor_service.is_onion(host):
+            response.headers["Onion-Location"] = onion_host + request.url.path
+        return response
+
+    app.add_middleware(LogCorrelationIdMiddleware)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
@@ -127,34 +180,31 @@ def get_app():
         allow_headers=["*"],
         expose_headers=["Content-Disposition"],
     )
-    settings.init_logging()
-    settings.load_plugins()
-
-    settings.plugins.setup_app(app)
-    # include built-in routes later to allow plugins to override them
+    patch_call(app)
+    app.mount("/static", StaticFiles(directory=settings.STATIC_DIR), name="static")
+    app.mount("/images", StaticFiles(directory=settings.images_dir), name="images")
+    app.mount("/files/localstorage", StaticFiles(directory=settings.files_dir), name="files")
+    add_exception_handlers(app)
     app.include_router(router)
-
-    @app.middleware("http")
-    async def add_onion_host(request: Request, call_next):
-        response = await call_next(request)
-        async with utils.redis.wait_for_redis():
-            host = request.headers.get("host", "").split(":")[0]
-            onion_host = await tor_ext.get_data("onion_host", "")
-            if onion_host and not tor_ext.is_onion(host):
-                response.headers["Onion-Location"] = onion_host + request.url.path
-            return response
-
-    @app.exception_handler(500)
-    async def exception_handler(request, exc):
-        logger.error(traceback.format_exc())
-        return PlainTextResponse("Internal Server Error", status_code=500)
-
-    app.add_middleware(RawContextMiddleware)
-
-    if settings.openapi_path:
-        with log_errors(), open(settings.openapi_path) as f:
-            app.openapi_schema = json.loads(f.read())
     return app
 
 
-app = get_app()
+def configure_production_app() -> FastAPI:
+    settings = Settings()
+    configure_logging(settings=settings, logfire=True)
+    configure_logfire(settings, "server")
+    plugin_classes = load_plugins(settings)
+    plugin_providers = extract_di_providers(plugin_classes)
+    container = make_async_container(
+        *get_providers(), *plugin_providers, context={Settings: settings, PluginClasses: plugin_classes}
+    )
+    configure_sentry(settings)
+    app = get_app(settings)
+    setup_dishka(container=container, app=app)
+    set_openapi_generator(app, settings)
+    instrument_fastapi(settings, app)
+    return app
+
+
+if __name__ == "__main__":
+    app = configure_production_app()

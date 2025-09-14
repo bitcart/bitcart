@@ -1,6 +1,7 @@
+import enum
 import string
 
-from bitcart import COINS as _COINS
+from bitcart import COINS as _COINS  # type: ignore # TODO: mypy not supporting dynamic __all__?
 
 VERSION = "0.9.1.0"  # Version, used for openapi schemas and update checks
 WEBSITE = "https://bitcart.ai"  # Bitcart official site
@@ -15,7 +16,7 @@ SUPPORTED_CRYPTOS = {coin.lower(): obj.friendly_name for (coin, obj) in _COINS.i
 HTTPS_REVERSE_PROXIES = [
     "nginx-https"
 ]  # reverse proxies supporting https; NOTE: maybe this could be used by accessing generator package?
-ID_LENGTH = 32  # default length of IDs of all objects except for invoice
+ID_LENGTH = 26  # default length of IDs of all objects except for invoice
 PUBLIC_ID_LENGTH = 22  # The length of invoice and products ids; should be shorter than usual for better UX
 TOTP_LENGTH = 6  # for email verification and such
 TOTP_ALPHABET = string.digits  # only numbers for ease of access
@@ -41,3 +42,43 @@ FIDO2_LOGIN_KEY = "fido2_login_cache"
 VERIFY_EMAIL_EXPIRATION = 60 * 60 * 24  # 1 day
 DEFAULT_SENDMAIL_SUBJECT = "Thank you for your order"  # used in api/invoices.py
 HTTPS_REVERSE_PROXIES = ["nginx-https"]
+
+
+class AuthScopes(enum.StrEnum):
+    SERVER_MANAGEMENT = "server_management"
+    TOKEN_MANAGEMENT = "token_management"  # noqa: S105
+    WALLET_MANAGEMENT = "wallet_management"
+    STORE_MANAGEMENT = "store_management"
+    DISCOUNT_MANAGEMENT = "discount_management"
+    PRODUCT_MANAGEMENT = "product_management"
+    INVOICE_MANAGEMENT = "invoice_management"
+    PAYOUT_MANAGEMENT = "payout_management"
+    NOTIFICATION_MANAGEMENT = "notification_management"
+    TEMPLATE_MANAGEMENT = "template_management"
+    FILE_MANAGEMENT = "file_management"
+    FULL_CONTROL = "full_control"
+
+
+CRUD_MODELS = [
+    "discounts",
+    "files",
+    "invoices",
+    "notifications",
+    "payouts",
+    "products",
+    "stores",
+    "templates",
+    "wallets",
+]
+
+
+class PayoutStatus:
+    PENDING = "pending"
+    APPROVED = "approved"
+    CANCELLED = "cancelled"
+    FAILED = "failed"
+    SENT = "sent"
+    COMPLETE = "complete"
+
+
+SENT_PAYOUT_STATUSES = [PayoutStatus.SENT, PayoutStatus.COMPLETE]

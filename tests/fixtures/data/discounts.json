@@ -2,7 +2,7 @@
     "create": {
         "name": "test",
         "percent": 50,
-        "end_date": "2020-01-01 21:19:34.503627"
+        "end_date": "2020-01-01T18:19:34.503627Z"
     },
     "patch": {
         "name": "test2",

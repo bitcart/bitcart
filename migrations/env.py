@@ -1,10 +1,17 @@
+import asyncio
 from logging.config import fileConfig
+from typing import Any, Literal
 
 from alembic import context
-from sqlalchemy import engine_from_config, pool
+from sqlalchemy import pool
+from sqlalchemy.engine import Connection
+from sqlalchemy.ext.asyncio import async_engine_from_config
+from sqlalchemy.sql.schema import SchemaItem
 
-from api.models import db
+from api.models import Model
+from api.plugins import load_plugins
 from api.settings import Settings
+from api.sqltypes import PydanticJSON
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -12,23 +19,22 @@ config = context.config
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
-if not config.get_main_option("no_logs"):
+if config.config_file_name is not None and not config.get_main_option("no_logs"):
     fileConfig(config.config_file_name)
 
 # add your model's MetaData object here
 # for 'autogenerate' support
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
-# target_metadata = None
-
 
 settings = Settings()
-settings.init_logging(worker=False)
-settings.load_plugins()
-CONNECTION_STR = settings.connection_str
-target_metadata = db
+load_plugins(settings)
 
-del settings  # to ensure connections are closed in time
+target_metadata = Model.metadata
+
+config.set_main_option("sqlalchemy.url", settings.postgres_dsn)
+
+del settings
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
@@ -39,8 +45,16 @@ plugin_name = config.get_main_option("plugin_name")
 version_table = f"plugin_{plugin_name}_alembic_version" if plugin_name else "alembic_version"
 
 
-def include_object(obj, name, type_, reflected, compare_to):
+def include_object(
+    obj: SchemaItem,
+    name: str | None,
+    type_: str,
+    reflected: bool,
+    compare_to: SchemaItem | None,
+) -> bool:
     if type_ == "table":
+        if name is None:
+            return False
         if name.startswith("app_"):
             return False
         if not plugin_name:
@@ -49,6 +63,12 @@ def include_object(obj, name, type_, reflected, compare_to):
             return True
         return name.startswith(f"plugin_{plugin_name}_")
     return True
+
+
+def render_item(type_: str, obj: Any, autogen_context: Any) -> str | Literal[False]:
+    if isinstance(obj, PydanticJSON):
+        return "postgresql.JSONB(astext_type=sa.Text())"
+    return False
 
 
 def run_migrations_offline() -> None:
@@ -63,9 +83,6 @@ def run_migrations_offline() -> None:
     script output.
 
     """
-    alembic_config = config.get_section(config.config_ini_section)
-    alembic_config["sqlalchemy.url"] = CONNECTION_STR
-
     url = config.get_main_option("sqlalchemy.url")
     context.configure(
         compare_type=True,
@@ -73,6 +90,7 @@ def run_migrations_offline() -> None:
         target_metadata=target_metadata,
         literal_binds=True,
         include_object=include_object,
+        render_item=render_item,
         dialect_opts={"paramstyle": "named"},
         version_table=version_table,
     )
@@ -81,32 +99,45 @@ def run_migrations_offline() -> None:
         context.run_migrations()
 
 
-def run_migrations_online() -> None:
+def do_run_migrations(connection: Connection) -> None:
+    context.configure(
+        compare_type=True,
+        connection=connection,
+        target_metadata=target_metadata,
+        include_object=include_object,
+        render_item=render_item,
+        version_table=version_table,
+    )
+
+    with context.begin_transaction():
+        context.run_migrations()
+
+
+async def run_migrations_online() -> None:
     """Run migrations in 'online' mode.
 
     In this scenario we need to create an Engine
     and associate a connection with the context.
 
     """
-    alembic_config = config.get_section(config.config_ini_section)
-    alembic_config["sqlalchemy.url"] = CONNECTION_STR
+    configuration = config.get_section(config.config_ini_section)
+    if not configuration:
+        raise ValueError("No Alembic config found")
 
-    connectable = engine_from_config(alembic_config, prefix="sqlalchemy.", poolclass=pool.NullPool)
+    connectable = async_engine_from_config(
+        configuration,
+        prefix="sqlalchemy.",
+        poolclass=pool.NullPool,
+        future=True,
+    )
 
-    with connectable.connect() as connection:
-        context.configure(
-            compare_type=True,
-            connection=connection,
-            target_metadata=target_metadata,
-            include_object=include_object,
-            version_table=version_table,
-        )
+    async with connectable.connect() as connection:
+        await connection.run_sync(do_run_migrations)
 
-        with context.begin_transaction():
-            context.run_migrations()
+    await connectable.dispose()
 
 
 if context.is_offline_mode():
     run_migrations_offline()
 else:
-    run_migrations_online()
+    asyncio.run(run_migrations_online())

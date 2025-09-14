@@ -18,7 +18,7 @@ branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
 
-def add_json_field(table_name, column_name):
+def add_json_field(table_name: str, column_name: str) -> None:
     op.add_column(table_name, sa.Column(column_name, sa.JSON(), nullable=True, server_default="{}"))
     op.alter_column(table_name, column_name, server_default=None)
 

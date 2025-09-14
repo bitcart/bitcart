@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 from datetime import timedelta
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from urllib.parse import quote
 
 import pytest
+from dishka import Scope
+from fastapi import FastAPI
 
 from api import utils
+from api.services.crud.repositories.invoices import InvoiceRepository
 from tests.helper import create_invoice, create_product, create_token, create_user
 
 if TYPE_CHECKING:
@@ -15,7 +18,7 @@ if TYPE_CHECKING:
 pytestmark = pytest.mark.anyio
 
 
-async def test_multiple_query(client: TestClient, token: str):
+async def test_multiple_query(client: TestClient, token: str) -> None:
     user1 = await create_user(client)
     user2 = await create_user(client)
     query = f"{user1['email']}|{user2['email']}"
@@ -24,7 +27,7 @@ async def test_multiple_query(client: TestClient, token: str):
     assert resp.json()["count"] == 2
 
 
-async def test_next_prev_url(client: TestClient, token: str):
+async def test_next_prev_url(client: TestClient, token: str) -> None:
     # create multiple users
     await create_user(client)
     await create_user(client)
@@ -41,13 +44,13 @@ async def test_next_prev_url(client: TestClient, token: str):
     assert prev_url.endswith("/users?limit=1&offset=1")
 
 
-async def test_undefined_sort(client: TestClient, token: str):
+async def test_undefined_sort(client: TestClient, token: str) -> None:
     resp = await client.get("/users?sort=fake", headers={"Authorization": f"Bearer {token}"})
     assert resp.json()["result"] == []
 
 
-async def test_products_pagination(client: TestClient, user, token: str):
-    product = await create_product(client, user["id"], token)
+async def test_products_pagination(client: TestClient, token: str) -> None:
+    product = await create_product(client, token)
     resp = await client.get(
         f"/products?store={product['store_id']}&category={product['category']}&           "
         f" min_price=0.001&max_price={product['price']}",
@@ -56,7 +59,7 @@ async def test_products_pagination(client: TestClient, user, token: str):
     assert resp.json()["count"] > 0
 
 
-async def test_token_pagination(client: TestClient, user):
+async def test_token_pagination(client: TestClient, user: dict[str, Any]) -> None:
     token_data = await create_token(client, user, app_id="998")
     permissions = ",".join(token_data["permissions"])
     resp = await client.get(
@@ -66,7 +69,9 @@ async def test_token_pagination(client: TestClient, user):
     assert resp.json()["count"] == 1
 
 
-async def check_query(client: TestClient, token: str, column, value, expected_count, allow_nonexisting=False):
+async def check_query(
+    client: TestClient, token: str, column: str, value: Any, expected_count: int, allow_nonexisting: bool = False
+) -> None:
     query = quote(f"{column}:{value}")
     resp = await client.get(f"/invoices?query={query}", headers={"Authorization": f"Bearer {token}"})
     assert resp.status_code == 200
@@ -76,24 +81,26 @@ async def check_query(client: TestClient, token: str, column, value, expected_co
             assert item[column] == value
 
 
-async def test_columns_queries(client: TestClient, user, token):
-    await create_invoice(client, user["id"], token, currency="USD")
-    await create_invoice(client, user["id"], token, currency="EUR")
+async def test_columns_queries(client: TestClient, token: str) -> None:
+    await create_invoice(client, token, currency="USD")
+    await create_invoice(client, token, currency="EUR")
     await check_query(client, token, "currency", "USD", 1)
     await check_query(client, token, "currency", "EUR", 1)
 
 
-async def test_undefined_column_query(client: TestClient, user, token):
-    await create_invoice(client, user["id"], token, currency="test")
+async def test_undefined_column_query(client: TestClient, token: str) -> None:
+    await create_invoice(client, token, currency="test")
     await check_query(client, token, "test", "test", 1, allow_nonexisting=True)  # skips undefined columns
 
 
-async def test_bad_type_column_query(client: TestClient, user, token):
-    await create_invoice(client, user["id"], token, price=10)
+async def test_bad_type_column_query(client: TestClient, token: str) -> None:
+    await create_invoice(client, token, price=10)
     await check_query(client, token, "price", "test", 0)
 
 
-async def check_start_date_query(client, token, date, expected_count, first_id, start=True):
+async def check_start_date_query(
+    client: TestClient, token: str, date: str, expected_count: int, first_id: str, start: bool = True
+) -> None:
     query = quote(f"start_date:{date}") if start else quote(f"end_date:{date}")
     ind = 0 if start else -1
     resp = await client.get(f"/invoices?query={query}&sort=created&desc=false", headers={"Authorization": f"Bearer {token}"})
@@ -102,29 +109,23 @@ async def check_start_date_query(client, token, date, expected_count, first_id, 
     assert resp.json()["result"][ind]["id"] == first_id
 
 
-async def test_date_pagination(client: TestClient, user, token):
-    from api import models
-
+async def test_date_pagination(client: TestClient, token: str, app: FastAPI) -> None:
     now = utils.time.now()
-    invoice1 = await create_invoice(client, user["id"], token)
-    await (
-        models.Invoice.update.where(models.Invoice.id == invoice1["id"])
-        .values({"created": (now - timedelta(hours=1))})
-        .gino.status()
-    )
-    invoice2 = await create_invoice(client, user["id"], token)
-    await (
-        models.Invoice.update.where(models.Invoice.id == invoice2["id"])
-        .values({"created": (now - timedelta(days=1))})
-        .gino.status()
-    )
-    invoice3 = await create_invoice(client, user["id"], token)
-    await (
-        models.Invoice.update.where(models.Invoice.id == invoice3["id"])
-        .values({"created": (now - timedelta(weeks=1))})
-        .gino.status()
-    )
-
+    invoice1 = await create_invoice(client, token)
+    async with app.state.dishka_container(scope=Scope.REQUEST) as container:
+        invoice_repository = await container.get(InvoiceRepository)
+        model = await invoice_repository.get_one(id=invoice1["id"])
+        model.created = now - timedelta(hours=1)
+    invoice2 = await create_invoice(client, token)
+    async with app.state.dishka_container(scope=Scope.REQUEST) as container:
+        invoice_repository = await container.get(InvoiceRepository)
+        model = await invoice_repository.get_one(id=invoice2["id"])
+        model.created = now - timedelta(days=1)
+    invoice3 = await create_invoice(client, token)
+    async with app.state.dishka_container(scope=Scope.REQUEST) as container:
+        invoice_repository = await container.get(InvoiceRepository)
+        model = await invoice_repository.get_one(id=invoice3["id"])
+        model.created = now - timedelta(weeks=1)
     await check_start_date_query(client, token, "-2h", 1, invoice1["id"])
     await check_start_date_query(client, token, "-2d", 2, invoice2["id"])
     await check_start_date_query(client, token, "-2w", 3, invoice3["id"])
