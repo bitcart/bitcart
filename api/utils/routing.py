@@ -207,12 +207,7 @@ def create_crud_router(
         user: models.User | None = auth_deps["list"],
     ) -> Any:
         items, total = await service.list_and_count(pagination, user=user)
-        return {
-            "result": items,
-            "count": total,
-            "previous": get_previous_url(request, pagination.limit, pagination.offset),
-            "next": get_next_url(request, pagination.limit, pagination.offset, total),
-        }
+        return prepare_pagination_response(items, request, pagination, total)
 
     maybe_add_route(
         router, enabled_endpoints, "list", "", list_items, methods=["GET"], response_model=OffsetPagination[DisplaySchemaT]
