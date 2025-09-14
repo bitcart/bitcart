@@ -180,6 +180,8 @@ async def _create_payment_method(invoice, wallet, product, store, discounts, pro
         data_got = await method(request_price, description=product.name if product else "", expire=invoice.expiration)
         data["payment_address"] = data_got["address"] if not lightning else data_got["lightning_invoice"]
         data["payment_url"] = data_got["URI"] if not lightning else data_got["lightning_invoice"]
+        if data["payment_url"] is None:
+            data["payment_url"] = data["payment_address"]
         data["node_id"] = await coin.node_id if lightning else None
         data["rhash"] = data_got["rhash"] if lightning else None
         data["lookup_field"] = data_got["request_id"] if "request_id" in data_got else data["payment_address"]
