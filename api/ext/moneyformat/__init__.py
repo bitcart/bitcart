@@ -1,12 +1,13 @@
 import json
 from decimal import ROUND_HALF_EVEN, Decimal
+from typing import Any, TypedDict, cast
 
 
-def set_v(data, key, default):
+def set_v(data: dict[str, Any], key: str, default: Any) -> None:
     data[key] = data.get(key, default)
 
 
-def truncate(value, precision):
+def truncate(value: Decimal, precision: int) -> Decimal:
     if precision == 0:
         return value
     q = Decimal(10) ** -precision
@@ -14,7 +15,7 @@ def truncate(value, precision):
 
 
 # Thanks to example from python docs
-def moneyfmt(value, places=2, curr="", sep=",", dp="."):
+def moneyfmt(value: Decimal, places: int = 2, curr: str = "", sep: str = ",", dp: str = ".") -> str:
     """Convert Decimal to a money formatted string.
 
     places:  required number of places after the decimal point
@@ -24,9 +25,9 @@ def moneyfmt(value, places=2, curr="", sep=",", dp="."):
              only specify as blank when places is zero
     """
     q = Decimal(10) ** -places  # 2 places --> '0.01'
-    sign, digits, _ = value.quantize(q).as_tuple()
-    result = []
-    digits = list(map(str, digits))
+    sign, digits_repr, _ = value.quantize(q).as_tuple()
+    result: list[str] = []
+    digits = list(map(str, digits_repr))
     build, next_digit = result.append, digits.pop
     for _ in range(places):
         build(next_digit() if digits else "0")
@@ -48,20 +49,29 @@ def moneyfmt(value, places=2, curr="", sep=",", dp="."):
     return "".join(reversed(result))
 
 
+type CurrencyData = dict[str, Any]
+
+
+class MoneyfmtParams(TypedDict, total=False):
+    places: int
+    curr: str
+    sep: str
+
+
 class CurrencyTable:
-    def __init__(self):
-        self.data = {}
+    def __init__(self) -> None:
+        self.data: dict[str, CurrencyData] = {}
         self.load_data()
 
-    def load_data(self):
+    def load_data(self) -> None:
         with open("api/ext/moneyformat/currencies.json") as f:
             contents = f.read()
         self.data = self.add_defaults(json.loads(contents))
 
-    def add_defaults(self, data):
+    def add_defaults(self, data: dict[str, CurrencyData | str]) -> dict[str, CurrencyData]:
         return {k: self.add_default(entry) for k, entry in data.items()}  # set common defaults to reduce size of a json file
 
-    def add_default(self, entry):
+    def add_default(self, entry: CurrencyData | str) -> CurrencyData:
         if isinstance(entry, str):
             entry = {"name": entry}
         set_v(entry, "divisibility", 2)
@@ -69,7 +79,7 @@ class CurrencyTable:
         set_v(entry, "crypto", False)
         return entry
 
-    def get_currency_data(self, currency, fallback=True):
+    def get_currency_data(self, currency: str, fallback: bool = True) -> CurrencyData:
         result = self.data.get(currency.upper())
         if not result and fallback:
             usd = self.get_currency_data("USD", fallback=False)
@@ -79,12 +89,12 @@ class CurrencyTable:
                 "symbol": None,
                 "crypto": True,
             }
-        return result
+        return cast(CurrencyData, result)
 
-    def normalize(self, currency, value, divisibility=None):
+    def normalize(self, currency: str, value: Decimal, divisibility: int | None = None) -> Decimal:
         return truncate(value, divisibility or self.get_currency_data(currency)["divisibility"])
 
-    def format_currency(self, currency, value, fancy=True, divisibility=None):
+    def format_currency(self, currency: str, value: Decimal, fancy: bool = True, divisibility: int | None = None) -> str:
         if value is None or currency is None:
             return value
         currency_info = self.get_currency_data(currency)
@@ -92,14 +102,14 @@ class CurrencyTable:
         kwargs = {"places": divisibility if divisibility else currency_info["divisibility"], "sep": ""}
         if fancy:
             kwargs.update({"curr": symbol, "sep": ","})
-        value = moneyfmt(value, **kwargs)
+        formatted = moneyfmt(value, **cast(MoneyfmtParams, kwargs))
         if not fancy:
-            return value
+            return formatted
         if not symbol:
-            return f"{value} {currency}"
-        return f"{value} ({currency})"
+            return f"{formatted} {currency}"
+        return f"{formatted} ({currency})"
 
-    def format_decimal(self, currency, value, divisibility=None):
+    def format_decimal(self, currency: str, value: Decimal, divisibility: int | None = None) -> str:
         if isinstance(value, str):
             value = Decimal(value)
         return self.format_currency(currency, value, fancy=False, divisibility=divisibility)

@@ -3,7 +3,7 @@ from api.ext.exchanges.base import BaseExchange
 
 
 class FiatExchange(BaseExchange):
-    async def refresh(self):
+    async def refresh(self) -> None:
         result = await utils.common.send_request(
             "GET", "https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.json"
         )

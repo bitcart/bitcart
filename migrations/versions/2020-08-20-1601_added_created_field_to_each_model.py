@@ -18,7 +18,7 @@ branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
 
-def add_creation_date(table):
+def add_creation_date(table: str) -> None:
     op.add_column(
         table,
         sa.Column(

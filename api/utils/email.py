@@ -4,12 +4,16 @@ from dataclasses import dataclass
 from email import utils as email_utils
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from typing import Any
 
+from api import models
 from api.constants import DEFAULT_SENDMAIL_SUBJECT
-from api.logger import get_logger
-from api.schemes import SMTPAuthMode
+from api.logging import get_logger
+from api.schemas.misc import SMTPAuthMode
 
 logger = get_logger(__name__)
+
+# TODO: create a service?
 
 
 @dataclass
@@ -19,15 +23,18 @@ class Email:
     user: str
     password: str
     address: str
-    mode: SMTPAuthMode = SMTPAuthMode.STARTTLS
+    mode: str = SMTPAuthMode.STARTTLS
 
-    def is_enabled(self):
-        return self.host and self.port and self.user and self.password and self.address
+    use_html_templates: bool = False
+
+    def is_enabled(self) -> bool:
+        return bool(self.host and self.port and self.user and self.password and self.address)
 
     def __str__(self) -> str:
         return f"{self.user}:{self.password}@{self.host}:{self.port}?email={self.address}&mode={self.mode}"
 
-    def init_smtp_server(self):  # pragma: no cover
+    def init_smtp_server(self) -> smtplib.SMTP | smtplib.SMTP_SSL:  # pragma: no cover
+        server: smtplib.SMTP | smtplib.SMTP_SSL
         if self.mode == SMTPAuthMode.SSL_TLS:
             server = smtplib.SMTP_SSL(host=self.host, port=self.port, timeout=5)
         else:
@@ -36,7 +43,7 @@ class Email:
             server.starttls()
         return server
 
-    def check_ping(self):  # pragma: no cover
+    def check_ping(self) -> bool:  # pragma: no cover
         dsn = str(self)
         if not self.is_enabled():
             logger.debug("Checking ping failed: some parameters empty")
@@ -51,7 +58,9 @@ class Email:
             logger.debug(f"Checking ping error for {dsn}\n{traceback.format_exc()}")
             return False
 
-    def send_mail(self, where, text, subject=DEFAULT_SENDMAIL_SUBJECT, use_html_templates=False):  # pragma: no cover
+    def send_mail(
+        self, where: str, text: str, subject: str = DEFAULT_SENDMAIL_SUBJECT, use_html_templates: bool = False
+    ) -> None:  # pragma: no cover
         if not where:
             return
         message_obj = MIMEMultipart()
@@ -66,7 +75,7 @@ class Email:
             server.sendmail(self.address, where, message)
 
     @classmethod
-    def get_email(cls, model):
+    def get_email(cls, model: Any) -> "Email":
         email_settings = model.email_settings
         return cls(
             email_settings.host,
@@ -82,10 +91,10 @@ class StoreEmail(Email):
     use_html_templates: bool
 
     @classmethod
-    def get_email(cls, store):
+    def get_email(cls, store: models.Store) -> Email:
         email = super().get_email(store)
         email.use_html_templates = store.checkout_settings.use_html_templates
         return email
 
-    def send_mail(self, where, text, subject=DEFAULT_SENDMAIL_SUBJECT):
+    def send_mail(self, where: str, text: str, subject: str = DEFAULT_SENDMAIL_SUBJECT) -> None:  # type: ignore
         super().send_mail(where, text, subject, self.use_html_templates)

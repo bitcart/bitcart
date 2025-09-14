@@ -15,7 +15,7 @@ from api.ext.ssh import parse_connection_string
         ("user@test.com:invalid", "test.com", 22, "user"),
     ],
 )
-def test_parse_connection_string(connection_str, host, port, username):
+def test_parse_connection_string(connection_str: str, host: str, port: int, username: str) -> None:
     value = parse_connection_string(connection_str)
     assert isinstance(value, tuple)
     assert len(value) == 3

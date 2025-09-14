@@ -1,28 +1,30 @@
+from typing import Any
+
 from apprise import Apprise
 
 USELESS_PARAMS = ["rto", "cto", "overflow", "verify", "emojis", "image"]
 
 
-def all_notifers():
+def all_notifers() -> list[dict[str, Any]]:
     return Apprise().details("en")["schemas"]
 
 
-def get_notifier(name):
+def get_notifier(name: str) -> dict[str, Any] | None:
     res = list(filter(lambda x: str(x["service_name"]) == name, all_notifers()))
     return None if not res else res[0]
 
 
-def merge_details(schema):
+def merge_details(schema: dict[str, Any]) -> dict[str, Any]:
     a = schema["details"]["args"]
     a.update(schema["details"]["tokens"])
     return a
 
 
-def prepare_param(kv, need_required):
+def prepare_param(kv: tuple[str, Any], need_required: bool) -> str | dict[str, Any]:
     return kv[0] if need_required else {"key": kv[0], "name": kv[1].get("name", kv[0]), "type": kv[1].get("type", "string")}
 
 
-def get_params(schema, need_required=False):
+def get_params(schema: dict[str, Any], need_required: bool = False) -> list[str | dict[str, Any]]:
     in_group = set()
 
     list_of_sets = [

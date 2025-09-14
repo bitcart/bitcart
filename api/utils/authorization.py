@@ -1,62 +1,29 @@
 import secrets
 
-from aiohttp import ClientSession
-from fastapi import HTTPException
+from dishka import FromDishka
+from dishka.integrations.fastapi import inject
+from fastapi import HTTPException, Request
 from fastapi.security import OAuth2PasswordBearer, SecurityScopes
-from pwdlib import PasswordHash
-from pwdlib.hashers.bcrypt import BcryptHasher
-from starlette.requests import Request
-from starlette.status import HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN
 
-from api import models, schemes, utils
-from api.constants import TFA_RECOVERY_ALPHABET, TFA_RECOVERY_LENGTH
-from api.plugins import run_hook
-
-pwd_context = PasswordHash((BcryptHasher(),))
-
-
-def verify_password(plain_password, hashed_password):
-    return pwd_context.verify(plain_password, hashed_password)
-
-
-def get_password_hash(password):
-    return pwd_context.hash(password)
-
-
-def generate_tfa_recovery_code():
-    return (
-        "".join(secrets.choice(TFA_RECOVERY_ALPHABET) for i in range(TFA_RECOVERY_LENGTH))
-        + "-"
-        + "".join(secrets.choice(TFA_RECOVERY_ALPHABET) for i in range(TFA_RECOVERY_LENGTH))
-    )
-
-
-async def authenticate_user(email: str, password: str):
-    user = await utils.database.get_object(
-        models.User, custom_query=models.User.query.where(models.User.email == email), raise_exception=False
-    )
-    if not user:
-        return False, 404
-    if not verify_password(password, user.hashed_password):
-        return False, 401
-    return user, 200
-
+from api import models
+from api.constants import TFA_RECOVERY_ALPHABET, TFA_RECOVERY_LENGTH, AuthScopes
+from api.types import AuthServiceProtocol
 
 oauth_kwargs = {
     "tokenUrl": "/token/oauth2",
     "scopes": {
-        "server_management": "Edit server settings",
-        "token_management": "Create, list or edit tokens",
-        "wallet_management": "Create, list or edit wallets",
-        "store_management": "Create, list or edit stores",
-        "discount_management": "Create, list or edit discounts",
-        "product_management": "Create, list or edit products",
-        "invoice_management": "Create, list or edit invoices",
-        "payout_management": "Create, list or edit payouts",
-        "notification_management": "Create, list or edit notification providers",
-        "template_management": "Create, list or edit templates",
-        "file_management": "Create, list or edit files",
-        "full_control": "Full control over what current user has",
+        AuthScopes.SERVER_MANAGEMENT: "Edit server settings",
+        AuthScopes.TOKEN_MANAGEMENT: "Create, list or edit tokens",
+        AuthScopes.WALLET_MANAGEMENT: "Create, list or edit wallets",
+        AuthScopes.STORE_MANAGEMENT: "Create, list or edit stores",
+        AuthScopes.DISCOUNT_MANAGEMENT: "Create, list or edit discounts",
+        AuthScopes.PRODUCT_MANAGEMENT: "Create, list or edit products",
+        AuthScopes.INVOICE_MANAGEMENT: "Create, list or edit invoices",
+        AuthScopes.PAYOUT_MANAGEMENT: "Create, list or edit payouts",
+        AuthScopes.NOTIFICATION_MANAGEMENT: "Create, list or edit notification providers",
+        AuthScopes.TEMPLATE_MANAGEMENT: "Create, list or edit templates",
+        AuthScopes.FILE_MANAGEMENT: "Create, list or edit files",
+        AuthScopes.FULL_CONTROL: "Full control over what current user has",
     },
 }
 
@@ -68,72 +35,67 @@ To authorize, send an `Authorization` header with value of `Bearer <token>` (rep
 optional_bearer_description = "Same as Bearer, but not required. Logic for unauthorized users depends on current endpoint"
 
 
-def check_selective_scopes(request, scope, token):
-    model_id = request.path_params.get("model_id", None)
-    if model_id is None:
-        return False
-    return f"{scope}:{model_id}" in token.permissions
+type AuthResult = models.User | None | tuple[models.User, models.Token] | tuple[None, None]
+
+
+def generate_tfa_recovery_code() -> str:
+    return (
+        "".join(secrets.choice(TFA_RECOVERY_ALPHABET) for i in range(TFA_RECOVERY_LENGTH))
+        + "-"
+        + "".join(secrets.choice(TFA_RECOVERY_ALPHABET) for i in range(TFA_RECOVERY_LENGTH))
+    )
 
 
 class AuthDependency(OAuth2PasswordBearer):
-    def __init__(self, enabled: bool = True, token_required: bool = True, token: str | None = None, return_token=False):
+    def __init__(
+        self,
+        enabled: bool = True,
+        token_required: bool = True,
+        token: str | None = None,
+        return_token: bool = False,
+    ) -> None:
         self.enabled = enabled
         self.return_token = return_token
         self.token = token
         super().__init__(
-            **oauth_kwargs,
+            **oauth_kwargs,  # type: ignore[arg-type]
             auto_error=token_required,
             scheme_name="Bearer" if token_required else "BearerOptional",
             description=bearer_description if token_required else optional_bearer_description,
         )
 
-    async def _process_request(self, request: Request, security_scopes: SecurityScopes):
+    async def parse_token(self, request: Request) -> str | None:
+        return self.token if self.token else await super().__call__(request)
+
+    async def _process_request(
+        self,
+        request: Request,
+        security_scopes: SecurityScopes,
+        auth_service: FromDishka[AuthServiceProtocol],
+    ) -> AuthResult:
         if not self.enabled:
             if self.return_token:  # pragma: no cover
                 return None, None
             return None
-        authenticate_value = f'Bearer scope="{security_scopes.scope_str}"' if security_scopes.scopes else "Bearer"
-        token: str = self.token if self.token else await super().__call__(request)
-        exc = HTTPException(
-            status_code=HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials",
-            headers={"WWW-Authenticate": authenticate_value},
-        )
-        if not token:
-            raise exc
-        data = (
-            await models.User.join(models.Token)
-            .select(models.Token.id == token)
-            .gino.load((models.User, models.Token))
-            .first()
-        )
-        if data is None:
-            raise exc
-        user, token = data  # first validate data, then unpack
-        await user.load_data()
-        if not user.is_enabled:
-            raise HTTPException(403, "Account is disabled")
-        forbidden_exception = HTTPException(
-            status_code=HTTP_403_FORBIDDEN,
-            detail="Not enough permissions",
-            headers={"WWW-Authenticate": authenticate_value},
-        )
-        if "full_control" not in token.permissions:
-            for scope in security_scopes.scopes:
-                if scope not in token.permissions and not check_selective_scopes(request, scope, token):
-                    await run_hook("permission_denied", user, token, scope)
-                    raise forbidden_exception
-        if "server_management" in security_scopes.scopes and not user.is_superuser:
-            await run_hook("permission_denied", user, token, "server_management")
-            raise forbidden_exception
-        await run_hook("permission_granted", user, token, security_scopes.scopes)
+        for auth_scope in security_scopes.scopes:
+            if not isinstance(auth_scope, AuthScopes):
+                raise ValueError(f"Invalid scope: {auth_scope}")
+            AuthScopes(auth_scope)  # check validation
+        header_token: str | None = self.token if self.token else await super().__call__(request)
+        user, token = await auth_service.find_user_and_check_permissions(header_token, security_scopes, request)
         if self.return_token:
             return user, token
         return user
 
-    async def __call__(self, request: Request, security_scopes: SecurityScopes):
+    @inject
+    async def __call__(  # type: ignore[override]
+        self,
+        request: Request,
+        security_scopes: SecurityScopes,
+        auth_service: FromDishka[AuthServiceProtocol],
+    ) -> AuthResult:
         try:
-            return await self._process_request(request, security_scopes)
+            return await self._process_request(request, security_scopes, auth_service)
         except HTTPException:
             if self.auto_error:
                 raise
@@ -144,31 +106,3 @@ class AuthDependency(OAuth2PasswordBearer):
 
 auth_dependency = AuthDependency()
 optional_auth_dependency = AuthDependency(token_required=False)
-
-
-async def verify_captcha(api_uri, code, secret):
-    try:
-        async with (
-            ClientSession() as session,
-            session.post(
-                api_uri,
-                data={"response": code, "secret": secret},
-            ) as resp,
-        ):
-            return (await resp.json())["success"]
-    except Exception:  # pragma: no cover
-        return False
-
-
-async def captcha_flow(code):
-    policies = await utils.policies.get_setting(schemes.Policy)
-    if policies.captcha_type != schemes.CaptchaType.NONE:  # pragma: no cover
-        if policies.captcha_type == schemes.CaptchaType.HCAPTCHA:
-            api_uri = "https://hcaptcha.com/siteverify"
-        elif policies.captcha_type == schemes.CaptchaType.CF_TURNSTILE:
-            api_uri = "https://challenges.cloudflare.com/turnstile/v0/siteverify"
-
-        if not await verify_captcha(api_uri, code, policies.captcha_secretkey):
-            await run_hook("captcha_failed")
-            raise HTTPException(401, {"message": "Unauthorized", "status": 403})
-        await run_hook("captcha_passed")

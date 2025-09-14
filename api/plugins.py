@@ -2,51 +2,76 @@ import glob
 import importlib
 import os
 from abc import ABCMeta, abstractmethod
-from collections import defaultdict
+from collections.abc import Callable
+from decimal import Decimal
+from typing import TYPE_CHECKING, Any, NewType, cast
 
-from alembic import command
-from alembic.config import Config
+from dishka import AsyncContainer as DIContainer
+from dishka import FromDishka as FromDI
+from dishka import Provider
+from dishka import Scope as DIScope
+from dishka.integrations.fastapi import DishkaRoute as DIRoute
 from fastapi import FastAPI
-from fastapi.encoders import jsonable_encoder
-from pydantic import BaseModel
 
-from api import events, models, schemes, settings, utils
-from api.logger import get_logger
-from api.templates import Template
-from api.utils import policies
-from api.utils.common import run_universal
-from api.utils.logging import get_exception_message
+from api import models
+from api.logging import get_exception_message, get_logger
+from api.schemas.base import Schema
+from api.settings import Settings
+
+if TYPE_CHECKING:
+    from api.services.plugin_registry import PluginRegistry
+
+SKIP_PAYMENT_METHOD = object()  # return this in your plugin if you want to skip current method creation
 
 logger = get_logger(__name__)
 
-_plugin_settings: dict[str, type[BaseModel]] = {}
 
+# Exposed public API
+class PluginContext:
+    def __init__(self, plugin_registry: "PluginRegistry", container: DIContainer):
+        self.plugin_registry = plugin_registry
+        self.container = container  # use it to query any services
 
-def register_settings(plugin_name: str, settings_class: type[BaseModel]):
-    """Register plugin settings class"""
-    _plugin_settings[plugin_name] = settings_class
+    async def run_hook(self, name: str, *args: Any, **kwargs: Any) -> None:
+        return await self.plugin_registry.run_hook(name, *args, **kwargs)
 
+    async def apply_filters(self, name: str, value: Any, *args: Any, **kwargs: Any) -> Any:
+        return await self.plugin_registry.apply_filters(name, value, *args, **kwargs)
 
-async def get_plugin_settings(plugin_name: str) -> BaseModel | None:
-    """Get settings for specific plugin"""
-    if plugin_name not in _plugin_settings:
-        return None
-    return await policies.get_setting(_plugin_settings[plugin_name], name=f"plugin:{plugin_name}")
+    def register_hook(self, name: str, hook: Callable[..., Any]) -> None:
+        self.plugin_registry.register_hook(name, hook)
 
+    register_filter = register_hook
 
-async def set_plugin_settings_dict(plugin_name: str, settings: dict) -> tuple[bool, BaseModel | None]:
-    """Set settings for specific plugin"""
-    if plugin_name not in _plugin_settings:
-        return False, None
-    settings_class = _plugin_settings[plugin_name]
-    settings_obj = settings_class(**settings)
-    await policies.set_setting(settings_obj, name=f"plugin:{plugin_name}")
-    return True, settings_obj
+    def register_event(self, name: str, params: list[str]) -> None:
+        self.plugin_registry.register_event(name, params)
 
+    def register_event_handler(self, name: str, handler: Callable[..., Any]) -> None:
+        self.plugin_registry.register_event_handler(name, handler)
 
-def get_registered_plugins() -> list[str]:
-    """Get list of plugins that have registered settings"""
-    return list(_plugin_settings.keys())
+    async def publish_event(self, name: str, data: Schema, for_worker: bool = True) -> None:
+        await self.plugin_registry.publish_event(name, data, for_worker)
+
+    def json_encode(self, obj: Any) -> Any:
+        return self.plugin_registry.json_encode(obj)
+
+    async def update_metadata(self, model: type[models.RecordModel], object_id: str, key: str, value: Any) -> models.Model:
+        return await self.plugin_registry.update_metadata(model, object_id, key, value)
+
+    async def get_metadata(self, model: type[models.RecordModel], object_id: str, key: str, default: Any = None) -> Any:
+        return await self.plugin_registry.get_metadata(model, object_id, key, default)
+
+    async def delete_metadata(self, model: type[models.RecordModel], object_id: str, key: str) -> models.Model:
+        return await self.plugin_registry.delete_metadata(model, object_id, key)
+
+    async def get_plugin_key_by_lookup(self, lookup_name: str, lookup_org: str) -> str | None:
+        return await self.plugin_registry.get_plugin_key_by_lookup(lookup_name, lookup_org)
+
+    def add_template(self, name: str, text: str | None = None, applicable_to: str = "", *, path: str) -> None:
+        self.plugin_registry.add_template(name, text, applicable_to, path=path)
+
+    def get_plugin_data_dir(self, plugin_name: str) -> str:
+        return self.plugin_registry.get_plugin_data_dir(plugin_name)
 
 
 class BasePlugin(metaclass=ABCMeta):
@@ -54,74 +79,80 @@ class BasePlugin(metaclass=ABCMeta):
     lookup_name: str | None = None
     lookup_org: str | None = None
 
-    def __init__(self, path):
-        self.path = path
-        self.license_key = None
+    PROVIDES: Callable[[], list[Provider]] | None = None
 
-    def __repr__(self):
+    path: str  # set by bitcart
+
+    def __init__(self, path: str, context: PluginContext) -> None:
+        self.path = path
+        self.context = context
+        self.license_key: str | None = None
+
+    @property
+    def container(self) -> DIContainer:
+        return self.context.container
+
+    def __repr__(self) -> str:
         return f"<{self.__class__.__name__} {self.name}>"
 
-    def set_license_key(self, license_key):
+    def set_license_key(self, license_key: str) -> None:
         self.license_key = license_key
 
-    @classmethod
-    def data_dir(cls) -> str:
+    def data_dir(self) -> str:
         """Get plugin's data directory"""
-        return settings.settings.get_plugin_data_dir(cls.name)
+        return self.context.get_plugin_data_dir(self.name)
 
     @abstractmethod
-    def setup_app(self, app: FastAPI):
+    def setup_app(self, app: FastAPI) -> None:
         pass
 
     @abstractmethod
-    async def startup(self):
+    async def startup(self) -> None:
         pass
 
     @abstractmethod
-    async def shutdown(self):
+    async def shutdown(self) -> None:
         pass
 
     @abstractmethod
-    async def worker_setup(self):
+    async def worker_setup(self) -> None:
         pass
 
-    def register_template(self, name, text=None, applicable_to=""):
-        settings.settings.template_manager.add_template(
-            Template(name, text, applicable_to, prefix=os.path.join(self.path, "templates"))
-        )
+    def register_template(self, name: str, text: str | None = None, applicable_to: str = "") -> None:
+        self.context.add_template(name, text, applicable_to, path=self.path)
 
-    async def license_changed(self, license_key, license_info):
+    async def license_changed(self, license_key: str | None, license_info: dict[str, Any] | None) -> None:
         self.license_key = license_key
 
 
 class CoinServer:
-    def __init__(self, currency, xpub, **additional_data):
+    def __init__(self, currency: str, xpub: str | None, **additional_data: Any) -> None:
         self.currency = currency
         self.xpub = xpub
         self.additional_data = additional_data
 
-    async def getinfo(self):
+    async def getinfo(self) -> dict[str, Any]:
         return {"currency": self.currency, "synchronized": True}
 
-    async def get_tokens(self):
+    async def get_tokens(self) -> dict[str, Any]:
         return {}
 
-    async def getabi(self):
+    async def getabi(self) -> list[dict[str, Any]]:
         return []
 
-    async def validatecontract(self, contract):
+    async def validatecontract(self, contract: str) -> bool:
         return False
 
-    async def normalizeaddress(self, address):
+    async def normalizeaddress(self, address: str) -> str:
         return address
 
-    async def setrequestaddress(self, *args, **kwargs):
+    async def setrequestaddress(self, *args: Any, **kwargs: Any) -> bool:
         return False
 
-    async def validateaddress(self, address):
+    async def validateaddress(self, address: str) -> bool:
         return True
 
-    async def modifypaymenturl(self, url, amount, divisibility=None):
+    async def modifypaymenturl(self, url: str, amount: Decimal, divisibility: int | None = None) -> str:
         return url
 
 
@@ -129,207 +160,87 @@ class BaseCoin(metaclass=ABCMeta):
     coin_name: str
     friendly_name: str
     is_eth_based = False
-    additional_xpub_fields = []
+    additional_xpub_fields: list[str] = []
     rate_rules: str
 
-    def __init__(self, xpub=None, **additional_data):
+    def __init__(self, xpub: str | None = None, **additional_data: Any) -> None:
         self.xpub = xpub
         server_cls = getattr(self, "server_cls", CoinServer)
         self.server = server_cls(self.coin_name.capitalize(), xpub, **additional_data)
 
     @abstractmethod
-    async def validate_key(self, key, *args, **kwargs):
+    async def validate_key(self, key: str, *args: Any, **kwargs: Any) -> bool:
         pass
 
     @abstractmethod
-    async def balance(self):
+    async def balance(self) -> dict[str, Decimal]:
         pass
 
     @property
-    async def node_id(self):
+    async def node_id(self) -> str | None:
         return None
 
-    async def list_channels(self):
+    async def list_channels(self) -> list[dict[str, Any]]:
         return []
 
-    async def history(self):
+    async def history(self) -> dict[str, Any]:
         return {"transactions": []}
 
-    async def open_channel(self, *args, **kwargs):
+    async def open_channel(self, *args: Any, **kwargs: Any) -> bool:
         return False
 
-    async def close_channel(self, *args, **kwargs):
+    async def close_channel(self, *args: Any, **kwargs: Any) -> bool:
         return False
 
-    async def lnpay(self, *args, **kwargs):
+    async def lnpay(self, *args: Any, **kwargs: Any) -> bool:
         return False
 
 
-class PluginsManager:
-    def __init__(self, test=False):
-        self.plugins = {}
-        self.callbacks = defaultdict(list)
-        if not test:
-            self.load_plugins()
-
-    async def handle_license_changed(self, license_key, license_info):
-        if not settings.settings.is_worker:
-            await publish_event("license_changed", {"license_key": license_key, "license_info": license_info})
-            return
-        for plugin in self.plugins.values():
-            if (
-                getattr(plugin, "lookup_name", None) == license_info["plugin_name"]
-                and getattr(plugin, "lookup_org", None) == license_info["plugin_author"]
-            ):
-                await plugin.license_changed(license_key, license_info)
-
-    def load_plugins(self):
-        plugins_list = glob.glob("modules/**/plugin.py")
-        plugins_list.extend(glob.glob("modules/**/**/plugin.py"))
-        for plugin in plugins_list:
-            try:
-                module = self.load_module(plugin)
-                plugin_obj = module.Plugin(os.path.dirname(plugin))
-                self.plugins[plugin_obj.name] = plugin_obj
-                models_path = plugin.replace("plugin.py", "models.py")
-                if os.path.exists(models_path):
-                    self.load_module(models_path)
-            except Exception as e:
-                logger.error(f"Failed to load plugin {plugin}: {get_exception_message(e)}")
-
-    def load_module(self, path):
-        return importlib.import_module(path.replace("/", ".").replace(".py", ""))
-
-    def run_migrations(self, plugin):
-        config = Config("alembic.ini")
-        config.set_main_option("plugin_name", plugin.name)
-        config.set_main_option("version_locations", os.path.join(plugin.path, "versions"))
-        config.set_main_option("no_logs", "true")
-        command.upgrade(config, "head")
-
-    def setup_app(self, app):
-        for plugin in self.plugins.values():
-            try:
-                plugin.setup_app(app)
-            except Exception as e:
-                logger.error(f"Plugin {plugin} failed to configure app: {get_exception_message(e)}")
-
-    async def startup(self):
-        register_hook("license_changed", self.handle_license_changed)
-        for plugin in self.plugins.values():
-            try:
-                if os.path.exists(os.path.join(plugin.path, "versions")):
-                    self.run_migrations(plugin)
-                if plugin.lookup_name and plugin.lookup_org:
-                    plugin.set_license_key(await get_plugin_key_by_lookup(plugin.lookup_name, plugin.lookup_org))
-                await plugin.startup()
-            except Exception as e:
-                logger.error(f"Plugin {plugin} failed to start: {get_exception_message(e)}")
-        await settings.settings.post_plugin_init()
-
-    async def shutdown(self):
-        for plugin in self.plugins.values():
-            try:
-                await plugin.shutdown()
-            except Exception as e:
-                logger.error(f"Plugin {plugin} failed to shutdown: {get_exception_message(e)}")
-
-    async def worker_setup(self):
-        for plugin in self.plugins.values():
-            try:
-                await plugin.worker_setup()
-            except Exception as e:
-                logger.error(f"Plugin {plugin} failed to setup worker: {get_exception_message(e)}")
+PluginClasses = NewType("PluginClasses", dict[str, type[BasePlugin]])
 
 
-### Public API
-
-SKIP_PAYMENT_METHOD = object()  # return this in your plugin if you want to skip current method creation
-
-
-async def run_hook(name, *args, **kwargs):
-    for hook in settings.settings.plugins.callbacks[name]:
+# Had to be put here in order to init DI container early
+def load_plugins(settings: Settings) -> PluginClasses:
+    plugins_list = glob.glob("modules/**/plugin.py")
+    plugins_list.extend(glob.glob("modules/**/**/plugin.py"))
+    _plugins: PluginClasses = cast(PluginClasses, {})
+    if settings.is_testing():
+        return _plugins
+    for plugin in plugins_list:
         try:
-            await run_universal(hook, *args, **kwargs)
+            module = load_module(plugin)
+            plugin_cls = module.Plugin
+            plugin_cls.path = os.path.dirname(plugin)
+            _plugins[plugin_cls.name] = plugin_cls
+            models_path = plugin.replace("plugin.py", "models.py")
+            if os.path.exists(models_path):
+                load_module(models_path)
         except Exception as e:
-            logger.error(f"Hook {name} failed: {get_exception_message(e)}")
+            logger.error(f"Failed to load plugin {plugin}: {get_exception_message(e)}")
+    return _plugins
 
 
-async def apply_filters(name, value, *args, **kwargs):
-    for hook in settings.settings.plugins.callbacks[name]:
-        try:
-            value = await run_universal(hook, value, *args, **kwargs)
-        except Exception as e:
-            logger.error(f"Filter {name} failed: {get_exception_message(e)}")
-    return value
+def load_module(path: str) -> Any:
+    return importlib.import_module(path.replace("/", ".").replace(".py", ""))
 
 
-def register_hook(name, hook):
-    settings.settings.plugins.callbacks[name].append(hook)
+def extract_di_providers(plugins: PluginClasses) -> list[Provider]:
+    providers = []
+    for plugin in plugins.values():
+        if not plugin.PROVIDES:
+            continue
+        providers.extend(plugin.PROVIDES())
+    return providers
 
 
-register_filter = register_hook  # for better readability
-
-
-def register_event(name, params):
-    events.event_handler.add_event(name, {"params": set(params)})
-
-
-def register_event_handler(name, handler):
-    events.event_handler.add_handler(name, handler)
-
-
-async def publish_event(name, data, for_worker=True):
-    await events.event_handler.publish(name, data, for_worker)
-
-
-json_encode = jsonable_encoder
-
-
-async def _get_and_check_meta(model, object_id):
-    if not hasattr(model, "metadata"):
-        raise Exception("Model does not support metadata")
-    obj = await utils.database.get_object(model, object_id, raise_exception=False)
-    if obj is None:
-        raise Exception("Object not found")
-    return obj
-
-
-async def update_metadata(model, object_id, key, value):
-    obj = await _get_and_check_meta(model, object_id)
-    obj.metadata[key] = value
-    await obj.update(metadata=json_encode(obj.metadata)).apply()
-    return obj
-
-
-async def get_metadata(model, object_id, key, default=None):
-    obj = await _get_and_check_meta(model, object_id)
-    return obj["metadata"].get(key, default)
-
-
-async def delete_metadata(model, object_id, key):
-    obj = await _get_and_check_meta(model, object_id)
-    if key in obj.metadata:
-        del obj.metadata[key]
-        await obj.update(metadata=obj.metadata).apply()
-    return obj
-
-
-def register_model_override(name, obj):
-    from api import views
-
-    old_model = getattr(models, name)
-    for idx in range(len(utils.routing.ModelView.crud_models)):
-        if utils.routing.ModelView.crud_models[idx] == old_model:
-            utils.routing.ModelView.crud_models[idx] = obj
-    setattr(models, name, obj)
-    models.all_tables[name] = obj
-    views.users.crud_routes.orm_model = obj
-
-
-async def get_plugin_key_by_lookup(lookup_name, lookup_org):
-    state = await utils.policies.get_setting(schemes.PluginsState)
-    for plugin_info in list(state.license_keys.values()):
-        if plugin_info["plugin_name"] == lookup_name and plugin_info["plugin_author"] == lookup_org:
-            return plugin_info["license_key"]
-    return None
+__all__ = [
+    "SKIP_PAYMENT_METHOD",
+    "FromDI",
+    "DIContainer",
+    "DIScope",
+    "DIRoute",
+    "PluginContext",
+    "BasePlugin",
+    "CoinServer",
+    "BaseCoin",
+]

@@ -491,7 +491,9 @@ class XMRDaemon(BlockProcessorDaemon):
                     print(f"Error processing transaction {tx.hash}:")
                     print(traceback.format_exc())
 
-    ### Methods ###
+    #########
+    # Methods
+    #########
     @rpc(requires_network=True)
     async def add_peer(self, url, wallet=None):
         raise NotImplementedError("Not supported in monero")

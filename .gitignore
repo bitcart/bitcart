@@ -5,6 +5,7 @@
 .idea/
 .mypy_cache
 .pytest_cache/
+.ruff_cache/
 .vscode/
 /data/
 __pycache__/
@@ -18,5 +19,6 @@ htmlcov/
 modules/*
 !modules/.gitkeep
 venv
+.venv
 .prettiercache
 .DS_Store

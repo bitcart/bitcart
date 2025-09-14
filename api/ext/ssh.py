@@ -1,13 +1,14 @@
 import contextlib
+from typing import Any
 
-from starlette.datastructures import CommaSeparatedStrings
+import paramiko
+from paramiko.channel import ChannelFile, ChannelStderrFile, ChannelStdinFile
+from starlette.config import Config
 
-from api import constants
+from api.schemas.misc import SSHSettings
 
 
-def load_ssh_settings(config):
-    from api.schemes import SSHSettings
-
+def load_ssh_settings(config: Config) -> SSHSettings:
     settings = SSHSettings()
     connection_string = config("SSH_CONNECTION", default="")
     settings.host, settings.port, settings.username = parse_connection_string(connection_string)
@@ -19,7 +20,25 @@ def load_ssh_settings(config):
     return settings
 
 
-def parse_connection_string(connection_string):
+def create_ssh_client(settings: "SSHSettings") -> paramiko.SSHClient:
+    client = paramiko.SSHClient()
+    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    kwargs: dict[str, Any] = {
+        "hostname": settings.host,
+        "port": settings.port,
+        "username": settings.username,
+        "allow_agent": False,
+        "look_for_keys": False,
+    }
+    if settings.key_file:
+        kwargs.update(key_filename=settings.key_file, passphrase=settings.key_file_password)
+    else:
+        kwargs.update(password=settings.password)
+    client.connect(**kwargs)
+    return client
+
+
+def parse_connection_string(connection_string: str) -> tuple[str, int, str]:
     username = ""
     port = 22
     host = connection_string
@@ -39,28 +58,30 @@ def parse_connection_string(connection_string):
     return host, port, username
 
 
-def prepare_shell_command(command):
+def prepare_shell_command(command: str) -> str:
     escaped_command = command.replace("'", "'\"'\"'")
     return f"bash -c '{escaped_command}'"
 
 
-def execute_ssh_command(client, command):
+def execute_ssh_command(client: paramiko.SSHClient, command: str) -> tuple[ChannelStdinFile, ChannelFile, ChannelStderrFile]:
     return client.exec_command(prepare_shell_command(command))
 
 
 class ServerEnv:  # pragma: no cover: no valid SSH configuration in CI environment
-    def __init__(self, client):
+    def __init__(self, client: paramiko.SSHClient) -> None:
         self.client = client
-        self.env = {}
+        self.env: dict[str, str] = {}
         self.preload_env()
 
-    def _read_remote_file(self, file, require_export=True):
+    def _read_remote_file(self, file: str, require_export: bool = True) -> dict[str, str]:
         _, stdout, _ = execute_ssh_command(self.client, f"cat {file}")
         output = stdout.read()
         result = {}
         if stdout.channel.recv_exit_status() == 0:
             valid_lines = output.decode().split("\n")
-            valid_lines = filter(lambda s: "=" in s and "==" not in s and (not require_export or "export" in s), valid_lines)
+            valid_lines = list(
+                filter(lambda s: "=" in s and "==" not in s and (not require_export or "export" in s), valid_lines)
+            )
             env = {}
             for line in valid_lines:
                 parts = line.split("=")
@@ -72,46 +93,14 @@ class ServerEnv:  # pragma: no cover: no valid SSH configuration in CI environme
             result = env
         return result
 
-    def preload_env(self):
+    def preload_env(self) -> None:
         self.env = self._read_remote_file("/etc/profile.d/bitcart-env.sh")
         env_file = self.get("BITCART_ENV_FILE", "")
         if env_file:
             self.env.update(self._read_remote_file(env_file, require_export=False))
 
-    def get(self, key, default=None):
+    def get(self, key: str, default: str = "") -> str:
         value = self.env.get(key, default)
         if not value:
             value = default
         return value
-
-
-def collect_server_settings(ssh_settings):  # pragma: no cover
-    from api.schemes import (
-        ConfiguratorAdvancedSettings,
-        ConfiguratorCoinDescription,
-        ConfiguratorDomainSettings,
-        ConfiguratorServerSettings,
-    )
-    from api.utils.common import str_to_bool
-
-    settings = ConfiguratorServerSettings()
-    with contextlib.suppress(Exception):
-        client = ssh_settings.create_ssh_client()
-        env = ServerEnv(client)
-        cryptos = CommaSeparatedStrings(env.get("BITCART_CRYPTOS", "btc"))
-        for crypto in cryptos:
-            symbol = crypto.upper()
-            network = env.get(f"{symbol}_NETWORK", "mainnet")
-            lightning = str_to_bool(env.get(f"{symbol}_LIGHTNING", "false"))
-            settings.coins[crypto] = ConfiguratorCoinDescription(network=network, lightning=lightning)
-        domain = env.get("BITCART_HOST", "")
-        reverse_proxy = env.get("BITCART_REVERSEPROXY", "nginx-https")
-        is_https = reverse_proxy in constants.HTTPS_REVERSE_PROXIES
-        settings.domain_settings = ConfiguratorDomainSettings(domain=domain, https=is_https)
-        installation_pack = env.get("BITCART_INSTALL", "all")
-        additional_components = list(CommaSeparatedStrings(env.get("BITCART_ADDITIONAL_COMPONENTS", "")))
-        settings.advanced_settings = ConfiguratorAdvancedSettings(
-            installation_pack=installation_pack, additional_components=additional_components
-        )
-        client.close()
-    return settings

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import json
 import sys
+from typing import Any
 
 import requests
 from bs4 import BeautifulSoup
@@ -14,17 +15,17 @@ NAMES = {
 API_URL = "https://coinmarketcap.com/tokens/views/all"
 
 
-def exit_err(message):
+def exit_err(message: str) -> None:
     print(message)
     sys.exit(1)
 
 
-def get_next_data(resp):
+def get_next_data(resp: requests.Response) -> dict[str, Any]:
     soup = BeautifulSoup(resp.text, "html.parser")
     return json.loads(soup.find("script", id="__NEXT_DATA__").text)
 
 
-def get_token_address(slug, data, filters):
+def get_token_address(slug: str, data: dict[str, Any], filters: dict[str, Any]) -> str | None:
     if not filters:
         return data["platform.token_address"]
     platforms = get_next_data(requests.get(f"https://coinmarketcap.com/currencies/{slug}"))["props"]["pageProps"]["detailRes"][
@@ -33,9 +34,10 @@ def get_token_address(slug, data, filters):
     for platform in platforms:
         if platform.items() >= filters.items():
             return platform["contractAddress"]
+    return None
 
 
-def fetch_popular_tokens(filters):
+def fetch_popular_tokens(filters: dict[str, Any]) -> dict[str, str | None]:
     page = requests.get(API_URL)
     data = get_next_data(page)
     tokens = json.loads(data["props"]["initialState"])["cryptocurrency"]["listingLatest"]["data"]

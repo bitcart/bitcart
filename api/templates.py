@@ -1,14 +1,17 @@
 from collections import defaultdict
+from typing import Any
 
 from jinja2 import TemplateError
 from jinja2.sandbox import SandboxedEnvironment
 
 from api.exceptions import TemplateLoadError
 from api.ext.moneyformat import currency_table
-from api.logger import get_exception_message, get_logger
+from api.logging import get_exception_message, get_logger
+
+logger = get_logger(__name__)
 
 
-def format_decimal(obj, key, **kwargs):  # pragma: no cover
+def format_decimal(obj: Any, key: str, **kwargs: Any) -> Any:  # pragma: no cover
     if not hasattr(obj, key):
         return ""
     value = getattr(obj, key)
@@ -20,11 +23,9 @@ def format_decimal(obj, key, **kwargs):  # pragma: no cover
 sandbox = SandboxedEnvironment(trim_blocks=True)
 sandbox.filters["format_decimal"] = format_decimal
 
-logger = get_logger(__name__)
-
 
 class Template:
-    def __init__(self, name, text=None, applicable_to="", prefix="api/templates"):
+    def __init__(self, name: str, text: str | None = None, applicable_to: str = "", prefix: str = "api/templates") -> None:
         self.prefix = prefix
         self.name = name
         self.applicable_to = applicable_to
@@ -34,14 +35,14 @@ class Template:
             self.load_from_file(name)
         self.template = sandbox.from_string(self.template_text)
 
-    def load_from_file(self, name):
+    def load_from_file(self, name: str) -> None:
         try:
             with open(f"{self.prefix}/{name}.j2") as f:
                 self.template_text = f.read().strip()
         except OSError as e:
             raise TemplateLoadError(f"Failed to load template {name}: {e.strerror}") from e
 
-    def render(self, *args, **kwargs):
+    def render(self, *args: Any, **kwargs: Any) -> str:
         try:
             return self.template.render(*args, **kwargs)
         except TemplateError as e:
@@ -57,17 +58,19 @@ VerifyEmailTemplate = Template("verifyemail", applicable_to="global")
 CustomerRefundTemplate = Template("customer_refund", applicable_to="store")
 MerchantRefundNotifyTemplate = Template("merchant_refund_notify", applicable_to="store")
 
+ALL_TEMPLATES = {template.name: template for template in globals().values() if isinstance(template, Template)}
+
 
 class TemplateManager:
-    def __init__(self):
+    def __init__(self) -> None:
         self.init_defaults()
 
-    def add_template(self, template):
+    def add_template(self, template: Template) -> None:
         self.templates[template.name] = template
         self.templates_strings[template.applicable_to].append(template.name)
 
-    def init_defaults(self):
-        self.templates = {template.name: template for template in globals().values() if isinstance(template, Template)}
+    def init_defaults(self) -> None:
+        self.templates = ALL_TEMPLATES
         self.templates_strings = defaultdict(list)
         for template in self.templates.values():
             self.templates_strings[template.applicable_to].append(template.name)

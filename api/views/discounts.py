@@ -1,15 +1,12 @@
-from fastapi import APIRouter
+from api.constants import AuthScopes
+from api.schemas.discounts import CreateDiscount, DisplayDiscount, UpdateDiscount
+from api.services.crud.discounts import DiscountService
+from api.utils.routing import create_crud_router
 
-from api import models, schemes, utils
-
-router = APIRouter()
-
-crud_routes = utils.routing.ModelView.register(
-    router,
-    "/",
-    models.Discount,
-    schemes.UpdateDiscount,
-    schemes.CreateDiscount,
-    schemes.DisplayDiscount,
-    scopes=["discount_management"],
+router = create_crud_router(
+    CreateDiscount,
+    UpdateDiscount,
+    DisplayDiscount,
+    DiscountService,
+    required_scopes=[AuthScopes.DISCOUNT_MANAGEMENT],
 )

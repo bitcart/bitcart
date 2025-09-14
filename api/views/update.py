@@ -1,13 +1,14 @@
+from typing import Any
+
+from dishka import FromDishka
+from dishka.integrations.fastapi import DishkaRoute
 from fastapi import APIRouter
 
-from api import settings, utils
-from api.ext import update as update_ext
+from api.services.ext.update import UpdateCheckService
 
-router = APIRouter()
+router = APIRouter(route_class=DishkaRoute)
 
 
 @router.get("/check")
-async def check_updates():
-    async with utils.redis.wait_for_redis():
-        new_update_tag = await settings.settings.redis_pool.hget(update_ext.REDIS_KEY, "new_update_tag")
-        return {"update_available": bool(new_update_tag), "tag": new_update_tag}
+async def check_updates(update_service: FromDishka[UpdateCheckService]) -> dict[str, Any]:
+    return await update_service.get_latest_fetched_update()

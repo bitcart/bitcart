@@ -867,7 +867,9 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
             if xpub:
                 self.wallet_locks[wallet_key].release()
 
-    ### Methods ###
+    #########
+    # Methods
+    #########
 
     @rpc(requires_network=True)
     @abstractmethod

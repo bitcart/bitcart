@@ -1,91 +1,115 @@
 import asyncio
-import signal
+import functools
+import platform
 import sys
-import time
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from multiprocessing import Process
 
 import sqlalchemy
 from alembic import config, script
 from alembic.runtime import migration
+from dishka import AsyncContainer, make_async_container
+from dishka.integrations.faststream import setup_dishka
+from faststream import ContextRepo, FastStream
+from faststream.redis import RedisBroker
 
-from api import events, invoices, tasks
-from api import settings as settings_module
-from api.ext import backups as backup_ext
-from api.ext import configurator as configurator_ext
-from api.ext import tor as tor_ext
-from api.ext import update as update_ext
-from api.ext.sentry import configure_sentry
+from api import constants
+from api.db import create_async_engine
+from api.ioc import get_providers
+from api.ioc.worker import WorkerProvider
+from api.logfire import configure_logfire
+from api.logging import configure as configure_logging
+from api.logging import get_logger
 from api.logserver import main as start_logserver
 from api.logserver import wait_for_port
+from api.plugins import PluginClasses, extract_di_providers, load_plugins
+from api.services.coins import CoinService
+from api.services.notification_manager import NotificationManager
+from api.services.plugin_registry import PluginRegistry
 from api.settings import Settings
-from api.utils.common import run_repeated
+from api.tasks import router
+from api.types import TasksBroker
+
+logger = get_logger("worker")
 
 
-def check_db():
+def check_revision(conn: sqlalchemy.engine.Connection, script_dir: script.ScriptDirectory) -> bool:
+    context = migration.MigrationContext.configure(conn)
+    return context.get_current_revision() == script_dir.get_current_head()
+
+
+async def check_db() -> bool:
     try:
-        settings = settings_module.settings_ctx.get()
-        if settings.test:
+        settings = Settings(IS_WORKER=True)
+        if settings.is_testing():
             return True
-        engine = sqlalchemy.create_engine(settings.connection_str)
+        engine = create_async_engine(settings, "migrations")
         alembic_cfg = config.Config("alembic.ini")
-        script_ = script.ScriptDirectory.from_config(alembic_cfg)
-        with engine.begin() as conn:
-            context = migration.MigrationContext.configure(conn)
-            if context.get_current_revision() != script_.get_current_head():
-                return False
+        script_dir = script.ScriptDirectory.from_config(alembic_cfg)
+        async with engine.begin() as conn:
+            return await conn.run_sync(functools.partial(check_revision, script_dir=script_dir))
+        await engine.dispose()
         return True
     except Exception:
         return False
 
 
-async def main():
-    settings = settings_module.settings_ctx.get()
-    settings.is_worker = True
-    configure_sentry(settings)
-    try:
-        settings.init_logging()
-        await settings.init()
-        settings.load_plugins()
-        coro = events.start_listening(tasks.event_handler)  # to avoid deleted task errors
-        asyncio.ensure_future(coro)
-        await settings.plugins.startup()
-        settings_module.log_startup_info()
-        await tor_ext.refresh(log=False)  # to pre-load data for initial requests
-        await update_ext.refresh()
-        await configurator_ext.refresh_pending_deployments()
-        await backup_ext.manager.start()
-        asyncio.ensure_future(run_repeated(tor_ext.refresh, 60 * 10, 10))
-        asyncio.ensure_future(run_repeated(update_ext.refresh, 60 * 60 * 24))
-        settings.manager.add_event_handler("new_payment", invoices.new_payment_handler)
-        settings.manager.add_event_handler("new_block", invoices.new_block_handler)
-        await invoices.create_expired_tasks()  # to ensure invoices get expired actually
-        await settings.plugins.worker_setup()
-        await settings.manager.start_websocket(reconnect_callback=invoices.check_pending, force_connect=True)
-    finally:
-        await settings.plugins.shutdown()
-        await settings.shutdown()
+@asynccontextmanager
+async def lifespan(container: AsyncContainer, context: ContextRepo) -> AsyncIterator[None]:
+    plugin_registry = await container.get(PluginRegistry)
+    for service in WorkerProvider.TO_PRELOAD:
+        await container.get(service)
+    await plugin_registry.startup()
+    await plugin_registry.worker_setup()
+    settings = await container.get(Settings)
+    coin_service = await container.get(CoinService)
+    notification_manager = await container.get(NotificationManager)
+    logger.info(f"Bitcart version: {constants.VERSION} - {constants.WEBSITE} - {constants.GIT_REPO_URL}")
+    logger.info(f"Python version: {sys.version}. On platform: {platform.platform()}")
+    logger.info(
+        f"BITCART_CRYPTOS={','.join(list(settings.ENABLED_CRYPTOS))}; IN_DOCKER={settings.DOCKER_ENV}; "
+        f"LOG_FILE={settings.LOG_FILE_NAME}"
+    )
+    logger.info(f"Successfully loaded {len(coin_service.cryptos)} cryptos")
+    logger.info(f"{len(notification_manager.notifiers)} notification providers available")
+    yield
+    await plugin_registry.shutdown()
 
 
-def handler(signum, frame):
-    process.terminate()
-    sys.exit()
+def get_app(process: Process) -> FastStream:
+    settings = Settings(IS_WORKER=True)
+    configure_logfire(settings, "worker")
+    configure_logging(settings=settings, logfire=True)
+    # TODO: investigate graceful_timeout
+    broker = RedisBroker(url=settings.redis_url, logger=None, graceful_timeout=0)
+    broker.include_router(router)
+    plugin_classes = load_plugins(settings)
+    plugin_providers = extract_di_providers(plugin_classes)
+    container = make_async_container(
+        *get_providers(),
+        WorkerProvider(),
+        *plugin_providers,
+        context={Settings: settings, TasksBroker: broker, PluginClasses: plugin_classes},
+    )
+    app = FastStream(broker, lifespan=functools.partial(lifespan, container), logger=None)
+    app.after_shutdown(process.terminate)
+    setup_dishka(container, app, auto_inject=True)
+    return app
+
+
+async def wait_loop() -> None:
+    while True:
+        if await check_db():
+            break
+        print("Database not available/not migrated, waiting...")  # noqa: T201
+        await asyncio.sleep(1)
 
 
 if __name__ == "__main__":
-    settings = Settings()
-    try:
-        token = settings_module.settings_ctx.set(settings)
-        process = Process(target=start_logserver)
-        process.start()
-        wait_for_port()
-        for signal_name in (signal.SIGINT, signal.SIGTERM):
-            signal.signal(signal_name, handler)
-        # wait for db
-        while True:
-            if check_db():
-                break
-            print("Database not available/not migrated, waiting...")
-            time.sleep(1)
-        asyncio.run(main())
-    finally:
-        settings_module.settings_ctx.reset(token)
+    process = Process(target=start_logserver)
+    process.start()
+    wait_for_port()
+    asyncio.run(wait_loop())
+    app = get_app(process)
+    asyncio.run(app.run())

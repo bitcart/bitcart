@@ -7,6 +7,7 @@ Create Date: 2021-05-13 17:41:52.402473
 """
 
 from collections.abc import Sequence
+from typing import Any
 
 import sqlalchemy as sa
 from alembic import op
@@ -18,7 +19,7 @@ branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
 
-def create_constraints():
+def create_constraints() -> None:
     op.create_foreign_key(None, "discountsxproducts", "discounts", ["discount_id"], ["id"], ondelete="SET NULL")
     op.create_foreign_key(None, "discountsxproducts", "products", ["product_id"], ["id"], ondelete="SET NULL")
     op.create_foreign_key(None, "discounts", "users", ["user_id"], ["id"], ondelete="SET NULL")
@@ -40,7 +41,7 @@ def create_constraints():
     op.create_foreign_key(None, "walletsxstores", "wallets", ["wallet_id"], ["id"], ondelete="SET NULL")
 
 
-def drop_constraints():
+def drop_constraints() -> None:
     op.drop_constraint("discountsxproducts_discount_id_discounts_fkey", "discountsxproducts")
     op.drop_constraint("discountsxproducts_product_id_products_fkey", "discountsxproducts")
     op.drop_constraint("discounts_user_id_users_fkey", "discounts")
@@ -151,7 +152,7 @@ def upgrade() -> None:
     # ### end Alembic commands ###
 
 
-def int_alter_column(table, column, **kwargs):
+def int_alter_column(table: str, column: str, **kwargs: Any) -> None:
     op.alter_column(table, column, postgresql_using=f"{column}::integer", **kwargs)
 
 

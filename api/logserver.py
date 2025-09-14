@@ -1,29 +1,31 @@
-import datetime
+import contextlib
 import logging
-import logging.handlers
 import socket
 import socketserver
 import time
+from datetime import datetime
 from decimal import Decimal
+from typing import Any
 
 import msgpack
 
-from api import settings as settings_module
 from api.constants import LOGSERVER_PORT
-from api.logger import configure_file_logging
-from api.logger import get_logger_server as get_logger
+from api.logfire import configure_logfire
+from api.logging import configure as configure_logging
+from api.logging import get_logger
 from api.settings import Settings
 
 
 class LogRecordStreamHandler(socketserver.StreamRequestHandler):
-    def decode_msgpack(self, obj):
+    def decode_msgpack(self, obj: dict[str, Any]) -> Any:
+        result: Any = obj
         if "__datetime__" in obj:
-            obj = datetime.datetime.strptime(obj["data"], "%Y%m%dT%H:%M:%S.%f")
+            result = datetime.strptime(obj["data"], "%Y%m%dT%H:%M:%S.%f")
         elif "__decimal__" in obj:
-            obj = Decimal(obj["data"])
-        return obj
+            result = Decimal(obj["data"])
+        return result
 
-    def handle(self):
+    def handle(self) -> None:
         unpacker = msgpack.Unpacker(use_list=False, object_hook=self.decode_msgpack, strict_map_key=False)
 
         while True:
@@ -35,8 +37,10 @@ class LogRecordStreamHandler(socketserver.StreamRequestHandler):
                 record = logging.makeLogRecord(obj)
                 self.handle_log_record(record)
 
-    def handle_log_record(self, record):
-        record.name = record.name.replace("api.logclient.", "")
+    def handle_log_record(self, record: logging.LogRecord) -> None:
+        if isinstance(record.msg, dict):  # happens when structlog is passed to logging, but formatter was not applied
+            record.__dict__.update(record.msg)
+        record.__dict__.pop("_name", None)  # added by structlog
         logger = get_logger(record.name)
         logger.handle(record)
 
@@ -46,16 +50,16 @@ class LogRecordSocketReceiver(socketserver.ThreadingTCPServer):
 
     def __init__(
         self,
-        host="localhost",
-        port=LOGSERVER_PORT,
-        handler=LogRecordStreamHandler,
-    ):
+        host: str = "localhost",
+        port: int = LOGSERVER_PORT,
+        handler: type[LogRecordStreamHandler] = LogRecordStreamHandler,
+    ) -> None:
         socketserver.ThreadingTCPServer.__init__(self, (host, port), handler)
         self.abort = 0
         self.timeout = 1
         self.logname = None
 
-    def serve_until_stopped(self):
+    def serve_until_stopped(self) -> None:
         import select
 
         abort = 0
@@ -66,7 +70,7 @@ class LogRecordSocketReceiver(socketserver.ThreadingTCPServer):
             abort = self.abort
 
 
-def wait_for_port(host="localhost", port=LOGSERVER_PORT, timeout=5.0):
+def wait_for_port(host: str = "localhost", port: int = LOGSERVER_PORT, timeout: float = 5.0) -> None:
     start_time = time.perf_counter()
     while True:
         try:
@@ -80,12 +84,10 @@ def wait_for_port(host="localhost", port=LOGSERVER_PORT, timeout=5.0):
                 ) from ex
 
 
-def main():
-    settings = Settings()
-    try:
-        token = settings_module.settings_ctx.set(settings)
-        configure_file_logging()
-        tcpserver = LogRecordSocketReceiver(host=settings.logserver_host)
+def main() -> None:
+    settings = Settings(IS_WORKER=True)
+    configure_logfire(settings, "worker")
+    configure_logging(settings=settings, logfire=True, logserver=True)
+    tcpserver = LogRecordSocketReceiver(host=settings.logserver_host)
+    with contextlib.suppress(KeyboardInterrupt):
         tcpserver.serve_until_stopped()
-    finally:
-        settings_module.settings_ctx.reset(token)

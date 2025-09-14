@@ -7,6 +7,7 @@ Create Date: 2021-05-30 15:55:11.441482
 """
 
 from collections.abc import Sequence
+from typing import Any
 
 import sqlalchemy as sa
 from alembic import op
@@ -202,7 +203,7 @@ def upgrade() -> None:
     # ### end Alembic commands ###
 
 
-def int_alter_column(table, column, **kwargs):
+def int_alter_column(table: str, column: str, **kwargs: Any) -> None:
     op.alter_column(table, column, postgresql_using=f"{column}::integer", **kwargs)
 
 

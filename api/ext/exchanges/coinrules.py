@@ -15,7 +15,7 @@ class LTC:
 
 
 class XRGExchange(BaseExchange):
-    async def refresh(self):
+    async def refresh(self) -> None:
         result = await utils.common.send_request("GET", "https://explorer.ergon.network/ext/summary")
         self.quotes = {"XRG_USDT": utils.common.precise_decimal(result["data"][0]["lastPrice"])}
 

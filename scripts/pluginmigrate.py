@@ -7,20 +7,21 @@ sys.path.insert(0, ".")
 
 from alembic.config import CommandLine, Config
 
-from api import settings  # noqa: F401 # to avoid circular import
-from api.plugins import PluginsManager
+from api.plugins import load_plugins
+from api.settings import Settings
 
 if len(sys.argv) < 3:
     sys.exit("Usage: pluginmigrate.py <plugin_name> <alembic commands>")
 
 plugin_name = sys.argv[1]
-
-manager = PluginsManager()
-if plugin_name not in manager.plugins:
+settings = Settings()
+plugin_classes = load_plugins(settings)
+del settings
+if plugin_name not in plugin_classes:
     sys.exit(f"Plugin {plugin_name} not found")
 
 cmd = CommandLine(prog="pluginmigrate")
-plugin = manager.plugins[plugin_name]
+plugin = plugin_classes[plugin_name]
 config = Config("alembic.ini")
 config.set_main_option("plugin_name", plugin.name)
 config.set_main_option("version_locations", os.path.join(plugin.path, "versions"))

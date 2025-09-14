@@ -1,15 +1,17 @@
 import asyncio
+from collections.abc import Coroutine
+from typing import Any
 
-from api.logger import get_exception_message, get_logger
+from api.logging import get_exception_message, get_logger
 
 logger = get_logger(__name__)
 
 
 def create_task(
-    coroutine,
+    coroutine: Coroutine[Any, Any, Any],
     *,
-    loop=None,
-):
+    loop: asyncio.AbstractEventLoop | None = None,
+) -> asyncio.Task[Any]:
     if loop is None:  # pragma: no cover
         loop = asyncio.get_running_loop()
     task = loop.create_task(coroutine)
@@ -17,7 +19,7 @@ def create_task(
     return task
 
 
-def check_task_errors(task):
+def check_task_errors(task: asyncio.Task[Any]) -> None:
     try:
         task.result()
     except asyncio.CancelledError:

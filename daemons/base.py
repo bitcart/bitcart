@@ -41,7 +41,9 @@ class BaseDaemon:
         self.env_names.add(name.lower())
         return self.config_getter(f"{self.env_name}_{name}", default=default, cast=cast)
 
-    ### Spec support ###
+    ##############
+    # Spec support
+    ##############
 
     def set_dynamic_spec(self):
         pass
@@ -74,7 +76,9 @@ class BaseDaemon:
                 return self.spec["electrum_map"][error_message]
         return fallback_code
 
-    ### Base request handling ###
+    #######################
+    # Base request handling
+    #######################
 
     def parse_xpub(self, xpub):
         if xpub is None or isinstance(xpub, str):
@@ -136,7 +140,9 @@ class BaseDaemon:
     def start(self):
         web.run_app(self.app, host=self.HOST, port=self.PORT)
 
-    ### Websocket utilities ###
+    #####################
+    # Websocket utilities
+    #####################
 
     def build_notification(self, data, xpub):
         return {"updates": [data], "wallet": xpub, "currency": self.name}
@@ -153,7 +159,9 @@ class BaseDaemon:
         await asyncio.gather(*coros)
         return True
 
-    ### Overridable methods for completely custom coins ###
+    #################################################
+    # Overridable methods for completely custom coins
+    #################################################
 
     def load_env(self):
         """Use self.env here to load all needed environment variables"""

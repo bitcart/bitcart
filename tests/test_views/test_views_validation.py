@@ -1,14 +1,16 @@
 from __future__ import annotations
 
 import json
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
+import httpx
 import pytest
+import pytest_mock
 from bitcart.errors import BaseError as BitcartBaseError
 from parametrization import Parametrization
 
-from api import schemes
 from api.constants import BACKUP_FREQUENCIES, BACKUP_PROVIDERS, FEE_ETA_TARGETS, MAX_CONFIRMATION_WATCH
+from api.schemas.misc import CaptchaType
 from tests.fixtures.static_data import TEST_XPUB
 from tests.helper import create_invoice, create_payout, create_product, create_store, create_token, create_user
 
@@ -26,20 +28,20 @@ BAD_BACKUP_FREQUENCIES_MESSAGE = f"Backup frequency must be either of: {', '.joi
 pytestmark = pytest.mark.anyio
 
 
-def check_validation_failed(resp, error):
+def check_validation_failed(resp: httpx.Response, error: str) -> None:
     assert resp.status_code == 422
     assert resp.json()["detail"] == error
 
 
-async def test_invoice_no_wallets(client: TestClient, token, user):
-    store_id = (await create_store(client, user, token, custom_store_attrs={"wallets": []}))["id"]
+async def test_invoice_no_wallets(client: TestClient, token: str) -> None:
+    store_id = (await create_store(client, token, custom_store_attrs={"wallets": []}))["id"]
     check_validation_failed(
         await client.post("/invoices", json={"price": 5, "store_id": store_id}, headers={"Authorization": f"Bearer {token}"}),
         "No wallet linked",
     )
 
 
-async def test_wallet_invalid_xpub(client: TestClient, token):
+async def test_wallet_invalid_xpub(client: TestClient, token: str) -> None:
     # Unable to create invalid wallet
     check_validation_failed(
         await client.post("/wallets", json={"name": "test", "xpub": "invalid"}, headers={"Authorization": f"Bearer {token}"}),
@@ -80,7 +82,9 @@ async def test_wallet_invalid_xpub(client: TestClient, token):
     data={"recommended_fee_target_blocks": 26},
     error=BAD_TARGET_FEE_BLOCKS_MESSAGE,
 )
-async def test_store_checkout_settings_valid(client: TestClient, token, store, data, error):
+async def test_store_checkout_settings_valid(
+    client: TestClient, token: str, store: dict[str, Any], data: dict[str, Any], error: str
+) -> None:
     store_id = store["id"]
     check_validation_failed(
         await client.patch(
@@ -92,7 +96,7 @@ async def test_store_checkout_settings_valid(client: TestClient, token, store, d
     )
 
 
-async def test_invalid_notification_provider(client: TestClient, token):
+async def test_invalid_notification_provider(client: TestClient, token: str) -> None:
     # Only allow providers supported by the notifiers library to prevent further errors
     resp = await client.post(
         "/notifications",
@@ -110,7 +114,7 @@ async def test_invalid_notification_provider(client: TestClient, token):
     ).status_code == 200
 
 
-async def test_invalid_fk_constaint(client: TestClient, token):
+async def test_invalid_fk_constaint(client: TestClient, token: str) -> None:
     # For m2m, it disallows invalid foreign keys with a bit different error
     resp = await client.post(
         "/stores", json={"name": "test", "wallets": ["999"]}, headers={"Authorization": f"Bearer {token}"}
@@ -131,7 +135,7 @@ async def test_invalid_fk_constaint(client: TestClient, token):
     assert resp.json()["detail"] == "Access denied: attempt to use objects not owned by current user"
 
 
-async def test_product_patch_validation_works(client: TestClient, token, product):
+async def test_product_patch_validation_works(client: TestClient, token: str, product: dict[str, Any]) -> None:
     product_id = product["id"]
     assert (
         await client.patch(
@@ -163,7 +167,7 @@ async def test_product_patch_validation_works(client: TestClient, token, product
     data={"frequency": "yearly"},
     error=BAD_BACKUP_FREQUENCIES_MESSAGE,
 )
-async def test_invalid_backup_policies(client: TestClient, token, data, error):
+async def test_invalid_backup_policies(client: TestClient, token: str, data: dict[str, Any], error: str) -> None:
     check_validation_failed(
         await client.post(
             "/manage/backups",
@@ -176,31 +180,36 @@ async def test_invalid_backup_policies(client: TestClient, token, data, error):
 
 class MockBTC:
     coin_name = "BTC"
+    friendly_name = "Bitcoin"
     is_eth_based = False
 
-    async def list_fiat(self):
+    async def list_fiat(self) -> list[str]:
         raise BitcartBaseError("Doesn't work")
 
-    async def validate_key(self, key):
+    async def validate_key(self, key: str) -> bool:
         raise BitcartBaseError("Broken")
 
 
 @pytest.mark.exchange_rates(cryptos={})
-async def test_edge_fiatlist_cases_no_cryptos(client: TestClient, token, mocker):
+async def test_edge_fiatlist_cases_no_cryptos(client: TestClient, token: str, mocker: pytest_mock.MockerFixture) -> None:
     resp = await client.get("/cryptos/fiatlist")
     assert resp.status_code == 200
     assert len(resp.json()) == 0
 
 
 @pytest.mark.exchange_rates(cryptos={"btc": MockBTC()})
-async def test_edge_fiatlist_cases_faulty(client: TestClient, token, mocker):
+async def test_edge_fiatlist_cases_faulty(client: TestClient, token: str, mocker: pytest_mock.MockerFixture) -> None:
     resp = await client.get("/cryptos/fiatlist")
     assert resp.status_code == 200
     assert len(resp.json()) == 3
 
 
-async def test_edge_invoice_cases(client: TestClient, token, store, mocker, caplog):
-    mocker.patch("api.crud.invoices.create_payment_method", side_effect=BitcartBaseError("Doesn't work"))
+async def test_edge_invoice_cases(
+    client: TestClient, token: str, store: dict[str, Any], mocker: pytest_mock.MockerFixture, caplog: pytest.LogCaptureFixture
+) -> None:
+    mocker.patch(
+        "api.services.crud.invoices.InvoiceService.create_payment_method", side_effect=BitcartBaseError("Doesn't work")
+    )
     resp = await client.post(
         "/invoices", json={"price": 5, "store_id": store["id"]}, headers={"Authorization": f"Bearer {token}"}
     )
@@ -210,8 +219,10 @@ async def test_edge_invoice_cases(client: TestClient, token, store, mocker, capl
     assert f"Invoice {data['id']}: failed creating payment method BTC" in caplog.text
 
 
-async def test_create_wallet_validate_xpub_broken(client: TestClient, mocker, token, caplog):
-    mocker.patch("api.settings.settings.cryptos", {"btc": MockBTC()})
+@pytest.mark.exchange_rates(cryptos={"btc": MockBTC()})
+async def test_create_wallet_validate_xpub_broken(
+    client: TestClient, mocker: pytest_mock.MockerFixture, token: str, caplog: pytest.LogCaptureFixture
+) -> None:
     assert (
         await client.post(
             "/wallets",
@@ -222,14 +233,14 @@ async def test_create_wallet_validate_xpub_broken(client: TestClient, mocker, to
     assert "Failed to validate xpub for currency btc" in caplog.text
 
 
-async def test_access_control_strict(client: TestClient):
+async def test_access_control_strict(client: TestClient) -> None:
     user1 = await create_user(client)
     user2 = await create_user(client)
     token1 = (await create_token(client, user1))["id"]
     token2 = (await create_token(client, user2))["id"]
     # Step1: user2 can't use objects of user1 in o2m fields (i.e. store_id)
-    store1 = await create_store(client, user1, token1)
-    product1 = await create_product(client, user1, token1, store_id=store1["id"])
+    store1 = await create_store(client, token1)
+    product1 = await create_product(client, token1, store_id=store1["id"])
     assert product1 is not None
     resp = await client.post(
         "/products",
@@ -245,7 +256,7 @@ async def test_access_control_strict(client: TestClient):
         headers={"Authorization": f"Bearer {token1}"},
     )
     assert resp.json()["user_id"] == user1["id"]
-    # Step3: can't use other users' objects in m2m relations
+    # # Step3: can't use other users' objects in m2m relations
     wallet_id = store1["wallets"][0]
     resp = await client.post(
         "/stores",
@@ -255,7 +266,7 @@ async def test_access_control_strict(client: TestClient):
     assert resp.status_code == 403
     assert resp.json()["detail"] == "Access denied: attempt to use objects not owned by current user"
     # Step4: can't mark_complete invoices of another user
-    invoice = await create_invoice(client, user1, token1)
+    invoice = await create_invoice(client, token1)
     assert invoice is not None
     resp = await client.post(
         "/invoices/batch",
@@ -265,7 +276,7 @@ async def test_access_control_strict(client: TestClient):
     assert (await client.get(f"/invoices/{invoice['id']}")).json()["status"] == "pending"
 
 
-async def test_products_invalid_json(client: TestClient, token):
+async def test_products_invalid_json(client: TestClient, token: str) -> None:
     resp = await client.post(
         "/products",
         data={"data": "invalid"},
@@ -275,7 +286,9 @@ async def test_products_invalid_json(client: TestClient, token):
     assert resp.json()["detail"] == "Invalid JSON"
 
 
-async def test_payouts_invalid_destination(client: TestClient, store, wallet, token):
+async def test_payouts_invalid_destination(
+    client: TestClient, store: dict[str, Any], wallet: dict[str, Any], token: str
+) -> None:
     resp = await client.post(
         "/payouts",
         json={"store_id": store["id"], "wallet_id": wallet["id"], "destination": "invalid", "amount": 1},
@@ -285,16 +298,16 @@ async def test_payouts_invalid_destination(client: TestClient, store, wallet, to
     assert resp.json()["detail"] == "Invalid destination address"
 
 
-async def test_payouts_wallet_deleted(client: TestClient, user, token):
-    payout = await create_payout(client, user["id"], token)
+async def test_payouts_wallet_deleted(client: TestClient, token: str) -> None:
+    payout = await create_payout(client, token)
     assert payout["wallet_currency"] == "btc"
     wallet_id = payout["wallet_id"]
-    await client.delete(f"/wallets/{wallet_id}", headers={"Authorization": f"Bearer {token}"})
+    assert (await client.delete(f"/wallets/{wallet_id}", headers={"Authorization": f"Bearer {token}"})).status_code == 200
     resp = await client.get(f"/payouts/{payout['id']}", headers={"Authorization": f"Bearer {token}"})
     assert resp.json()["wallet_currency"] is None
 
 
-async def test_store_email_authmode_validation(client: TestClient, token, store):
+async def test_store_email_authmode_validation(client: TestClient, token: str, store: dict[str, Any]) -> None:
     store_id = store["id"]
     check_validation_failed(
         await client.patch(
@@ -306,12 +319,12 @@ async def test_store_email_authmode_validation(client: TestClient, token, store)
     )
 
 
-async def test_settings_captcha_type_validation(client: TestClient, token, store):
+async def test_settings_captcha_type_validation(client: TestClient, token: str, store: dict[str, Any]) -> None:
     check_validation_failed(
         await client.post(
             "/manage/policies",
             json={"captcha_type": "invalid"},
             headers={"Authorization": f"Bearer {token}"},
         ),
-        f"Invalid captcha_type. Expected either of {', '.join(schemes.CaptchaType)}.",
+        f"Invalid captcha_type. Expected either of {', '.join(CaptchaType)}.",
     )
