@@ -15,7 +15,6 @@ from httpx_ws.transport import ASGIWebSocketTransport
 from pwdlib import PasswordHash
 from pwdlib.hashers.bcrypt import BcryptHasher
 from sqlalchemy import text
-from sqlalchemy_utils import create_database, database_exists, drop_database
 
 from api.db import AsyncEngine, create_async_engine
 from api.ioc import get_providers, setup_dishka
@@ -45,11 +44,14 @@ def get_db_url(settings: Settings, worker_id: str) -> str:
 
 async def initialize_test_database(settings: Settings, worker_id: str) -> None:
     template_db_name = f"{settings.DB_DATABASE}_template"
-    sync_database_url = settings.build_postgres_dsn(db_name=template_db_name, driver="psycopg2")
-    if database_exists(sync_database_url):
-        drop_database(sync_database_url)
-    create_database(sync_database_url)
-    engine = create_async_engine(settings, "test", dsn=settings.build_postgres_dsn(db_name=template_db_name))
+    database_url = settings.build_postgres_dsn(db_name=template_db_name)
+    engine = create_async_engine(settings, "test", dsn=settings.build_postgres_dsn(db_name="postgres"))
+    async with engine.connect() as conn:
+        await conn.execution_options(isolation_level="AUTOCOMMIT")
+        await conn.execute(text(f"DROP DATABASE IF EXISTS {template_db_name}"))
+        await conn.execute(text(f"CREATE DATABASE {template_db_name}"))
+    await engine.dispose()
+    engine = create_async_engine(settings, "test", dsn=database_url)
     async with engine.begin() as conn:
         await conn.run_sync(Model.metadata.create_all)
     await engine.dispose()
