@@ -90,7 +90,6 @@ class TokenService(CRUDService[models.Token]):
             raise HTTPException(422, "Invalid code")
         if auth_data.code in user.recovery_codes:
             user.recovery_codes.remove(auth_data.code)
-            user.update(recovery_codes=user.recovery_codes)
         await self.redis_pool.delete(f"{TFA_REDIS_KEY}:{auth_data.token}")
         return await self.create_token_normal(token_data)
 

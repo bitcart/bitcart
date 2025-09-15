@@ -84,7 +84,7 @@ class RefundService(CRUDService[models.Refund]):
             wallet_id=cast(str, refund.wallet_id),
         ).model_dump()
         payout_data["user_id"] = refund.user_id
-        payout = await self.payout_service.create(payout_data)  # TODO: maybe we need to pass user here for validation?
+        payout = await self.payout_service.create(payout_data)
         refund.update(
             payout=payout, destination=data.destination, amount=currency_table.normalize(refund.currency, refund.amount)
         )

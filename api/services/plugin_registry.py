@@ -203,8 +203,7 @@ class PluginRegistry:
         obj.update(meta=self.json_encode(obj.meta))
         async with self.container(scope=Scope.REQUEST) as container:
             session = await container.get(AsyncSession)
-            await session.merge(obj)
-        return obj
+            return await session.merge(obj)
 
     async def get_metadata(self, model: type[models.RecordModel], object_id: str, key: str, default: Any = None) -> Any:
         obj = await self._get_and_check_meta(model, object_id)
@@ -217,7 +216,7 @@ class PluginRegistry:
             obj.update(meta=obj.meta)
             async with self.container(scope=Scope.REQUEST) as container:
                 session = await container.get(AsyncSession)
-                await session.merge(obj)
+                obj = await session.merge(obj)
         return obj
 
     async def get_plugin_key_by_lookup(self, lookup_name: str, lookup_org: str) -> str | None:

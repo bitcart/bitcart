@@ -471,6 +471,9 @@ class InvoiceService(CRUDService[models.Invoice]):
         sent_amount: Decimal = Decimal(0),
         set_exception_status: str | None = None,
     ) -> bool:
+        # load it in current session to apply updates
+        invoice = await self.session.merge(invoice)
+        method = await self.session.merge(method) if method else None
         if tx_hashes is None:
             tx_hashes = []
         if (
@@ -487,8 +490,8 @@ class InvoiceService(CRUDService[models.Invoice]):
                 tx_hashes=tx_hashes,
                 sent_amount=sent_amount,
                 exception_status=InvoiceExceptionStatus.PAID_PARTIAL,
+                payment_id=method.id,
             )
-            invoice.payment_id = method.id
             await self.session.commit()
             await self.process_notifications(invoice)
         if (
@@ -519,8 +522,7 @@ class InvoiceService(CRUDService[models.Invoice]):
                     if not invoice.paid_date:
                         kwargs["paid_date"] = utils.time.now()
                     method.update(is_used=True)
-                    invoice.update(**kwargs)
-                    invoice.payment_id = method.id
+                    invoice.update(**kwargs, payment_id=method.id)
                 log_text += f" with payment method {full_method_name}"
             logger.info(f"{log_text} to {status}")
             kwargs = {"status": status}
