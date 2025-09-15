@@ -1,4 +1,3 @@
-import contextlib
 from collections.abc import AsyncIterator
 from typing import Literal
 
@@ -59,8 +58,7 @@ async def get_db_session(
         if exc is not None:
             await session.rollback()
         else:
-            with contextlib.suppress(Exception):
-                await session.commit()
+            await session.commit()
 
 
 __all__ = [

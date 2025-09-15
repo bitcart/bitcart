@@ -1,4 +1,5 @@
 import contextlib
+import traceback
 from collections.abc import AsyncIterator, Awaitable, Callable
 from typing import Any
 
@@ -7,7 +8,7 @@ from advanced_alchemy.exceptions import AdvancedAlchemyError, NotFoundError
 from dishka import make_async_container
 from fastapi import FastAPI, Request
 from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTextResponse
 from scalar_fastapi import get_scalar_api_reference
 from sqlalchemy.exc import IntegrityError
 from starlette.applications import Starlette
@@ -110,13 +111,25 @@ async def db_not_found_error_handler(request: Request, exc: NotFoundError) -> JS
     )
 
 
+exception_handlers: dict[type[Exception], Callable[[Request, Any], Awaitable[JSONResponse]]] = {
+    IntegrityError: db_integrity_error_handler,
+    NotFoundError: db_not_found_error_handler,
+    AdvancedAlchemyError: db_exception_handler,
+}
+
+
 def add_exception_handlers(app: FastAPI) -> None:
-    app.add_exception_handler(IntegrityError, db_integrity_error_handler)  # type: ignore[arg-type] # https://github.com/encode/starlette/pull/2403
-    app.add_exception_handler(NotFoundError, db_not_found_error_handler)  # type: ignore[arg-type] # https://github.com/encode/starlette/pull/2403
-    app.add_exception_handler(
-        AdvancedAlchemyError,
-        db_exception_handler,  # type: ignore[arg-type] # https://github.com/encode/starlette/pull/2403
-    )
+    for exc_type, handler in exception_handlers.items():
+        app.add_exception_handler(exc_type, handler)
+
+    @app.exception_handler(500)
+    async def exception_handler(request: Request, exc: Exception) -> Response:
+        # this happens when exception is during container finalization
+        # as it is rare enough, we must log it
+        logger.error(traceback.format_exc())
+        if type(exc) in exception_handlers:
+            return await exception_handlers[type(exc)](request, exc)
+        return PlainTextResponse("Internal Server Error", status_code=500)
 
 
 def get_app(settings: Settings) -> FastAPI:
