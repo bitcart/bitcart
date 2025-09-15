@@ -15,12 +15,12 @@
             "name": "Uvicorn debug",
             "description": "Uvicorn debug",
             "focus": true,
-            "command": "uvicorn --reload main:app"
+            "command": "uv run task api"
         },
         {
             "name": "Worker",
             "description": "Worker",
-            "command": "python3 worker.py"
+            "command": "uv run task worker"
         }
     ]
 }

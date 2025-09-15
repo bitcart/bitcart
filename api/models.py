@@ -18,7 +18,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.ext.associationproxy import AssociationProxy, association_proxy
-from sqlalchemy.ext.mutable import MutableList
+from sqlalchemy.ext.mutable import MutableDict, MutableList
 from sqlalchemy.orm import InstrumentedAttribute, Mapped, declared_attr, mapped_column, relationship
 
 from api.ext.moneyformat import currency_table
@@ -117,7 +117,7 @@ class IDModel(TimestampedModel):
 class MetadataMixin:
     __abstract__ = True
 
-    meta: Mapped[dict[str, Any]] = mapped_column("metadata", JSONB(), default=dict)
+    meta: Mapped[dict[str, Any]] = mapped_column("metadata", MutableDict.as_mutable(JSONB()), default=dict)
 
 
 class RecordModel(IDModel, MetadataMixin):
@@ -173,7 +173,7 @@ class Wallet(RecordModel):
     label: Mapped[str] = mapped_column(Text)
     hint: Mapped[str | None] = mapped_column(Text)  # TODO: eventually handle None vs "" better
     contract: Mapped[str | None] = mapped_column(Text)
-    additional_xpub_data: Mapped[dict[str, Any]] = mapped_column(JSONB(), default=dict)
+    additional_xpub_data: Mapped[dict[str, Any]] = mapped_column(MutableDict.as_mutable(JSONB()), default=dict)
     user_id: Mapped[str | None] = mapped_column(Text, ForeignKey(User.id, ondelete="SET NULL"))
 
     balance: Decimal
@@ -200,7 +200,7 @@ class Notification(RecordModel):
 
     name: Mapped[str] = mapped_column(Text, index=True)
     provider: Mapped[str] = mapped_column(Text)
-    data: Mapped[dict[str, Any]] = mapped_column(JSONB(), default=dict)
+    data: Mapped[dict[str, Any]] = mapped_column(MutableDict.as_mutable(JSONB()), default=dict)
 
     user_id: Mapped[str | None] = mapped_column(Text, ForeignKey(User.id, ondelete="SET NULL"))
     stores = relationship(
@@ -245,7 +245,7 @@ class Store(RecordModel):
     plugin_settings: Mapped[StorePluginSettings] = mapped_column(
         "plugin_settings", MutableModel(StorePluginSettings), default=StorePluginSettings
     )
-    templates: Mapped[dict[str, Any]] = mapped_column("templates", JSONB(), default=dict)
+    templates: Mapped[dict[str, Any]] = mapped_column("templates", MutableDict.as_mutable(JSONB()), default=dict)
     user_id: Mapped[str | None] = mapped_column(Text, ForeignKey(User.id, ondelete="SET NULL"))
 
     wallets = relationship(
@@ -324,7 +324,7 @@ class Product(RecordModel):
         Text, ForeignKey(Store.id, deferrable=True, initially="DEFERRED", ondelete="SET NULL"), index=True
     )
     status: Mapped[str] = mapped_column(Text)
-    templates: Mapped[dict[str, Any]] = mapped_column(JSONB(), default=dict)
+    templates: Mapped[dict[str, Any]] = mapped_column(MutableDict.as_mutable(JSONB()), default=dict)
     user_id: Mapped[str | None] = mapped_column(Text, ForeignKey(User.id, ondelete="SET NULL"))
 
     discounts = relationship(
