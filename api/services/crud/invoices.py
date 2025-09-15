@@ -27,7 +27,6 @@ from api.plugins import SKIP_PAYMENT_METHOD
 from api.redis import Redis
 from api.schemas.invoices import CreateInvoice, MethodUpdateData
 from api.schemas.misc import BatchAction
-from api.schemas.tasks import ExpiredInvoiceMessage
 from api.services.coins import CoinService
 from api.services.crud import CRUDService
 from api.services.crud.products import ProductService
@@ -215,7 +214,6 @@ class InvoiceService(CRUDService[models.Invoice]):
         )
         invoice.creation_time = Decimal(creation_time)
         await self.session.flush()  # TODO: check if we need commit here
-        await self.broker.publish(ExpiredInvoiceMessage(invoice_id=invoice.id), "expired_task")
 
     async def create_payment_method(
         self,
@@ -472,7 +470,7 @@ class InvoiceService(CRUDService[models.Invoice]):
         set_exception_status: str | None = None,
     ) -> bool:
         # load it in current session to apply updates
-        invoice = await self.session.merge(invoice)
+        invoice = await self.merge_object(invoice)
         method = await self.session.merge(method) if method else None
         if tx_hashes is None:
             tx_hashes = []
@@ -709,16 +707,3 @@ class InvoiceService(CRUDService[models.Invoice]):
         await self.plugin_registry.run_hook("invoice_payment_address_set", item, method, data.address)
         await method.update(user_address=data.address).apply()
         return True
-
-    async def make_expired_task(self, invoice: models.Invoice) -> None:
-        left = invoice.time_left + 1  # to ensure it's already expired at that moment
-        if left > 0:
-            await asyncio.sleep(left)
-        try:
-            # TODO: maybe use session.refresh() here?
-            invoice = await self.get(invoice.id)  # refresh data to get new status
-        except Exception:
-            return  # invoice deleted meantime
-        if invoice.status == InvoiceStatus.PENDING:  # to ensure there are no duplicate notifications
-            await self.update_status(invoice, InvoiceStatus.EXPIRED)
-            await self.plugin_registry.run_hook("invoice_expired", invoice)

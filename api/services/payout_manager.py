@@ -39,14 +39,15 @@ class PayoutManager:
         self.container = container
 
     async def update_status(self, payout: models.Payout, status: str) -> None:
+        from api.services.crud.payouts import PayoutService
         from api.services.crud.refunds import RefundService
 
         if payout.status == status or payout.status == PayoutStatus.COMPLETE:
             return
         payout.update(status=status)
         async with self.container(scope=Scope.REQUEST) as container:
-            session = await container.get(AsyncSession)
-            payout = await session.merge(payout)
+            payout_service = await container.get(PayoutService)
+            payout = await payout_service.merge_object(payout)
         await self.ipn_sender.send_invoice_ipn(payout, status)
         await self.plugin_registry.run_hook("payout_status", payout, status)
         if status == PayoutStatus.SENT:

@@ -9,7 +9,7 @@ from bitcart import (  # type: ignore[attr-defined]
     errors,
 )
 from dishka import AsyncContainer, Scope
-from sqlalchemy import ColumnElement, Select, or_, select
+from sqlalchemy import ColumnElement, Select, func, or_, select
 
 from api import constants, models, utils
 from api.db import AsyncSession
@@ -203,12 +203,13 @@ class PaymentProcessor:
                             invoice_data.get("tx_hashes", []),
                             Decimal(invoice_data.get("sent_amount", 0)),
                             container=self.container,
+                            logger=logger,
                         )
                     )
             await asyncio.gather(*coros)
 
     async def start(self) -> None:
-        asyncio.create_task(self.create_expired_tasks())
+        asyncio.create_task(self.manage_invoice_expiration())
         asyncio.create_task(
             self.coin_service.manager.start_websocket(reconnect_callback=self.check_pending, force_connect=True)
         )
@@ -253,19 +254,31 @@ class PaymentProcessor:
             constants.MAX_CONFIRMATION_WATCH, invoice_data.get("confirmations", 0)
         )  # don't store arbitrary number of confirmations
 
-    async def create_expired_tasks(self) -> None:
-        async with self.container(scope=Scope.REQUEST) as container:
-            session = await container.get(AsyncSession)
-            with log_errors(logger):
-                result = await session.stream_scalars(
-                    select(models.Invoice).where(models.Invoice.status == InvoiceStatus.PENDING)
-                )
-                async for invoice in result:
-                    with log_errors(logger):
-                        asyncio.create_task(
-                            utils.common.concurrent_safe_run(self.process_expire_task, invoice, container=self.container)
-                        )
-
-    async def process_expire_task(self, invoice: models.Invoice, di_context: AsyncContainer) -> None:
+    async def process_expire_task(self, invoice: models.Invoice, *, di_context: AsyncContainer) -> None:
         invoice_service = await di_context.get(InvoiceService)
-        await invoice_service.make_expired_task(invoice)
+        invoice = await invoice_service.get(invoice.id)
+        if invoice.status == InvoiceStatus.PENDING:  # to ensure there are no duplicate notifications
+            await invoice_service.update_status(invoice, InvoiceStatus.EXPIRED)
+            await self.plugin_registry.run_hook("invoice_expired", invoice)
+
+    async def manage_invoice_expiration(self) -> None:
+        while True:
+            async with self.container(scope=Scope.REQUEST) as container:
+                session = await container.get(AsyncSession)
+                now = utils.time.now()
+                with log_errors(logger):
+                    result = await session.stream_scalars(
+                        select(models.Invoice)
+                        .where(models.Invoice.status == InvoiceStatus.PENDING)
+                        .where(
+                            models.Invoice.created + func.make_interval(0, 0, 0, 0, 0, models.Invoice.expiration) <= now
+                        )  # in minutes
+                    )
+                    async for invoice in result:
+                        with log_errors(logger):
+                            asyncio.create_task(
+                                utils.common.concurrent_safe_run(
+                                    self.process_expire_task, invoice, container=self.container, logger=logger
+                                )
+                            )
+            await asyncio.sleep(0.1)

@@ -10,10 +10,6 @@ class SendMailMessage(Schema):
     text: str
 
 
-class ExpiredInvoiceMessage(Schema):
-    invoice_id: str
-
-
 class RatesActionMessage(Schema):
     func: str
     args: tuple[Any, ...]

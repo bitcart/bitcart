@@ -55,14 +55,14 @@ class PluginContext:
     def json_encode(self, obj: Any) -> Any:
         return self.plugin_registry.json_encode(obj)
 
-    async def update_metadata(self, model: type[models.RecordModel], object_id: str, key: str, value: Any) -> models.Model:
-        return await self.plugin_registry.update_metadata(model, object_id, key, value)
+    def update_metadata(self, obj: models.RecordModel, key: str, value: Any) -> models.Model:
+        return self.plugin_registry.update_metadata(obj, key, value)
 
-    async def get_metadata(self, model: type[models.RecordModel], object_id: str, key: str, default: Any = None) -> Any:
-        return await self.plugin_registry.get_metadata(model, object_id, key, default)
+    def get_metadata(self, obj: models.RecordModel, key: str, default: Any = None) -> Any:
+        return self.plugin_registry.get_metadata(obj, key, default)
 
-    async def delete_metadata(self, model: type[models.RecordModel], object_id: str, key: str) -> models.Model:
-        return await self.plugin_registry.delete_metadata(model, object_id, key)
+    def delete_metadata(self, obj: models.RecordModel, key: str) -> models.Model:
+        return self.plugin_registry.delete_metadata(obj, key)
 
     async def get_plugin_key_by_lookup(self, lookup_name: str, lookup_org: str) -> str | None:
         return await self.plugin_registry.get_plugin_key_by_lookup(lookup_name, lookup_org)

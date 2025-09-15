@@ -6,7 +6,6 @@ from api.logging import get_exception_message, get_logger
 from api.redis import Redis
 from api.schemas.tasks import (
     DeployTaskMessage,
-    ExpiredInvoiceMessage,
     LicenseChangedMessage,
     PluginTaskMessage,
     ProcessNewBackupPolicyMessage,
@@ -17,7 +16,6 @@ from api.schemas.tasks import (
 )
 from api.services.backup_manager import BackupManager
 from api.services.coins import CoinService
-from api.services.crud.invoices import InvoiceService
 from api.services.crud.stores import StoreService
 from api.services.crud.users import UserService
 from api.services.crud.wallets import WalletService
@@ -29,14 +27,6 @@ from api.services.plugin_registry import PluginRegistry
 logger = get_logger(__name__)
 
 router = RedisRouter()
-
-
-@router.subscriber("expired_task")
-async def expired_task(params: ExpiredInvoiceMessage, invoice_service: FromDishka[InvoiceService]) -> None:
-    invoice = await invoice_service.get_or_none(params.invoice_id)
-    if not invoice:
-        return
-    await invoice_service.make_expired_task(invoice)
 
 
 @router.subscriber("rates_action")

@@ -21,6 +21,7 @@ from ulid import ULID
 
 from api import utils
 from api.constants import STR_TO_BOOL_MAPPING, TOTP_ALPHABET, TOTP_LENGTH
+from api.logging import Logger, log_errors
 from api.schemas.base import Schema
 
 
@@ -134,10 +135,11 @@ async def run_repeated(func: Callable[..., Any], interval: int, initial_delay: i
 
 
 async def concurrent_safe_run(
-    func: Callable[..., Any], *args: Any, container: AsyncContainer, **kwargs: Any
+    func: Callable[..., Any], *args: Any, container: AsyncContainer, logger: Logger, **kwargs: Any
 ) -> None:  # pragma: no cover
     async with container(scope=Scope.REQUEST) as request_container:
-        await run_universal(func, *args, di_context=request_container, **kwargs)
+        with log_errors(logger):
+            await run_universal(func, *args, di_context=request_container, **kwargs)
 
 
 def is_int(v: Any) -> bool:

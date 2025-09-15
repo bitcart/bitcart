@@ -4,17 +4,14 @@ from collections import defaultdict
 from collections.abc import Callable
 from typing import Any, cast
 
-from advanced_alchemy.base import ModelProtocol
 from alembic import command
 from alembic.config import Config
 from dishka import AsyncContainer, Scope
 from fastapi import FastAPI
 from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel
-from sqlalchemy import select
 
-from api import models, templates, utils
-from api.db import AsyncSession
+from api import models, templates
 from api.logging import get_exception_message, get_logger
 from api.plugins import BasePlugin, PluginClasses, PluginContext
 from api.schemas.base import Schema
@@ -186,37 +183,16 @@ class PluginRegistry:
     async def publish_event(self, name: str, data: Schema, for_worker: bool = True) -> None:
         await self.broker.publish(PluginTaskMessage(event=name, data=data, for_worker=for_worker), "plugin_task")
 
-    async def _get_and_check_meta(self, model: type[models.RecordModel], object_id: str) -> models.RecordModel:
-        if not hasattr(model, "metadata"):
-            raise Exception("Model does not support metadata")
-        async with self.container(scope=Scope.REQUEST) as container:
-            session = await container.get(AsyncSession)
-            query = select(model).where(utils.common.get_sqla_attr(cast(ModelProtocol, model), "id") == object_id)
-            obj = (await session.execute(query)).scalar_one_or_none()
-        if obj is None:
-            raise Exception("Object not found")
+    def update_metadata(self, obj: models.RecordModel, key: str, value: Any) -> models.Model:
+        obj.meta[key] = value
         return obj
 
-    async def update_metadata(self, model: type[models.RecordModel], object_id: str, key: str, value: Any) -> models.Model:
-        obj = await self._get_and_check_meta(model, object_id)
-        obj.meta[key] = value
-        obj.update(meta=self.json_encode(obj.meta))
-        async with self.container(scope=Scope.REQUEST) as container:
-            session = await container.get(AsyncSession)
-            return await session.merge(obj)
-
-    async def get_metadata(self, model: type[models.RecordModel], object_id: str, key: str, default: Any = None) -> Any:
-        obj = await self._get_and_check_meta(model, object_id)
+    def get_metadata(self, obj: models.RecordModel, key: str, default: Any = None) -> Any:
         return obj.meta.get(key, default)
 
-    async def delete_metadata(self, model: type[models.RecordModel], object_id: str, key: str) -> models.Model:
-        obj = await self._get_and_check_meta(model, object_id)
+    def delete_metadata(self, obj: models.RecordModel, key: str) -> models.Model:
         if key in obj.meta:
             del obj.meta[key]
-            obj.update(meta=obj.meta)
-            async with self.container(scope=Scope.REQUEST) as container:
-                session = await container.get(AsyncSession)
-                obj = await session.merge(obj)
         return obj
 
     async def get_plugin_key_by_lookup(self, lookup_name: str, lookup_org: str) -> str | None:

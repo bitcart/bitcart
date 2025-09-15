@@ -146,6 +146,11 @@ class CRUDService[ModelType: ModelProtocol]:
     async def load_one(self, item: ModelType) -> None:
         pass
 
+    async def merge_object(self, item: ModelType) -> ModelType:
+        item = await self.session.merge(item)
+        await self.load_one(item)
+        return item
+
     async def batch_load(self, items: list[ModelType]) -> list[ModelType]:
         for item in items:
             await self.load_one(item)
