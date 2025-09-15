@@ -61,12 +61,13 @@ class WalletService(CRUDService[models.Wallet]):
             except HTTPException:  # pragma: no cover
                 model.xpub_name = COINS[model.currency.upper()].xpub_name if model.currency.upper() in COINS else "Xpub"
 
-    async def batch_load(self, models: list[models.Wallet]) -> list[models.Wallet]:  # TODO: call individual load ones too?
+    async def batch_load(self, models: list[models.Wallet]) -> list[models.Wallet]:
         if not models:
             return models
         semaphore = asyncio.BoundedSemaphore(5)
         tasks = [self._fetch_balance(semaphore, model) for model in models]
         await asyncio.gather(*tasks, return_exceptions=True)
+        await super().batch_load(models)
         return models
 
     async def get_wallet_balances(self, user: models.User) -> str:

@@ -147,7 +147,7 @@ class PayoutManager:
 
     async def send_batch_payouts(self, payouts: list[models.Payout], private_key: str | None = None) -> None:
         coros = [self.prepare_payout_details(payout, private_key) for payout in payouts]
-        results = await asyncio.gather(*coros)  # TODO: Fix concurrency
+        results = await asyncio.gather(*coros)
         if results[0] is None:
             return
         coin, wallet, divisibility, rate = results[0][0], results[0][1], results[0][5], results[0][4]
@@ -162,7 +162,7 @@ class PayoutManager:
             tx_hash = await self.broadcast_tx_flow(coin, wallet, cast(str, raw_tx), max_fee, divisibility, rate)
             if tx_hash is not None:
                 coros = [self.mark_payout_sent(payout, tx_hash) for payout in payouts]
-                await asyncio.gather(*coros)  # TODO: Fix concurrency
+                await asyncio.gather(*coros)
         finally:
             await coin.server.close_wallet()
 
@@ -189,4 +189,4 @@ class PayoutManager:
                     continue
                 if confirmations >= 1:
                     coros.append(self.finalize_payout(coin, payout))
-        await asyncio.gather(*coros)  # TODO: Fix concurrency
+        await asyncio.gather(*coros)

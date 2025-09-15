@@ -102,7 +102,7 @@ class PayoutService(CRUDService[models.Payout]):
                     coros = []
                     for cur_payout in payouts:
                         coros.append(self.payout_manager.update_status(cur_payout, PayoutStatus.FAILED))
-                    await asyncio.gather(*coros)  # TODO: fix concurrency
+                    await asyncio.gather(*coros)
         else:
             for payout_id in settings.ids:
                 payout = await self.get_or_none(payout_id, user)

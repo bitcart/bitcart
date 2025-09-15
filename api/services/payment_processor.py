@@ -109,6 +109,19 @@ class PaymentProcessor:
                 await invoice_service.load_one(invoice)
                 yield method, invoice, wallet
 
+    async def update_invoice_confirmations(
+        self,
+        invoice: models.Invoice,
+        method: models.PaymentMethod,
+        confirmations: int,
+        tx_hashes: list[str],
+        sent_amount: Decimal,
+        *,
+        di_context: AsyncContainer,
+    ) -> None:
+        invoice_service = await di_context.get(InvoiceService)
+        await invoice_service.update_confirmations(invoice, method, confirmations, tx_hashes, sent_amount)
+
     async def new_block_handler(self, instance: BTC, event: str, height: int) -> None:
         async with self.locks["new_block"], self.container(scope=Scope.REQUEST) as container:
             session = await container.get(AsyncSession)
@@ -124,13 +137,20 @@ class PaymentProcessor:
                     confirmations = await self.get_confirmations(method, wallet)
                     if confirmations != method.confirmations:
                         coros.append(
-                            invoice_service.update_confirmations(
-                                invoice, method, confirmations, invoice.tx_hashes, cast(Decimal, invoice.sent_amount)
+                            utils.common.concurrent_safe_run(
+                                self.update_invoice_confirmations,
+                                invoice,
+                                method,
+                                confirmations,
+                                invoice.tx_hashes,
+                                cast(Decimal, invoice.sent_amount),
+                                container=self.container,
+                                logger=logger,
                             )
                         )
             coros.append(self.plugin_registry.run_hook("new_block", instance.coin_name.lower(), height))
             # NOTE: if another operation in progress exception occurs, make it await one by one
-            await asyncio.gather(*coros)  # TODO: Fix concurrency
+            await asyncio.gather(*coros)
 
     async def process_electrum_status(
         self,
