@@ -101,6 +101,7 @@ class UserService(CRUDService[models.User]):
         self, data: "ModelDictT[models.User]", auth_user: models.User | None = None
     ) -> DisplayUserWithToken:
         user = await self.create(data, auth_user)
+        await self.session.commit()
         await self.broker.publish(SendVerificationEmailMessage(user_id=user.id), "send_verification_email")
         policies = await self.setting_service.get_setting(Policy)
         data = DisplayUser.model_validate(user).model_dump()
@@ -209,7 +210,7 @@ class UserService(CRUDService[models.User]):
         if not pyotp.TOTP(user.totp_key).verify(code.replace(" ", "")):
             raise HTTPException(422, "Invalid code")
         recovery_codes = [utils.authorization.generate_tfa_recovery_code() for _ in range(10)]
-        user.update(tfa_enabled=True, recovery_codes=recovery_codes)  # TODO: re-check
+        user.update(tfa_enabled=True, recovery_codes=recovery_codes)
         return recovery_codes
 
     async def disable_totp(self, user: models.User) -> bool:

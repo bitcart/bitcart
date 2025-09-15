@@ -45,6 +45,7 @@ class WalletService(CRUDService[models.Wallet]):
 
     async def finalize_create(self, data: dict[str, Any], user: models.User | None = None) -> models.Wallet:
         wallet = await super().finalize_create(data, user)
+        await self.session.commit()
         await self.broker.publish(
             SyncWalletMessage(wallet_id=wallet.id),
             "sync_wallet",

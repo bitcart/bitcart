@@ -213,7 +213,7 @@ class InvoiceService(CRUDService[models.Invoice]):
             f"Successfully added {len(invoice.payments)} payment methods to invoice {invoice.id} in {creation_time:.2f}s"
         )
         invoice.creation_time = Decimal(creation_time)
-        await self.session.flush()  # TODO: check if we need commit here
+        await self.session.flush()
 
     async def create_payment_method(
         self,
