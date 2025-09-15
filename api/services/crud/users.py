@@ -209,7 +209,7 @@ class UserService(CRUDService[models.User]):
         if not pyotp.TOTP(user.totp_key).verify(code.replace(" ", "")):
             raise HTTPException(422, "Invalid code")
         recovery_codes = [utils.authorization.generate_tfa_recovery_code() for _ in range(10)]
-        user.update(tfa_enabled=True, recovery_codes=recovery_codes)
+        user.update(tfa_enabled=True, recovery_codes=recovery_codes)  # TODO: re-check
         return recovery_codes
 
     async def disable_totp(self, user: models.User) -> bool:
@@ -252,7 +252,6 @@ class UserService(CRUDService[models.User]):
                 "device_data": cast(AttestedCredentialData, auth_data.credential_data).hex(),
             }
         )
-        user.update(fido2_devices=user.fido2_devices)
         return True
 
     async def fido2_delete_device(self, user: models.User, device_id: str) -> bool:  # pragma: no cover
@@ -260,5 +259,4 @@ class UserService(CRUDService[models.User]):
             if device["id"] == device_id:
                 user.fido2_devices.remove(device)
                 break
-        user.update(fido2_devices=user.fido2_devices)
         return True

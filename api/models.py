@@ -18,6 +18,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.ext.associationproxy import AssociationProxy, association_proxy
+from sqlalchemy.ext.mutable import MutableList
 from sqlalchemy.orm import InstrumentedAttribute, Mapped, declared_attr, mapped_column, relationship
 
 from api.ext.moneyformat import currency_table
@@ -133,8 +134,8 @@ class User(RecordModel):
     is_enabled: Mapped[bool] = mapped_column(Boolean(), default=True)
     totp_key: Mapped[str] = mapped_column(Text)
     tfa_enabled: Mapped[bool] = mapped_column(Boolean(), default=False)
-    recovery_codes: Mapped[list[str]] = mapped_column(ARRAY(Text), default=list)
-    fido2_devices: Mapped[list[dict[str, Any]]] = mapped_column(ARRAY(JSONB()), default=list)
+    recovery_codes: Mapped[list[str]] = mapped_column(MutableList.as_mutable(ARRAY(Text)), default=list)
+    fido2_devices: Mapped[list[dict[str, Any]]] = mapped_column(MutableList.as_mutable(ARRAY(JSONB())), default=list)
     settings: Mapped[UserPreferences] = mapped_column(
         "settings",
         MutableModel(UserPreferences),
@@ -431,7 +432,7 @@ class Invoice(RecordModel):
     store_id: Mapped[str | None] = mapped_column(
         Text, ForeignKey(Store.id, deferrable=True, initially="DEFERRED", ondelete="SET NULL"), index=True
     )
-    tx_hashes: Mapped[list[str]] = mapped_column(ARRAY(Text), default=list)
+    tx_hashes: Mapped[list[str]] = mapped_column(MutableList.as_mutable(ARRAY(Text)), default=list)
     order_id: Mapped[str | None] = mapped_column(Text)
     user_id: Mapped[str | None] = mapped_column(Text, ForeignKey(User.id, ondelete="SET NULL"))
     creation_time: Mapped[Decimal | None] = mapped_column(Numeric(36, 18))
@@ -493,7 +494,7 @@ class Token(RecordModel):
     user_id: Mapped[str | None] = mapped_column(Text, ForeignKey(User.id, ondelete="SET NULL"), index=True)
     app_id: Mapped[str | None] = mapped_column(Text)
     redirect_url: Mapped[str | None] = mapped_column(Text)
-    permissions: Mapped[list[str]] = mapped_column(ARRAY(Text), default=list)
+    permissions: Mapped[list[str]] = mapped_column(MutableList.as_mutable(ARRAY(Text)), default=list)
 
     @declared_attr
     def user(cls) -> Mapped["User"]:
