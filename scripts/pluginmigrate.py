@@ -15,7 +15,7 @@ if len(sys.argv) < 3:
 
 plugin_name = sys.argv[1]
 settings = Settings()
-plugin_classes = load_plugins(settings)
+plugin_classes, _ = load_plugins(settings)
 del settings
 if plugin_name not in plugin_classes:
     sys.exit(f"Plugin {plugin_name} not found")

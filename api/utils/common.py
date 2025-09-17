@@ -2,10 +2,12 @@ import asyncio
 import inspect
 import json
 import secrets
+import traceback
 from collections import defaultdict
 from collections.abc import Callable, Sized
 from datetime import datetime, timedelta
 from decimal import Decimal
+from types import TracebackType
 from typing import Any, Literal, cast, overload
 
 from advanced_alchemy.base import ModelProtocol
@@ -21,7 +23,7 @@ from ulid import ULID
 
 from api import utils
 from api.constants import STR_TO_BOOL_MAPPING, TOTP_ALPHABET, TOTP_LENGTH
-from api.logging import Logger, log_errors
+from api.logging import Logger, get_exception_message, log_errors
 from api.schemas.base import Schema
 
 
@@ -203,3 +205,20 @@ class SearchQuery:
 
     def __bool__(self) -> bool:
         return bool(self.text or self.filters)
+
+
+def excepthook_handler(
+    logger: Logger,
+    excepthook: Callable[[type[BaseException], BaseException, TracebackType | None], Any],
+) -> Callable[[type[BaseException], BaseException, TracebackType | None], Any]:
+    def internal_error_handler(type_: type[BaseException], value: BaseException, tb: TracebackType | None) -> Any:
+        if type_ is not KeyboardInterrupt:
+            logger.error("\n" + "".join(traceback.format_exception(type_, value, tb)))
+        return excepthook(type_, value, tb)
+
+    return internal_error_handler
+
+
+def handle_event_loop_exception(logger: Logger, loop: asyncio.AbstractEventLoop, context: dict[str, Any]) -> None:
+    msg = get_exception_message(context["exception"]) if "exception" in context else context["message"]
+    logger.error(msg)

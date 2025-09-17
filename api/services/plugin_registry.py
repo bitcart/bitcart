@@ -9,11 +9,10 @@ from alembic.config import Config
 from dishka import AsyncContainer, Scope
 from fastapi import FastAPI
 from fastapi.encoders import jsonable_encoder
-from pydantic import BaseModel
 
 from api import models, templates
 from api.logging import get_exception_message, get_logger
-from api.plugins import BasePlugin, PluginClasses, PluginContext
+from api.plugins import BasePlugin, PluginContext, PluginObjects
 from api.schemas.base import Schema
 from api.schemas.policies import PluginsState
 from api.schemas.tasks import LicenseChangedMessage, PluginTaskMessage
@@ -32,7 +31,7 @@ class PluginRegistry:
         settings: Settings,
         broker: TasksBroker,
         template_manager: TemplateManager,
-        plugin_classes: PluginClasses,
+        plugin_objects: PluginObjects,
         container: AsyncContainer,
     ) -> None:
         self.settings = settings
@@ -40,29 +39,19 @@ class PluginRegistry:
         self.template_manager = template_manager
         self.container = container
         self._plugin_settings: dict[str, type[Schema]] = {}
-        self._plugins: dict[str, BasePlugin] = {}
+        self._plugins: dict[str, BasePlugin] = plugin_objects
         self._callbacks: dict[str, list[Callable[..., Any]]] = defaultdict(list)
         self._events: dict[str, dict[str, Any]] = {}
-        self._plugin_cls = plugin_classes
-        if not settings.is_testing():
-            self.load_plugins()
+        self.init_plugins()
+
+    def init_plugins(self) -> None:
+        for plugin_obj in self._plugins.values():
+            plugin_obj._set_context(PluginContext(self, self.container))
 
     async def start(self) -> None:
         pass
 
-    def register_settings(self, plugin_name: str, settings_class: type[Schema]) -> None:
-        """Register plugin settings class"""
-        self._plugin_settings[plugin_name] = settings_class
-
-    async def get_plugin_settings(self, plugin_name: str) -> BaseModel | None:
-        """Get settings for specific plugin"""
-        if plugin_name not in self._plugin_settings:
-            return None
-        async with self.container(scope=Scope.REQUEST) as container:
-            setting_service = await container.get(SettingService)
-            return await setting_service.get_setting(self._plugin_settings[plugin_name], name=f"plugin:{plugin_name}")
-
-    async def set_plugin_settings_dict(self, plugin_name: str, settings: dict[str, Any]) -> tuple[bool, BaseModel | None]:
+    async def set_plugin_settings_dict(self, plugin_name: str, settings: dict[str, Any]) -> tuple[bool, Schema | None]:
         """Set settings for specific plugin"""
         if plugin_name not in self._plugin_settings:
             return False, None
@@ -76,14 +65,6 @@ class PluginRegistry:
     def get_registered_plugins(self) -> list[str]:
         """Get list of plugins that have registered settings"""
         return list(self._plugin_settings.keys())
-
-    def load_plugins(self) -> None:
-        for plugin_name, plugin_cls in self._plugin_cls.items():
-            try:
-                plugin_obj = plugin_cls(os.path.dirname(plugin_name), PluginContext(self, self.container))
-                self._plugins[plugin_obj.name] = plugin_obj
-            except Exception as e:
-                logger.error(f"Failed to load plugin {plugin_name}: {get_exception_message(e)}")
 
     def run_migrations(self, plugin: BasePlugin) -> None:
         config = Config("alembic.ini")
@@ -149,6 +130,18 @@ class PluginRegistry:
         self.register_filter("get_fiatlist", lambda s: s.union({"SATS"}))
 
     # Plugin API implementation
+
+    def register_settings(self, plugin_name: str, settings_class: type[Schema]) -> None:
+        """Register plugin settings class"""
+        self._plugin_settings[plugin_name] = settings_class
+
+    async def get_plugin_settings(self, plugin_name: str) -> Schema | None:
+        """Get settings for specific plugin"""
+        if plugin_name not in self._plugin_settings:
+            return None
+        async with self.container(scope=Scope.REQUEST) as container:
+            setting_service = await container.get(SettingService)
+            return await setting_service.get_setting(self._plugin_settings[plugin_name], name=f"plugin:{plugin_name}")
 
     async def run_hook(self, name: str, *args: Any, **kwargs: Any) -> None:
         for hook in self._callbacks[name]:

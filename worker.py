@@ -23,13 +23,14 @@ from api.logging import configure as configure_logging
 from api.logging import get_logger
 from api.logserver import main as start_logserver
 from api.logserver import wait_for_port
-from api.plugins import PluginClasses, extract_di_providers, load_plugins
+from api.plugins import PluginObjects, build_plugin_di_context, init_plugins, load_plugins
 from api.services.coins import CoinService
 from api.services.notification_manager import NotificationManager
 from api.services.plugin_registry import PluginRegistry
 from api.settings import Settings
 from api.tasks import router
 from api.types import TasksBroker
+from api.utils.common import excepthook_handler, handle_event_loop_exception
 
 logger = get_logger("worker")
 
@@ -57,6 +58,10 @@ async def check_db() -> bool:
 
 @asynccontextmanager
 async def lifespan(container: AsyncContainer, context: ContextRepo) -> AsyncIterator[None]:
+    sys.excepthook = excepthook_handler(logger, sys.excepthook)
+    asyncio.get_running_loop().set_exception_handler(
+        lambda *args, **kwargs: handle_event_loop_exception(logger, *args, **kwargs)
+    )
     plugin_registry = await container.get(PluginRegistry)
     for service in WorkerProvider.TO_PRELOAD:
         await container.get(service)
@@ -84,13 +89,14 @@ def get_app(process: Process) -> FastStream:
     # TODO: investigate graceful_timeout
     broker = RedisBroker(url=settings.redis_url, logger=None, graceful_timeout=0)
     broker.include_router(router)
-    plugin_classes = load_plugins(settings)
-    plugin_providers = extract_di_providers(plugin_classes)
+    plugin_classes, plugin_providers = load_plugins(settings)
+    plugin_objects = init_plugins(plugin_classes)
+    plugin_context = build_plugin_di_context(plugin_objects)
     container = make_async_container(
         *get_providers(),
         WorkerProvider(),
         *plugin_providers,
-        context={Settings: settings, TasksBroker: broker, PluginClasses: plugin_classes},
+        context={Settings: settings, TasksBroker: broker, PluginObjects: plugin_objects, **plugin_context},
     )
     app = FastStream(broker, lifespan=functools.partial(lifespan, container), logger=None)
     app.after_shutdown(process.terminate)

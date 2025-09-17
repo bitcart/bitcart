@@ -7,7 +7,7 @@ from pwdlib.hashers.bcrypt import BcryptHasher
 
 from api.db import AsyncEngine, AsyncSession, AsyncSessionMaker, create_async_engine, create_async_sessionmaker, get_db_session
 from api.logfire import instrument_sqlalchemy
-from api.plugins import PluginClasses
+from api.plugins import PluginObjects
 from api.redis import Redis, create_redis
 from api.services.core.password_hasher import PasswordHasher
 from api.settings import Settings
@@ -17,7 +17,7 @@ from api.types import PasswordHasherProtocol, TasksBroker
 
 class AppProvider(Provider):
     settings = from_context(provides=Settings, scope=Scope.RUNTIME)
-    plugin_classes = from_context(provides=PluginClasses, scope=Scope.RUNTIME)
+    plugin_objects = from_context(provides=PluginObjects, scope=Scope.APP)
 
     @provide(scope=Scope.RUNTIME, provides=TasksBroker)
     async def get_broker(self, settings: Settings) -> AsyncIterator[TasksBroker]:

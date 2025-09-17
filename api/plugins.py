@@ -32,6 +32,12 @@ class PluginContext:
         self.plugin_registry = plugin_registry
         self.container = container  # use it to query any services
 
+    def register_settings(self, plugin_name: str, settings_class: type[Schema]) -> None:
+        self.plugin_registry.register_settings(plugin_name, settings_class)
+
+    async def get_plugin_settings(self, plugin_name: str) -> Schema | None:
+        return await self.plugin_registry.get_plugin_settings(plugin_name)
+
     async def run_hook(self, name: str, *args: Any, **kwargs: Any) -> None:
         return await self.plugin_registry.run_hook(name, *args, **kwargs)
 
@@ -83,10 +89,14 @@ class BasePlugin(metaclass=ABCMeta):
 
     path: str  # set by bitcart
 
-    def __init__(self, path: str, context: PluginContext) -> None:
+    context: PluginContext
+
+    def __init__(self, path: str) -> None:
         self.path = path
-        self.context = context
         self.license_key: str | None = None
+
+    def _set_context(self, context: PluginContext) -> None:
+        self.context = context
 
     @property
     def container(self) -> DIContainer:
@@ -120,6 +130,12 @@ class BasePlugin(metaclass=ABCMeta):
 
     def register_template(self, name: str, text: str | None = None, applicable_to: str = "") -> None:
         self.context.add_template(name, text, applicable_to, path=self.path)
+
+    def register_settings(self, settings_class: type[Schema]) -> None:
+        self.context.register_settings(self.name, settings_class)
+
+    async def get_plugin_settings(self) -> Schema | None:
+        return await self.context.get_plugin_settings(self.name)
 
     async def license_changed(self, license_key: str | None, license_info: dict[str, Any] | None) -> None:
         self.license_key = license_key
@@ -197,40 +213,54 @@ class BaseCoin(metaclass=ABCMeta):
 
 
 PluginClasses = NewType("PluginClasses", dict[str, type[BasePlugin]])
+PluginObjects = NewType("PluginObjects", dict[str, BasePlugin])
 
 
 # Had to be put here in order to init DI container early
-def load_plugins(settings: Settings) -> PluginClasses:
-    plugins_list = glob.glob("modules/**/plugin.py")
-    plugins_list.extend(glob.glob("modules/**/**/plugin.py"))
+def load_plugins(settings: Settings) -> tuple[PluginClasses, list[Provider]]:
+    plugins_list = glob.glob("modules/**/**/plugin.py")
     _plugins: PluginClasses = cast(PluginClasses, {})
+    providers: list[Provider] = []
     if settings.is_testing():
-        return _plugins
+        return _plugins, providers
     for plugin in plugins_list:
         try:
             module = load_module(plugin)
             plugin_cls = module.Plugin
             plugin_cls.path = os.path.dirname(plugin)
             _plugins[plugin_cls.name] = plugin_cls
+            plugin_provider = Provider()
+            plugin_provider.from_context(provides=plugin_cls, scope=DIScope.APP)
+            providers.append(plugin_provider)
             models_path = plugin.replace("plugin.py", "models.py")
             if os.path.exists(models_path):
                 load_module(models_path)
+            ioc_path = plugin.replace("plugin.py", "ioc.py")
+            if os.path.exists(ioc_path) or os.path.exists(ioc_path.replace(".py", "")):  # file or package
+                ioc_module = load_module(ioc_path)
+                providers.extend(ioc_module.get_providers())
         except Exception as e:
             logger.error(f"Failed to load plugin {plugin}: {get_exception_message(e)}")
-    return _plugins
+    return _plugins, providers
 
 
 def load_module(path: str) -> Any:
     return importlib.import_module(path.replace("/", ".").replace(".py", ""))
 
 
-def extract_di_providers(plugins: PluginClasses) -> list[Provider]:
-    providers = []
-    for plugin in plugins.values():
-        if not plugin.PROVIDES:
-            continue
-        providers.extend(plugin.PROVIDES())
-    return providers
+def init_plugins(plugin_classes: PluginClasses) -> PluginObjects:
+    plugins: PluginObjects = cast(PluginObjects, {})
+    for plugin_name, plugin_cls in plugin_classes.items():
+        try:
+            plugin_obj = plugin_cls(os.path.dirname(plugin_name))
+            plugins[plugin_obj.name] = plugin_obj
+        except Exception as e:
+            logger.error(f"Failed to load plugin {plugin_name}: {get_exception_message(e)}")
+    return plugins
+
+
+def build_plugin_di_context(plugin_objects: PluginObjects) -> dict[type[BasePlugin], BasePlugin]:
+    return {type(plugin_obj): plugin_obj for plugin_obj in plugin_objects.values()}
 
 
 __all__ = [

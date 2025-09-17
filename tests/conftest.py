@@ -20,7 +20,7 @@ from api.db import AsyncEngine, create_async_engine
 from api.ioc import get_providers, setup_dishka
 from api.logging import configure as configure_logging
 from api.models import Model
-from api.plugins import PluginClasses
+from api.plugins import PluginObjects
 from api.services.coins import CoinService
 from api.services.exchange_rate import ExchangeRateService
 from api.settings import Settings
@@ -84,8 +84,8 @@ class TestingProvider(Provider):
     worker_id = from_context(provides=WorkerId, scope=Scope.APP)
 
     @provide(scope=Scope.RUNTIME)
-    def get_plugin_clases(self) -> PluginClasses:
-        return cast(PluginClasses, {})
+    def get_plugin_clases(self) -> PluginObjects:
+        return cast(PluginObjects, {})
 
     @provide(scope=Scope.RUNTIME)
     def get_password_context(self) -> PasswordHash:

@@ -1,4 +1,6 @@
+import asyncio
 import contextlib
+import sys
 import traceback
 from collections.abc import AsyncIterator, Awaitable, Callable
 from typing import Any
@@ -26,11 +28,12 @@ from api.logfire import (
 from api.logging import configure as configure_logging
 from api.logging import generate_correlation_id, get_logger
 from api.openapi import get_openapi_parameters, set_openapi_generator
-from api.plugins import PluginClasses, extract_di_providers, load_plugins
+from api.plugins import PluginObjects, build_plugin_di_context, init_plugins, load_plugins
 from api.sentry import configure_sentry
 from api.services.ext.tor import TorService
 from api.services.plugin_registry import PluginRegistry
 from api.settings import Settings
+from api.utils.common import excepthook_handler, handle_event_loop_exception
 from api.views import router
 
 logger = get_logger("api")
@@ -38,6 +41,10 @@ logger = get_logger("api")
 
 @contextlib.asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    sys.excepthook = excepthook_handler(logger, sys.excepthook)
+    asyncio.get_running_loop().set_exception_handler(
+        lambda *args, **kwargs: handle_event_loop_exception(logger, *args, **kwargs)
+    )
     plugin_registry = await app.state.dishka_container.get(PluginRegistry)
     plugin_registry.setup_app(app)
     for service in ServicesProvider.TO_PRELOAD:
@@ -206,10 +213,11 @@ def configure_production_app() -> FastAPI:
     settings = Settings()
     configure_logging(settings=settings, logfire=True)
     configure_logfire(settings, "server")
-    plugin_classes = load_plugins(settings)
-    plugin_providers = extract_di_providers(plugin_classes)
+    plugin_classes, plugin_providers = load_plugins(settings)
+    plugin_objects = init_plugins(plugin_classes)
+    plugin_context = build_plugin_di_context(plugin_objects)
     container = make_async_container(
-        *get_providers(), *plugin_providers, context={Settings: settings, PluginClasses: plugin_classes}
+        *get_providers(), *plugin_providers, context={Settings: settings, PluginObjects: plugin_objects, **plugin_context}
     )
     configure_sentry(settings)
     app = get_app(settings)
