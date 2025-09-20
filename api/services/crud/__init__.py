@@ -230,7 +230,7 @@ class CRUDService[ModelType: ModelProtocol]:
 
     @staticmethod
     def _get_related_table_name(col: ColumnElement[Any]) -> str:
-        return col.name.replace("_id", "") + "s"
+        return col.name.replace("_id", "").capitalize()
 
     async def set_user_id(self, data: dict[str, Any], model: ModelType, user: models.User | None = None) -> str | None:
         if user is not None and hasattr(self.model_type, "user_id"):
@@ -255,7 +255,9 @@ class CRUDService[ModelType: ModelProtocol]:
                 # we assume i.e. user_id -> User
                 table_name = self._get_related_table_name(col)
                 current_model = models.all_tables[table_name]
-                query = select(current_model).where(current_model.id == data[col.name])
+                query = select(current_model).where(
+                    utils.common.get_sqla_attr(cast(ModelType, current_model), "id") == data[col.name]
+                )
                 if hasattr(current_model, "user_id"):
                     query = query.where(current_model.user_id == user_id)
                 if not (await self.session.execute(query)).scalar_one_or_none():

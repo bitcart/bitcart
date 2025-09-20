@@ -1,7 +1,7 @@
 import secrets
 from datetime import datetime, timedelta
 from decimal import Decimal
-from typing import Any, cast
+from typing import Any
 
 import pyotp
 from advanced_alchemy.base import SQLQuery
@@ -19,7 +19,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.ext.associationproxy import AssociationProxy, association_proxy
 from sqlalchemy.ext.mutable import MutableDict, MutableList
-from sqlalchemy.orm import InstrumentedAttribute, Mapped, declared_attr, mapped_column, relationship
+from sqlalchemy.orm import Mapped, declared_attr, mapped_column, relationship
 
 from api.ext.moneyformat import currency_table
 from api.schemas.base import Schema
@@ -38,6 +38,8 @@ my_metadata = MetaData(
     }
 )
 
+all_tables: dict[str, type["Model"]] = {}
+
 
 class Model(SQLQuery):
     __abstract__ = True
@@ -50,6 +52,7 @@ class Model(SQLQuery):
                 cls.__tablename__ = f"plugin_{cls.TABLE_PREFIX}_{cls.__tablename__}"
             if is_public:
                 cls.__table_args__ = {"extend_existing": True}
+            all_tables[cls.__name__] = cls
         super().__init_subclass__(**kwargs)
 
     metadata = my_metadata
@@ -588,6 +591,3 @@ class Refund(RecordModel):
     @property
     def wallet_currency(self) -> str | None:
         return self.payout.wallet_currency if self.payout else None
-
-
-all_tables = {cast(InstrumentedAttribute[Any], mapper.local_table).name: mapper.class_ for mapper in Model.registry.mappers}
