@@ -1,5 +1,5 @@
 from collections.abc import Awaitable, Callable
-from typing import Any, cast
+from typing import Any, cast, overload
 
 from advanced_alchemy.base import ModelProtocol
 from advanced_alchemy.filters import StatementFilter
@@ -172,8 +172,12 @@ class CRUDService[ModelType: ModelProtocol]:
         await self.batch_load([model])
         return model
 
-    async def update(self, data: "ModelDictT[ModelType]", item_id: str, user: models.User | None = None) -> ModelType:
-        model = await self.get(item_id, user)
+    @overload
+    async def update(self, data: "ModelDictT[ModelType]", item: ModelType, user: models.User | None = None) -> ModelType: ...
+    @overload
+    async def update(self, data: "ModelDictT[ModelType]", item: str, user: models.User | None = None) -> ModelType: ...
+    async def update(self, data: "ModelDictT[ModelType]", item: ModelType | str, user: models.User | None = None) -> ModelType:
+        model = await self.get(item, user) if isinstance(item, str) else item
         data = self._check_data(data, update=True)
         data = await self.prepare_data(data)
         await self.validate(data, model, user)
@@ -183,8 +187,12 @@ class CRUDService[ModelType: ModelProtocol]:
         await self.session.flush()
         return model
 
-    async def delete(self, item_id: str, user: models.User | None = None) -> ModelType:
-        item = await self.get(item_id, user)
+    @overload
+    async def delete(self, item: ModelType, user: models.User | None = None) -> ModelType: ...
+    @overload
+    async def delete(self, item: str, user: models.User | None = None) -> ModelType: ...
+    async def delete(self, item: ModelType | str, user: models.User | None = None) -> ModelType:
+        item = await self.get(item, user) if isinstance(item, str) else item
         await self.session.delete(item)
         return item
 

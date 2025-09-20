@@ -53,8 +53,8 @@ class FileService(CRUDService[models.File]):
         await self.save_file(item, file)
         return item
 
-    async def delete(self, item_id: str, user: models.User | None = None) -> models.File:
-        item = await super().delete(item_id, user)
+    async def delete(self, item: models.File | str, user: models.User | None = None) -> models.File:
+        item = await super().delete(item, user)
         self.remove_file(item)
         return item
 

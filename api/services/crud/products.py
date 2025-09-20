@@ -137,8 +137,8 @@ class ProductService(CRUDService[models.Product]):
             schema.image = ""
         return await self.update(schema, item_id, user)
 
-    async def delete(self, item_id: str, user: models.User | None = None) -> models.Product:
-        item = await super().delete(item_id, user)
+    async def delete(self, item: models.Product | str, user: models.User | None = None) -> models.Product:
+        item = await super().delete(item, user)
         self.remove_image(item)
         return item
 
