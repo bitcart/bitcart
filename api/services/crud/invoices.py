@@ -91,6 +91,7 @@ class InvoiceService(CRUDService[models.Invoice]):
         self.plugin_registry = plugin_registry
 
     async def prepare_data(self, data: dict[str, Any]) -> dict[str, Any]:
+        data = await super().prepare_data(data)
         await self._process_many_to_many_field(data, "payments", self.payment_method_repository)
         return data
 

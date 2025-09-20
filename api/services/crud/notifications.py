@@ -26,6 +26,7 @@ class NotificationService(CRUDService[models.Notification]):
             data["data"] = {}
         return data
 
-    async def load_one(self, model: models.Notification) -> None:
-        model.error = False
-        model.error = model.provider not in self.notification_manager.notifiers
+    async def load_one(self, item: models.Notification) -> None:
+        await super().load_one(item)
+        item.error = False
+        item.error = item.provider not in self.notification_manager.notifiers

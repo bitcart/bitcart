@@ -32,6 +32,7 @@ class ProductService(CRUDService[models.Product]):
         return data
 
     async def prepare_data(self, data: dict[str, Any]) -> dict[str, Any]:
+        data = await super().prepare_data(data)
         await self._process_many_to_many_field(data, "discounts", self.discount_repository)
         return data
 
