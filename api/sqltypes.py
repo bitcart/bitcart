@@ -20,7 +20,9 @@ class PydanticJSON(TypeDecorator[Schema]):
             return value.model_dump()
         return value
 
-    def process_result_value(self, value: Any, dialect: Any) -> Schema:
+    def process_result_value(self, value: Any, dialect: Any) -> Schema | None:
+        if value is None:
+            return None
         raw = value or {}
         return self._model.model_validate(raw)
 

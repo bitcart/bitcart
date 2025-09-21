@@ -695,7 +695,7 @@ class InvoiceService(CRUDService[models.Invoice]):
         ).first()
         if not fetch_data:
             raise HTTPException(404, "No such payment method found")
-        method, wallet = fetch_data
+        method, wallet = cast(tuple[models.PaymentMethod, models.Wallet], fetch_data)
         coin = await self.coin_service.get_coin(
             method.currency, {"xpub": wallet.xpub, "contract": method.contract, **wallet.additional_xpub_data}
         )
@@ -706,5 +706,5 @@ class InvoiceService(CRUDService[models.Invoice]):
         if not await coin.server.setrequestaddress(method.lookup_field, data.address):
             raise HTTPException(422, "Invalid address")
         await self.plugin_registry.run_hook("invoice_payment_address_set", item, method, data.address)
-        await method.update(user_address=data.address).apply()
+        method.update(user_address=data.address)
         return True
