@@ -144,7 +144,8 @@ class CRUDService[ModelType: ModelProtocol]:
             return 0
 
     async def load_one(self, item: ModelType) -> None:
-        pass
+        # this is needed for old unported code, e.g. user templates still accessing metadata
+        item.__dict__["metadata"] = utils.common.get_sqla_attr(item, "meta")
 
     async def merge_object(self, item: ModelType) -> ModelType:
         item = await self.session.merge(item)
