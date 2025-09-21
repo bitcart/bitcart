@@ -9,7 +9,6 @@ from bitcart import (  # type: ignore[attr-defined]
 from bitcart.errors import BaseError as BitcartBaseError
 from fastapi import HTTPException
 from sqlalchemy import select
-from sqlalchemy.orm import selectinload
 
 from api import models
 from api.db import AsyncSession
@@ -28,8 +27,6 @@ logger = get_logger(__name__)
 
 class WalletService(CRUDService[models.Wallet]):
     repository_type = WalletRepository
-
-    LOAD_OPTIONS = [selectinload(models.Wallet.user), selectinload(models.Wallet.stores)]
 
     def __init__(
         self,

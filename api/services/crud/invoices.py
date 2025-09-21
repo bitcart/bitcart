@@ -52,12 +52,6 @@ logger = get_logger(__name__)
 class InvoiceService(CRUDService[models.Invoice]):
     repository_type = InvoiceRepository
 
-    LOAD_OPTIONS = [
-        selectinload(models.Invoice.products_associations).subqueryload(models.ProductxInvoice.product),
-        selectinload(models.Invoice.payments),
-        selectinload(models.Invoice.store).subqueryload(models.Store.notifications),
-    ]
-
     def __init__(
         self,
         session: AsyncSession,

@@ -17,6 +17,7 @@ from api.invoices import DEFAULT_PENDING_STATUSES, InvoiceExceptionStatus, Invoi
 from api.logging import get_logger, log_errors
 from api.services.coins import CoinService
 from api.services.crud.invoices import InvoiceService
+from api.services.crud.repositories.invoices import InvoiceRepository
 from api.services.payout_manager import PayoutManager
 from api.services.plugin_registry import PluginRegistry
 from api.settings import Settings
@@ -257,7 +258,7 @@ class PaymentProcessor:
             .where(models.PaymentMethod.currency == currency.lower())
             .where(models.Wallet.currency == models.PaymentMethod.currency)
             .order_by(models.PaymentMethod.created)
-            .options(*InvoiceService.LOAD_OPTIONS)
+            .options(*InvoiceRepository.LOAD_OPTIONS)
         )
 
     async def get_request(self, coin: BTC, method: models.PaymentMethod) -> dict[str, Any]:

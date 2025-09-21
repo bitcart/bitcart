@@ -18,17 +18,19 @@ UNAUTHORIZED_ACCESS_EXCEPTION = HTTPException(403, "Access denied: attempt to us
 
 
 class CRUDRepository[ModelType: ModelProtocol](SQLAlchemyAsyncRepository[ModelType]):
+    LOAD_OPTIONS: LoadSpec | None = None
+    merge_loader_options = False
+
     def __init__(self, session: AsyncSession, *args: Any, **kwargs: Any) -> None:
         kwargs["wrap_exceptions"] = False
         kwargs["uniquify"] = True
+        kwargs["load"] = kwargs.get("load", self.LOAD_OPTIONS)
         super().__init__(*args, session=session, **kwargs)
 
 
 class CRUDService[ModelType: ModelProtocol]:
     session: AsyncSession
     repository_type: type[CRUDRepository[ModelType]]
-
-    LOAD_OPTIONS: LoadSpec | None = None
 
     @property
     def model_type(self) -> type[ModelType]:
@@ -43,7 +45,7 @@ class CRUDService[ModelType: ModelProtocol]:
 
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
-        self.repository = self.repository_type(session=session, load=self.LOAD_OPTIONS)
+        self.repository = self.repository_type(session=session)
 
     def _add_user_filter(self, filters: list[StatementFilter | ColumnElement[bool]], user: models.User | None) -> None:
         if user is not None and hasattr(self.model_type, "user_id"):
@@ -293,4 +295,4 @@ class CRUDService[ModelType: ModelProtocol]:
 
 type TService = CRUDService[Any]
 
-__all__ = ["CRUDRepository", "CRUDService", "TService", "ModelDictT"]
+__all__ = ["CRUDRepository", "CRUDService", "TService", "ModelDictT", "LoadSpec"]

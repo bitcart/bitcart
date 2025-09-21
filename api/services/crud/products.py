@@ -6,7 +6,6 @@ import aiofiles
 from advanced_alchemy.filters import StatementFilter
 from fastapi import UploadFile
 from sqlalchemy import ColumnElement, Select, func, select
-from sqlalchemy.orm import selectinload
 
 from api import models, utils
 from api.db import AsyncSession
@@ -18,8 +17,6 @@ from api.settings import Settings
 
 class ProductService(CRUDService[models.Product]):
     repository_type = ProductRepository
-
-    LOAD_OPTIONS = [selectinload(models.Product.discounts), selectinload(models.Product.store)]
 
     def __init__(self, session: AsyncSession, discount_repository: DiscountRepository, settings: Settings) -> None:
         super().__init__(session)

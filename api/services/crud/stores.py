@@ -2,7 +2,6 @@ from decimal import Decimal
 from typing import Any
 
 from fastapi import HTTPException
-from sqlalchemy.orm import selectinload
 
 from api import models
 from api.db import AsyncSession
@@ -18,8 +17,6 @@ from api.services.settings import SettingService
 
 class StoreService(CRUDService[models.Store]):
     repository_type = StoreRepository
-
-    LOAD_OPTIONS = [selectinload(models.Store.wallets), selectinload(models.Store.notifications)]
 
     def __init__(
         self,

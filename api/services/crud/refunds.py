@@ -2,7 +2,6 @@ from typing import cast
 from urllib.parse import urljoin
 
 from fastapi import HTTPException
-from sqlalchemy.orm import selectinload
 
 from api import models, utils
 from api.db import AsyncSession
@@ -23,8 +22,6 @@ from api.types import TasksBroker
 
 class RefundService(CRUDService[models.Refund]):
     repository_type = RefundRepository
-
-    LOAD_OPTIONS = [selectinload(models.Refund.payout).subqueryload(models.Payout.wallet)]
 
     def __init__(
         self,

@@ -12,7 +12,6 @@ from fido2.webauthn import (
     UserVerificationRequirement,
 )
 from sqlalchemy import Row, distinct, func, select
-from sqlalchemy.orm import joinedload
 
 from api import constants, models, utils
 from api.db import AsyncSession
@@ -38,8 +37,6 @@ VERIFY_REDIS_KEY = "verify_email"
 
 class UserService(CRUDService[models.User]):
     repository_type = UserRepository
-
-    LOAD_OPTIONS = [joinedload(models.User.tokens)]
 
     def __init__(
         self,

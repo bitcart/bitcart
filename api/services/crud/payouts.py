@@ -4,7 +4,6 @@ from typing import Any, cast
 
 from fastapi import HTTPException
 from sqlalchemy import select, update
-from sqlalchemy.orm import selectinload
 
 from api import models
 from api.constants import PayoutStatus
@@ -21,8 +20,6 @@ logger = get_logger(__name__)
 
 class PayoutService(CRUDService[models.Payout]):
     repository_type = PayoutRepository
-
-    LOAD_OPTIONS = [selectinload(models.Payout.wallet), selectinload(models.Payout.store), selectinload(models.Payout.user)]
 
     def __init__(
         self,
@@ -52,7 +49,7 @@ class PayoutService(CRUDService[models.Payout]):
             wallet_currency = cast(
                 str,
                 await self.wallet_repository.get(
-                    data.get("wallet_id", model.wallet_id), statement=select(models.Wallet.currency)
+                    data.get("wallet_id", model.wallet_id), statement=select(models.Wallet.currency), load=[]
                 ),
             )
             coin = await self.coin_service.get_coin(wallet_currency)

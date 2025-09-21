@@ -1,7 +1,6 @@
 from typing import Any
 
 from sqlalchemy import select
-from sqlalchemy.orm import selectinload
 
 from api import exceptions, models, templates, utils
 from api.db import AsyncSession
@@ -16,8 +15,6 @@ logger = get_logger(__name__)
 
 class TemplateService(CRUDService[models.Template]):
     repository_type = TemplateRepository
-
-    LOAD_OPTIONS = [selectinload(models.Template.user)]
 
     def __init__(
         self, session: AsyncSession, template_manager: templates.TemplateManager, setting_service: SettingService
