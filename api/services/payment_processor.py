@@ -9,7 +9,7 @@ from bitcart import (  # type: ignore[attr-defined]
     errors,
 )
 from dishka import AsyncContainer, Scope
-from sqlalchemy import ColumnElement, Select, func, or_, select
+from sqlalchemy import ColumnElement, Select, or_, select
 
 from api import constants, models, utils
 from api.db import AsyncSession
@@ -243,7 +243,7 @@ class PaymentProcessor:
         )
 
     @classmethod
-    def get_pending_invoices_query(
+    def get_pending_invoices_query(  # TODO: move to invoices repository
         cls, currency: str, statuses: list[str] | None = None
     ) -> Select[tuple[models.PaymentMethod, models.Invoice, models.Wallet]]:
         return (
@@ -285,16 +285,10 @@ class PaymentProcessor:
     async def manage_invoice_expiration(self) -> None:
         while True:
             async with self.container(scope=Scope.REQUEST) as container:
-                session = await container.get(AsyncSession)
+                invoice_repository = await container.get(InvoiceRepository)
                 now = utils.time.now()
                 with log_errors(logger):
-                    result = await session.stream_scalars(
-                        select(models.Invoice)
-                        .where(models.Invoice.status == InvoiceStatus.PENDING)
-                        .where(
-                            models.Invoice.created + func.make_interval(0, 0, 0, 0, 0, models.Invoice.expiration) <= now
-                        )  # in minutes
-                    )
+                    result = await invoice_repository.get_invoices_for_expiry(now)
                     async for invoice in result:
                         with log_errors(logger):
                             asyncio.create_task(

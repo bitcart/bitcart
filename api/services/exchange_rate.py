@@ -8,9 +8,7 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
-from sqlalchemy import distinct, func, select
-
-from api import models, utils
+from api import utils
 from api.db import AsyncSessionMaker
 from api.ext.exchanges.base import BaseExchange
 from api.ext.exchanges.coingecko import coingecko_based_exchange
@@ -18,6 +16,7 @@ from api.logging import get_exception_message, get_logger
 from api.redis import Redis
 from api.schemas.tasks import RatesActionMessage
 from api.services.coins import CoinService
+from api.services.crud.repositories import WalletRepository
 from api.settings import Settings
 from api.types import TasksBroker
 
@@ -88,13 +87,8 @@ class ExchangeRateService:
         self.lock = asyncio.Lock()
         coins = list(self.coin_service.cryptos.values())
         async with self.async_sessionmaker() as session:
-            contracts = (
-                await session.execute(
-                    select(func.array_agg(distinct(models.Wallet.contract)), models.Wallet.currency).group_by(
-                        models.Wallet.currency
-                    )
-                )
-            ).all()
+            wallet_repository = WalletRepository(session)
+            contracts = await wallet_repository.get_wallet_contracts()
         final_contracts: dict[str, list[str]] = {}
         for tokens, currency in contracts:
             if currency not in self.coin_service.cryptos:

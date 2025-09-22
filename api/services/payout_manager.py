@@ -5,14 +5,13 @@ from typing import cast
 import bitcart
 from bitcart import BTC  # type: ignore[attr-defined]
 from dishka import AsyncContainer, Scope
-from sqlalchemy import select
 
 from api import models
 from api.constants import SENT_PAYOUT_STATUSES, PayoutStatus
-from api.db import AsyncSession
 from api.ext.moneyformat import currency_table
 from api.logging import get_logger, log_errors
 from api.services.coins import CoinService
+from api.services.crud.repositories import PayoutRepository
 from api.services.ipn_sender import IPNSender
 from api.services.plugin_registry import PluginRegistry
 from api.services.wallet_data import WalletDataService
@@ -168,15 +167,8 @@ class PayoutManager:
 
     async def process_new_block(self, currency: str) -> None:
         async with self.container(scope=Scope.REQUEST) as container:
-            session = await container.get(AsyncSession)
-            payouts = (
-                await session.execute(
-                    select(models.Payout, models.Wallet)
-                    .where(models.Payout.status == PayoutStatus.SENT)
-                    .where(models.Wallet.id == models.Payout.wallet_id)
-                    .where(models.Wallet.currency == currency)
-                )
-            ).all()
+            payout_repository = await container.get(PayoutRepository)
+            payouts = await payout_repository.get_sent_payouts(currency)
         coros = []
         for payout, wallet in payouts:
             with log_errors(logger):
@@ -184,7 +176,7 @@ class PayoutManager:
                     currency, {"xpub": wallet.xpub, "contract": wallet.contract, **wallet.additional_xpub_data}
                 )
                 try:
-                    confirmations = (await coin.get_tx(payout.tx_hash))["confirmations"]
+                    confirmations = (await coin.get_tx(cast(str, payout.tx_hash)))["confirmations"]
                 except bitcart.errors.TxNotFoundError:  # type: ignore
                     continue
                 if confirmations >= 1:

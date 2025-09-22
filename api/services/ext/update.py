@@ -6,7 +6,7 @@ from typing import Any, cast
 
 from aiohttp import ClientSession
 from dishka import AsyncContainer, Scope
-from sqlalchemy import distinct, func, select
+from sqlalchemy import func, select
 
 from api import models, utils
 from api.constants import VERSION
@@ -15,6 +15,7 @@ from api.logging import get_exception_message, get_logger
 from api.redis import Redis
 from api.schemas.policies import Policy
 from api.services.coins import CoinService
+from api.services.crud.repositories.invoices import InvoiceRepository
 from api.services.ext.tor import TorService
 from api.services.plugin_manager import PluginManager
 from api.services.plugin_registry import PluginRegistry
@@ -47,42 +48,18 @@ class UpdateCheckService:
         self.plugin_manager = plugin_manager
         self.plugin_registry = plugin_registry
 
-    async def collect_stats(self, session: AsyncSession) -> dict[str, Any]:
+    async def collect_stats(self, session: AsyncSession, invoice_repository: InvoiceRepository) -> dict[str, Any]:
         total_invoices = await utils.database.get_scalar(session, select(models.Invoice), func.count, models.Invoice.id)
         complete_invoices = await utils.database.get_scalar(
             session, select(models.Invoice).where(models.Invoice.status == "complete"), func.count, models.Invoice.id
         )
         total_users = await utils.database.get_scalar(session, select(models.User), func.count, models.User.id)
-        total_price_results = (
-            await session.execute(
-                select(models.Invoice.currency, func.sum(models.Invoice.price))
-                .where(models.Invoice.status == "complete")
-                .where(func.cardinality(models.Invoice.tx_hashes) > 0)
-                .group_by(models.Invoice.currency)
-            )
-        ).all()
-        total_price = {currency: str(price) for currency, price in total_price_results}
-        subquery = (
-            select(models.PaymentMethod)
-            .where(models.PaymentMethod.invoice_id == models.Invoice.id)
-            .with_only_columns(func.count(distinct(models.PaymentMethod.id)).label("count"))
-            .group_by(models.Invoice.id)
-            .alias("table")
-        )
-        average_number_of_methods_per_invoice = int(
-            (await session.execute(select(func.avg(subquery.c.count)).select_from(subquery))).scalar() or 0
-        )
+        total_price = await invoice_repository.get_complete_grouped_total_price()
+        average_number_of_methods_per_invoice = await invoice_repository.get_average_methods_number()
         average_creation_time = await utils.database.get_scalar(
             session, select(models.Invoice), func.avg, models.Invoice.creation_time, use_distinct=False
         )
-        average_paid_time = (
-            (
-                await session.execute(
-                    select(func.avg(func.extract("epoch", (models.Invoice.paid_date - models.Invoice.created))))
-                )
-            ).scalar()
-            or 0
-        ) / 60
+        average_paid_time = await invoice_repository.get_average_paid_time()
         plugins = [
             {"name": plugin["name"], "author": plugin["author"], "version": plugin["version"]}
             for plugin in self.plugin_manager.get_plugins()
@@ -112,7 +89,10 @@ class UpdateCheckService:
                 else:
                     async with self.container(scope=Scope.REQUEST) as request_container:
                         db_session = await request_container.get(AsyncSession)
-                        async with session.post(update_url, json=await self.collect_stats(db_session)) as resp:
+                        invoice_repository = await request_container.get(InvoiceRepository)
+                        async with session.post(
+                            update_url, json=await self.collect_stats(db_session, invoice_repository)
+                        ) as resp:
                             data = await resp.json()
                 tag = data["tag_name"]
                 if re.match(RELEASE_REGEX, tag):

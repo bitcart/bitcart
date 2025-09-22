@@ -17,6 +17,7 @@ from api.settings import Settings
 
 class ProductService(CRUDService[models.Product]):
     repository_type = ProductRepository
+    repository: ProductRepository
 
     def __init__(self, session: AsyncSession, discount_repository: DiscountRepository, settings: Settings) -> None:
         super().__init__(session)
@@ -62,8 +63,7 @@ class ProductService(CRUDService[models.Product]):
         return statement, filters
 
     async def get_all_categories(self, store_id: str) -> list[str]:
-        query = select(models.Product.category).where(models.Product.store_id == store_id)
-        result = (await self.session.execute(query)).all()
+        result = await self.repository.get_products_categories(store_id)
         dataset = {category for (category,) in result if category}
         dataset.discard("all")
         return ["all"] + sorted(dataset)
@@ -85,13 +85,7 @@ class ProductService(CRUDService[models.Product]):
         return await super().get(item_id, user, *args, statement=query, **kwargs)
 
     async def update_stock_levels(self, invoice: models.Invoice) -> None:
-        quantities = (
-            await self.session.execute(
-                select(models.Product, models.ProductxInvoice.count)
-                .where(models.ProductxInvoice.product_id == models.Product.id)
-                .where(models.ProductxInvoice.invoice_id == invoice.id)
-            )
-        ).all()
+        quantities = await self.repository.find_invoice_products(invoice.id)
         # TODO: make it sql-only
         for product, quantity in quantities:
             if product.quantity == -1:  # unlimited quantity

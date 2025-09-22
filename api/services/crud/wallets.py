@@ -8,7 +8,6 @@ from bitcart import (  # type: ignore[attr-defined]
 )
 from bitcart.errors import BaseError as BitcartBaseError
 from fastapi import HTTPException
-from sqlalchemy import select
 
 from api import models
 from api.db import AsyncSession
@@ -27,6 +26,7 @@ logger = get_logger(__name__)
 
 class WalletService(CRUDService[models.Wallet]):
     repository_type = WalletRepository
+    repository: WalletRepository
 
     def __init__(
         self,
@@ -72,7 +72,7 @@ class WalletService(CRUDService[models.Wallet]):
         show_currency = user.settings.balance_currency
         balances = Decimal()
         rates: dict[tuple[str, str | None], Decimal] = {}
-        result = await self.session.stream_scalars(select(models.Wallet).where(models.Wallet.user_id == user.id))
+        result = await self.repository.stream_user_wallets(user.id)
         async for wallet in result:
             _, _, crypto_balance = await self.wallet_data_service.get_confirmed_wallet_balance(wallet)
             cache_key = (wallet.currency, wallet.contract)

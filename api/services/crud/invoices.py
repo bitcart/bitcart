@@ -12,8 +12,7 @@ from bitcart import BTC  # type: ignore[attr-defined]
 from bitcart.errors import errors
 from fastapi import HTTPException, Response
 from fastapi.responses import StreamingResponse
-from sqlalchemy import func, insert, select, update
-from sqlalchemy.dialects.postgresql import array
+from sqlalchemy import insert, select, update
 from sqlalchemy.orm import selectinload
 from starlette.datastructures import CommaSeparatedStrings
 
@@ -176,10 +175,7 @@ class InvoiceService(CRUDService[models.Invoice]):
         start_time: float,
     ) -> None:
         logger.info(f"Started adding invoice payments for invoice {invoice.id}")
-        wallet_order = func.unnest(array(wallets_ids)).table_valued("id", with_ordinality="ord").render_derived("t")
-        query = select(models.Wallet).join(wallet_order, wallet_order.c.id == models.Wallet.id).order_by(wallet_order.c.ord)
-        wallets_result = await self.session.execute(query)
-        wallets = wallets_result.scalars().all()
+        wallets = await self.wallet_repository.get_ordered_wallets(wallets_ids)
         randomize_selection = store.checkout_settings.randomize_wallet_selection
         if randomize_selection:
             symbols = defaultdict(list)
@@ -605,13 +601,7 @@ class InvoiceService(CRUDService[models.Invoice]):
         return await super().process_batch_action(settings, user)
 
     async def validate_stock_levels(self, products: dict[str, int]) -> None:
-        quantities = (
-            await self.session.execute(
-                select(models.Product.id, models.Product.name, models.Product.quantity).where(
-                    models.Product.id.in_(list(products.keys()))
-                )
-            )
-        ).all()
+        quantities = await self.product_repository.get_quantities(products)
         for product_id, product_name, quantity in quantities:
             if quantity != -1 and quantity < products[product_id]:
                 raise HTTPException(
@@ -680,16 +670,10 @@ class InvoiceService(CRUDService[models.Invoice]):
             raise HTTPException(404, "No such payment method found")
         if found_payment.user_address is not None:
             raise HTTPException(422, "Can't update payment address once set")
-        fetch_data = (
-            await self.session.execute(
-                select(models.PaymentMethod, models.Wallet)
-                .where(models.Wallet.id == models.PaymentMethod.wallet_id)
-                .where(models.PaymentMethod.id == found_payment.id)
-            )
-        ).first()
+        fetch_data = await self.payment_method_repository.get_info_by_id(found_payment.id)
         if not fetch_data:
             raise HTTPException(404, "No such payment method found")
-        method, wallet = cast(tuple[models.PaymentMethod, models.Wallet], fetch_data)
+        method, wallet = fetch_data
         coin = await self.coin_service.get_coin(
             method.currency, {"xpub": wallet.xpub, "contract": method.contract, **wallet.additional_xpub_data}
         )
