@@ -13,7 +13,6 @@ class SendMailMessage(Schema):
 class RatesActionMessage(Schema):
     func: str
     args: tuple[Any, ...]
-    task_id: str
 
 
 class SendVerificationEmailMessage(Schema):

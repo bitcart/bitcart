@@ -19,7 +19,7 @@ from api.schemas.tasks import LicenseChangedMessage, PluginTaskMessage
 from api.services.settings import SettingService
 from api.settings import Settings
 from api.templates import TemplateManager
-from api.types import TasksBroker
+from api.types import ClientTasksBroker, TasksBroker
 from api.utils.common import run_universal
 
 logger = get_logger(__name__)
@@ -30,12 +30,14 @@ class PluginRegistry:
         self,
         settings: Settings,
         broker: TasksBroker,
+        client_broker: ClientTasksBroker,
         template_manager: TemplateManager,
         plugin_objects: PluginObjects,
         container: AsyncContainer,
     ) -> None:
         self.settings = settings
         self.broker = broker
+        self.client_broker = client_broker
         self.template_manager = template_manager
         self.container = container
         self._plugin_settings: dict[str, type[Schema]] = {}
@@ -174,7 +176,8 @@ class PluginRegistry:
         self._events[name]["handlers"].append(handler)
 
     async def publish_event(self, name: str, data: Schema, for_worker: bool = True) -> None:
-        await self.broker.publish(PluginTaskMessage(event=name, data=data, for_worker=for_worker), "plugin_task")
+        await self.broker.publish(PluginTaskMessage(event=name, data=data, for_worker=for_worker), "plugin_task_server")
+        await self.client_broker.publish(PluginTaskMessage(event=name, data=data, for_worker=for_worker), "plugin_task_client")
 
     def update_metadata(self, obj: models.RecordModel, key: str, value: Any) -> models.Model:
         obj.meta[key] = value

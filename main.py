@@ -8,6 +8,7 @@ from typing import Any
 import structlog
 from advanced_alchemy.exceptions import AdvancedAlchemyError, NotFoundError
 from dishka import make_async_container
+from dishka.integrations.taskiq import setup_dishka as taskiq_setup_dishka
 from fastapi import FastAPI, Request
 from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTextResponse
@@ -33,8 +34,11 @@ from api.sentry import configure_sentry
 from api.services.ext.tor import TorService
 from api.services.plugin_registry import PluginRegistry
 from api.settings import Settings
+from api.tasks import broker, client_tasks_broker
+from api.types import ClientTasksBroker, TasksBroker
 from api.utils.common import excepthook_handler, handle_event_loop_exception
 from api.views import router
+from worker import start_broker
 
 logger = get_logger("api")
 
@@ -45,6 +49,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     asyncio.get_running_loop().set_exception_handler(
         lambda *args, **kwargs: handle_event_loop_exception(logger, *args, **kwargs)
     )
+    await app.state.broker.startup()
+    asyncio.create_task(start_broker(app.state.client_broker))
     plugin_registry = await app.state.dishka_container.get(PluginRegistry)
     plugin_registry.setup_app(app)
     for service in ServicesProvider.TO_PRELOAD:
@@ -217,11 +223,22 @@ def configure_production_app() -> FastAPI:
     plugin_objects = init_plugins(plugin_classes)
     plugin_context = build_plugin_di_context(plugin_objects)
     container = make_async_container(
-        *get_providers(), *plugin_providers, context={Settings: settings, PluginObjects: plugin_objects, **plugin_context}
+        *get_providers(),
+        *plugin_providers,
+        context={
+            Settings: settings,
+            PluginObjects: plugin_objects,
+            TasksBroker: broker,
+            ClientTasksBroker: client_tasks_broker,
+            **plugin_context,
+        },
     )
     configure_sentry(settings)
     app = get_app(settings)
+    app.state.broker = broker
+    app.state.client_broker = client_tasks_broker
     setup_dishka(container=container, app=app)
+    taskiq_setup_dishka(container=container, broker=client_tasks_broker)
     set_openapi_generator(app, settings)
     instrument_fastapi(settings, app)
     return app

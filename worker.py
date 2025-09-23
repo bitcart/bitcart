@@ -11,8 +11,6 @@ from dishka import AsyncContainer, make_async_container
 from dishka.integrations.taskiq import setup_dishka
 from taskiq import TaskiqEvents, TaskiqState
 from taskiq.api import run_receiver_task
-from taskiq.brokers.shared_broker import async_shared_broker
-from taskiq_redis import RedisAsyncResultBackend
 
 from api import constants
 from api.db import create_async_engine
@@ -28,7 +26,8 @@ from api.services.coins import CoinService
 from api.services.notification_manager import NotificationManager
 from api.services.plugin_registry import PluginRegistry
 from api.settings import Settings
-from api.types import TasksBroker
+from api.tasks import broker, client_tasks_broker
+from api.types import ClientTasksBroker, TasksBroker
 from api.utils.common import excepthook_handler, handle_event_loop_exception
 
 logger = get_logger("worker")
@@ -89,9 +88,6 @@ def get_app(process: Process) -> TasksBroker:
     configure_logfire(settings, "worker")
     configure_logging(settings=settings, logfire=True)
     # TODO: investigate graceful_timeout
-    result_backend = RedisAsyncResultBackend(redis_url=settings.redis_url)  # type: ignore
-    broker = TasksBroker(url=settings.redis_url).with_result_backend(result_backend)
-    async_shared_broker.default_broker(broker)
     plugin_classes, plugin_providers = load_plugins(settings)
     plugin_objects = init_plugins(plugin_classes)
     plugin_context = build_plugin_di_context(plugin_objects)
@@ -99,16 +95,22 @@ def get_app(process: Process) -> TasksBroker:
         *get_providers(),
         WorkerProvider(),
         *plugin_providers,
-        context={Settings: settings, PluginObjects: plugin_objects, TasksBroker: broker, **plugin_context},
+        context={
+            Settings: settings,
+            PluginObjects: plugin_objects,
+            TasksBroker: broker,
+            ClientTasksBroker: client_tasks_broker,
+            **plugin_context,
+        },
     )
-    broker.is_worker_process = True
     broker.add_event_handler(TaskiqEvents.WORKER_STARTUP, functools.partial(lifespan_start, container))
     broker.add_event_handler(TaskiqEvents.WORKER_SHUTDOWN, functools.partial(lifespan_stop, container))
     setup_dishka(container, broker)
     return broker
 
 
-async def main(broker: TasksBroker) -> None:
+async def start_broker(broker: TasksBroker) -> None:
+    broker.is_worker_process = True
     await broker.startup()
     try:
         await run_receiver_task(broker)
@@ -133,4 +135,4 @@ if __name__ == "__main__":
     wait_for_port()
     asyncio.run(wait_loop())
     broker = get_app(process)
-    asyncio.run(main(broker))
+    asyncio.run(start_broker(broker))

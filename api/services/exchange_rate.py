@@ -30,9 +30,9 @@ def worker_result(func: Callable[..., Any]) -> Callable[..., Any]:
     async def wrapper(self: "ExchangeRateService", *args: Any, **kwargs: Any) -> Any:
         if self.settings.IS_WORKER or self.settings.is_testing():
             return await func(self, *args, **kwargs)
-        task_id = utils.common.unique_id()
-        await self.broker.publish(RatesActionMessage(func=func.__name__, args=args, task_id=task_id), "rates_action")
-        return await self.wait_for_task_result(task_id)
+        task = await self.broker.publish(RatesActionMessage(func=func.__name__, args=args), "rates_action")
+        task_result = await task.wait_result(check_interval=0.01)
+        return json.loads(task_result.return_value, object_hook=utils.common.decimal_aware_object_hook)
 
     return wrapper
 
@@ -121,17 +121,6 @@ class ExchangeRateService:
         await self.init()
         for exchange in self.exchanges.values():
             await exchange.start()
-
-    async def wait_for_task_result(self, task_id: str) -> Any:  # pragma: no cover
-        while True:
-            result = await self.redis_pool.get(f"task:{task_id}")
-            if result:
-                await self.redis_pool.delete(f"task:{task_id}")
-                return json.loads(result, object_hook=utils.common.decimal_aware_object_hook)
-            await asyncio.sleep(0.01)
-
-    async def set_task_result(self, task_id: str, result: Any) -> None:  # pragma: no cover
-        await self.redis_pool.set(f"task:{task_id}", json.dumps(result, cls=utils.common.DecimalAwareJSONEncoder))
 
     @worker_result
     async def get_rate(self, exchange: str, pair: str | None = None) -> Decimal | dict[str, Decimal]:

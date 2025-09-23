@@ -1,6 +1,8 @@
+import json
+
 from dishka import FromDishka
 from dishka.integrations.taskiq import inject
-from taskiq import async_shared_broker as broker
+from taskiq_redis import RedisAsyncResultBackend
 
 from api import utils
 from api.logging import get_exception_message, get_logger
@@ -24,16 +26,27 @@ from api.services.exchange_rate import ExchangeRateService
 from api.services.ext.configurator import ConfiguratorService
 from api.services.notification_manager import NotificationManager
 from api.services.plugin_registry import PluginRegistry
+from api.settings import Settings
+from api.types import TasksBroker
 
 logger = get_logger(__name__)
+
+settings = Settings()
+broker = TasksBroker(url=settings.redis_url).with_result_backend(RedisAsyncResultBackend(redis_url=settings.redis_url))
+client_tasks_broker = TasksBroker(url=settings.redis_url, queue_name="taskiq_client_tasks").with_result_backend(
+    RedisAsyncResultBackend(redis_url=settings.redis_url)
+)
+del settings
 
 
 @broker.task("rates_action")
 @inject(patch_module=True)
-async def rates_action(params: RatesActionMessage, exchange_rate_service: FromDishka[ExchangeRateService]) -> None:
+async def rates_action(
+    params: RatesActionMessage,
+    exchange_rate_service: FromDishka[ExchangeRateService],
+) -> str:
     func = getattr(exchange_rate_service, params.func)
-    result = await func(*params.args)
-    await exchange_rate_service.set_task_result(params.task_id, result)
+    return json.dumps(await func(*params.args), cls=utils.common.DecimalAwareJSONEncoder)
 
 
 @broker.task("send_verification_email")
@@ -104,7 +117,15 @@ async def license_changed(params: LicenseChangedMessage, plugin_registry: FromDi
     await plugin_registry.run_hook("license_changed", params.license_key, params.license_info)
 
 
-@broker.task("plugin_task")
+# We need two tasks here due to the way taskiq works, with shared task it seems to execute only in one broker
+# (the one which is set as default_broker)
+@broker.task("plugin_task_server")
 @inject(patch_module=True)
-async def plugin_task(params: PluginTaskMessage, plugin_registry: FromDishka[PluginRegistry]) -> None:
+async def plugin_task_server(params: PluginTaskMessage, plugin_registry: FromDishka[PluginRegistry]) -> None:
+    await plugin_registry.process_plugin_task(params)
+
+
+@client_tasks_broker.task("plugin_task_client")
+@inject(patch_module=True)
+async def plugin_task_client(params: PluginTaskMessage, plugin_registry: FromDishka[PluginRegistry]) -> None:
     await plugin_registry.process_plugin_task(params)

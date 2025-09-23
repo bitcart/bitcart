@@ -24,6 +24,8 @@ from api.plugins import PluginObjects
 from api.services.coins import CoinService
 from api.services.exchange_rate import ExchangeRateService
 from api.settings import Settings
+from api.tasks import broker, client_tasks_broker
+from api.types import ClientTasksBroker, TasksBroker
 from main import get_app
 
 pytest_plugins = ["tests.fixtures.pytest.data"]
@@ -143,7 +145,10 @@ def settings(tmp_path_factory: pytest.TempPathFactory) -> Settings:
 @pytest.fixture(scope="session")
 def app(settings: Settings) -> Generator[FastAPI]:
     container = make_async_container(
-        *get_providers(), TestingProvider(), context={Settings: settings}, start_scope=Scope.RUNTIME
+        *get_providers(),
+        TestingProvider(),
+        context={Settings: settings, TasksBroker: broker, ClientTasksBroker: client_tasks_broker},
+        start_scope=Scope.RUNTIME,
     )
     app = get_app(settings)
     setup_dishka(container=container, app=app)

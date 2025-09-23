@@ -1,9 +1,10 @@
 from collections.abc import Iterator
 from decimal import Decimal
-from typing import TYPE_CHECKING, Any, Literal, Protocol
+from typing import TYPE_CHECKING, Any, Literal, NewType, Protocol
 
 from fastapi import Request
 from fastapi.security import SecurityScopes
+from taskiq import AsyncTaskiqTask
 from taskiq_redis import RedisStreamBroker
 
 from api.schemas.base import Schema
@@ -38,11 +39,14 @@ class StrEnum(metaclass=StrEnumMeta):
 
 
 class TasksBroker(RedisStreamBroker):
-    async def publish(self, data: Schema, task_name: str) -> None:
+    async def publish(self, data: Schema, task_name: str) -> AsyncTaskiqTask[Any]:
         task = self.find_task(task_name)
         if task is None:
             raise ValueError(f"Task {task_name} not found")
-        await task.kiq(data)
+        return await task.kiq(data)
+
+
+ClientTasksBroker = NewType("ClientTasksBroker", TasksBroker)
 
 
 class AuthServiceProtocol(Protocol):
