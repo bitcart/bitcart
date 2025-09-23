@@ -114,7 +114,7 @@ class PluginRegistry:
     async def handle_license_changed(self, license_key: str | None, license_info: dict[str, Any]) -> None:
         if not self.settings.IS_WORKER:
             await self.broker.publish(
-                LicenseChangedMessage(license_key=license_key, license_info=license_info), "license_changed"
+                "license_changed", LicenseChangedMessage(license_key=license_key, license_info=license_info)
             )
             return
         for plugin in self._plugins.values():
@@ -176,8 +176,8 @@ class PluginRegistry:
         self._events[name]["handlers"].append(handler)
 
     async def publish_event(self, name: str, data: Schema, for_worker: bool = True) -> None:
-        await self.broker.publish(PluginTaskMessage(event=name, data=data, for_worker=for_worker), "plugin_task_server")
-        await self.client_broker.publish(PluginTaskMessage(event=name, data=data, for_worker=for_worker), "plugin_task_client")
+        await self.broker.publish("plugin_task_server", PluginTaskMessage(event=name, data=data, for_worker=for_worker))
+        await self.client_broker.publish("plugin_task_client", PluginTaskMessage(event=name, data=data, for_worker=for_worker))
 
     def update_metadata(self, obj: models.RecordModel, key: str, value: Any) -> models.Model:
         obj.meta[key] = value

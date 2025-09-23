@@ -30,7 +30,7 @@ def worker_result(func: Callable[..., Any]) -> Callable[..., Any]:
     async def wrapper(self: "ExchangeRateService", *args: Any, **kwargs: Any) -> Any:
         if self.settings.IS_WORKER or self.settings.is_testing():
             return await func(self, *args, **kwargs)
-        task = await self.broker.publish(RatesActionMessage(func=func.__name__, args=args), "rates_action")
+        task = await self.broker.publish("rates_action", RatesActionMessage(func=func.__name__, args=args))
         task_result = await task.wait_result(check_interval=0.01)
         return json.loads(task_result.return_value, object_hook=utils.common.decimal_aware_object_hook)
 

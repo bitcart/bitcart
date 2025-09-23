@@ -223,7 +223,7 @@ class ConfiguratorService:
         }
         await self.set_task(deploy_id, data)
         if not is_manual:
-            await self.broker.publish(DeployTaskMessage(task_id=deploy_id), "deploy_task")
+            await self.broker.publish("deploy_task", DeployTaskMessage(task_id=deploy_id))
         return data
 
     async def get_task(self, task_id: str) -> dict[str, Any] | None:

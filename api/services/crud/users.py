@@ -99,7 +99,7 @@ class UserService(CRUDService[models.User]):
     ) -> DisplayUserWithToken:
         user = await self.create(data, auth_user)
         await self.session.commit()
-        await self.broker.publish(SendVerificationEmailMessage(user_id=user.id), "send_verification_email")
+        await self.broker.publish("send_verification_email", SendVerificationEmailMessage(user_id=user.id))
         policies = await self.setting_service.get_setting(Policy)
         data = DisplayUser.model_validate(user).model_dump()
         token = None

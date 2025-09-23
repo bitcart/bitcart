@@ -86,11 +86,11 @@ class RefundService(CRUDService[models.Refund]):
             payout=payout, destination=data.destination, amount=currency_table.normalize(refund.currency, refund.amount)
         )
         await self.broker.publish(
+            "send_notification",
             SendNotificationMessage(
                 store_id=cast(str, invoice.store_id),
                 text=await self.template_service.get_merchant_refund_notify_template(invoice.store, invoice, refund),
             ),
-            "send_notification",
         )
         return refund
 

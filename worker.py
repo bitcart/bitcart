@@ -1,7 +1,9 @@
 import asyncio
+import contextlib
 import functools
 import platform
 import sys
+from datetime import timedelta
 from multiprocessing import Process
 
 import sqlalchemy
@@ -10,7 +12,7 @@ from alembic.runtime import migration
 from dishka import AsyncContainer, make_async_container
 from dishka.integrations.taskiq import setup_dishka
 from taskiq import TaskiqEvents, TaskiqState
-from taskiq.api import run_receiver_task
+from taskiq.api import run_receiver_task, run_scheduler_task
 
 from api import constants
 from api.db import create_async_engine
@@ -26,7 +28,7 @@ from api.services.coins import CoinService
 from api.services.notification_manager import NotificationManager
 from api.services.plugin_registry import PluginRegistry
 from api.settings import Settings
-from api.tasks import broker, client_tasks_broker
+from api.tasks import broker, client_tasks_broker, scheduler
 from api.types import ClientTasksBroker, TasksBroker
 from api.utils.common import excepthook_handler, handle_event_loop_exception
 
@@ -75,9 +77,13 @@ async def lifespan_start(container: AsyncContainer, state: TaskiqState) -> None:
     )
     logger.info(f"Successfully loaded {len(coin_service.cryptos)} cryptos")
     logger.info(f"{len(notification_manager.notifiers)} notification providers available")
+    state.scheduler_task = asyncio.create_task(run_scheduler_task(scheduler, interval=timedelta(seconds=1)))
 
 
 async def lifespan_stop(container: AsyncContainer, state: TaskiqState) -> None:
+    state.scheduler_task.cancel()
+    with contextlib.suppress(asyncio.CancelledError):
+        await state.scheduler_task
     plugin_registry = await container.get(PluginRegistry)
     await plugin_registry.shutdown()
     process.terminate()

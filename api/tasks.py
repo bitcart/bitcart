@@ -2,7 +2,9 @@ import json
 
 from dishka import FromDishka
 from dishka.integrations.taskiq import inject
-from taskiq_redis import RedisAsyncResultBackend
+from taskiq import TaskiqScheduler
+from taskiq.schedule_sources import LabelScheduleSource
+from taskiq_redis import ListRedisScheduleSource, RedisAsyncResultBackend
 
 from api import utils
 from api.logging import get_exception_message, get_logger
@@ -36,6 +38,9 @@ broker = TasksBroker(url=settings.redis_url).with_result_backend(RedisAsyncResul
 client_tasks_broker = TasksBroker(url=settings.redis_url, queue_name="taskiq_client_tasks").with_result_backend(
     RedisAsyncResultBackend(redis_url=settings.redis_url)
 )
+redis_scheduler_source = ListRedisScheduleSource(settings.redis_url)
+label_scheduler_resource = LabelScheduleSource(broker)
+scheduler = TaskiqScheduler(broker, sources=[label_scheduler_resource, redis_scheduler_source])
 del settings
 
 

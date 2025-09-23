@@ -184,7 +184,6 @@ class BackupManager:
             old_settings = await setting_service.get_setting(BackupsPolicy)
             got = await setting_service.set_setting(settings, write=False)
             await self.broker.publish(
-                ProcessNewBackupPolicyMessage(old_policy=old_settings, new_policy=got),
-                "process_new_backup_policy",
+                "process_new_backup_policy", ProcessNewBackupPolicyMessage(old_policy=old_settings, new_policy=got)
             )
             return got
