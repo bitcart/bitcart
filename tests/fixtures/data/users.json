@@ -1,7 +1,10 @@
 {
     "create": {
         "email": "test@example.com",
-        "password": "12345"
+        "password": "12345",
+        "metadata": {
+            "foo1": "bar1"
+        }
     },
     "patch": {
         "email": "test1@example.com",
@@ -14,7 +17,9 @@
             "balance_currency": "USD",
             "fetch_balance": true
         },
-        "metadata": {}
+        "metadata": {
+            "foo1": "bar1"
+        }
     },
     "count": 2
 }
