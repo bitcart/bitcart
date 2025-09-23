@@ -1,7 +1,10 @@
 {
     "create": {
         "name": "test",
-        "text": "Test {{template}}"
+        "text": "Test {{template}}",
+        "metadata": {
+            "foo1": "bar1"
+        }
     },
     "patch": {
         "name": "test2",
@@ -10,7 +13,9 @@
     "response": {
         "name": "test",
         "text": "Test {{template}}",
-        "metadata": {}
+        "metadata": {
+            "foo1": "bar1"
+        }
     },
     "count": 1
 }
