@@ -11,7 +11,6 @@ from typing import Any, TypeVar, cast
 
 import msgpack
 import structlog
-from faststream import context
 from logfire.integrations.structlog import LogfireProcessor
 from structlog.dev import plain_traceback
 
@@ -70,23 +69,9 @@ class Logging[RendererType]:
         return []
 
     @classmethod
-    def merge_faststream_contextvars(
-        cls,
-        logger: structlog.types.WrappedLogger,
-        method_name: str,
-        event_dict: structlog.types.EventDict,
-    ) -> structlog.types.EventDict:
-        event_dict["extra"] = event_dict.get(
-            "extra",
-            context.get_local("log_context") or {},
-        )
-        return event_dict
-
-    @classmethod
     def get_common_processors(cls, *, logfire: bool) -> list[Any]:
         return [
             structlog.contextvars.merge_contextvars,
-            cls.merge_faststream_contextvars,
             structlog.stdlib.add_log_level,
             structlog.stdlib.add_logger_name,
             structlog.stdlib.ExtraAdder(),

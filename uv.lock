@@ -425,7 +425,6 @@ dev = [
     { name = "electrum-ltc", extra = ["crypto"] },
     { name = "fakeredis" },
     { name = "fastapi" },
-    { name = "faststream", extra = ["redis"] },
     { name = "fido2" },
     { name = "filelock" },
     { name = "gunicorn" },
@@ -462,6 +461,8 @@ dev = [
     { name = "sqlalchemy", extra = ["asyncio"] },
     { name = "structlog" },
     { name = "taskipy" },
+    { name = "taskiq" },
+    { name = "taskiq-redis" },
     { name = "tronpy" },
     { name = "trontxsize" },
     { name = "types-aiofiles" },
@@ -542,7 +543,6 @@ web = [
     { name = "bitcart" },
     { name = "dishka" },
     { name = "fastapi" },
-    { name = "faststream", extra = ["redis"] },
     { name = "fido2" },
     { name = "jinja2" },
     { name = "jsonschema" },
@@ -562,6 +562,8 @@ web = [
     { name = "sentry-sdk", extra = ["fastapi", "sqlalchemy"] },
     { name = "sqlalchemy", extra = ["asyncio"] },
     { name = "structlog" },
+    { name = "taskiq" },
+    { name = "taskiq-redis" },
     { name = "uvicorn", extra = ["standard"] },
 ]
 xmr = [
@@ -635,7 +637,6 @@ dev = [
     { name = "electrum-ltc", extras = ["crypto"], git = "https://github.com/bitcart/electrum-ltc?rev=5fd99314de302d9ed3c90537643f2e0ba82c1f02" },
     { name = "fakeredis", specifier = ">=2.31.1" },
     { name = "fastapi", specifier = ">=0.115.6" },
-    { name = "faststream", extras = ["redis"], specifier = "<=0.5.42" },
     { name = "fido2", specifier = ">=2.0.0" },
     { name = "filelock", specifier = ">=3.19.1" },
     { name = "gunicorn", specifier = ">=23.0.0" },
@@ -672,6 +673,8 @@ dev = [
     { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.0.36" },
     { name = "structlog", specifier = ">=24.4.0" },
     { name = "taskipy", specifier = ">=1.14.1" },
+    { name = "taskiq", specifier = ">=0.11.18" },
+    { name = "taskiq-redis", specifier = ">=1.1.0" },
     { name = "tronpy" },
     { name = "trontxsize" },
     { name = "types-aiofiles", specifier = ">=24.1.0.20250822" },
@@ -750,7 +753,6 @@ web = [
     { name = "bitcart", specifier = ">=1.18.0.0" },
     { name = "dishka", specifier = ">=1.4.2" },
     { name = "fastapi", specifier = ">=0.115.6" },
-    { name = "faststream", extras = ["redis"], specifier = "<=0.5.42" },
     { name = "fido2", specifier = ">=2.0.0" },
     { name = "jinja2", specifier = ">=3.1.6" },
     { name = "jsonschema", specifier = ">=4.25.1" },
@@ -770,6 +772,8 @@ web = [
     { name = "sentry-sdk", extras = ["fastapi", "sqlalchemy"] },
     { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.0.36" },
     { name = "structlog", specifier = ">=24.4.0" },
+    { name = "taskiq", specifier = ">=0.11.18" },
+    { name = "taskiq-redis", specifier = ">=1.1.0" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.34.0" },
 ]
 xmr = [
@@ -1475,19 +1479,6 @@ wheels = [
 ]
 
 [[package]]
-name = "fast-depends"
-version = "2.4.12"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "anyio" },
-    { name = "pydantic" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/85/f5/8b42b7588a67ad78991e5e7ca0e0c6a1ded535a69a725e4e48d3346a20c1/fast_depends-2.4.12.tar.gz", hash = "sha256:9393e6de827f7afa0141e54fa9553b737396aaf06bd0040e159d1f790487b16d", size = 16682, upload-time = "2024-10-16T17:44:35.963Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/1d/08/4adb160d8394053289fdf3b276e93b53271fd463e54fff8911b23c1db4ed/fast_depends-2.4.12-py3-none-any.whl", hash = "sha256:9e5d110ddc962329e46c9b35e5fe65655984247a13ee3ca5a33186db7d2d75c2", size = 17651, upload-time = "2024-10-16T17:44:34.759Z" },
-]
-
-[[package]]
 name = "fastapi"
 version = "0.116.1"
 source = { registry = "https://pypi.org/simple" }
@@ -1499,25 +1490,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/78/d7/6c8b3bfe33eeffa208183ec037fee0cce9f7f024089ab1c5d12ef04bd27c/fastapi-0.116.1.tar.gz", hash = "sha256:ed52cbf946abfd70c5a0dccb24673f0670deeb517a88b3544d03c2a6bf283143", size = 296485, upload-time = "2025-07-11T16:22:32.057Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/e5/47/d63c60f59a59467fda0f93f46335c9d18526d7071f025cb5b89d5353ea42/fastapi-0.116.1-py3-none-any.whl", hash = "sha256:c46ac7c312df840f0c9e220f7964bada936781bc4e2e6eb71f1c4d7553786565", size = 95631, upload-time = "2025-07-11T16:22:30.485Z" },
-]
-
-[[package]]
-name = "faststream"
-version = "0.5.42"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "anyio" },
-    { name = "fast-depends" },
-    { name = "typing-extensions" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/57/d0/dc00fcdb5cfc128cf6305f9b9aa2cf8bc76333d2042fb2e36c45c1a600ba/faststream-0.5.42.tar.gz", hash = "sha256:7f115dc4c9eb53a76a5ee1194191179f8161ed678ad0cb744ace2743bfd5002e", size = 296482, upload-time = "2025-05-22T18:49:46.542Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/ee/e1/51f479c153990b3ad2625e0191fbc0ce4fea016c0c65f6ffc464bb980d18/faststream-0.5.42-py3-none-any.whl", hash = "sha256:dbbbbca36bc22ac017c0cca2acffb81dc6569c1813055367bf7acd6c46c6cbb9", size = 396869, upload-time = "2025-05-22T18:49:44.354Z" },
-]
-
-[package.optional-dependencies]
-redis = [
-    { name = "redis" },
 ]
 
 [[package]]
@@ -1844,6 +1816,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/b9/9a/3e9da40ea28b8210dd6504d3fe9fe7e013b62bf45902b458d1cdc3c34ed9/ipaddress-1.0.23.tar.gz", hash = "sha256:b7f8e0369580bb4a24d5ba1d7cc29660a4a6987763faf1d8a8046830e020e7e2", size = 32958, upload-time = "2019-10-18T01:30:24.58Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/c2/f8/49697181b1651d8347d24c095ce46c7346c37335ddc7d255833e7cde674d/ipaddress-1.0.23-py2.py3-none-any.whl", hash = "sha256:6e0f4a39e66cb5bb9a137b00276a2eff74f93b71dcbdad6f10ff7df9d3557fcc", size = 18159, upload-time = "2019-10-18T01:30:27.002Z" },
+]
+
+[[package]]
+name = "izulu"
+version = "0.50.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/d0/58/6d6335c78b7ade54d8a6c6dbaa589e5c21b3fd916341d5a16f774c72652a/izulu-0.50.0.tar.gz", hash = "sha256:cc8e252d5e8560c70b95380295008eeb0786f7b745a405a40d3556ab3252d5f5", size = 48558, upload-time = "2025-03-24T15:52:21.51Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/4a/9f/bf9d33546bbb6e5e80ebafe46f90b7d8b4a77410b7b05160b0ca8978c15a/izulu-0.50.0-py3-none-any.whl", hash = "sha256:4e9ae2508844e7c5f62c468a8b9e2deba2f60325ef63f01e65b39fd9a6b3fab4", size = 18095, upload-time = "2025-03-24T15:52:19.667Z" },
 ]
 
 [[package]]
@@ -2668,6 +2649,15 @@ wheels = [
 ]
 
 [[package]]
+name = "pycron"
+version = "3.2.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/8e/5d/340be12ae4a69c33102dfb6ddc1dc6e53e69b2d504fa26b5d34a472c3057/pycron-3.2.0.tar.gz", hash = "sha256:e125a28aca0295769541a40633f70b602579df48c9cb357c36c28d2628ba2b13", size = 4248, upload-time = "2025-06-05T13:24:12.636Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/f0/76/caf316909f4545e7158e0e1defd8956a1da49f4af04f5d16b18c358dfeac/pycron-3.2.0-py3-none-any.whl", hash = "sha256:6d2349746270bd642b71b9f7187cf13f4d9ee2412b4710396a507b5fe4f60dac", size = 4904, upload-time = "2025-06-05T13:24:11.477Z" },
+]
+
+[[package]]
 name = "pycryptodome"
 version = "3.23.0"
 source = { registry = "https://pypi.org/simple" }
@@ -2992,6 +2982,15 @@ wheels = [
 [package.optional-dependencies]
 pydantic = [
     { name = "pydantic" },
+]
+
+[[package]]
+name = "pytz"
+version = "2025.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/f8/bf/abbd3cdfb8fbc7fb3d4d38d320f2441b1e7cbe29be4f23797b4a2b5d8aac/pytz-2025.2.tar.gz", hash = "sha256:360b9e3dbb49a209c21ad61809c7fb453643e048b38924c765813546746e81c3", size = 320884, upload-time = "2025-03-25T02:25:00.538Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/81/c4/34e93fe5f5429d7570ec1fa436f1986fb1f00c3e0f43a589fe2bbcd22c3f/pytz-2025.2-py2.py3-none-any.whl", hash = "sha256:5ddf76296dd8c44c26eb8f4b6f35488f3ccbf6fbbd7adee0b7262d43f0ec2f00", size = 509225, upload-time = "2025-03-25T02:24:58.468Z" },
 ]
 
 [[package]]
@@ -3474,6 +3473,48 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/c7/44/572261df3db9c6c3332f8618fafeb07a578fd18b06673c73f000f3586749/taskipy-1.14.1.tar.gz", hash = "sha256:410fbcf89692dfd4b9f39c2b49e1750b0a7b81affd0e2d7ea8c35f9d6a4774ed", size = 14475, upload-time = "2024-11-26T16:37:46.155Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/55/97/4e4cfb1391c81e926bebe3d68d5231b5dbc3bb41c6ba48349e68a881462d/taskipy-1.14.1-py3-none-any.whl", hash = "sha256:6e361520f29a0fd2159848e953599f9c75b1d0b047461e4965069caeb94908f1", size = 13052, upload-time = "2024-11-26T16:37:44.546Z" },
+]
+
+[[package]]
+name = "taskiq"
+version = "0.11.18"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "anyio" },
+    { name = "importlib-metadata" },
+    { name = "izulu" },
+    { name = "packaging" },
+    { name = "pycron" },
+    { name = "pydantic" },
+    { name = "pytz" },
+    { name = "taskiq-dependencies" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/91/4d/0d1b3b6c77a45d7a8c685a9c916b2532cca36a26771831949b874f6d15c3/taskiq-0.11.18.tar.gz", hash = "sha256:b83e1b70aee74d0a197d4a4a5ba165b8ba85b12a2b3b7ebfa3c6fdcc9e3128a7", size = 54323, upload-time = "2025-07-15T16:25:54.37Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/4a/d5/46505f57c140d10d4c36f6bd2f2047fb0460e4d5b9b841dc3b93ab8c893d/taskiq-0.11.18-py3-none-any.whl", hash = "sha256:0df58be24e4ef5d19c8ef02581d35d392b0d780d3fe37950e0478022b85ce288", size = 79608, upload-time = "2025-07-15T16:25:52.707Z" },
+]
+
+[[package]]
+name = "taskiq-dependencies"
+version = "1.5.7"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/47/90/47a627696e53bfdcacabc3e8c05b73bf1424685bcb5f17209cb8b12da1bf/taskiq_dependencies-1.5.7.tar.gz", hash = "sha256:0d3b240872ef152b719153b9526d866d2be978aeeaea6600e878414babc2dcb4", size = 14875, upload-time = "2025-02-26T22:07:39.876Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/99/6d/4a012f2de002c2e93273f5e7d3e3feea02f7fdbb7b75ca2ca1dd10703091/taskiq_dependencies-1.5.7-py3-none-any.whl", hash = "sha256:6fcee5d159bdb035ef915d4d848826169b6f06fe57cc2297a39b62ea3e76036f", size = 13801, upload-time = "2025-02-26T22:07:38.622Z" },
+]
+
+[[package]]
+name = "taskiq-redis"
+version = "1.1.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "redis" },
+    { name = "taskiq" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/59/73/ce7dd796950f792c94ea7e59609ff0ab5205fea72bbb60054be6f8757b1f/taskiq_redis-1.1.0.tar.gz", hash = "sha256:c10bac567cce0b83caa22640da54305d6ddb74ad1324e638367e1b2bd46f682d", size = 15770, upload-time = "2025-07-25T07:38:00.093Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/24/f9/0622ce1c5100b008b34cf7719a576491c1a0f22f50f8db090d797d8de6dc/taskiq_redis-1.1.0-py3-none-any.whl", hash = "sha256:516abe3cd703a7d97a5c0979102082e295d6cf2396a43b1c572382798df221cd", size = 20095, upload-time = "2025-07-25T07:37:58.908Z" },
 ]
 
 [[package]]

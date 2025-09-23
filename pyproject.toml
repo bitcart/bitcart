@@ -32,7 +32,6 @@ web = [
     "bitcart>=1.18.0.0",
     "dishka>=1.4.2",
     "fastapi>=0.115.6",
-    "faststream[redis]<=0.5.42",                # TODO: update when dishka integration is fixed
     "fido2>=2.0.0",
     "jinja2>=3.1.6",
     "jsonschema>=4.25.1",
@@ -52,6 +51,8 @@ web = [
     "sentry-sdk[fastapi,sqlalchemy]",
     "sqlalchemy[asyncio]>=2.0.36",
     "structlog>=24.4.0",
+    "taskiq>=0.11.18",
+    "taskiq-redis>=1.1.0",
     "uvicorn[standard]>=0.34.0",
 ]
 production = ["gunicorn>=23.0.0"]

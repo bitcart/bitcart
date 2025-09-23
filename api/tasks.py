@@ -1,5 +1,6 @@
 from dishka import FromDishka
-from faststream.redis import RedisRouter
+from dishka.integrations.taskiq import inject
+from taskiq import async_shared_broker as broker
 
 from api import utils
 from api.logging import get_exception_message, get_logger
@@ -26,17 +27,17 @@ from api.services.plugin_registry import PluginRegistry
 
 logger = get_logger(__name__)
 
-router = RedisRouter()
 
-
-@router.subscriber("rates_action")
+@broker.task("rates_action")
+@inject(patch_module=True)
 async def rates_action(params: RatesActionMessage, exchange_rate_service: FromDishka[ExchangeRateService]) -> None:
     func = getattr(exchange_rate_service, params.func)
     result = await func(*params.args)
     await exchange_rate_service.set_task_result(params.task_id, result)
 
 
-@router.subscriber("send_verification_email")
+@broker.task("send_verification_email")
+@inject(patch_module=True)
 async def send_verification_email(params: SendVerificationEmailMessage, user_service: FromDishka[UserService]) -> None:
     user = await user_service.get_or_none(params.user_id)
     if not user:
@@ -44,7 +45,8 @@ async def send_verification_email(params: SendVerificationEmailMessage, user_ser
     await user_service.send_verification_email(user)
 
 
-@router.subscriber("sync_wallet")
+@broker.task("sync_wallet")
+@inject(patch_module=True)
 async def sync_wallet(
     params: SyncWalletMessage,
     wallet_service: FromDishka[WalletService],
@@ -71,7 +73,8 @@ async def sync_wallet(
     )
 
 
-@router.subscriber("send_notification")
+@broker.task("send_notification")
+@inject(patch_module=True)
 async def send_notification(
     params: SendNotificationMessage,
     notification_manager: FromDishka[NotificationManager],
@@ -83,21 +86,25 @@ async def send_notification(
     await notification_manager.notify(store, params.text)
 
 
-@router.subscriber("process_new_backup_policy")
+@broker.task("process_new_backup_policy")
+@inject(patch_module=True)
 async def process_new_backup_policy(params: ProcessNewBackupPolicyMessage, backup_manager: FromDishka[BackupManager]) -> None:
     await backup_manager.process_new_policy(params.old_policy, params.new_policy)
 
 
-@router.subscriber("deploy_task")
+@broker.task("deploy_task")
+@inject(patch_module=True)
 async def deploy_task(params: DeployTaskMessage, configurator_service: FromDishka[ConfiguratorService]) -> None:
     return await configurator_service.run_deploy_task(params.task_id)
 
 
-@router.subscriber("license_changed")
+@broker.task("license_changed")
+@inject(patch_module=True)
 async def license_changed(params: LicenseChangedMessage, plugin_registry: FromDishka[PluginRegistry]) -> None:
     await plugin_registry.run_hook("license_changed", params.license_key, params.license_info)
 
 
-@router.subscriber("plugin_task")
+@broker.task("plugin_task")
+@inject(patch_module=True)
 async def plugin_task(params: PluginTaskMessage, plugin_registry: FromDishka[PluginRegistry]) -> None:
     await plugin_registry.process_plugin_task(params)

@@ -4,7 +4,9 @@ from typing import TYPE_CHECKING, Any, Literal, Protocol
 
 from fastapi import Request
 from fastapi.security import SecurityScopes
-from faststream.redis import RedisBroker
+from taskiq_redis import RedisStreamBroker
+
+from api.schemas.base import Schema
 
 if TYPE_CHECKING:
     from api import models
@@ -35,7 +37,12 @@ class StrEnum(metaclass=StrEnumMeta):
     pass
 
 
-TasksBroker = RedisBroker
+class TasksBroker(RedisStreamBroker):
+    async def publish(self, data: Schema, task_name: str) -> None:
+        task = self.find_task(task_name)
+        if task is None:
+            raise ValueError(f"Task {task_name} not found")
+        await task.kiq(data)
 
 
 class AuthServiceProtocol(Protocol):

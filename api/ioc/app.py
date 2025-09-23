@@ -1,10 +1,12 @@
 from collections.abc import AsyncIterator
 
 from dishka import Provider, Scope, from_context, provide
-from faststream.redis import RedisBroker
 from pwdlib import PasswordHash
 from pwdlib.hashers.bcrypt import BcryptHasher
+from taskiq import async_shared_broker
+from taskiq_redis import RedisAsyncResultBackend
 
+from api import tasks  # noqa: F401 # load all the tasks to registry (async_shared_broker)
 from api.db import AsyncEngine, AsyncSession, AsyncSessionMaker, create_async_engine, create_async_sessionmaker, get_db_session
 from api.logfire import instrument_sqlalchemy
 from api.plugins import PluginObjects
@@ -21,8 +23,10 @@ class AppProvider(Provider):
 
     @provide(scope=Scope.RUNTIME, provides=TasksBroker)
     async def get_broker(self, settings: Settings) -> AsyncIterator[TasksBroker]:
-        async with RedisBroker(url=settings.redis_url) as broker:
-            yield broker
+        result_backend = RedisAsyncResultBackend(redis_url=settings.redis_url)  # type: ignore
+        broker = TasksBroker(url=settings.redis_url).with_result_backend(result_backend)
+        async_shared_broker.default_broker(broker)
+        yield broker
 
     @provide(scope=Scope.APP)
     async def get_async_engine(self, settings: Settings) -> AsyncIterator[AsyncEngine]:
