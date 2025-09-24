@@ -62,10 +62,10 @@ async def lifespan_start(container: AsyncContainer, state: TaskiqState) -> None:
         lambda *args, **kwargs: handle_event_loop_exception(logger, *args, **kwargs)
     )
     plugin_registry = await container.get(PluginRegistry)
-    for service in WorkerProvider.TO_PRELOAD:
-        await container.get(service)
     await plugin_registry.startup()
     await plugin_registry.worker_setup()
+    for service in WorkerProvider.TO_PRELOAD:
+        await container.get(service)
     settings = await container.get(Settings)
     coin_service = await container.get(CoinService)
     notification_manager = await container.get(NotificationManager)

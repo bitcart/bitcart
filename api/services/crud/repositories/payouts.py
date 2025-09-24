@@ -5,7 +5,7 @@ from sqlalchemy.orm import selectinload
 
 from api import models
 from api.constants import PayoutStatus
-from api.services.crud import CRUDRepository
+from api.services.crud.repository import CRUDRepository
 
 
 class PayoutRepository(CRUDRepository[models.Payout]):

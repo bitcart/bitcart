@@ -3,7 +3,7 @@ from typing import Any, cast, overload
 
 from advanced_alchemy.base import ModelProtocol
 from advanced_alchemy.filters import StatementFilter
-from advanced_alchemy.repository import LoadSpec, SQLAlchemyAsyncRepository
+from advanced_alchemy.repository import LoadSpec
 from advanced_alchemy.service.typing import ModelDictT
 from fastapi import HTTPException
 from sqlalchemy import ColumnElement, ColumnExpressionArgument, Select, Update, func, select
@@ -13,19 +13,10 @@ from api import models, utils
 from api.db import AsyncSession
 from api.schemas.base import Schema
 from api.schemas.misc import BatchAction
+from api.services.crud.repository import CRUDRepository
+from api.services.plugin_registry import PluginRegistry
 
 UNAUTHORIZED_ACCESS_EXCEPTION = HTTPException(403, "Access denied: attempt to use objects not owned by current user")
-
-
-class CRUDRepository[ModelType: ModelProtocol](SQLAlchemyAsyncRepository[ModelType]):
-    LOAD_OPTIONS: LoadSpec | None = None
-    merge_loader_options = False
-
-    def __init__(self, session: AsyncSession, *args: Any, **kwargs: Any) -> None:
-        kwargs["wrap_exceptions"] = False
-        kwargs["uniquify"] = True
-        kwargs["load"] = kwargs.get("load", self.LOAD_OPTIONS)
-        super().__init__(*args, session=session, **kwargs)
 
 
 class CRUDService[ModelType: ModelProtocol]:
@@ -43,8 +34,9 @@ class CRUDService[ModelType: ModelProtocol]:
             raise ValueError("CRUDService doesn't support non-dict data")
         return data
 
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: AsyncSession, plugin_registry: PluginRegistry) -> None:
         self.session = session
+        self.plugin_registry = plugin_registry
         self.repository = self.repository_type(session=session)
 
     def _add_user_filter(self, filters: list[StatementFilter | ColumnElement[bool]], user: models.User | None) -> None:
@@ -188,6 +180,7 @@ class CRUDService[ModelType: ModelProtocol]:
         for attr, value in data.items():
             setattr(model, attr, value)
         await self.session.flush()
+        await self.plugin_registry.run_hook(f"db_modify_{self.model_type.__name__.lower()}", model)
         return model
 
     @overload
@@ -244,7 +237,7 @@ class CRUDService[ModelType: ModelProtocol]:
         if not hasattr(related_model, "id"):
             return
         query = select(related_model).where(related_model.id.in_(related_ids))
-        if hasattr(related_model, "user_id"):
+        if hasattr(related_model, "user_id") and user_id is not None:
             query = query.where(related_model.user_id == user_id)
         count = cast(int, await utils.database.get_scalar(self.session, query, func.count, related_model.id))
         if count != len(related_ids):
@@ -261,7 +254,7 @@ class CRUDService[ModelType: ModelProtocol]:
                 query = select(current_model).where(
                     utils.common.get_sqla_attr(cast(ModelType, current_model), "id") == data[col.name]
                 )
-                if hasattr(current_model, "user_id"):
+                if hasattr(current_model, "user_id") and user_id is not None:
                     query = query.where(current_model.user_id == user_id)
                 if not (await self.session.execute(query)).scalar_one_or_none():
                     raise UNAUTHORIZED_ACCESS_EXCEPTION

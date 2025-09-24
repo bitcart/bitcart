@@ -33,13 +33,12 @@ class RefundService(CRUDService[models.Refund]):
         broker: TasksBroker,
         plugin_registry: PluginRegistry,
     ) -> None:
-        super().__init__(session)
+        super().__init__(session, plugin_registry)
         self.invoice_service = invoice_service
         self.store_service = store_service
         self.template_service = template_service
         self.payout_service = payout_service
         self.broker = broker
-        self.plugin_registry = plugin_registry
 
     async def create_refund(self, data: RefundData, invoice_id: str, user: models.User) -> models.Refund:
         invoice = await self.invoice_service.get(invoice_id, user)

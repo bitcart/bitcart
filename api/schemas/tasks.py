@@ -44,5 +44,5 @@ class LicenseChangedMessage(Schema):
 
 class PluginTaskMessage(Schema):
     event: str
-    data: Schema
+    data: dict[str, Any]
     for_worker: bool = True

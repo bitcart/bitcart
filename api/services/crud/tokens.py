@@ -38,13 +38,12 @@ class TokenService(CRUDService[models.Token]):
         setting_service: SettingService,
         plugin_registry: PluginRegistry,
     ) -> None:
-        super().__init__(session)
+        super().__init__(session, plugin_registry)
         self.redis_pool = redis_pool
         self.broker = broker
         self.user_repository = user_repository
         self.auth_service = auth_service
         self.setting_service = setting_service
-        self.plugin_registry = plugin_registry
 
     async def create_token(
         self,

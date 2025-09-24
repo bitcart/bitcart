@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncScalarResult
 from sqlalchemy.orm import selectinload
 
 from api import models
-from api.services.crud import CRUDRepository
+from api.services.crud.repository import CRUDRepository
 
 
 class WalletRepository(CRUDRepository[models.Wallet]):

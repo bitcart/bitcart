@@ -12,6 +12,7 @@ from api.db import AsyncSession
 from api.schemas.products import CreateProduct, UpdateProduct
 from api.services.crud import CRUDService
 from api.services.crud.repositories import DiscountRepository, ProductRepository
+from api.services.plugin_registry import PluginRegistry
 from api.settings import Settings
 
 
@@ -19,8 +20,14 @@ class ProductService(CRUDService[models.Product]):
     repository_type = ProductRepository
     repository: ProductRepository
 
-    def __init__(self, session: AsyncSession, discount_repository: DiscountRepository, settings: Settings) -> None:
-        super().__init__(session)
+    def __init__(
+        self,
+        session: AsyncSession,
+        plugin_registry: PluginRegistry,
+        discount_repository: DiscountRepository,
+        settings: Settings,
+    ) -> None:
+        super().__init__(session, plugin_registry)
         self.settings = settings
         self.discount_repository = discount_repository
 

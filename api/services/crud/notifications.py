@@ -5,14 +5,21 @@ from api.db import AsyncSession
 from api.services.crud import CRUDService
 from api.services.crud.repositories import NotificationRepository
 from api.services.notification_manager import NotificationManager
+from api.services.plugin_registry import PluginRegistry
 from api.settings import Settings
 
 
 class NotificationService(CRUDService[models.Notification]):
     repository_type = NotificationRepository
 
-    def __init__(self, session: AsyncSession, settings: Settings, notification_manager: NotificationManager) -> None:
-        super().__init__(session)
+    def __init__(
+        self,
+        session: AsyncSession,
+        plugin_registry: PluginRegistry,
+        settings: Settings,
+        notification_manager: NotificationManager,
+    ) -> None:
+        super().__init__(session, plugin_registry)
         self.settings = settings
         self.notification_manager = notification_manager
 

@@ -14,6 +14,7 @@ from api.services.coins import CoinService
 from api.services.crud import CRUDService
 from api.services.crud.repositories import PayoutRepository, StoreRepository, WalletRepository
 from api.services.payout_manager import PayoutManager
+from api.services.plugin_registry import PluginRegistry
 
 logger = get_logger(__name__)
 
@@ -24,12 +25,13 @@ class PayoutService(CRUDService[models.Payout]):
     def __init__(
         self,
         session: AsyncSession,
+        plugin_registry: PluginRegistry,
         store_repository: StoreRepository,
         wallet_repository: WalletRepository,
         coin_service: CoinService,
         payout_manager: PayoutManager,
     ) -> None:
-        super().__init__(session)
+        super().__init__(session, plugin_registry)
         self.store_repository = store_repository
         self.wallet_repository = wallet_repository
         self.coin_service = coin_service

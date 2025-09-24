@@ -62,6 +62,7 @@ class PluginRegistry:
         async with self.container(scope=Scope.REQUEST) as container:
             setting_service = await container.get(SettingService)
             await setting_service.set_setting(settings_obj, name=f"plugin:{plugin_name}")
+        await self.run_hook(f"settings_changed:{plugin_name}", settings_obj)
         return True, settings_obj
 
     def get_registered_plugins(self) -> list[str]:
@@ -176,8 +177,12 @@ class PluginRegistry:
         self._events[name]["handlers"].append(handler)
 
     async def publish_event(self, name: str, data: Schema, for_worker: bool = True) -> None:
-        await self.broker.publish("plugin_task_server", PluginTaskMessage(event=name, data=data, for_worker=for_worker))
-        await self.client_broker.publish("plugin_task_client", PluginTaskMessage(event=name, data=data, for_worker=for_worker))
+        await self.broker.publish(
+            "plugin_task_server", PluginTaskMessage(event=name, data=data.model_dump(), for_worker=for_worker)
+        )
+        await self.client_broker.publish(
+            "plugin_task_client", PluginTaskMessage(event=name, data=data.model_dump(), for_worker=for_worker)
+        )
 
     def update_metadata(self, obj: models.RecordModel, key: str, value: Any) -> models.Model:
         obj.meta[key] = value

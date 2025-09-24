@@ -7,7 +7,7 @@ from sqlalchemy.orm import selectinload
 
 from api import models
 from api.invoices import InvoiceStatus
-from api.services.crud import CRUDRepository
+from api.services.crud.repository import CRUDRepository
 
 
 class PaymentMethodRepository(CRUDRepository[models.PaymentMethod]):

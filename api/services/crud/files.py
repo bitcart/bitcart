@@ -8,6 +8,7 @@ from api.db import AsyncSession
 from api.schemas.policies import Policy
 from api.services.crud import CRUDService
 from api.services.crud.repositories import FileRepository
+from api.services.plugin_registry import PluginRegistry
 from api.services.settings import SettingService
 from api.settings import Settings
 
@@ -15,8 +16,10 @@ from api.settings import Settings
 class FileService(CRUDService[models.File]):
     repository_type = FileRepository
 
-    def __init__(self, session: AsyncSession, settings: Settings, setting_service: SettingService) -> None:
-        super().__init__(session)
+    def __init__(
+        self, session: AsyncSession, plugin_registry: PluginRegistry, settings: Settings, setting_service: SettingService
+    ) -> None:
+        super().__init__(session, plugin_registry)
         self.settings = settings
         self.setting_service = setting_service
 

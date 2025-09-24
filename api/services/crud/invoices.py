@@ -68,7 +68,7 @@ class InvoiceService(CRUDService[models.Invoice]):
         wallet_data_service: WalletDataService,
         plugin_registry: PluginRegistry,
     ) -> None:
-        super().__init__(session)
+        super().__init__(session, plugin_registry)
         self.payment_method_repository = payment_method_repository
         self.store_repository = store_repository
         self.wallet_repository = wallet_repository
@@ -81,7 +81,6 @@ class InvoiceService(CRUDService[models.Invoice]):
         self.template_service = template_service
         self.redis_pool = redis_pool
         self.wallet_data_service = wallet_data_service
-        self.plugin_registry = plugin_registry
 
     async def prepare_data(self, data: dict[str, Any]) -> dict[str, Any]:
         data = await super().prepare_data(data)
@@ -159,6 +158,7 @@ class InvoiceService(CRUDService[models.Invoice]):
         if product:
             discounts = product.discounts
         discounts = list(filter(lambda x: current_date <= x.end_date, discounts))
+        await self.session.commit()
         await self.update_invoice_payments(
             invoice, [x.id for x in store.wallets], discounts, store, product, promocode, start_time
         )

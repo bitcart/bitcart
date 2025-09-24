@@ -8,6 +8,7 @@ from api.logging import get_logger
 from api.schemas.policies import Policy
 from api.services.crud import CRUDService
 from api.services.crud.repositories import TemplateRepository
+from api.services.plugin_registry import PluginRegistry
 from api.services.settings import SettingService
 
 logger = get_logger(__name__)
@@ -17,9 +18,13 @@ class TemplateService(CRUDService[models.Template]):
     repository_type = TemplateRepository
 
     def __init__(
-        self, session: AsyncSession, template_manager: templates.TemplateManager, setting_service: SettingService
+        self,
+        session: AsyncSession,
+        plugin_registry: PluginRegistry,
+        template_manager: templates.TemplateManager,
+        setting_service: SettingService,
     ) -> None:
-        super().__init__(session)
+        super().__init__(session, plugin_registry)
         self.template_manager = template_manager
         self.setting_service = setting_service
 

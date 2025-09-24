@@ -14,7 +14,7 @@ from dishka.integrations.fastapi import DishkaRoute as DIRoute
 from fastapi import FastAPI
 
 from api import models
-from api.logging import get_exception_message, get_logger
+from api.logging import Logger, get_exception_message, get_logger
 from api.schemas.base import Schema
 from api.settings import Settings
 
@@ -24,6 +24,15 @@ if TYPE_CHECKING:
 SKIP_PAYMENT_METHOD = object()  # return this in your plugin if you want to skip current method creation
 
 logger = get_logger(__name__)
+
+
+def get_plugin_logger(module_name: str) -> Logger:
+    parts = module_name.split(".")
+    if len(parts) >= 3 and parts[0] == "modules":
+        orgname = parts[1]
+        clean_name = ".".join(parts[2:]) if orgname == "bitcart" else ".".join(parts[1:])
+        return get_logger(clean_name)
+    return get_logger(module_name)
 
 
 # Exposed public API

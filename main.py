@@ -53,9 +53,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     asyncio.create_task(start_broker(app.state.client_broker))
     plugin_registry = await app.state.dishka_container.get(PluginRegistry)
     plugin_registry.setup_app(app)
+    await plugin_registry.startup()
     for service in ServicesProvider.TO_PRELOAD:
         await app.state.dishka_container.get(service)
-    await plugin_registry.startup()
     yield
     await plugin_registry.shutdown()
     await app.state.dishka_container.close()

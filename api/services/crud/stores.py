@@ -27,12 +27,11 @@ class StoreService(CRUDService[models.Store]):
         exchange_rate_service: ExchangeRateService,
         plugin_registry: PluginRegistry,
     ) -> None:
-        super().__init__(session)
+        super().__init__(session, plugin_registry)
         self.wallet_repository = wallet_repository
         self.notification_repository = notification_repository
         self.setting_service = setting_service
         self.exchange_rate_service = exchange_rate_service
-        self.plugin_registry = plugin_registry
 
     async def prepare_data(self, data: dict[str, Any]) -> dict[str, Any]:
         data = await super().prepare_data(data)

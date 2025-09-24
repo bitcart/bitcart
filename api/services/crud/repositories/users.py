@@ -1,7 +1,7 @@
 from sqlalchemy.orm import joinedload
 
 from api import models
-from api.services.crud import CRUDRepository
+from api.services.crud.repository import CRUDRepository
 
 
 class UserRepository(CRUDRepository[models.User]):

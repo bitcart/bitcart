@@ -51,7 +51,7 @@ class UserService(CRUDService[models.User]):
         template_service: TemplateService,
         plugin_registry: PluginRegistry,
     ) -> None:
-        super().__init__(session)
+        super().__init__(session, plugin_registry)
         self.redis_pool = redis_pool
         self.broker = broker
         self.settings = settings
@@ -60,7 +60,6 @@ class UserService(CRUDService[models.User]):
         self.auth_service = auth_service
         self.password_hasher = password_hasher
         self.template_service = template_service
-        self.plugin_registry = plugin_registry
 
     async def prepare_create(self, data: dict[str, Any], user: models.User | None = None) -> dict[str, Any]:
         data = await super().prepare_create(data)
