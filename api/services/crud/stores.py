@@ -1,6 +1,7 @@
 from decimal import Decimal
 from typing import Any
 
+from dishka import AsyncContainer
 from fastapi import HTTPException
 
 from api import models
@@ -21,17 +22,19 @@ class StoreService(CRUDService[models.Store]):
     def __init__(
         self,
         session: AsyncSession,
+        container: AsyncContainer,
         wallet_repository: WalletRepository,
         notification_repository: NotificationRepository,
         setting_service: SettingService,
         exchange_rate_service: ExchangeRateService,
         plugin_registry: PluginRegistry,
     ) -> None:
-        super().__init__(session, plugin_registry)
+        super().__init__(session, container)
         self.wallet_repository = wallet_repository
         self.notification_repository = notification_repository
         self.setting_service = setting_service
         self.exchange_rate_service = exchange_rate_service
+        self.plugin_registry = plugin_registry
 
     async def prepare_data(self, data: dict[str, Any]) -> dict[str, Any]:
         data = await super().prepare_data(data)

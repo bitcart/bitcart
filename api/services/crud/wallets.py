@@ -7,6 +7,7 @@ from bitcart import (  # type: ignore[attr-defined]
     COINS,
 )
 from bitcart.errors import BaseError as BitcartBaseError
+from dishka import AsyncContainer
 from fastapi import HTTPException
 
 from api import models
@@ -18,7 +19,6 @@ from api.schemas.wallets import CreateWalletData
 from api.services.coins import CoinService
 from api.services.crud import CRUDService
 from api.services.crud.repositories import WalletRepository
-from api.services.plugin_registry import PluginRegistry
 from api.services.wallet_data import WalletDataService
 from api.types import TasksBroker
 
@@ -32,12 +32,12 @@ class WalletService(CRUDService[models.Wallet]):
     def __init__(
         self,
         session: AsyncSession,
-        plugin_registry: PluginRegistry,
+        container: AsyncContainer,
         broker: TasksBroker,
         coin_service: CoinService,
         wallet_data_service: WalletDataService,
     ) -> None:
-        super().__init__(session, plugin_registry)
+        super().__init__(session, container)
         self.broker = broker
         self.coin_service = coin_service
         self.wallet_data_service = wallet_data_service

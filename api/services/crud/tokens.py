@@ -3,6 +3,7 @@ from typing import Any, cast
 
 import pyotp
 from advanced_alchemy.filters import StatementFilter
+from dishka import AsyncContainer
 from fastapi import HTTPException, Request
 from fido2.server import Fido2Server
 from fido2.webauthn import AttestedCredentialData, PublicKeyCredentialRpEntity, UserVerificationRequirement
@@ -31,6 +32,7 @@ class TokenService(CRUDService[models.Token]):
     def __init__(
         self,
         session: AsyncSession,
+        container: AsyncContainer,
         redis_pool: Redis,
         broker: TasksBroker,
         user_repository: UserRepository,
@@ -38,12 +40,13 @@ class TokenService(CRUDService[models.Token]):
         setting_service: SettingService,
         plugin_registry: PluginRegistry,
     ) -> None:
-        super().__init__(session, plugin_registry)
+        super().__init__(session, container)
         self.redis_pool = redis_pool
         self.broker = broker
         self.user_repository = user_repository
         self.auth_service = auth_service
         self.setting_service = setting_service
+        self.plugin_registry = plugin_registry
 
     async def create_token(
         self,

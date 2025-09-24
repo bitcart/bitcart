@@ -5,6 +5,7 @@ from advanced_alchemy.base import ModelProtocol
 from advanced_alchemy.filters import StatementFilter
 from advanced_alchemy.repository import LoadSpec
 from advanced_alchemy.service.typing import ModelDictT
+from dishka import AsyncContainer
 from fastapi import HTTPException
 from sqlalchemy import ColumnElement, ColumnExpressionArgument, Select, Update, func, select
 from sqlalchemy.exc import NoResultFound, ProgrammingError
@@ -14,7 +15,6 @@ from api.db import AsyncSession
 from api.schemas.base import Schema
 from api.schemas.misc import BatchAction
 from api.services.crud.repository import CRUDRepository
-from api.services.plugin_registry import PluginRegistry
 
 UNAUTHORIZED_ACCESS_EXCEPTION = HTTPException(403, "Access denied: attempt to use objects not owned by current user")
 
@@ -34,9 +34,9 @@ class CRUDService[ModelType: ModelProtocol]:
             raise ValueError("CRUDService doesn't support non-dict data")
         return data
 
-    def __init__(self, session: AsyncSession, plugin_registry: PluginRegistry) -> None:
+    def __init__(self, session: AsyncSession, container: AsyncContainer) -> None:
         self.session = session
-        self.plugin_registry = plugin_registry
+        self.container = container
         self.repository = self.repository_type(session=session)
 
     def _add_user_filter(self, filters: list[StatementFilter | ColumnElement[bool]], user: models.User | None) -> None:
@@ -172,6 +172,8 @@ class CRUDService[ModelType: ModelProtocol]:
     @overload
     async def update(self, data: "ModelDictT[ModelType]", item: str, user: models.User | None = None) -> ModelType: ...
     async def update(self, data: "ModelDictT[ModelType]", item: ModelType | str, user: models.User | None = None) -> ModelType:
+        from api.services.plugin_registry import PluginRegistry
+
         model = await self.get(item, user) if isinstance(item, str) else item
         data = self._check_data(data, update=True)
         data = await self.prepare_data(data)
@@ -180,7 +182,8 @@ class CRUDService[ModelType: ModelProtocol]:
         for attr, value in data.items():
             setattr(model, attr, value)
         await self.session.flush()
-        await self.plugin_registry.run_hook(f"db_modify_{self.model_type.__name__.lower()}", model)
+        plugin_registry = await self.container.get(PluginRegistry)
+        await plugin_registry.run_hook(f"db_modify_{self.model_type.__name__.lower()}", model)
         return model
 
     @overload

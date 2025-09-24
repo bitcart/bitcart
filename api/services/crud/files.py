@@ -1,6 +1,7 @@
 import os
 
 import aiofiles
+from dishka import AsyncContainer
 from fastapi import HTTPException, UploadFile
 
 from api import models, utils
@@ -8,7 +9,6 @@ from api.db import AsyncSession
 from api.schemas.policies import Policy
 from api.services.crud import CRUDService
 from api.services.crud.repositories import FileRepository
-from api.services.plugin_registry import PluginRegistry
 from api.services.settings import SettingService
 from api.settings import Settings
 
@@ -17,9 +17,9 @@ class FileService(CRUDService[models.File]):
     repository_type = FileRepository
 
     def __init__(
-        self, session: AsyncSession, plugin_registry: PluginRegistry, settings: Settings, setting_service: SettingService
+        self, session: AsyncSession, container: AsyncContainer, settings: Settings, setting_service: SettingService
     ) -> None:
-        super().__init__(session, plugin_registry)
+        super().__init__(session, container)
         self.settings = settings
         self.setting_service = setting_service
 

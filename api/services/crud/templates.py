@@ -1,5 +1,6 @@
 from typing import Any
 
+from dishka import AsyncContainer
 from sqlalchemy import select
 
 from api import exceptions, models, templates, utils
@@ -8,7 +9,6 @@ from api.logging import get_logger
 from api.schemas.policies import Policy
 from api.services.crud import CRUDService
 from api.services.crud.repositories import TemplateRepository
-from api.services.plugin_registry import PluginRegistry
 from api.services.settings import SettingService
 
 logger = get_logger(__name__)
@@ -20,11 +20,11 @@ class TemplateService(CRUDService[models.Template]):
     def __init__(
         self,
         session: AsyncSession,
-        plugin_registry: PluginRegistry,
+        container: AsyncContainer,
         template_manager: templates.TemplateManager,
         setting_service: SettingService,
     ) -> None:
-        super().__init__(session, plugin_registry)
+        super().__init__(session, container)
         self.template_manager = template_manager
         self.setting_service = setting_service
 

@@ -10,6 +10,7 @@ from typing import Any, cast
 
 from bitcart import BTC  # type: ignore[attr-defined]
 from bitcart.errors import errors
+from dishka import AsyncContainer
 from fastapi import HTTPException, Response
 from fastapi.responses import StreamingResponse
 from sqlalchemy import insert, select, update
@@ -54,6 +55,7 @@ class InvoiceService(CRUDService[models.Invoice]):
     def __init__(
         self,
         session: AsyncSession,
+        container: AsyncContainer,
         payment_method_repository: PaymentMethodRepository,
         store_repository: StoreRepository,
         wallet_repository: WalletRepository,
@@ -68,7 +70,7 @@ class InvoiceService(CRUDService[models.Invoice]):
         wallet_data_service: WalletDataService,
         plugin_registry: PluginRegistry,
     ) -> None:
-        super().__init__(session, plugin_registry)
+        super().__init__(session, container)
         self.payment_method_repository = payment_method_repository
         self.store_repository = store_repository
         self.wallet_repository = wallet_repository
@@ -81,6 +83,7 @@ class InvoiceService(CRUDService[models.Invoice]):
         self.template_service = template_service
         self.redis_pool = redis_pool
         self.wallet_data_service = wallet_data_service
+        self.plugin_registry = plugin_registry
 
     async def prepare_data(self, data: dict[str, Any]) -> dict[str, Any]:
         data = await super().prepare_data(data)

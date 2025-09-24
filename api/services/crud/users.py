@@ -2,6 +2,7 @@ import json
 from typing import Any, cast
 
 import pyotp
+from dishka import AsyncContainer
 from fastapi import HTTPException, Request
 from fido2.server import Fido2Server
 from fido2.webauthn import (
@@ -41,6 +42,7 @@ class UserService(CRUDService[models.User]):
     def __init__(
         self,
         session: AsyncSession,
+        container: AsyncContainer,
         redis_pool: Redis,
         broker: TasksBroker,
         settings: Settings,
@@ -51,7 +53,7 @@ class UserService(CRUDService[models.User]):
         template_service: TemplateService,
         plugin_registry: PluginRegistry,
     ) -> None:
-        super().__init__(session, plugin_registry)
+        super().__init__(session, container)
         self.redis_pool = redis_pool
         self.broker = broker
         self.settings = settings
@@ -60,6 +62,7 @@ class UserService(CRUDService[models.User]):
         self.auth_service = auth_service
         self.password_hasher = password_hasher
         self.template_service = template_service
+        self.plugin_registry = plugin_registry
 
     async def prepare_create(self, data: dict[str, Any], user: models.User | None = None) -> dict[str, Any]:
         data = await super().prepare_create(data)
