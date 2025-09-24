@@ -24,7 +24,7 @@ class Environment(StrEnum):
 class Settings(BaseSettings):
     ENV: Environment = Field(Environment.development, validation_alias="BITCART_ENV")
     DEBUG: bool = False
-    LOG_LEVEL: str = "INFO"
+    LOG_LEVEL: str = "DEBUG"
 
     DOCKER_ENV: bool = Field(False, validation_alias="IN_DOCKER")
 
