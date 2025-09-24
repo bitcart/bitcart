@@ -58,10 +58,7 @@ async def get_db_session(
         if exc is not None:
             await session.rollback()
         else:
-            try:
-                await session.commit()
-            except Exception:
-                await session.rollback()
+            await session.commit()
 
 
 __all__ = [

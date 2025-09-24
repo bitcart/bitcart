@@ -8,11 +8,10 @@ from alembic import command
 from alembic.config import Config
 from dishka import AsyncContainer, Scope
 from fastapi import FastAPI
-from fastapi.encoders import jsonable_encoder
 
 from api import models, templates
 from api.logging import get_exception_message, get_logger
-from api.plugins import BasePlugin, PluginContext, PluginObjects
+from api.plugins import BasePlugin, PluginContext, PluginObjects, jsonable_encoder
 from api.schemas.base import Schema
 from api.schemas.policies import PluginsState
 from api.schemas.tasks import LicenseChangedMessage, PluginTaskMessage
@@ -166,7 +165,9 @@ class PluginRegistry:
 
     register_filter = register_hook  # for better readability
 
-    json_encode = jsonable_encoder
+    @staticmethod
+    def json_encode(obj: Any) -> Any:
+        return jsonable_encoder(obj)
 
     def register_event(self, name: str, params: list[str]) -> None:
         self._events[name] = {"params": set(params), "handlers": []}

@@ -12,6 +12,7 @@ from dishka import Provider
 from dishka import Scope as DIScope
 from dishka.integrations.fastapi import DishkaRoute as DIRoute
 from fastapi import FastAPI
+from pydantic import TypeAdapter
 
 from api import models
 from api.logging import Logger, get_exception_message, get_logger
@@ -33,6 +34,10 @@ def get_plugin_logger(module_name: str) -> Logger:
         clean_name = ".".join(parts[2:]) if orgname == "bitcart" else ".".join(parts[1:])
         return get_logger(clean_name)
     return get_logger(module_name)
+
+
+def jsonable_encoder(obj: Any) -> Any:
+    return TypeAdapter(Any).dump_python(obj, mode="json")
 
 
 # Exposed public API
