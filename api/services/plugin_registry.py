@@ -68,12 +68,12 @@ class PluginRegistry:
         """Get list of plugins that have registered settings"""
         return list(self._plugin_settings.keys())
 
-    def run_migrations(self, plugin: BasePlugin) -> None:
+    async def run_migrations(self, plugin: BasePlugin) -> None:
         config = Config("alembic.ini")
         config.set_main_option("plugin_name", plugin.name)
         config.set_main_option("version_locations", os.path.join(plugin.path, "versions"))
         config.set_main_option("no_logs", "true")
-        command.upgrade(config, "head")
+        await asyncio.to_thread(command.upgrade, config, "head")
 
     def setup_app(self, app: FastAPI) -> None:
         for plugin in self._plugins.values():
@@ -87,7 +87,7 @@ class PluginRegistry:
         for plugin in self._plugins.values():
             try:
                 if os.path.exists(os.path.join(plugin.path, "versions")):
-                    self.run_migrations(plugin)
+                    await self.run_migrations(plugin)
                 if plugin.lookup_name and plugin.lookup_org:
                     plugin.set_license_key(
                         cast(str, await self.get_plugin_key_by_lookup(plugin.lookup_name, plugin.lookup_org))

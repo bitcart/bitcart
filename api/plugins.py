@@ -266,7 +266,7 @@ def init_plugins(plugin_classes: PluginClasses) -> PluginObjects:
     plugins: PluginObjects = cast(PluginObjects, {})
     for plugin_name, plugin_cls in plugin_classes.items():
         try:
-            plugin_obj = plugin_cls(os.path.dirname(plugin_name))
+            plugin_obj = plugin_cls(plugin_cls.path)
             plugins[plugin_obj.name] = plugin_obj
         except Exception as e:
             logger.error(f"Failed to load plugin {plugin_name}: {get_exception_message(e)}")
