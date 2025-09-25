@@ -8,7 +8,7 @@ from fastapi.security import SecurityScopes
 from taskiq import AsyncTaskiqDecoratedTask, AsyncTaskiqTask
 from taskiq.scheduler.created_schedule import CreatedSchedule
 from taskiq.scheduler.scheduled_task import CronSpec
-from taskiq_redis import RedisStreamBroker
+from taskiq_redis import PubSubBroker
 
 from api.schemas.base import Schema
 
@@ -41,7 +41,7 @@ class StrEnum(metaclass=StrEnumMeta):
     pass
 
 
-class TasksBroker(RedisStreamBroker):
+class TasksBroker(PubSubBroker):
     def get_task(self, task_name: str) -> AsyncTaskiqDecoratedTask[Any, Any]:
         task = self.find_task(task_name)
         if task is None:
