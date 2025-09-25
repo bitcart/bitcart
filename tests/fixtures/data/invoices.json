@@ -1,6 +1,9 @@
 {
     "create": {
-        "price": 0.5
+        "price": 0.5,
+        "metadata": {
+            "foo1": "bar1"
+        }
     },
     "patch": {
         "notification_url": "test2",
@@ -18,7 +21,9 @@
         "paid_currency": null,
         "expiration": 15,
         "expiration_seconds": 900,
-        "metadata": {}
+        "metadata": {
+            "foo1": "bar1"
+        }
     },
     "count": 1
 }
