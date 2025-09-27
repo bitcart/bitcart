@@ -16,7 +16,9 @@ from api.schemas.base import Schema
 from api.schemas.misc import BatchAction
 from api.services.crud.repository import CRUDRepository
 
-UNAUTHORIZED_ACCESS_EXCEPTION = HTTPException(403, "Access denied: attempt to use objects not owned by current user")
+
+def unauthorized_access_exception() -> HTTPException:
+    return HTTPException(403, "Access denied: attempt to use objects not owned by current user")
 
 
 class CRUDService[ModelType: ModelProtocol]:
@@ -220,7 +222,7 @@ class CRUDService[ModelType: ModelProtocol]:
                 filters.append(repository.model_type.user_id == data["user_id"])
             data[field_key] = await repository.list(*filters)
             if len(data[field_key]) != len(field_ids):
-                raise UNAUTHORIZED_ACCESS_EXCEPTION
+                raise unauthorized_access_exception()
 
     async def prepare_data(self, data: dict[str, Any]) -> dict[str, Any]:
         if "metadata" in data:  # Map to sqlalchemy format
@@ -244,7 +246,7 @@ class CRUDService[ModelType: ModelProtocol]:
             query = query.where(related_model.user_id == user_id)
         count = cast(int, await utils.database.get_scalar(self.session, query, func.count, related_model.id))
         if count != len(related_ids):
-            raise UNAUTHORIZED_ACCESS_EXCEPTION
+            raise unauthorized_access_exception()
 
     async def validate(self, data: dict[str, Any], model: ModelType, user: models.User | None = None) -> None:
         user_id = await self.set_user_id(data, model, user)
@@ -260,7 +262,7 @@ class CRUDService[ModelType: ModelProtocol]:
                 if hasattr(current_model, "user_id") and user_id is not None:
                     query = query.where(current_model.user_id == user_id)
                 if not (await self.session.execute(query)).scalar_one_or_none():
-                    raise UNAUTHORIZED_ACCESS_EXCEPTION
+                    raise unauthorized_access_exception()
 
         for rel in self.model_type.__mapper__.relationships:
             if rel.secondary is not None and rel.key in data:
