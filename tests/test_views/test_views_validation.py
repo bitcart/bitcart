@@ -7,7 +7,6 @@ import httpx
 import pytest
 import pytest_mock
 from bitcart.errors import BaseError as BitcartBaseError
-from parametrization import Parametrization
 
 from api.constants import BACKUP_FREQUENCIES, BACKUP_PROVIDERS, FEE_ETA_TARGETS, MAX_CONFIRMATION_WATCH
 from api.schemas.misc import CaptchaType
@@ -59,28 +58,16 @@ async def test_wallet_invalid_xpub(client: TestClient, token: str) -> None:
     )
 
 
-@Parametrization.autodetect_parameters()
-@Parametrization.case(name="Too low transaction speed", data={"transaction_speed": -1}, error=BAD_TX_SPEED_MESSAGE)
-@Parametrization.case(name="Too high transaction speed", data={"transaction_speed": 11}, error=BAD_TX_SPEED_MESSAGE)
-@Parametrization.case(
-    name="Too low underpaid percentage",
-    data={"underpaid_percentage": -1},
-    error=BAD_UNDERPAID_PERCENTAGE_MESSAGE,
-)
-@Parametrization.case(
-    name="Too high underpaid percentage",
-    data={"underpaid_percentage": 100},
-    error=BAD_UNDERPAID_PERCENTAGE_MESSAGE,
-)
-@Parametrization.case(
-    name="Too low target fee blocks",
-    data={"recommended_fee_target_blocks": 0},
-    error=BAD_TARGET_FEE_BLOCKS_MESSAGE,
-)
-@Parametrization.case(
-    name="Too high target fee blocks",
-    data={"recommended_fee_target_blocks": 26},
-    error=BAD_TARGET_FEE_BLOCKS_MESSAGE,
+@pytest.mark.parametrize(
+    "data,error",
+    [
+        pytest.param({"transaction_speed": -1}, BAD_TX_SPEED_MESSAGE, id="Too low transaction speed"),
+        pytest.param({"transaction_speed": 11}, BAD_TX_SPEED_MESSAGE, id="Too high transaction speed"),
+        pytest.param({"underpaid_percentage": -1}, BAD_UNDERPAID_PERCENTAGE_MESSAGE, id="Too low underpaid percentage"),
+        pytest.param({"underpaid_percentage": 100}, BAD_UNDERPAID_PERCENTAGE_MESSAGE, id="Too high underpaid percentage"),
+        pytest.param({"recommended_fee_target_blocks": 0}, BAD_TARGET_FEE_BLOCKS_MESSAGE, id="Too low target fee blocks"),
+        pytest.param({"recommended_fee_target_blocks": 26}, BAD_TARGET_FEE_BLOCKS_MESSAGE, id="Too high target fee blocks"),
+    ],
 )
 async def test_store_checkout_settings_valid(
     client: TestClient, token: str, store: dict[str, Any], data: dict[str, Any], error: str
@@ -146,26 +133,14 @@ async def test_product_patch_validation_works(client: TestClient, token: str, pr
     ).status_code == 422
 
 
-@Parametrization.autodetect_parameters()
-@Parametrization.case(
-    name="Provider: google",
-    data={"provider": "google"},
-    error=BAD_BACKUP_PROVIDER_MESSAGE,
-)
-@Parametrization.case(
-    name="Provider: Local",  # only lowercase names are allowed
-    data={"provider": "Local"},
-    error=BAD_BACKUP_PROVIDER_MESSAGE,
-)
-@Parametrization.case(
-    name="Frequency: cron",  # not yet supported
-    data={"frequency": "cron"},
-    error=BAD_BACKUP_FREQUENCIES_MESSAGE,
-)
-@Parametrization.case(
-    name="Frequency: yearly",  # noone uses it
-    data={"frequency": "yearly"},
-    error=BAD_BACKUP_FREQUENCIES_MESSAGE,
+@pytest.mark.parametrize(
+    "data,error",
+    [
+        pytest.param({"provider": "google"}, BAD_BACKUP_PROVIDER_MESSAGE, id="Provider: google"),
+        pytest.param({"provider": "Local"}, BAD_BACKUP_PROVIDER_MESSAGE, id="Provider: Local"),
+        pytest.param({"frequency": "cron"}, BAD_BACKUP_FREQUENCIES_MESSAGE, id="Frequency: cron"),
+        pytest.param({"frequency": "yearly"}, BAD_BACKUP_FREQUENCIES_MESSAGE, id="Frequency: yearly"),
+    ],
 )
 async def test_invalid_backup_policies(client: TestClient, token: str, data: dict[str, Any], error: str) -> None:
     check_validation_failed(

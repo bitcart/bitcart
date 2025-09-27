@@ -16,7 +16,6 @@ from dishka import Scope
 from fastapi import FastAPI
 from httpx import Request as HttpRequest
 from httpx_ws import AsyncWebSocketSession, WebSocketDisconnect, aconnect_ws
-from parametrization import Parametrization
 from sqlalchemy import select
 from starlette.status import WS_1008_POLICY_VIOLATION
 
@@ -78,10 +77,14 @@ async def test_wallet_rate(client: TestClient, token: str, wallet: dict[str, Any
     assert (await client.get(f"/wallets/{wallet['id']}/rate?currency=test")).status_code == 422
 
 
-@Parametrization.autodetect_parameters()
-@Parametrization.case(name="exist-user-correct-pwd", user_exists=True, correct_pwd=True)
-@Parametrization.case(name="exist-user-wrong-pwd", user_exists=True, correct_pwd=False)
-@Parametrization.case(name="non-exist-user", user_exists=False, correct_pwd=False)
+@pytest.mark.parametrize(
+    ("user_exists", "correct_pwd"),
+    [
+        pytest.param(True, True, id="exist-user-correct-pwd"),
+        pytest.param(True, False, id="exist-user-wrong-pwd"),
+        pytest.param(False, False, id="non-exist-user"),
+    ],
+)
 async def test_create_token(client: TestClient, user: dict[str, Any], user_exists: bool, correct_pwd: bool) -> None:
     email = user["email"] if user_exists else "non-exist@example.com"
     password = static_data.USER_PWD if (user_exists and correct_pwd) else "wrong-password"
@@ -182,11 +185,15 @@ async def check_ws_response2(ws: AsyncWebSocketSession) -> None:
     assert data == {"status": "success", "balance": "0.01"}
 
 
-@Parametrization.autodetect_parameters()
-@Parametrization.case(name="non-exist-store-unauthorized", store_exists=True, authorized=False)
-@Parametrization.case(name="non-exist-store-authorized", store_exists=False, authorized=True)
-@Parametrization.case(name="store-unauthorized", store_exists=True, authorized=False)
-@Parametrization.case(name="store-authorized", store_exists=True, authorized=True)
+@pytest.mark.parametrize(
+    ("store_exists", "authorized"),
+    [
+        pytest.param(True, False, id="non-exist-store-unauthorized"),
+        pytest.param(False, True, id="non-exist-store-authorized"),
+        pytest.param(True, False, id="store-unauthorized"),
+        pytest.param(True, True, id="store-authorized"),
+    ],
+)
 async def test_ping_email(client: TestClient, token: str, store: dict[str, Any], store_exists: bool, authorized: bool) -> None:
     store_id = store["id"] if store_exists else 999
     resp = await client.get(f"/stores/{store_id}/ping", headers={"Authorization": f"Bearer {token}"} if authorized else {})
@@ -222,9 +229,13 @@ async def test_user_stats(client: TestClient, token: str, store: dict[str, Any])
     )
 
 
-@Parametrization.autodetect_parameters()
-@Parametrization.case(name="single", categories=["all"])
-@Parametrization.case(name="multiple", categories=["all", "test"])
+@pytest.mark.parametrize(
+    "categories",
+    [
+        pytest.param(["all"], id="single"),
+        pytest.param(["all", "test"], id="multiple"),
+    ],
+)
 async def test_categories(client: TestClient, token: str, categories: list[str], store: dict[str, Any]) -> None:
     assert (await client.get("/products/categories")).status_code == 422
     store_id = store["id"]
@@ -290,11 +301,15 @@ async def test_patch_token(client: TestClient, token: str) -> None:
     assert j["id"] == token
 
 
-@Parametrization.autodetect_parameters()
-@Parametrization.case(name="non-user-unauthorized", user_exists=False, authorized=False)
-@Parametrization.case(name="non-user-authorized", user_exists=False, authorized=True)
-@Parametrization.case(name="user-unauthorized", user_exists=True, authorized=False)
-@Parametrization.case(name="user-authorized", user_exists=True, authorized=True)
+@pytest.mark.parametrize(
+    ("user_exists", "authorized"),
+    [
+        pytest.param(False, False, id="non-user-unauthorized"),
+        pytest.param(False, True, id="non-user-authorized"),
+        pytest.param(True, False, id="user-unauthorized"),
+        pytest.param(True, True, id="user-authorized"),
+    ],
+)
 async def test_create_tokens(
     client: TestClient, user: dict[str, Any], token: str, user_exists: bool, authorized: bool
 ) -> None:
@@ -363,11 +378,15 @@ async def test_token_permissions_control(
     assert resp.json()["permissions"] == []
 
 
-@Parametrization.autodetect_parameters()
-@Parametrization.case(name="non-token-unauthorized", token_exists=False, authorized=False)
-@Parametrization.case(name="non-token-authorized", token_exists=False, authorized=True)
-@Parametrization.case(name="token-unauthorized", token_exists=True, authorized=False)
-@Parametrization.case(name="token-authorized", token_exists=True, authorized=True)
+@pytest.mark.parametrize(
+    ("token_exists", "authorized"),
+    [
+        pytest.param(False, False, id="non-token-unauthorized"),
+        pytest.param(False, True, id="non-token-authorized"),
+        pytest.param(True, False, id="token-unauthorized"),
+        pytest.param(True, True, id="token-authorized"),
+    ],
+)
 async def test_delete_token(client: TestClient, token: str, token_exists: bool, authorized: bool) -> None:
     fetch_token = token if token_exists else 1
     resp = await client.delete(

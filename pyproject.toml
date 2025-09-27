@@ -15,7 +15,6 @@ test = [
     "pytest>=8.3.5",
     "pytest-cov>=6.2.1",
     "pytest-mock>=3.15.0",
-    "pytest-parametrization>=2022.2.1", # TODO: drop it
     "pytest-xdist>=3.8.0",
 ]
 types = [
@@ -174,6 +173,7 @@ ignore = [
     "S104",
     "S507",
     "ASYNC110",
+    "ASYNC240", # TODO: potentially enable this
     "A005",
     "PLC0415",
 ] # Enable PLC0415 when ready
