@@ -93,6 +93,13 @@ class PluginManager:
     def process_installation_hooks(self, path: str, manifest: dict[str, Any]) -> None:
         for install in manifest["installs"]:
             moved_name = self.get_moved_name(manifest, install)
+            dest_parent = os.path.dirname(moved_name)
+            os.makedirs(dest_parent, exist_ok=True)
+            if install["type"] == "backend":
+                init_file = os.path.join(dest_parent, "__init__.py")
+                if not os.path.exists(init_file):
+                    with open(init_file, "w"):
+                        pass
             if os.path.exists(moved_name):
                 utils.files.remove_tree(moved_name)
             shutil.move(os.path.join(path, install["path"]), moved_name)
@@ -105,11 +112,27 @@ class PluginManager:
         with open(manifest_path) as f:
             manifest_str = f.read()
         manifest = self.parse_manifest(manifest_str)
+        backend_org_dirs: set[str] = set()
         for install in manifest["installs"]:
             path = self.get_moved_name(manifest, install)
             if os.path.exists(path):
                 utils.files.remove_tree(path)
+            if install["type"] == "backend":
+                backend_org_dirs.add(os.path.dirname(path))
         utils.files.remove_tree(plugin_path)
+        for org_dir in backend_org_dirs:
+            try:
+                entries = os.listdir(org_dir) if os.path.isdir(org_dir) else []
+            except FileNotFoundError:
+                entries = []
+            has_plugin_dirs = any(os.path.isdir(os.path.join(org_dir, entry)) and entry != "__pycache__" for entry in entries)
+            if not has_plugin_dirs:
+                init_file = os.path.join(org_dir, "__init__.py")
+                if os.path.exists(init_file):
+                    os.remove(init_file)
+                pycache_dir = os.path.join(org_dir, "__pycache__")
+                if os.path.isdir(pycache_dir):
+                    utils.files.remove_tree(pycache_dir)
 
     def get_installed_plugins(self) -> dict[str, Any]:
         failed_path = os.path.join(self.settings.DATADIR, ".plugins-failed")
