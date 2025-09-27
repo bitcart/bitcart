@@ -4,7 +4,6 @@ from sqlalchemy.orm import joinedload
 from starlette.status import HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN
 
 from api import models, utils
-from api.constants import AuthScopes
 from api.db import AsyncSession
 from api.schemas.misc import CaptchaType
 from api.schemas.policies import Policy
@@ -83,7 +82,9 @@ class AuthService:
         )
         if "full_control" not in token.permissions:
             for auth_scope in security_scopes.scopes:
-                scope = AuthScopes(auth_scope)
+                scope = str(auth_scope)
+                if scope not in utils.authorization.get_all_scopes():
+                    raise ValueError(f"Invalid scope: {scope}")
                 if scope not in token.permissions and not self.check_selective_scopes(request, scope, token):
                     await self.plugin_registry.run_hook("permission_denied", user, token, scope)
                     raise forbidden_exception
@@ -95,7 +96,7 @@ class AuthService:
     @staticmethod
     def check_selective_scopes(
         request: Request | None,
-        scope: AuthScopes,
+        scope: str,
         token: models.Token,
     ) -> bool:
         if request is None:

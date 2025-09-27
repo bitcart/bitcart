@@ -154,12 +154,17 @@ class CRUDService[ModelType: ModelProtocol]:
         return items
 
     async def create(self, data: "ModelDictT[ModelType]", user: models.User | None = None) -> ModelType:
+        from api.services.plugin_registry import PluginRegistry
+
         data = self._check_data(data, update=False)
         data = await self.prepare_data(data)
         data = await self.prepare_create(data, user)
         model = self.model_type(**data)
         await self.validate(data, model, user)
-        return await self.finalize_create(data, user)
+        result = await self.finalize_create(data, user)
+        plugin_registry = await self.container.get(PluginRegistry)
+        await plugin_registry.run_hook(f"db_create_{self.model_type.__name__.lower()}", result)
+        return result
 
     async def create_base(self, model: ModelType) -> ModelType:
         self.session.add(model)

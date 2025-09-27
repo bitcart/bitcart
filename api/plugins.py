@@ -18,6 +18,7 @@ from api import models
 from api.logging import Logger, get_exception_message, get_logger
 from api.schemas.base import Schema
 from api.settings import Settings
+from api.utils.authorization import register_scope
 
 if TYPE_CHECKING:
     from api.services.plugin_registry import PluginRegistry
@@ -293,4 +294,5 @@ __all__ = [
     "BasePlugin",
     "CoinServer",
     "BaseCoin",
+    "register_scope",
 ]

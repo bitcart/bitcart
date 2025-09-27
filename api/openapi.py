@@ -8,6 +8,7 @@ from fastapi.openapi.utils import get_openapi
 from api.constants import VERSION
 from api.logging import get_logger, log_errors
 from api.settings import Environment, Settings
+from api.utils.authorization import get_all_scopes
 
 logger = get_logger(__name__)
 
@@ -101,7 +102,7 @@ def set_openapi_generator(app: FastAPI, settings: Settings) -> None:
             with log_errors(logger), open(settings.OPENAPI_PATH) as f:
                 app.openapi_schema = json.loads(f.read())
 
-        return get_openapi(
+        schema = get_openapi(
             title=app.title,
             version=app.version,
             openapi_version=app.openapi_version,
@@ -116,6 +117,11 @@ def set_openapi_generator(app: FastAPI, settings: Settings) -> None:
             servers=app.servers,
             separate_input_output_schemas=app.separate_input_output_schemas,
         )
+        # for plugins to add custom scopes
+        schema["components"]["securitySchemes"]["Bearer"]["flows"]["password"]["scopes"] = get_all_scopes()
+        schema["components"]["securitySchemes"]["BearerOptional"]["flows"]["password"]["scopes"] = get_all_scopes()
+        app.openapi_schema = schema
+        return schema
 
     app.openapi = _openapi_generator  # type: ignore[method-assign]
 

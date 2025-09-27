@@ -9,23 +9,31 @@ from api import models
 from api.constants import TFA_RECOVERY_ALPHABET, TFA_RECOVERY_LENGTH, AuthScopes
 from api.types import AuthServiceProtocol
 
-oauth_kwargs = {
-    "tokenUrl": "/token/oauth2",
-    "scopes": {
-        AuthScopes.SERVER_MANAGEMENT: "Edit server settings",
-        AuthScopes.TOKEN_MANAGEMENT: "Create, list or edit tokens",
-        AuthScopes.WALLET_MANAGEMENT: "Create, list or edit wallets",
-        AuthScopes.STORE_MANAGEMENT: "Create, list or edit stores",
-        AuthScopes.DISCOUNT_MANAGEMENT: "Create, list or edit discounts",
-        AuthScopes.PRODUCT_MANAGEMENT: "Create, list or edit products",
-        AuthScopes.INVOICE_MANAGEMENT: "Create, list or edit invoices",
-        AuthScopes.PAYOUT_MANAGEMENT: "Create, list or edit payouts",
-        AuthScopes.NOTIFICATION_MANAGEMENT: "Create, list or edit notification providers",
-        AuthScopes.TEMPLATE_MANAGEMENT: "Create, list or edit templates",
-        AuthScopes.FILE_MANAGEMENT: "Create, list or edit files",
-        AuthScopes.FULL_CONTROL: "Full control over what current user has",
-    },
+CORE_SCOPES: dict[AuthScopes, str] = {
+    AuthScopes.SERVER_MANAGEMENT: "Edit server settings",
+    AuthScopes.TOKEN_MANAGEMENT: "Create, list or edit tokens",
+    AuthScopes.WALLET_MANAGEMENT: "Create, list or edit wallets",
+    AuthScopes.STORE_MANAGEMENT: "Create, list or edit stores",
+    AuthScopes.DISCOUNT_MANAGEMENT: "Create, list or edit discounts",
+    AuthScopes.PRODUCT_MANAGEMENT: "Create, list or edit products",
+    AuthScopes.INVOICE_MANAGEMENT: "Create, list or edit invoices",
+    AuthScopes.PAYOUT_MANAGEMENT: "Create, list or edit payouts",
+    AuthScopes.NOTIFICATION_MANAGEMENT: "Create, list or edit notification providers",
+    AuthScopes.TEMPLATE_MANAGEMENT: "Create, list or edit templates",
+    AuthScopes.FILE_MANAGEMENT: "Create, list or edit files",
+    AuthScopes.FULL_CONTROL: "Full control over what current user has",
 }
+CORE_SCOPES_STR = {k.value: v for k, v in CORE_SCOPES.items()}
+PLUGIN_SCOPES: dict[str, str] = {}
+
+
+def get_all_scopes() -> dict[str, str]:
+    return {**CORE_SCOPES_STR, **PLUGIN_SCOPES}
+
+
+def register_scope(name: str, description: str) -> None:
+    PLUGIN_SCOPES[name] = description
+
 
 bearer_description = """Token authorization. Get a token by sending a POST request to `/token` endpoint (JSON-mode, preferred)
 or `/token/oauth2` OAuth2-compatible endpoint.
@@ -58,7 +66,8 @@ class AuthDependency(OAuth2PasswordBearer):
         self.return_token = return_token
         self.token = token
         super().__init__(
-            **oauth_kwargs,  # type: ignore[arg-type]
+            tokenUrl="/token/oauth2",
+            scopes=get_all_scopes(),
             auto_error=token_required,
             scheme_name="Bearer" if token_required else "BearerOptional",
             description=bearer_description if token_required else optional_bearer_description,
@@ -78,9 +87,9 @@ class AuthDependency(OAuth2PasswordBearer):
                 return None, None
             return None
         for auth_scope in security_scopes.scopes:
-            if not isinstance(auth_scope, AuthScopes):
-                raise ValueError(f"Invalid scope: {auth_scope}")
-            AuthScopes(auth_scope)  # check validation
+            scope_name = str(auth_scope)
+            if scope_name not in get_all_scopes():
+                raise ValueError(f"Invalid scope: {scope_name}")
         header_token: str | None = self.token if self.token else await super().__call__(request)
         user, token = await auth_service.find_user_and_check_permissions(header_token, security_scopes, request)
         if self.return_token:

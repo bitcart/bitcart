@@ -175,7 +175,7 @@ def create_crud_router(
     router: APIRouter | None = None,
     auth_config: dict[str, bool] | bool = True,
     disabled_endpoints: dict[str, bool] | None = None,
-    required_scopes: list[AuthScopes] | None = None,
+    required_scopes: list[str | AuthScopes] | None = None,
 ) -> APIRouter:
     if not TYPE_CHECKING:
         TService = service_class
