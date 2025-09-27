@@ -9,7 +9,7 @@ from alembic.config import Config
 from dishka import AsyncContainer, Scope
 from fastapi import FastAPI
 
-from api import models, templates
+from api import templates
 from api.logging import get_exception_message, get_logger
 from api.plugins import BasePlugin, PluginContext, PluginObjects, jsonable_encoder
 from api.schemas.base import Schema
@@ -184,18 +184,6 @@ class PluginRegistry:
         await self.client_broker.publish(
             "plugin_task_client", PluginTaskMessage(event=name, data=data.model_dump(), for_worker=for_worker)
         )
-
-    def update_metadata(self, obj: models.RecordModel, key: str, value: Any) -> models.Model:
-        obj.meta[key] = value
-        return obj
-
-    def get_metadata(self, obj: models.RecordModel, key: str, default: Any = None) -> Any:
-        return obj.meta.get(key, default)
-
-    def delete_metadata(self, obj: models.RecordModel, key: str) -> models.Model:
-        if key in obj.meta:
-            del obj.meta[key]
-        return obj
 
     async def get_plugin_key_by_lookup(self, lookup_name: str, lookup_org: str) -> str | None:
         async with self.container(scope=Scope.REQUEST) as container:

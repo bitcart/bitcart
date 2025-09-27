@@ -40,6 +40,21 @@ def jsonable_encoder(obj: Any) -> Any:
     return TypeAdapter(Any).dump_python(obj, mode="json")
 
 
+def update_metadata[T: models.RecordModel](obj: T, key: str, value: Any) -> T:
+    obj.meta[key] = jsonable_encoder(value)
+    return obj
+
+
+def get_metadata[T: models.RecordModel](obj: T, key: str, default: Any = None) -> Any:
+    return obj.meta.get(key, default)
+
+
+def delete_metadata[T: models.RecordModel](obj: T, key: str) -> T:
+    if key in obj.meta:
+        del obj.meta[key]
+    return obj
+
+
 # Exposed public API
 class PluginContext:
     def __init__(self, plugin_registry: "PluginRegistry", container: DIContainer):
@@ -74,15 +89,6 @@ class PluginContext:
 
     def json_encode(self, obj: Any) -> Any:
         return self.plugin_registry.json_encode(obj)
-
-    def update_metadata(self, obj: models.RecordModel, key: str, value: Any) -> models.Model:
-        return self.plugin_registry.update_metadata(obj, key, value)
-
-    def get_metadata(self, obj: models.RecordModel, key: str, default: Any = None) -> Any:
-        return self.plugin_registry.get_metadata(obj, key, default)
-
-    def delete_metadata(self, obj: models.RecordModel, key: str) -> models.Model:
-        return self.plugin_registry.delete_metadata(obj, key)
 
     async def get_plugin_key_by_lookup(self, lookup_name: str, lookup_org: str) -> str | None:
         return await self.plugin_registry.get_plugin_key_by_lookup(lookup_name, lookup_org)
