@@ -93,7 +93,6 @@ def get_app(process: Process) -> TasksBroker:
     settings = Settings(IS_WORKER=True)
     configure_logfire(settings, "worker")
     configure_logging(settings=settings, logfire=True)
-    # TODO: investigate graceful_timeout
     plugin_classes, plugin_providers = load_plugins(settings)
     plugin_objects = init_plugins(plugin_classes)
     plugin_context = build_plugin_di_context(plugin_objects)

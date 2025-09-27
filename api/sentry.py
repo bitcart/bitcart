@@ -7,7 +7,7 @@ from api.settings import Settings
 
 
 def configure_sentry(settings: Settings) -> None:
-    if not settings.SENTRY_DSN and not settings.is_production():
+    if not settings.SENTRY_DSN or not settings.is_production():
         return
     sentry_sdk.init(
         dsn=settings.SENTRY_DSN,

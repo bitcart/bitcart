@@ -196,7 +196,7 @@ class Logging[RendererType]:
             handler.extMatch = re.compile(r"^\d{8}(\.\w+)?$")
             handler.namer = cls.timed_log_namer
             handler.setFormatter(formatter)
-            handler.setLevel(level)  # TODO: maybe debug here?
+            handler.setLevel(level)
             return handler
         return None
 
