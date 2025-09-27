@@ -17,7 +17,7 @@ bitcart-docker
 env/
 htmlcov/
 modules/*
-!modules/.gitkeep
+!modules/__init__.py
 venv
 .venv
 .prettiercache
