@@ -1,5 +1,6 @@
 import json
-from collections.abc import Callable
+from collections import defaultdict
+from collections.abc import Awaitable, Callable
 from typing import Any, TypeVar
 
 from dishka import AsyncContainer
@@ -12,9 +13,15 @@ from api.services.crud.repositories import SettingRepository
 T = TypeVar("T", bound=Schema)
 
 
-def process_schema(schema_class: type[Schema]) -> Callable[..., Any]:
-    def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
-        func._process_schema = schema_class  # type: ignore
+type SettingServiceProcessor[S: Schema] = Callable[["SettingService", S], Awaitable[None]]
+EXTERNAL_SCHEMA_PROCESSORS: dict[type[Schema], list[SettingServiceProcessor[Any]]] = defaultdict(list)
+
+
+def process_schema[S: Schema](
+    schema_class: type[S],
+) -> Callable[[SettingServiceProcessor[S]], SettingServiceProcessor[S]]:
+    def decorator(func: SettingServiceProcessor[S]) -> SettingServiceProcessor[S]:
+        EXTERNAL_SCHEMA_PROCESSORS[schema_class].append(func)
         return func
 
     return decorator
@@ -24,21 +31,11 @@ class SettingService:
     def __init__(self, setting_repository: SettingRepository, container: AsyncContainer) -> None:
         self.setting_repository = setting_repository
         self.container = container
-        self._async_init_handlers: dict[type[Schema], Callable[..., Any]] = {}
-        self._register_handlers()
-
-    def _register_handlers(self) -> None:
-        for attr_name in dir(self):
-            attr = getattr(self, attr_name)
-            if hasattr(attr, "_process_schema"):
-                schema_class = attr._process_schema
-                self._async_init_handlers[schema_class] = attr
 
     async def _dispatch_async_init(self, data: Schema) -> None:
         schema_class = type(data)
-        if schema_class in self._async_init_handlers:
-            handler = self._async_init_handlers[schema_class]
-            await handler(data)
+        for handler in EXTERNAL_SCHEMA_PROCESSORS.get(schema_class, []):
+            await handler(self, data)
 
     async def get_setting(self, scheme: type[T], name: str | None = None) -> T:
         name = name or scheme.__name__.lower()
