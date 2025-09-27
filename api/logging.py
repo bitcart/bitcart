@@ -18,8 +18,6 @@ from api.constants import LOGSERVER_PORT
 from api.schemas.base import Schema
 from api.settings import Settings
 
-logging.getLogger("sqlalchemy.engine.Engine").handlers = [logging.NullHandler()]
-
 RendererType = TypeVar("RendererType")
 
 Logger = structlog.stdlib.BoundLogger
@@ -109,11 +107,19 @@ class Logging[RendererType]:
         match module:
             case "asyncio":
                 return logging.INFO
+            case "uvicorn" | "uvicorn.error":
+                return logging.INFO
             case _:
                 return level
 
+    @staticmethod
+    def configure_third_party() -> None:
+        logging.getLogger("sqlalchemy.engine.Engine").handlers = [logging.NullHandler()]
+        logging.getLogger("python_multipart").setLevel(logging.CRITICAL + 1)
+
     @classmethod
     def configure_stdlib(cls, *, settings: Settings, logfire: bool, logserver: bool = False) -> None:
+        cls.configure_third_party()
         level = cls.get_level(settings)
         console_formatter = structlog.stdlib.ProcessorFormatter(
             foreign_pre_chain=cls.get_common_processors(logfire=logfire),
