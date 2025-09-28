@@ -2,6 +2,25 @@
 
 ## Latest changes
 
+## 0.10.0.0
+
+### New backend
+
+Bitcart backend was rewritten from scratch to the new backend, which finally allowed us to upgrade to Python 3.12+, and now we use modern database ORMs
+which are maintained and well-written.
+
+When porting, the functionality was kept as it to preserve backwards-compatibility, but old plugins are not compatible with the new backend.
+
+If you use the ETH plugin, install version 1.0.4 to use with the new backend.
+
+The logs now feature a better format, and also they are colored if you view them from the terminal.
+
+With the new powers Bitcart backend has, it is now possible to quickly add new features.
+
+With this release, we encourage you to try contributing to Bitcart or developing your own plugin: this is the best time to do so!
+
+Also the new backend has better transaction isolation, so some possible concurrency bugs are fixed.
+
 ## 0.9.1.0
 
 Last release containing some fixes before the new backend is going to be pushed
