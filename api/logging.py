@@ -11,7 +11,6 @@ from typing import Any, TypeVar, cast
 
 import msgpack
 import structlog
-from logfire.integrations.structlog import LogfireProcessor
 from structlog.dev import plain_traceback
 
 from api.constants import LOGSERVER_PORT
@@ -79,7 +78,6 @@ class Logging[RendererType]:
             structlog.stdlib.PositionalArgumentsFormatter(),
             structlog.processors.UnicodeDecoder(),
             structlog.processors.StackInfoRenderer(),
-            *([LogfireProcessor()] if logfire else []),
         ]
 
     @classmethod

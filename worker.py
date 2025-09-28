@@ -24,6 +24,7 @@ from api.logging import get_logger
 from api.logserver import main as start_logserver
 from api.logserver import wait_for_port
 from api.plugins import PluginObjects, build_plugin_di_context, init_plugins, load_plugins
+from api.sentry import configure_sentry
 from api.services.coins import CoinService
 from api.services.notification_manager import NotificationManager
 from api.services.plugin_registry import PluginRegistry
@@ -91,6 +92,7 @@ async def lifespan_stop(container: AsyncContainer, state: TaskiqState) -> None:
 
 def get_app(process: Process) -> TasksBroker:
     settings = Settings(IS_WORKER=True)
+    configure_sentry(settings)
     configure_logfire(settings, "worker")
     configure_logging(settings=settings, logfire=True)
     plugin_classes, plugin_providers = load_plugins(settings)
