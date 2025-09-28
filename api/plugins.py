@@ -38,6 +38,9 @@ def get_plugin_logger(module_name: str) -> Logger:
 
 
 def jsonable_encoder(obj: Any) -> Any:
+    if isinstance(obj, models.Model):
+        obj = vars(obj)
+        obj = {key: value for key, value in obj.items() if not key.startswith("_sa")}
     return TypeAdapter(Any).dump_python(obj, mode="json")
 
 
