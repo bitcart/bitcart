@@ -36,73 +36,81 @@ def upgrade() -> None:
     )
     op.execute(
         """
-            CREATE OR REPLACE FUNCTION get_methods_inds(inv_id TEXT)
-            RETURNS TABLE (index int, payment_method_id text) AS
-            $$
-            BEGIN
-                RETURN QUERY
-                SELECT
-                    CASE
-                        WHEN pm_count > 1 AND label = '' AND lightning = FALSE THEN
-                        CAST(ROW_NUMBER() OVER(PARTITION BY symbol ORDER BY id) AS INTEGER)
-                        ELSE NULL
-                    END AS index,
-                    id AS payment_method_id
-                FROM (
-                    SELECT
-                        id,
-                        symbol,
-                        label,
-                        lightning,
-                        COUNT(*) OVER (PARTITION BY symbol) AS pm_count
-                    FROM
-                        paymentmethods
-                    WHERE
-                        invoice_id = inv_id
-                ) AS subquery;
-            END;
-            $$ LANGUAGE plpgsql;
-
-            CREATE OR REPLACE FUNCTION get_name(p_id TEXT, p_index INTEGER)
-            RETURNS TEXT AS
-            $$
-            DECLARE
-                v_label TEXT;
-                v_symbol TEXT;
-                v_lightning BOOLEAN;
-                name TEXT;
-            BEGIN
-                SELECT label, symbol, lightning INTO v_label, v_symbol, v_lightning
-                FROM paymentmethods
-                WHERE id = p_id;
-
-                IF LENGTH(v_label) != 0 THEN
-                    name := v_label;
-                ELSE
-                    name := v_symbol;
-                    IF v_lightning THEN
-                        name := name || ' (⚡)';
-                    END IF;
-                    IF p_index IS NOT NULL THEN
-                        name := name || ' (' || p_index || ')';
-                    END IF;
-                    name := UPPER(name);
-                END IF;
-                RETURN name;
-            END;
-            $$
-            LANGUAGE plpgsql;
-
-            UPDATE invoices AS i
-            SET payment_id = subquery.payment_id
+        CREATE OR REPLACE FUNCTION get_methods_inds(inv_id TEXT)
+        RETURNS TABLE (index int, payment_method_id text) AS
+        $$
+        BEGIN
+            RETURN QUERY
+            SELECT
+                CASE
+                    WHEN pm_count > 1 AND label = '' AND lightning = FALSE THEN
+                    CAST(ROW_NUMBER() OVER(PARTITION BY symbol ORDER BY id) AS INTEGER)
+                    ELSE NULL
+                END AS index,
+                id AS payment_method_id
             FROM (
-                SELECT inv.id, inv.paid_currency, gmi.payment_id, get_name(gmi.payment_id, gmi.index)
-                FROM invoices AS inv
-                JOIN paymentmethods AS pm ON pm.invoice_id = inv.id
-                JOIN LATERAL get_methods_inds(inv.id) AS gmi(index, payment_id)
-                ON starts_with(get_name(gmi.payment_id, gmi.index), inv.paid_currency) AND inv.paid_currency != ''
-            ) AS subquery(id, paid_currency, payment_id, name)
-            WHERE subquery.id = i.id;
+                SELECT
+                    id,
+                    symbol,
+                    label,
+                    lightning,
+                    COUNT(*) OVER (PARTITION BY symbol) AS pm_count
+                FROM
+                    paymentmethods
+                WHERE
+                    invoice_id = inv_id
+            ) AS subquery;
+        END;
+        $$ LANGUAGE plpgsql;
+        """
+    )
+
+    op.execute(
+        """
+        CREATE OR REPLACE FUNCTION get_name(p_id TEXT, p_index INTEGER)
+        RETURNS TEXT AS
+        $$
+        DECLARE
+            v_label TEXT;
+            v_symbol TEXT;
+            v_lightning BOOLEAN;
+            name TEXT;
+        BEGIN
+            SELECT label, symbol, lightning INTO v_label, v_symbol, v_lightning
+            FROM paymentmethods
+            WHERE id = p_id;
+
+            IF LENGTH(v_label) != 0 THEN
+                name := v_label;
+            ELSE
+                name := v_symbol;
+                IF v_lightning THEN
+                    name := name || ' (⚡)';
+                END IF;
+                IF p_index IS NOT NULL THEN
+                    name := name || ' (' || p_index || ')';
+                END IF;
+                name := UPPER(name);
+            END IF;
+            RETURN name;
+        END;
+        $$
+        LANGUAGE plpgsql;
+        """
+    )
+
+    op.execute(
+        """
+        UPDATE invoices AS i
+        SET payment_id = subquery.payment_id
+        FROM (
+            SELECT inv.id, inv.paid_currency, gmi.payment_id, get_name(gmi.payment_id, gmi.index)
+            FROM invoices AS inv
+            JOIN paymentmethods AS pm ON pm.invoice_id = inv.id
+            JOIN LATERAL get_methods_inds(inv.id) AS gmi(index, payment_id)
+            ON starts_with(get_name(gmi.payment_id, gmi.index), inv.paid_currency) AND inv.paid_currency != ''
+        ) AS subquery(id, paid_currency, payment_id, name)
+        WHERE subquery.id = i.id;
         """
     )
 
