@@ -87,6 +87,7 @@ async def lifespan_stop(container: AsyncContainer, state: TaskiqState) -> None:
         await state.scheduler_task
     plugin_registry = await container.get(PluginRegistry)
     await plugin_registry.shutdown()
+    await container.close()
     process.terminate()
 
 
