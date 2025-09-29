@@ -2,6 +2,16 @@
 
 ## Latest changes
 
+## 0.10.0.1
+
+Fix excessive memory usage of ETH-based daemons (TRX not affected)
+
+The memory usage was capped but still too high due to excessive caching, update if you want to reduce memory footprint.
+
+Fix worker and backend graceful shutdown
+
+Fix tokens list created date display
+
 ## 0.10.0.0
 
 ### New backend
