@@ -478,6 +478,18 @@ class ETHDaemon(BlockProcessorDaemon):
                 },
                 cache_allowed_requests=True,
                 request_cache_validation_threshold=None,
+                cacheable_requests={
+                    "web3_clientVersion",
+                    "net_version",
+                    "eth_getBlockTransactionCountByHash",
+                    "eth_getUncleCountByBlockHash",
+                    "eth_getBlockByHash",
+                    "eth_getTransactionByHash",
+                    "eth_getTransactionByBlockHashAndIndex",
+                    "eth_getRawTransactionByHash",
+                    "eth_getUncleByBlockHashAndIndex",
+                    "eth_chainId",
+                },
             )
             server_providers.append(provider)
         provider = MultipleProviderRPC(server_providers)
