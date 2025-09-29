@@ -2,6 +2,7 @@ import asyncio
 import contextlib
 import functools
 import platform
+import signal
 import sys
 from datetime import timedelta
 from multiprocessing import Process
@@ -117,15 +118,33 @@ def get_app(process: Process) -> TasksBroker:
     return broker
 
 
-async def start_broker(broker: TasksBroker) -> None:
+async def _run_broker_core(broker: TasksBroker, stop_event: asyncio.Event | None) -> None:
     broker.is_worker_process = True
     await broker.startup()
+    receiver_task = asyncio.create_task(run_receiver_task(broker))
     try:
-        await run_receiver_task(broker)
-    except (KeyboardInterrupt, asyncio.CancelledError):
-        pass
+        if stop_event is None:
+            with contextlib.suppress(KeyboardInterrupt, asyncio.CancelledError):
+                await receiver_task
+        else:
+            stopper_task = asyncio.create_task(stop_event.wait())
+            await asyncio.wait({receiver_task, stopper_task}, return_when=asyncio.FIRST_COMPLETED)
     finally:
+        receiver_task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await receiver_task
         await broker.shutdown()
+
+
+async def start_broker_basic(broker: TasksBroker) -> None:
+    await _run_broker_core(broker, stop_event=None)
+
+
+async def start_broker(broker: TasksBroker) -> None:
+    stop_event = asyncio.Event()
+    for sig in (signal.SIGINT, signal.SIGTERM):
+        signal.signal(sig, lambda *_: stop_event.set())
+    await _run_broker_core(broker, stop_event=stop_event)
 
 
 async def wait_loop() -> None:
@@ -139,6 +158,7 @@ async def wait_loop() -> None:
 # TODO: use CLI from taskiq
 if __name__ == "__main__":
     process = Process(target=start_logserver)
+    process.daemon = True
     process.start()
     wait_for_port()
     asyncio.run(wait_loop())

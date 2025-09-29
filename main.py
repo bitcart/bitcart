@@ -38,7 +38,7 @@ from api.tasks import broker, client_tasks_broker
 from api.types import ClientTasksBroker, TasksBroker
 from api.utils.common import excepthook_handler, handle_event_loop_exception
 from api.views import router
-from worker import start_broker
+from worker import start_broker_basic
 
 logger = get_logger("api")
 
@@ -50,7 +50,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         lambda *args, **kwargs: handle_event_loop_exception(logger, *args, **kwargs)
     )
     await app.state.broker.startup()
-    asyncio.create_task(start_broker(app.state.client_broker))
+    broker_task = asyncio.create_task(start_broker_basic(app.state.client_broker))
     plugin_registry = await app.state.dishka_container.get(PluginRegistry)
     plugin_registry.setup_app(app)
     await plugin_registry.startup()
@@ -58,6 +58,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         await app.state.dishka_container.get(service)
     yield
     await plugin_registry.shutdown()
+    broker_task.cancel()
+    with contextlib.suppress(asyncio.CancelledError):
+        await broker_task
     await app.state.dishka_container.close()
 
 
