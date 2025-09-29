@@ -1,6 +1,6 @@
 from pydantic import EmailStr
 
-from api.schemas.base import Schema
+from api.schemas.base import Schema, TimestampedSchema
 
 
 class HTTPCreateToken(Schema):
@@ -24,5 +24,5 @@ class EditToken(Schema):
     redirect_url: str = ""
 
 
-class Token(CreateDBToken):
+class Token(CreateDBToken, TimestampedSchema):
     id: str
