@@ -20,6 +20,7 @@ from starlette.responses import Response
 from starlette.staticfiles import StaticFiles
 from starlette.types import ASGIApp, Receive, Scope, Send
 
+from api.db import AsyncSession
 from api.ioc import get_providers, setup_dishka
 from api.ioc.services import ServicesProvider
 from api.logfire import (
@@ -105,6 +106,25 @@ def patch_call(instance: FastAPI) -> None:
     instance.__class__ = _
 
 
+def with_db_rollback(
+    handler: Callable[[Request, Any], Awaitable[JSONResponse]],
+) -> Callable[[Request, Any], Awaitable[JSONResponse]]:
+    """Decorator that ensures database session is rolled back before returning from exception handler.
+
+    This is necessary because when an exception handler catches an exception and returns a response,
+    the exception doesn't propagate to dishka's context manager. Without rollback, dishka will try
+    to commit the session, which may be in a bad state, causing PendingRollbackError.
+    """
+
+    async def wrapper(request: Request, exc: Any) -> JSONResponse:
+        session = await request.state.dishka_container.get(AsyncSession)
+        await session.rollback()
+        return await handler(request, exc)
+
+    return wrapper
+
+
+@with_db_rollback
 async def db_exception_handler(request: Request, exc: AdvancedAlchemyError) -> JSONResponse:
     logger.error("Database error", exc_info=exc)
     return JSONResponse(
@@ -113,6 +133,7 @@ async def db_exception_handler(request: Request, exc: AdvancedAlchemyError) -> J
     )
 
 
+@with_db_rollback
 async def db_integrity_error_handler(request: Request, exc: IntegrityError) -> JSONResponse:
     return JSONResponse(
         status_code=422,
@@ -120,6 +141,7 @@ async def db_integrity_error_handler(request: Request, exc: IntegrityError) -> J
     )
 
 
+@with_db_rollback
 async def db_not_found_error_handler(request: Request, exc: NotFoundError) -> JSONResponse:
     return JSONResponse(
         status_code=404,
@@ -142,9 +164,9 @@ def add_exception_handlers(app: FastAPI) -> None:
     async def exception_handler(request: Request, exc: Exception) -> Response:
         # this happens when exception is during container finalization
         # as it is rare enough, we must log it
-        logger.error(traceback.format_exc())
         if type(exc) in exception_handlers:
             return await exception_handlers[type(exc)](request, exc)
+        logger.error(traceback.format_exc())
         return PlainTextResponse("Internal Server Error", status_code=500)
 
 

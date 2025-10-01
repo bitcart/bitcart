@@ -45,4 +45,4 @@ class DisplayUser(InfoUser, TimestampedSchema):
 
 
 class DisplayUserWithToken(DisplayUser):
-    token: str
+    token: str | None = None
