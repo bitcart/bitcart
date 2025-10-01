@@ -433,7 +433,8 @@ class InvoiceService(CRUDService[models.Invoice]):
         await super().load_one(item)
         used_payment = next((payment for payment in item.payments if payment.is_used), None)
         item.payment_id = used_payment.id if used_payment else None
-        item.refund_id = None
+        item.refund_id = item.refunds[0].id if item.refunds else None
+        item.product_names = {v.id: v.name for v in item.products}
 
     async def update_confirmations(
         self,

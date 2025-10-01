@@ -33,6 +33,7 @@ class InvoiceRepository(CRUDRepository[models.Invoice]):
         selectinload(models.Invoice.products_associations).subqueryload(models.ProductxInvoice.product),
         selectinload(models.Invoice.payments),
         selectinload(models.Invoice.store).subqueryload(models.Store.notifications),
+        selectinload(models.Invoice.refunds),
     ]
 
     async def get_invoices_for_expiry(self, now: datetime) -> AsyncScalarResult[models.Invoice]:

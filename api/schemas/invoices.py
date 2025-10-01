@@ -84,7 +84,6 @@ class DisplayInvoice(MetadataOutput, BaseInvoice, TimestampedSchema):
         from api.services.crud import invoices
 
         if "products" in values:
-            values["product_names"] = {v.id: v.name for v in values["products"]}
             values["products"] = [v.id for v in values["products"]]
         if "price" in values and "currency" in values:
             values["price"] = currency_table.format_decimal(values["currency"], values["price"])

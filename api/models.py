@@ -462,10 +462,15 @@ class Invoice(RecordModel):
 
     payment_id: str | None
     refund_id: str | None
+    product_names: dict[str, str]
 
     @declared_attr
     def store(cls) -> Mapped["Store"]:
         return relationship("Store", lazy="raise", foreign_keys="[Invoice.store_id]")
+
+    @declared_attr
+    def refunds(cls) -> Mapped[list["Refund"]]:
+        return relationship("Refund", lazy="raise", foreign_keys="[Refund.invoice_id]", viewonly=True)
 
     @property
     def expiration_seconds(self) -> int:
@@ -574,7 +579,7 @@ class Refund(RecordModel):
 
     @declared_attr
     def invoice(cls) -> Mapped["Invoice"]:
-        return relationship("Invoice", lazy="raise", foreign_keys="[Refund.invoice_id]")
+        return relationship("Invoice", lazy="raise", foreign_keys="[Refund.invoice_id]", back_populates="refunds")
 
     @declared_attr
     def payout(cls) -> Mapped["Payout"]:
