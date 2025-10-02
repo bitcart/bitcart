@@ -1,9 +1,6 @@
 {
     "create": {
-        "name": "test",
-        "metadata": {
-            "foo1": "bar1"
-        }
+        "name": "test"
     },
     "patch": {
         "email": "test@example.com",
@@ -42,9 +39,7 @@
         },
         "notifications": [],
         "templates": {},
-        "metadata": {
-            "foo1": "bar1"
-        }
+        "metadata": {}
     },
     "count": 1
 }

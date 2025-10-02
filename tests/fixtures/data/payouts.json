@@ -1,10 +1,7 @@
 {
     "create": {
         "destination": "tb1qz28nh6ukmyumqdvysnd726f2yw77yt5ch39aga",
-        "amount": 5,
-        "metadata": {
-            "foo1": "bar1"
-        }
+        "amount": 5
     },
     "patch": {
         "max_fee": 1,
@@ -21,9 +18,7 @@
         "status": "pending",
         "tx_hash": null,
         "used_fee": null,
-        "metadata": {
-            "foo1": "bar1"
-        }
+        "metadata": {}
     },
     "count": 1
 }

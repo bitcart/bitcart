@@ -2,10 +2,7 @@
     "create": {
         "name": "test",
         "percent": 50,
-        "end_date": "2020-01-01T18:19:34.503627Z",
-        "metadata": {
-            "foo1": "bar1"
-        }
+        "end_date": "2020-01-01T18:19:34.503627Z"
     },
     "patch": {
         "name": "test2",
@@ -17,9 +14,7 @@
         "name": "test",
         "percent": 50,
         "promocode": "",
-        "metadata": {
-            "foo1": "bar1"
-        }
+        "metadata": {}
     },
     "count": 1
 }

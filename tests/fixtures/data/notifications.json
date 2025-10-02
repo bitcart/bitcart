@@ -2,10 +2,7 @@
     "create": {
         "name": "Telegram",
         "provider": "Telegram",
-        "data": {},
-        "metadata": {
-            "foo1": "bar1"
-        }
+        "data": {}
     },
     "patch": {
         "name": "Telegram2"
@@ -14,9 +11,7 @@
         "data": {},
         "name": "Telegram",
         "provider": "Telegram",
-        "metadata": {
-            "foo1": "bar1"
-        }
+        "metadata": {}
     },
     "count": 1
 }

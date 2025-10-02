@@ -2,10 +2,7 @@
     "create": {
         "name": "test",
         "price": 0.5,
-        "quantity": 5,
-        "metadata": {
-            "foo1": "bar1"
-        }
+        "quantity": 5
     },
     "patch": {
         "download_url": "https://example.com",
@@ -21,9 +18,7 @@
         "name": "test",
         "image": "",
         "category": "",
-        "metadata": {
-            "foo1": "bar1"
-        }
+        "metadata": {}
     },
     "count": 1
 }

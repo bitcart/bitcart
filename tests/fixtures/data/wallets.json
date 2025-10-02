@@ -3,10 +3,7 @@
         "name": "test",
         "xpub": "tpubDC9zYPoSZUk5W8Rfaex3k324fi1hDLHapbSjPd4gbr7AE8MLSGEy76fNp5m6sVLBy9p2iTjRkiguVyb8iEHCdUBC7SXnhHdHMpXwFcrVMyA",
         "label": "customlabel",
-        "hint": "test",
-        "metadata": {
-            "foo1": "bar1"
-        }
+        "hint": "test"
     },
     "patch": {
         "name": "test1",
@@ -21,9 +18,7 @@
         "hint": "test",
         "lightning_enabled": false,
         "additional_xpub_data": {},
-        "metadata": {
-            "foo1": "bar1"
-        }
+        "metadata": {}
     },
     "count": 1
 }
