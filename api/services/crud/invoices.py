@@ -104,6 +104,13 @@ class InvoiceService(CRUDService[models.Invoice]):
         data["user_id"] = store.user_id
         return store.user_id
 
+    async def _validate_payment_methods(self, payment_methods: list[str], store_id: str) -> None:
+        store = await self.store_repository.get_one(id=store_id, load=[selectinload(models.Store.wallets)])
+        store_wallet_ids = {wallet.id for wallet in store.wallets}
+        for wallet_id in payment_methods:
+            if wallet_id not in store_wallet_ids:
+                raise HTTPException(422, f"Wallet {wallet_id} is not connected to store {store_id}")
+
     async def finalize_create(self, data: dict[str, Any], user: models.User | None = None) -> models.Invoice:
         return await self.create_invoice_flow(data, user)
 
@@ -131,17 +138,27 @@ class InvoiceService(CRUDService[models.Invoice]):
         if isinstance(products, list):
             products = dict.fromkeys(products, 1)
         await self.validate_m2m(models.Product, list(products.keys()), data.get("user_id"))
+        payment_methods = data.get("payment_methods")
+        if payment_methods is not None:
+            if not payment_methods:
+                raise HTTPException(422, "Payment methods cannot be empty")
+            store_id = data.get("store_id", model.store_id)
+            if store_id:
+                await self._validate_payment_methods(payment_methods, store_id)
 
     async def create_invoice_flow(self, data: dict[str, Any], user: models.User | None = None) -> models.Invoice:
         start_time = time.time()
         products = data.pop("products", {})
         if isinstance(products, list):
             products = dict.fromkeys(products, 1)
+        payment_methods = data.pop("payment_methods", None)
         store = await self.store_repository.get_one(id=data["store_id"], load=[selectinload(models.Store.wallets)])
         if not store.checkout_settings.allow_anonymous_invoice_creation and not user:
             raise HTTPException(403, "Anonymous invoice creation is disabled")
         if not store.wallets:
             raise HTTPException(422, "No wallet linked")
+        wallet_ids = payment_methods if payment_methods is not None else [x.id for x in store.wallets]
+        data["payment_methods"] = wallet_ids
         data["expiration"] = data["expiration"] or store.checkout_settings.expiration
         data["currency"] = data["currency"] or store.default_currency or "USD"
         promocode = data.get("promocode")
@@ -162,9 +179,7 @@ class InvoiceService(CRUDService[models.Invoice]):
             discounts = product.discounts
         discounts = list(filter(lambda x: current_date <= x.end_date, discounts))
         await self.session.commit()
-        await self.update_invoice_payments(
-            invoice, [x.id for x in store.wallets], discounts, store, product, promocode, start_time
-        )
+        await self.update_invoice_payments(invoice, wallet_ids, discounts, store, product, promocode, start_time)
         return invoice
 
     async def update_invoice_payments(

@@ -440,6 +440,7 @@ class Invoice(RecordModel):
     user_id: Mapped[str | None] = mapped_column(Text, ForeignKey(User.id, ondelete="SET NULL"))
     creation_time: Mapped[Decimal | None] = mapped_column(Numeric(36, 18))
     paid_date: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
+    payment_methods: Mapped[list[str]] = mapped_column(MutableList.as_mutable(ARRAY(Text)), default=list)
 
     payments = relationship(
         "PaymentMethod",

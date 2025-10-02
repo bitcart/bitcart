@@ -1938,3 +1938,58 @@ async def test_wallet_symbol(client: TestClient, token: str, wallet: dict[str, A
     assert response.status_code == 401
     response = await client.get("/wallets/non-existent/symbol", headers={"Authorization": f"Bearer {token}"})
     assert response.status_code == 404
+
+
+async def test_invoice_custom_payment_methods(client: TestClient, token: str) -> None:
+    wallet1 = await create_wallet(client, token)
+    wallet2 = await create_wallet(client, token)
+    wallet3 = await create_wallet(client, token)
+    store = await create_store(client, token, custom_store_attrs={"wallets": [wallet1["id"], wallet2["id"], wallet3["id"]]})
+    store_id = store["id"]
+    resp = await client.post("/invoices", json={"store_id": store_id, "price": 10})
+    assert resp.status_code == 200
+    invoice_default = resp.json()
+    assert "payment_methods" in invoice_default
+    assert set(invoice_default["payment_methods"]) == {wallet1["id"], wallet2["id"], wallet3["id"]}
+    assert len(invoice_default["payments"]) == 3
+    payment_wallet_ids = {payment["wallet_id"] for payment in invoice_default["payments"]}
+    assert payment_wallet_ids == {wallet1["id"], wallet2["id"], wallet3["id"]}
+    resp = await client.post(
+        "/invoices",
+        json={"store_id": store_id, "price": 10, "payment_methods": [wallet1["id"], wallet2["id"]]},
+    )
+    assert resp.status_code == 200
+    invoice_custom = resp.json()
+    assert "payment_methods" in invoice_custom
+    assert invoice_custom["payment_methods"] == [wallet1["id"], wallet2["id"]]
+    assert len(invoice_custom["payments"]) == 2
+    for idx, payment in enumerate(invoice_custom["payments"]):
+        assert payment["wallet_id"] == invoice_custom["payment_methods"][idx]
+    resp = await client.post("/invoices", json={"store_id": store_id, "price": 10, "payment_methods": [wallet3["id"]]})
+    assert resp.status_code == 200
+    invoice_single = resp.json()
+    assert invoice_single["payment_methods"] == [wallet3["id"]]
+    assert len(invoice_single["payments"]) == 1
+    assert invoice_single["payments"][0]["wallet_id"] == wallet3["id"]
+    resp = await client.post("/invoices", json={"store_id": store_id, "price": 10, "payment_methods": []})
+    assert resp.status_code == 422
+    assert "Payment methods cannot be empty" in resp.json()["detail"]
+    other_wallet = await create_wallet(client, token)
+    resp = await client.post(
+        "/invoices",
+        json={"store_id": store_id, "price": 10, "payment_methods": [other_wallet["id"]]},
+    )
+    assert resp.status_code == 422
+    assert "not connected to store" in resp.json()["detail"]
+    resp = await client.post(
+        "/invoices",
+        json={"store_id": store_id, "price": 10, "payment_methods": [wallet1["id"], other_wallet["id"]]},
+    )
+    assert resp.status_code == 422
+    assert "not connected to store" in resp.json()["detail"]
+    resp = await client.get(f"/invoices/{invoice_custom['id']}")
+    assert resp.status_code == 200
+    retrieved_invoice = resp.json()
+    assert retrieved_invoice["payment_methods"] == [wallet1["id"], wallet2["id"]]
+    for idx, payment in enumerate(retrieved_invoice["payments"]):
+        assert payment["wallet_id"] == retrieved_invoice["payment_methods"][idx]

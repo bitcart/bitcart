@@ -32,6 +32,7 @@ class CreateInvoice(BaseInvoice):
     promocode: str | None = ""
     products: list[str] | dict[str, int] = {}
     expiration: int | None = None
+    payment_methods: list[str] | None = None
 
     @field_validator("currency")
     @classmethod
@@ -77,6 +78,7 @@ class DisplayInvoice(MetadataOutput, BaseInvoice, TimestampedSchema):
     products: list[str]
     sent_amount: DecimalAsFloat
     expiration: int
+    payment_methods: list[str]
 
     @model_validator(mode="before")
     @classmethod
