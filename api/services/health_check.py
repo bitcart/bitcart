@@ -7,6 +7,7 @@ from api.schemas.policies import Policy
 from api.services.crud.stores import StoreService
 from api.services.crud.templates import TemplateService
 from api.services.notification_manager import NotificationManager
+from api.services.plugin_registry import PluginRegistry
 from api.services.server_manager import ServerManager
 from api.services.settings import SettingService
 from api.utils.common import run_repeated
@@ -18,8 +19,9 @@ class HealthCheckService:
     CHECK_INTERVAL = 60 * 5
     START_DELAY = 60 * 2
 
-    def __init__(self, container: AsyncContainer) -> None:
+    def __init__(self, container: AsyncContainer, plugin_registry: PluginRegistry) -> None:
         self.container = container
+        self.plugin_registry = plugin_registry
 
     async def start(self) -> None:
         asyncio.create_task(run_repeated(self.check_daemon_health, self.CHECK_INTERVAL, self.START_DELAY))
@@ -35,6 +37,7 @@ class HealthCheckService:
             failed_daemons = [daemon for daemon in syncinfo_data if not daemon.get("synchronized", False)]
             if not failed_daemons:
                 return
+            await self.plugin_registry.run_hook("failed_daemons_health_check", syncinfo_data, failed_daemons)
             failed_currencies = ", ".join([d["currency"] for d in failed_daemons])
             logger.warning(f"Detected {len(failed_daemons)} failed daemon(s): {failed_currencies}")
             policy = await setting_service.get_setting(Policy)
