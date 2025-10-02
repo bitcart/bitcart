@@ -2,6 +2,7 @@ from typing import Any
 
 from dishka import FromDishka
 from fastapi import Body, Query, Security
+from fastapi.responses import JSONResponse
 
 from api import models, utils
 from api.constants import AuthScopes
@@ -34,7 +35,9 @@ async def get_item(
     store_service: FromDishka[StoreService],
     user: models.User | None = Security(utils.authorization.optional_auth_dependency, scopes=[AuthScopes.STORE_MANAGEMENT]),
 ) -> Any:
-    return await store_service.get_public_store(model_id, user)
+    store_resp = await store_service.get_public_store(model_id, user)
+    # because fastapi is somehow dropping metadata, we convert manually
+    return JSONResponse(store_resp.model_dump(mode="json"))
 
 
 @router.get("/{model_id}/ping")
