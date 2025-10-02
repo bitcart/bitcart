@@ -446,12 +446,14 @@ async def test_policies(client: TestClient, token: str) -> None:
         "use_html_templates": False,
         "global_templates": {
             "forgotpassword": "",
+            "syncinfo": "",
             "verifyemail": "",
         },
         "explorer_urls": {
             "btc": static_data.DEFAULT_EXPLORER,
         },
         "rpc_urls": {},
+        "health_check_store_id": "",
     }
     assert (await client.post("/manage/policies")).status_code == 401
     resp = await client.post(
@@ -476,6 +478,7 @@ async def test_policies(client: TestClient, token: str) -> None:
         "use_html_templates": False,
         "global_templates": {
             "forgotpassword": "",
+            "syncinfo": "",
             "verifyemail": "",
         },
         "explorer_urls": {
@@ -483,6 +486,7 @@ async def test_policies(client: TestClient, token: str) -> None:
         },
         "rpc_urls": {},
         "email_settings": EmailSettings().model_dump(),
+        "health_check_store_id": "",
     }
     assert (await client.post("/users", json=static_data.POLICY_USER)).status_code == 422  # registration is off
     # Test for loading data from db instead of loading scheme's defaults
@@ -501,12 +505,14 @@ async def test_policies(client: TestClient, token: str) -> None:
         "use_html_templates": False,
         "global_templates": {
             "forgotpassword": "",
+            "syncinfo": "",
             "verifyemail": "",
         },
         "explorer_urls": {
             "btc": static_data.DEFAULT_EXPLORER,
         },
         "rpc_urls": {},
+        "health_check_store_id": "",
     }
     resp = await client.post(
         "/manage/policies",
@@ -530,6 +536,7 @@ async def test_policies(client: TestClient, token: str) -> None:
         "use_html_templates": False,
         "global_templates": {
             "forgotpassword": "",
+            "syncinfo": "",
             "verifyemail": "",
         },
         "explorer_urls": {
@@ -537,6 +544,7 @@ async def test_policies(client: TestClient, token: str) -> None:
         },
         "rpc_urls": {},
         "email_settings": EmailSettings().model_dump(),
+        "health_check_store_id": "",
     }
     assert (await client.post("/users", json=static_data.POLICY_USER)).status_code == 200  # registration is on again
     resp = await client.get("/manage/stores")

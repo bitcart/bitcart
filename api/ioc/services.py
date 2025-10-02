@@ -21,6 +21,7 @@ from api.services.exchange_rate import ExchangeRateService
 from api.services.ext.configurator import ConfiguratorService
 from api.services.ext.tor import TorService
 from api.services.ext.update import UpdateCheckService
+from api.services.health_check import HealthCheckService
 from api.services.ipn_sender import IPNSender
 from api.services.notification_manager import NotificationManager
 from api.services.payment_processor import PaymentProcessor
@@ -68,6 +69,7 @@ class ServicesProvider(Provider):
         ConfiguratorService,
         NotificationManager,
         WalletDataService,
+        HealthCheckService,
         scope=Scope.APP,  # for tests isolation
     )
 

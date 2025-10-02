@@ -89,3 +89,7 @@ class TemplateService(CRUDService[models.Template]):
     ) -> str:
         template = await self.get_template("merchant_refund_notify", store.user_id, store)
         return template.render(store=store, invoice=invoice, refund=refund)
+
+    async def get_syncinfo_template(self, syncinfo_data: list[dict[str, Any]], failed_daemons: list[dict[str, Any]]) -> str:
+        template = await self.get_global_template("syncinfo")
+        return template.render(syncinfo_data=syncinfo_data, failed_daemons=failed_daemons)

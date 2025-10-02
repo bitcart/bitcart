@@ -98,8 +98,8 @@ class ServerManager:
             "./cleanup.sh", "server_cleanup_images", "Successfully started cleanup process!"
         )
 
-    async def fetch_currency_info(self, coin: str) -> dict[str, Any]:  # TODO: improve reliability and add notifications
-        info = {"running": True, "currency": self.coin_service.cryptos[coin].coin_name}
+    async def fetch_currency_info(self, coin: str) -> dict[str, Any]:
+        info = {"running": True, "currency": self.coin_service.cryptos[coin].coin_name, "blockchain_height": 0}
         try:
             info.update(await self.coin_service.cryptos[coin].server.getinfo())
         except BitcartBaseError:

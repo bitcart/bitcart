@@ -28,6 +28,7 @@ class Policy(Schema):
     explorer_urls: dict[str, str] = {}
     rpc_urls: dict[str, str] = {}
     email_settings: EmailSettings = EmailSettings()
+    health_check_store_id: str = ""
 
     @field_validator("captcha_type")
     @classmethod

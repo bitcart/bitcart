@@ -8,6 +8,7 @@ from api.services.exchange_rate import ExchangeRateService
 from api.services.ext.configurator import ConfiguratorService
 from api.services.ext.tor import TorService
 from api.services.ext.update import UpdateCheckService
+from api.services.health_check import HealthCheckService
 from api.services.payment_processor import PaymentProcessor
 
 
@@ -60,6 +61,14 @@ class WorkerProvider(Provider):
         await service.start()
         yield service
 
+    @decorate
+    async def get_health_check_service(
+        self,
+        service: HealthCheckService,
+    ) -> AsyncIterator[HealthCheckService]:
+        await service.start()
+        yield service
+
     # ExchangeRateService not preloaded to avoid rate limits during develop
     TO_PRELOAD = ServicesProvider.TO_PRELOAD + [
         PaymentProcessor,
@@ -67,4 +76,5 @@ class WorkerProvider(Provider):
         BackupManager,
         ConfiguratorService,
         UpdateCheckService,
+        HealthCheckService,
     ]

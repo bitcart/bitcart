@@ -61,6 +61,7 @@ ForgotPasswordTemplate = Template("forgotpassword", applicable_to="global")
 VerifyEmailTemplate = Template("verifyemail", applicable_to="global")
 CustomerRefundTemplate = Template("customer_refund", applicable_to="store")
 MerchantRefundNotifyTemplate = Template("merchant_refund_notify", applicable_to="store")
+SyncinfoTemplate = Template("syncinfo", applicable_to="global")
 
 ALL_TEMPLATES = {template.name: template for template in globals().values() if isinstance(template, Template)}
 

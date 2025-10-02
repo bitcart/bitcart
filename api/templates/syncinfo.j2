@@ -1,0 +1,12 @@
+⚠️ Cryptocurrency Daemon Health Check Alert
+
+The following daemon(s) are experiencing issues:
+
+{% for daemon in failed_daemons %}
+- {{ daemon.currency }}: {{ "not running" if not daemon.running else "unsynchronized" }}, current height: {{ daemon.blockchain_height }}
+{% endfor %}
+
+Total daemons monitored: {{ syncinfo_data | length }}
+Failed daemons: {{ failed_daemons | length }}
+
+Troubleshooting info: https://docs.bitcart.ai/guides/healthcheck#troubleshooting-not-running-daemon
