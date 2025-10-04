@@ -54,6 +54,7 @@ class CRUDService[ModelType: ModelProtocol]:
         *args: Any,
         atomic_update: bool = False,
         statement: Select[tuple[ModelType]] | None = None,
+        call_load: bool = True,
         **kwargs: Any,
     ) -> ModelType | None:
         filters = (
@@ -70,7 +71,7 @@ class CRUDService[ModelType: ModelProtocol]:
             statement=statement,
             **kwargs,
         )
-        if result:
+        if result and call_load:
             await self.batch_load([result])
         return result
 
@@ -81,12 +82,20 @@ class CRUDService[ModelType: ModelProtocol]:
         *args: Any,
         atomic_update: bool = False,
         statement: Select[tuple[ModelType]] | None = None,
+        call_load: bool = True,
         **kwargs: Any,
     ) -> ModelType:
         return cast(
             ModelType,
             await self._execute_get(
-                self.repository.get_one, item_id, user, *args, atomic_update=atomic_update, statement=statement, **kwargs
+                self.repository.get_one,
+                item_id,
+                user,
+                *args,
+                atomic_update=atomic_update,
+                statement=statement,
+                call_load=call_load,
+                **kwargs,
             ),
         )
 
@@ -97,10 +106,18 @@ class CRUDService[ModelType: ModelProtocol]:
         *args: Any,
         atomic_update: bool = False,
         statement: Select[tuple[ModelType]] | None = None,
+        call_load: bool = True,
         **kwargs: Any,
     ) -> ModelType | None:
         return await self._execute_get(
-            self.repository.get_one_or_none, item_id, user, *args, atomic_update=atomic_update, statement=statement, **kwargs
+            self.repository.get_one_or_none,
+            item_id,
+            user,
+            *args,
+            atomic_update=atomic_update,
+            statement=statement,
+            call_load=call_load,
+            **kwargs,
         )
 
     async def list_and_count(
@@ -108,6 +125,7 @@ class CRUDService[ModelType: ModelProtocol]:
         *filters: StatementFilter | ColumnElement[bool],
         user: models.User | None = None,
         statement: Select[tuple[ModelType]] | None = None,
+        call_load: bool = True,
         **kwargs: Any,
     ) -> tuple[list[ModelType], int]:
         filter_list = list(filters)
@@ -126,7 +144,8 @@ class CRUDService[ModelType: ModelProtocol]:
             ):
                 return [], 0
             raise
-        await self.batch_load(results)
+        if call_load:
+            await self.batch_load(results)
         return results, count
 
     async def count(

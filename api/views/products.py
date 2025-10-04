@@ -14,6 +14,7 @@ from api.utils.routing import (
     OffsetPagination,
     SearchPagination,
     create_crud_router,
+    prepare_autocomplete_response,
     prepare_pagination_response,
     provide_pagination,
 )
@@ -80,7 +81,11 @@ async def list_items(
     if not user and store is None:
         raise HTTPException(401, "Unauthorized")
     statement, filters = product_service._filter_in_product(store, category, min_price, max_price, sale)
-    items, total = await product_service.list_and_count(pagination, *filters, statement=statement, user=user)
+    items, total = await product_service.list_and_count(
+        pagination, *filters, statement=statement, user=user, call_load=not pagination.autocomplete
+    )
+    if pagination.autocomplete:
+        return prepare_autocomplete_response(items, request, pagination, total)
     return prepare_pagination_response(items, request, pagination, total)
 
 

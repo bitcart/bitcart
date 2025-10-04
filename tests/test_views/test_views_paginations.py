@@ -132,3 +132,19 @@ async def test_date_pagination(client: TestClient, token: str, app: FastAPI) -> 
     await check_start_date_query(client, token, "-1w", 1, invoice3["id"], start=False)
     await check_start_date_query(client, token, "-1d", 2, invoice2["id"], start=False)
     await check_start_date_query(client, token, "-1h", 3, invoice1["id"], start=False)
+
+
+async def test_autocomplete_response_format(client: TestClient, token: str) -> None:
+    await create_user(client)
+    resp = await client.get("/users?autocomplete=true", headers={"Authorization": f"Bearer {token}"})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["count"] > 1
+    for item in data["result"]:
+        assert item.keys() == {"id", "name"}
+    resp = await client.get("/users?autocomplete=false", headers={"Authorization": f"Bearer {token}"})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["count"] > 1
+    for item in data["result"]:
+        assert item.keys() > {"id", "email", "is_superuser", "settings"}

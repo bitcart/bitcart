@@ -9,6 +9,7 @@ from advanced_alchemy.filters import PaginationFilter, StatementTypeT
 from dishka import FromDishka
 from dishka.integrations.fastapi import DishkaRoute
 from fastapi import APIRouter, Depends, Query, Request, Security
+from fastapi.responses import JSONResponse
 from sqlalchemy import ColumnElement, Select, Text, and_, or_, text
 
 from api import models, utils
@@ -38,6 +39,8 @@ class SearchPagination(PaginationFilter):
     """Field to sort by."""
     desc: bool
     """Whether to sort in descending order."""
+    autocomplete: bool
+    """Whether to return minimal data for autocomplete."""
 
     def append_to_statement(self, statement: StatementTypeT, model: type[ModelT]) -> StatementTypeT:
         if isinstance(statement, Select):
@@ -84,6 +87,7 @@ def provide_pagination(
     multiple: bool = Query(default=False),
     sort: str = Query(default=""),
     desc: bool = Query(default=True),
+    autocomplete: bool = Query(default=False),
 ) -> SearchPagination:
     """Dependency that provides enhanced pagination with search and sorting."""
     if multiple:
@@ -99,6 +103,7 @@ def provide_pagination(
         multiple=multiple,
         sort=sort,
         desc=desc,
+        autocomplete=autocomplete,
     )
 
 
@@ -139,6 +144,16 @@ def get_next_url(request: Request, limit: int, offset: int, count: int) -> str |
     if limit == -1 or offset + limit >= count:
         return None
     return str(request.url.include_query_params(limit=limit, offset=offset + limit))
+
+
+def prepare_autocomplete_response(
+    items: list[Any], request: Request, pagination: SearchPagination, total: int
+) -> JSONResponse:
+    return JSONResponse(
+        prepare_pagination_response(
+            [{"id": item.id, "name": getattr(item, "name", item.id)} for item in items], request, pagination, total
+        )
+    )
 
 
 def prepare_pagination_response(
@@ -206,7 +221,9 @@ def create_crud_router(
         request: Request,
         user: models.User | None = auth_deps["list"],
     ) -> Any:
-        items, total = await service.list_and_count(pagination, user=user)
+        items, total = await service.list_and_count(pagination, user=user, call_load=not pagination.autocomplete)
+        if pagination.autocomplete:
+            return prepare_autocomplete_response(items, request, pagination, total)
         return prepare_pagination_response(items, request, pagination, total)
 
     maybe_add_route(
