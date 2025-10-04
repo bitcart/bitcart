@@ -146,7 +146,7 @@ class Logging[RendererType]:
                 logger.setLevel(cls.get_custom_level(level, logger_name) if is_enabled else logging.NOTSET)
                 logger.handlers.clear()
                 logger.propagate = True
-                if logger_name.startswith("uvicorn"):  # for better DX
+                if logger_name.startswith("uvicorn") or logger_name.startswith("sqlalchemy.engine"):  # for better DX
                     logger.addHandler(console_handler)
                     logger.propagate = False
             else:

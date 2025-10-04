@@ -82,7 +82,12 @@ async def list_items(
         raise HTTPException(401, "Unauthorized")
     statement, filters = product_service._filter_in_product(store, category, min_price, max_price, sale)
     items, total = await product_service.list_and_count(
-        pagination, *filters, statement=statement, user=user, call_load=not pagination.autocomplete
+        pagination,
+        *filters,
+        statement=statement,
+        user=user,
+        call_load=not pagination.autocomplete,
+        load=[] if pagination.autocomplete else None,
     )
     if pagination.autocomplete:
         return prepare_autocomplete_response(items, request, pagination, total)

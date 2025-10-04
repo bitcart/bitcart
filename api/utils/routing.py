@@ -221,7 +221,9 @@ def create_crud_router(
         request: Request,
         user: models.User | None = auth_deps["list"],
     ) -> Any:
-        items, total = await service.list_and_count(pagination, user=user, call_load=not pagination.autocomplete)
+        items, total = await service.list_and_count(
+            pagination, user=user, call_load=not pagination.autocomplete, load=[] if pagination.autocomplete else None
+        )
         if pagination.autocomplete:
             return prepare_autocomplete_response(items, request, pagination, total)
         return prepare_pagination_response(items, request, pagination, total)

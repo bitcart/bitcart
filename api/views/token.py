@@ -84,7 +84,12 @@ async def get_tokens(
 ) -> Any:
     statement, filters = token_service._filter_in_token(app_id, redirect_url, permissions)
     items, total = await token_service.list_and_count(
-        pagination, *filters, statement=statement, user=user, call_load=not pagination.autocomplete
+        pagination,
+        *filters,
+        statement=statement,
+        user=user,
+        call_load=not pagination.autocomplete,
+        load=[] if pagination.autocomplete else None,
     )
     if pagination.autocomplete:
         return prepare_autocomplete_response(items, request, pagination, total)
