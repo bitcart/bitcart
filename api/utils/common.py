@@ -159,12 +159,18 @@ class SearchQuery:
         self.query = query
         text = []
         self.filters = defaultdict(list)
+        self.metadata_filters = defaultdict(list)
         for item in query.split():
             parts = item.split(":")
             is_quoted = item[0] == '"' and item[-1] == '"'
             if len(parts) >= 2 and not is_quoted:
                 key = parts[0].lower()
-                self.filters[key].append(":".join(parts[1:]))
+                value = ":".join(parts[1:])
+                if key.startswith("metadata."):
+                    field_name = key[9:]
+                    self.metadata_filters[field_name].append(value)
+                else:
+                    self.filters[key].append(value)
             else:
                 if is_quoted:
                     item = item[1:-1]
@@ -204,7 +210,7 @@ class SearchQuery:
         return queries
 
     def __bool__(self) -> bool:
-        return bool(self.text or self.filters)
+        return bool(self.text or self.filters or self.metadata_filters)
 
 
 def excepthook_handler(

@@ -148,3 +148,23 @@ async def test_autocomplete_response_format(client: TestClient, token: str) -> N
     assert data["count"] > 1
     for item in data["result"]:
         assert item.keys() > {"id", "email", "is_superuser", "settings"}
+
+
+async def check_metadata_query(client: TestClient, token: str, field: str, value: str, expected_count: int) -> None:
+    query = quote(f"metadata.{field}:{value}")
+    resp = await client.get(f"/invoices?query={query}", headers={"Authorization": f"Bearer {token}"})
+    assert resp.status_code == 200
+    assert resp.json()["count"] == expected_count
+
+
+async def test_metadata_query(client: TestClient, token: str, invoice: dict[str, Any], app: FastAPI) -> None:
+    async with app.state.dishka_container(scope=Scope.REQUEST) as container:
+        invoice_repository = await container.get(InvoiceRepository)
+        model = await invoice_repository.get_one(id=invoice["id"])
+        model.meta = {"external_id": "abc123"}
+    await check_metadata_query(client, token, "external_id", "abc123", 1)
+    await check_metadata_query(client, token, "nonexistent", "value", 0)
+    query = quote(f"metadata.external_id:abc123 status:{invoice['status']}")
+    resp = await client.get(f"/invoices?query={query}", headers={"Authorization": f"Bearer {token}"})
+    assert resp.status_code == 200
+    assert resp.json()["count"] == 1

@@ -70,6 +70,10 @@ class SearchPagination(PaginationFilter):
             column = getattr(model, search_filter, None)
             if column is not None:
                 queries.append(column.in_(value))
+        if hasattr(model, "meta"):
+            meta_column = utils.common.get_sqla_attr(cast(ModelProtocol, model), "meta")
+            for field_name, value in self.query.metadata_filters.items():
+                queries.append(meta_column[field_name].astext.in_(value))
         full_filters = self.get_all_columns_filter(model, self.query.text)
         if model == models.Invoice:
             full_filters.extend(self.get_all_columns_filter(models.PaymentMethod, self.query.text))

@@ -294,6 +294,21 @@ def test_search_query_parsing() -> None:
     assert q2.filters == {"column": ["value", "value2"], "column2": ["value2", "value3"], "column3": ["other:value"]}
 
 
+def test_search_query_metadata_parsing() -> None:
+    q1 = utils.common.SearchQuery("metadata.external_id:abc123")
+    assert q1.metadata_filters == {"external_id": ["abc123"]}
+    assert q1.filters == {}
+    assert q1.text == ""
+    q2 = utils.common.SearchQuery("metadata.external_id:abc123 status:complete")
+    assert q2.metadata_filters == {"external_id": ["abc123"]}
+    assert q2.filters == {"status": ["complete"]}
+    assert q2.text == ""
+    q3 = utils.common.SearchQuery("metadata.external_id:abc123 metadata.external_id:abc124 status:complete status:pending")
+    assert q3.metadata_filters == {"external_id": ["abc123", "abc124"]}
+    assert q3.filters == {"status": ["complete", "pending"]}
+    assert q3.text == ""
+
+
 def check_date(date: datetime | None, **kwargs: int) -> None:
     now = utils.time.now()
     assert now - cast(datetime, date) >= timedelta(**kwargs)
