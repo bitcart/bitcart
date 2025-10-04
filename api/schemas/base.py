@@ -31,7 +31,7 @@ class Schema(BaseModel):
     def ensure_dict(cls, values: Any, handler: Any) -> Any:
         if not isinstance(values, dict):
             values = dict(iter_attributes(values))
-        values = {k: cls._prepare_value(v) for k, v in values.items() if v != ""}  # for frontend filtering empty strings
+        values = {k: cls._prepare_value(v) for k, v in values.items()}
         return handler(values)
 
     @staticmethod
