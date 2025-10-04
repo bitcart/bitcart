@@ -15,6 +15,7 @@ from httpx_ws import AsyncWebSocketSession, aconnect_ws
 
 from api.constants import MAX_CONFIRMATION_WATCH
 from api.ext.moneyformat import truncate
+from api.settings import Settings
 from tests.functional import utils
 from tests.helper import create_store, create_wallet
 
@@ -27,6 +28,11 @@ LIGHTNING_CHANNEL_AMOUNT = bitcoins(200_000)
 LNPAY_AMOUNT = LIGHTNING_CHANNEL_AMOUNT / 10
 LIGHTNING_INVOICE_AMOUNT = str(LNPAY_AMOUNT / 2)
 PAYOUTS_FUND_AMOUNT = Decimal("1.0")
+
+settings = Settings()
+MAIN_PORT = settings.config("BTC_PORT", cast=int, default=5000)
+MAIN_URL = f"http://localhost:{MAIN_PORT}"
+del settings
 
 INVOICE_AMOUNT = "0.00018"  # as of 2 Apr 2023, we do this to avoid calling coingecko
 
@@ -75,7 +81,7 @@ async def check_invoice_status(
 
 
 async def wait_for_balance(address: str, expected_balance: Decimal) -> None:
-    wallet = BTC(xpub=address)
+    wallet = BTC(xpub=address, rpc_url=MAIN_URL)
     while True:
         balance = await wallet.balance()
         balance = balance["confirmed"] + balance["unconfirmed"]
@@ -126,7 +132,7 @@ async def wait_for_channel_opening(regtest_wallet: BTC, channel_point: str) -> N
 
 @pytest.fixture
 async def regtest_wallet() -> BTC:
-    return BTC(xpub=REGTEST_XPUB)
+    return BTC(xpub=REGTEST_XPUB, rpc_url=MAIN_URL)
 
 
 @pytest.fixture

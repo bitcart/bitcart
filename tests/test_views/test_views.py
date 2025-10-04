@@ -45,6 +45,11 @@ if TYPE_CHECKING:
 
 pytestmark = pytest.mark.anyio
 
+settings = Settings()
+MAIN_PORT = settings.config("BTC_PORT", cast=int, default=5000)
+MAIN_URL = f"http://localhost:{MAIN_PORT}"
+del settings
+
 
 class DummyInstance:
     coin_name = "BTC"
@@ -777,7 +782,7 @@ async def test_wallet_ws(client: TestClient, token: str, app: FastAPI) -> None:
     websocket: AsyncWebSocketSession
     async with aconnect_ws(f"/ws/wallets/{wallet_id}?token={token}", client) as websocket:
         await asyncio.sleep(1)
-        balance = str((await BTC(xpub=static_data.TEST_XPUB).balance())["confirmed"])
+        balance = str((await BTC(xpub=static_data.TEST_XPUB, rpc_url=MAIN_URL).balance())["confirmed"])
         await utils.redis.publish_message(redis_pool, f"wallet:{wallet_id}", {"status": "success", "balance": balance})
         await check_ws_response2(websocket)
     with pytest.raises(WebSocketDisconnect) as exc:
@@ -1549,7 +1554,7 @@ async def test_create_invoice_randomize_wallets(client: TestClient, token: str) 
         invoice = await create_invoice(client, token, store_id=store["id"])
         address = invoice["payments"][0]["payment_address"]
         for wallet, xpub in enumerate(static_data.RANDOMIZE_TEST_XPUBS):
-            is_mine_ok[wallet] |= await BTC(xpub=xpub).server.ismine(address)
+            is_mine_ok[wallet] |= await BTC(xpub=xpub, rpc_url=MAIN_URL).server.ismine(address)
         if all(is_mine_ok.values()):
             break
 
