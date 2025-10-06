@@ -2,12 +2,13 @@ from collections.abc import Awaitable, Callable
 from typing import Any, cast, overload
 
 from advanced_alchemy.base import ModelProtocol
-from advanced_alchemy.filters import StatementFilter
+from advanced_alchemy.filters import StatementFilter, StatementTypeT
 from advanced_alchemy.repository import LoadSpec
 from advanced_alchemy.service.typing import ModelDictT
 from dishka import AsyncContainer
-from fastapi import HTTPException
-from sqlalchemy import ColumnElement, ColumnExpressionArgument, Select, Update, func, select
+from fastapi import HTTPException, Request
+from fastapi.responses import JSONResponse
+from sqlalchemy import ColumnElement, ColumnExpressionArgument, Select, Text, Update, and_, func, or_, select, text
 from sqlalchemy.exc import NoResultFound, ProgrammingError
 
 from api import models, utils
@@ -15,6 +16,7 @@ from api.db import AsyncSession
 from api.schemas.base import Schema
 from api.schemas.misc import BatchAction
 from api.services.crud.repository import CRUDRepository
+from api.utils.routing import SearchPagination
 
 
 def unauthorized_access_exception() -> HTTPException:
@@ -157,6 +159,109 @@ class CRUDService[ModelType: ModelProtocol]:
             return await self.repository.count(*filter_list, **kwargs)
         except NoResultFound:
             return 0
+
+    @classmethod
+    def apply_pagination_joins(
+        cls, pagination: SearchPagination, statement: StatementTypeT, model: type[ModelProtocol]
+    ) -> StatementTypeT:
+        return statement
+
+    @classmethod
+    def apply_pagination(
+        cls, pagination: SearchPagination, statement: StatementTypeT, model: type[ModelProtocol]
+    ) -> StatementTypeT:
+        if isinstance(statement, Select):
+            query = statement
+            query = cls.apply_pagination_joins(pagination, query, model)
+            queries = cls.pagination_search(pagination, model)
+            query = query.where(queries) if queries is not None else query  # sqlalchemy core requires explicit checks
+            query = query.group_by(utils.common.get_sqla_attr(cast(ModelProtocol, model), "id"))
+            if pagination.limit != -1:
+                query = query.limit(pagination.limit)
+            desc_s = "desc" if pagination.desc else ""
+            query = query.order_by(text(f"{pagination.sort} {desc_s}"))
+            return query.offset(pagination.offset)
+        return statement
+
+    @classmethod
+    def get_pagination_search_models(cls, model: type[ModelType]) -> list[type[ModelProtocol]]:
+        return [model]
+
+    @classmethod
+    def pagination_search(cls, pagination: SearchPagination, model: type[ModelProtocol]) -> ColumnElement[bool] | None:
+        if not pagination.query:
+            return None
+        queries = []
+        queries.extend(pagination.query.get_created_filter(model))
+        for search_filter, value in pagination.query.filters.items():
+            column = getattr(model, search_filter, None)
+            if column is not None:
+                queries.append(column.in_(value))
+        if hasattr(model, "meta"):
+            meta_column = utils.common.get_sqla_attr(cast(ModelProtocol, model), "meta")
+            for field_name, value in pagination.query.metadata_filters.items():
+                queries.append(meta_column[field_name].astext.in_(value))
+        full_filters = []
+        for search_model in cls.get_pagination_search_models(cast(type[ModelType], model)):
+            full_filters.extend(cls.get_pagination_all_columns_filter(search_model, pagination.query.text))
+        queries.append(or_(*full_filters))
+        return and_(*queries)
+
+    @staticmethod
+    def get_pagination_all_columns_filter(model: type[ModelProtocol], text: str) -> list[ColumnElement[bool]]:
+        return [column.cast(Text).op("~*")(text) for column in model.__mapper__.columns]
+
+    async def apply_pagination_filters(
+        self, pagination: SearchPagination, statement: Select[tuple[ModelType]], request: Request
+    ) -> Select[tuple[ModelType]]:
+        from api.services.plugin_registry import PluginRegistry
+
+        plugin_registry = await self.container.get(PluginRegistry)
+        return await plugin_registry.apply_filters(
+            "search_query", statement, self.model_type, dict(request.query_params), self, pagination.query
+        )
+
+    async def paginated_list_and_count(
+        self,
+        request: Request,
+        pagination: SearchPagination,
+        *,
+        user: models.User | None = None,
+        statement: Select[tuple[ModelType]] | None = None,
+        filters: list[StatementFilter | ColumnElement[bool]] | None = None,
+        count_only: bool = False,
+    ) -> tuple[list[ModelType], int]:
+        statement = select(self.model_type) if statement is None else statement
+        statement = self.apply_pagination(pagination, statement, self.model_type)
+        statement = await self.apply_pagination_filters(pagination, statement, request)
+        if count_only:
+            return [], await self.count(*(filters or []), statement=statement, user=user)
+        items, total = await self.list_and_count(
+            *(filters or []),
+            statement=statement,
+            user=user,
+            call_load=not pagination.autocomplete,
+            load=[] if pagination.autocomplete else None,
+        )
+        return items, total
+
+    async def paginate(
+        self,
+        request: Request,
+        pagination: SearchPagination,
+        *,
+        user: models.User | None = None,
+        statement: Select[tuple[ModelType]] | None = None,
+        filters: list[StatementFilter | ColumnElement[bool]] | None = None,
+    ) -> dict[str, Any] | JSONResponse:
+        from api.utils.routing import prepare_autocomplete_response, prepare_pagination_response
+
+        items, total = await self.paginated_list_and_count(
+            request, pagination, user=user, statement=statement, filters=filters
+        )
+        if pagination.autocomplete:
+            return prepare_autocomplete_response(items, request, pagination, total)
+        return prepare_pagination_response(items, request, pagination, total)
 
     async def load_one(self, item: ModelType) -> None:
         pass
@@ -316,4 +421,4 @@ class CRUDService[ModelType: ModelProtocol]:
 
 type TService = CRUDService[Any]
 
-__all__ = ["CRUDRepository", "CRUDService", "TService", "ModelDictT", "LoadSpec"]
+__all__ = ["CRUDRepository", "CRUDService", "TService", "ModelDictT", "LoadSpec", "StatementTypeT"]

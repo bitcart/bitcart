@@ -2,7 +2,7 @@ from typing import Annotated, Any
 
 from dishka import FromDishka
 from dishka.integrations.fastapi import DishkaRoute
-from fastapi import APIRouter, Depends, Response, Security
+from fastapi import APIRouter, Depends, Request, Response, Security
 
 from api import models, utils
 from api.constants import AuthScopes
@@ -20,13 +20,14 @@ router = APIRouter(route_class=DishkaRoute)
 async def export_invoices(
     pagination: Annotated[SearchPagination, Depends(provide_pagination)],
     invoice_service: FromDishka[InvoiceService],
+    request: Request,
     response: Response,
     export_format: str = "json",
     add_payments: bool = False,
     all_users: bool = False,
     user: models.User = Security(utils.authorization.auth_dependency, scopes=[AuthScopes.INVOICE_MANAGEMENT]),
 ) -> Any:
-    return await invoice_service.export_invoices(pagination, response, export_format, add_payments, all_users, user)
+    return await invoice_service.export_invoices(pagination, request, response, export_format, add_payments, all_users, user)
 
 
 create_crud_router(

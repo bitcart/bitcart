@@ -5,12 +5,10 @@ from typing import TYPE_CHECKING, Annotated, Any, TypeVar, cast
 from urllib import parse as urlparse
 
 from advanced_alchemy.base import ModelProtocol
-from advanced_alchemy.filters import PaginationFilter, StatementTypeT
 from dishka import FromDishka
 from dishka.integrations.fastapi import DishkaRoute
 from fastapi import APIRouter, Depends, Query, Request, Security
 from fastapi.responses import JSONResponse
-from sqlalchemy import ColumnElement, Select, Text, and_, or_, text
 
 from api import models, utils
 from api.constants import AuthScopes
@@ -26,7 +24,7 @@ ModelT = TypeVar("ModelT", bound=ModelProtocol)
 
 
 @dataclass
-class SearchPagination(PaginationFilter):
+class SearchPagination:
     limit: int
     """Maximum number of rows to return."""
     offset: int
@@ -41,47 +39,6 @@ class SearchPagination(PaginationFilter):
     """Whether to sort in descending order."""
     autocomplete: bool
     """Whether to return minimal data for autocomplete."""
-
-    def append_to_statement(self, statement: StatementTypeT, model: type[ModelT]) -> StatementTypeT:
-        if isinstance(statement, Select):
-            query = statement
-            if model == models.Invoice:
-                query = query.join(
-                    models.PaymentMethod,
-                    models.Invoice.id == models.PaymentMethod.invoice_id,
-                    isouter=True,
-                )
-            queries = self.search(model)
-            query = query.where(queries) if queries is not None else query  # sqlalchemy core requires explicit checks
-            query = query.group_by(utils.common.get_sqla_attr(cast(ModelT, model), "id"))
-            if self.limit != -1:
-                query = query.limit(self.limit)
-            desc_s = "desc" if self.desc else ""
-            query = query.order_by(text(f"{self.sort} {desc_s}"))
-            return query.offset(self.offset)
-        return statement
-
-    def search(self, model: type[ModelT]) -> ColumnElement[bool] | None:
-        if not self.query:
-            return None
-        queries = []
-        queries.extend(self.query.get_created_filter(model))
-        for search_filter, value in self.query.filters.items():
-            column = getattr(model, search_filter, None)
-            if column is not None:
-                queries.append(column.in_(value))
-        if hasattr(model, "meta"):
-            meta_column = utils.common.get_sqla_attr(cast(ModelProtocol, model), "meta")
-            for field_name, value in self.query.metadata_filters.items():
-                queries.append(meta_column[field_name].astext.in_(value))
-        full_filters = self.get_all_columns_filter(model, self.query.text)
-        if model == models.Invoice:
-            full_filters.extend(self.get_all_columns_filter(models.PaymentMethod, self.query.text))
-        queries.append(or_(*full_filters))
-        return and_(*queries)
-
-    def get_all_columns_filter(self, model: type[ModelT], text: str) -> list[ColumnElement[bool]]:
-        return [column.cast(Text).op("~*")(text) for column in model.__mapper__.columns]
 
 
 def provide_pagination(
@@ -225,12 +182,7 @@ def create_crud_router(
         request: Request,
         user: models.User | None = auth_deps["list"],
     ) -> Any:
-        items, total = await service.list_and_count(
-            pagination, user=user, call_load=not pagination.autocomplete, load=[] if pagination.autocomplete else None
-        )
-        if pagination.autocomplete:
-            return prepare_autocomplete_response(items, request, pagination, total)
-        return prepare_pagination_response(items, request, pagination, total)
+        return await service.paginate(request, pagination, user=user)
 
     maybe_add_route(
         router, enabled_endpoints, "list", "", list_items, methods=["GET"], response_model=OffsetPagination[DisplaySchemaT]

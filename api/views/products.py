@@ -14,8 +14,6 @@ from api.utils.routing import (
     OffsetPagination,
     SearchPagination,
     create_crud_router,
-    prepare_autocomplete_response,
-    prepare_pagination_response,
     provide_pagination,
 )
 
@@ -81,23 +79,14 @@ async def list_items(
     if not user and store is None:
         raise HTTPException(401, "Unauthorized")
     statement, filters = product_service._filter_in_product(store, category, min_price, max_price, sale)
-    items, total = await product_service.list_and_count(
-        pagination,
-        *filters,
-        statement=statement,
-        user=user,
-        call_load=not pagination.autocomplete,
-        load=[] if pagination.autocomplete else None,
-    )
-    if pagination.autocomplete:
-        return prepare_autocomplete_response(items, request, pagination, total)
-    return prepare_pagination_response(items, request, pagination, total)
+    return await product_service.paginate(request, pagination, user=user, statement=statement, filters=filters)
 
 
 @router.get("/count", response_model=int)
 async def products_count(
     pagination: Annotated[SearchPagination, Depends(provide_pagination)],
     product_service: FromDishka[ProductService],
+    request: Request,
     user: models.User | None = Security(utils.authorization.optional_auth_dependency, scopes=[AuthScopes.PRODUCT_MANAGEMENT]),
     store: str | None = None,
     category: str | None = "",
@@ -108,7 +97,10 @@ async def products_count(
     if store is None and not user:
         raise HTTPException(401, "Unauthorized")
     statement, filters = product_service._filter_in_product(store, category, min_price, max_price, sale)
-    return await product_service.count(pagination, *filters, statement=statement, user=user)
+    _, count = await product_service.paginated_list_and_count(
+        request, pagination, user=user, statement=statement, filters=filters, count_only=True
+    )
+    return count
 
 
 @router.get("/{model_id}", response_model=DisplayProduct)

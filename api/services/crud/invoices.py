@@ -8,12 +8,13 @@ from decimal import Decimal
 from operator import attrgetter
 from typing import Any, cast
 
+from advanced_alchemy.base import ModelProtocol
 from bitcart import BTC  # type: ignore[attr-defined]
 from bitcart.errors import errors
 from dishka import AsyncContainer
-from fastapi import HTTPException, Response
+from fastapi import HTTPException, Request, Response
 from fastapi.responses import StreamingResponse
-from sqlalchemy import insert, select, update
+from sqlalchemy import Select, insert, select, update
 from sqlalchemy.orm import selectinload
 from starlette.datastructures import CommaSeparatedStrings
 
@@ -28,7 +29,7 @@ from api.redis import Redis
 from api.schemas.invoices import CreateInvoice, MethodUpdateData
 from api.schemas.misc import BatchAction
 from api.services.coins import CoinService
-from api.services.crud import CRUDService
+from api.services.crud import CRUDService, StatementTypeT
 from api.services.crud.products import ProductService
 from api.services.crud.repositories import (
     InvoiceRepository,
@@ -84,6 +85,24 @@ class InvoiceService(CRUDService[models.Invoice]):
         self.redis_pool = redis_pool
         self.wallet_data_service = wallet_data_service
         self.plugin_registry = plugin_registry
+
+    @classmethod
+    def apply_pagination_joins(
+        cls, pagination: SearchPagination, statement: StatementTypeT, model: type[ModelProtocol]
+    ) -> StatementTypeT:
+        if model == models.Invoice and isinstance(statement, Select):
+            statement = statement.join(
+                models.PaymentMethod,
+                models.Invoice.id == models.PaymentMethod.invoice_id,
+                isouter=True,
+            )
+        return statement
+
+    @classmethod
+    def get_pagination_search_models(cls, model: type[models.Invoice]) -> list[type[ModelProtocol]]:
+        if model == models.Invoice:
+            return [model, models.PaymentMethod]
+        return [model]
 
     async def prepare_data(self, data: dict[str, Any]) -> dict[str, Any]:
         data = await super().prepare_data(data)
@@ -648,6 +667,7 @@ class InvoiceService(CRUDService[models.Invoice]):
     async def export_invoices(
         self,
         pagination: SearchPagination,
+        request: Request,
         response: Response,
         export_format: str,
         add_payments: bool,
@@ -662,7 +682,7 @@ class InvoiceService(CRUDService[models.Invoice]):
         query = select(models.Invoice).where(models.Invoice.status == InvoiceStatus.COMPLETE)
         if not all_users:
             query = query.where(models.Invoice.user_id == user.id)
-        data, _ = await self.list_and_count(pagination, statement=query)
+        data, _ = await self.paginated_list_and_count(request, pagination, statement=query)
         export_data = list(export_ext.db_to_json(data, add_payments))
         now = utils.time.now()
         filename = now.strftime(f"bitcart-export-%Y%m%d-%H%M%S.{export_format}")

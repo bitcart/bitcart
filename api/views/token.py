@@ -14,8 +14,6 @@ from api.services.crud.tokens import TokenService
 from api.utils.routing import (
     OffsetPagination,
     SearchPagination,
-    prepare_autocomplete_response,
-    prepare_pagination_response,
     provide_pagination,
 )
 
@@ -83,17 +81,7 @@ async def get_tokens(
     permissions: list[str] = Query(None),
 ) -> Any:
     statement, filters = token_service._filter_in_token(app_id, redirect_url, permissions)
-    items, total = await token_service.list_and_count(
-        pagination,
-        *filters,
-        statement=statement,
-        user=user,
-        call_load=not pagination.autocomplete,
-        load=[] if pagination.autocomplete else None,
-    )
-    if pagination.autocomplete:
-        return prepare_autocomplete_response(items, request, pagination, total)
-    return prepare_pagination_response(items, request, pagination, total)
+    return await token_service.paginate(request, pagination, user=user, statement=statement, filters=filters)
 
 
 # TODO: improve it somehow? e.g. move to identity provider
