@@ -168,13 +168,15 @@ class CRUDService[ModelType: ModelProtocol]:
 
     @classmethod
     def apply_pagination(
-        cls, pagination: SearchPagination, statement: StatementTypeT, model: type[ModelProtocol]
+        cls, pagination: SearchPagination, statement: StatementTypeT, model: type[ModelProtocol], count_only: bool = False
     ) -> StatementTypeT:
         if isinstance(statement, Select):
             query = statement
             query = cls.apply_pagination_joins(pagination, query, model)
             queries = cls.pagination_search(pagination, model)
             query = query.where(queries) if queries is not None else query  # sqlalchemy core requires explicit checks
+            if count_only:
+                return query
             query = query.group_by(utils.common.get_sqla_attr(cast(ModelProtocol, model), "id"))
             if pagination.limit != -1:
                 query = query.limit(pagination.limit)
@@ -232,7 +234,7 @@ class CRUDService[ModelType: ModelProtocol]:
         count_only: bool = False,
     ) -> tuple[list[ModelType], int]:
         statement = select(self.model_type) if statement is None else statement
-        statement = self.apply_pagination(pagination, statement, self.model_type)
+        statement = self.apply_pagination(pagination, statement, self.model_type, count_only=count_only)
         statement = await self.apply_pagination_filters(pagination, statement, request)
         if count_only:
             return [], await self.count(*(filters or []), statement=statement, user=user)
