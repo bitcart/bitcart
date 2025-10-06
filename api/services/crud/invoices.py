@@ -469,6 +469,7 @@ class InvoiceService(CRUDService[models.Invoice]):
         item.payment_id = used_payment.id if used_payment else None
         item.refund_id = item.refunds[0].id if item.refunds else None
         item.product_names = {v.id: v.name for v in item.products}
+        item.product_quantities = {v.product_id: v.count for v in item.products_associations}
 
     async def update_confirmations(
         self,

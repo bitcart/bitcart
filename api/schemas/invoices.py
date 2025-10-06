@@ -68,6 +68,7 @@ class DisplayInvoice(MetadataOutput, BaseInvoice, TimestampedSchema):
     time_left: int
     expiration_seconds: int
     product_names: dict[str, Any]
+    product_quantities: dict[str, int]
     payments: list[PaymentData] = []
     paid_date: datetime | None
     payment_id: str | None

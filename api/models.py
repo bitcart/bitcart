@@ -464,6 +464,7 @@ class Invoice(RecordModel):
     payment_id: str | None
     refund_id: str | None
     product_names: dict[str, str]
+    product_quantities: dict[str, int]
 
     @declared_attr
     def store(cls) -> Mapped["Store"]:
