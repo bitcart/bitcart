@@ -1998,3 +1998,66 @@ async def test_invoice_custom_payment_methods(client: TestClient, token: str) ->
     assert retrieved_invoice["payment_methods"] == [wallet1["id"], wallet2["id"]]
     for idx, payment in enumerate(retrieved_invoice["payments"]):
         assert payment["wallet_id"] == retrieved_invoice["payment_methods"][idx]
+
+
+@pytest.mark.parametrize(
+    "select_idx,custom_amount,tx_hashes", [(None, None, None), (1, None, None), (0, 0.12345678, ["a", "b"])]
+)
+async def test_mark_complete_cases(
+    client: TestClient,
+    token: str,
+    app: FastAPI,
+    select_idx: int | None,
+    custom_amount: float | None,
+    tx_hashes: list[str] | None,
+) -> None:
+    wallet1 = (await create_wallet(client, token))["id"]
+    wallet2 = (await create_wallet(client, token))["id"]
+    store = await create_store(client, token, custom_store_attrs={"wallets": [wallet1, wallet2]})
+    invoice = await create_invoice(client, token, store_id=store["id"])
+    async with app.state.dishka_container(scope=Scope.SESSION) as container:
+        service = await container.get(InvoiceService)
+        method = await service.get(invoice["id"])
+    options = {}
+    expected_method_id = method.payments[0].id if select_idx is None else method.payments[select_idx].id
+    if select_idx is not None:
+        options["payment_method_id"] = expected_method_id
+    expected_amount = float(method.payments[0].amount if select_idx is None else method.payments[select_idx].amount)
+    if custom_amount is not None:
+        options["sent_amount"] = custom_amount
+        expected_amount = custom_amount
+    if tx_hashes is not None:
+        options["tx_hashes"] = tx_hashes
+    await client.post(
+        "/invoices/batch",
+        json=(
+            {"ids": [invoice["id"]], "command": "mark_complete"}
+            if not options
+            else {"ids": [invoice["id"]], "command": "mark_complete", "options": options}
+        ),
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    j = (await client.get(f"/invoices/{invoice['id']}", headers={"Authorization": f"Bearer {token}"})).json()
+    assert j["payment_id"] == expected_method_id
+    assert j["sent_amount"] == expected_amount
+    if tx_hashes is not None:
+        assert j["tx_hashes"] == tx_hashes
+
+
+async def test_mark_complete_validation(client: TestClient, token: str, store: dict[str, Any]) -> None:
+    invoice1 = await create_invoice(client, token, store_id=store["id"])
+    invoice2 = await create_invoice(client, token, store_id=store["id"])
+    resp = await client.post(
+        "/invoices/batch",
+        json={"ids": [invoice1["id"], invoice2["id"]], "command": "mark_complete", "options": [{}]},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 422
+    assert "When options is a list, it must have the same length" in resp.json()["detail"]
+    resp = await client.post(
+        "/invoices/batch",
+        json={"ids": [invoice1["id"]], "command": "mark_complete", "options": {"payment_method_id": "does-not-exist"}},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 422
+    assert "Payment method does-not-exist not found" in resp.json()["detail"]

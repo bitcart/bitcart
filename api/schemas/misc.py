@@ -39,7 +39,7 @@ class EmailSettings(Schema):  # all policies have DisplayModel
 class BatchAction(Schema):
     ids: list[str]
     command: str
-    options: dict[str, Any] | None = {}
+    options: dict[str, Any] | list[dict[str, Any]] | None = {}
 
 
 class BalanceResponse(Schema):

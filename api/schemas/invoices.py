@@ -51,6 +51,12 @@ class MethodUpdateData(Schema):
     address: str
 
 
+class MarkCompleteOptions(Schema):
+    payment_method_id: str | None = None
+    sent_amount: DecimalAsFloat | None = None
+    tx_hashes: list[str] | None = None
+
+
 class UpdateInvoice(BaseInvoice):
     pass
 

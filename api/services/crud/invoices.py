@@ -26,7 +26,7 @@ from api.invoices import InvoiceExceptionStatus, InvoiceStatus
 from api.logging import get_exception_message, get_logger
 from api.plugins import SKIP_PAYMENT_METHOD
 from api.redis import Redis
-from api.schemas.invoices import CreateInvoice, MethodUpdateData
+from api.schemas.invoices import CreateInvoice, MarkCompleteOptions, MethodUpdateData
 from api.schemas.misc import BatchAction
 from api.services.coins import CoinService
 from api.services.crud import CRUDService, StatementTypeT
@@ -620,14 +620,45 @@ class InvoiceService(CRUDService[models.Invoice]):
     def supported_batch_actions(self) -> list[str]:
         return super().supported_batch_actions + ["mark_complete", "mark_invalid"]
 
+    async def process_mark_complete(self, settings: BatchAction, user: models.User) -> None:
+        options_list: list[dict[str, Any]]
+        if isinstance(settings.options, list):
+            if len(settings.options) != len(settings.ids):
+                raise HTTPException(
+                    422,
+                    f"When options is a list, it must have the same length as ids. "
+                    f"Got {len(settings.options)} options for {len(settings.ids)} invoices.",
+                )
+            options_list = settings.options
+        else:
+            options_data = settings.options or {}
+            options_list = [options_data] * len(settings.ids)
+        for invoice_id, options_data in zip(settings.ids, options_list, strict=False):
+            mark_complete_options = MarkCompleteOptions(**options_data)
+            invoice = await self.get(invoice_id, user)
+            method: models.PaymentMethod | None = None
+            if mark_complete_options.payment_method_id:
+                method = self.match_payment(invoice.payments, mark_complete_options.payment_method_id)
+                if not method:
+                    raise HTTPException(
+                        422,
+                        f"Payment method {mark_complete_options.payment_method_id} not found for invoice {invoice_id}",
+                    )
+            else:
+                method = invoice.payments[0] if invoice.payments else None
+            if not method:
+                continue
+            sent_amount = (
+                Decimal(str(mark_complete_options.sent_amount))
+                if mark_complete_options.sent_amount is not None
+                else method.amount
+            )
+            tx_hashes = mark_complete_options.tx_hashes or []
+            await self.update_status(invoice, invoices.InvoiceStatus.COMPLETE, method, tx_hashes, sent_amount)
+
     async def process_batch_action(self, settings: BatchAction, user: models.User) -> bool:
         if settings.command == "mark_complete":
-            for invoice_id in settings.ids:
-                invoice = await self.get(invoice_id, user)
-                method = invoice.payments[0] if invoice.payments else None
-                if not method:
-                    continue
-                await self.update_status(invoice, invoices.InvoiceStatus.COMPLETE, method)
+            await self.process_mark_complete(settings, user)
             return True
         if settings.command == "mark_invalid":
             await self.update_many(
