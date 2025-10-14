@@ -34,9 +34,11 @@ from api.types import TasksBroker
 logger = get_logger(__name__)
 
 settings = Settings()
-broker = TasksBroker(url=settings.redis_url).with_result_backend(RedisAsyncResultBackend(redis_url=settings.redis_url))
+broker = TasksBroker(url=settings.redis_url).with_result_backend(
+    RedisAsyncResultBackend(redis_url=settings.redis_url, keep_results=False)
+)
 client_tasks_broker = TasksBroker(url=settings.redis_url, queue_name="taskiq_client_tasks").with_result_backend(
-    RedisAsyncResultBackend(redis_url=settings.redis_url)
+    RedisAsyncResultBackend(redis_url=settings.redis_url, keep_results=False)
 )
 redis_scheduler_source = ListRedisScheduleSource(settings.redis_url)
 label_scheduler_resource = LabelScheduleSource(broker)
