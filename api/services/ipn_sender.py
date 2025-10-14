@@ -20,7 +20,8 @@ class IPNSender:
             base_log_message = f"Sending IPN with data {data} to {obj.notification_url}"
             try:
                 await self.plugin_registry.run_hook("send_ipn", obj, status, data)
-                await utils.common.send_request("POST", obj.notification_url, json=data)
+                # we don't need to enforce json responses here
+                await utils.common.send_request("POST", obj.notification_url, json=data, return_json=False)
                 logger.info(f"{base_log_message}: success")
             except Exception:
                 logger.info(f"{base_log_message}: error\n{traceback.format_exc()}")
