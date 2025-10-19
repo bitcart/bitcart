@@ -8,15 +8,14 @@ from collections.abc import Callable, Sized
 from datetime import datetime, timedelta
 from decimal import Decimal
 from types import TracebackType
-from typing import Any, Literal, cast, overload
+from typing import Annotated, Any, Literal, cast, overload
 
 from advanced_alchemy.base import ModelProtocol
 from aiohttp import ClientResponse, ClientSession
 from dateutil.parser import isoparse
 from dishka import AsyncContainer, Scope
 from fastapi import HTTPException
-from pydantic import create_model
-from pydantic.fields import FieldInfo
+from pydantic import Field, create_model
 from sqlalchemy import ColumnElement
 from sqlalchemy.orm import InstrumentedAttribute
 from ulid import ULID
@@ -39,14 +38,18 @@ def unique_verify_code(length: int = TOTP_LENGTH) -> str:
     return "".join(secrets.choice(TOTP_ALPHABET) for _ in range(length))
 
 
+# NOTE: when https://github.com/pydantic/pydantic/issues/1673 is fixed, this can be removed
 def to_optional[T: Schema](model: type[T]) -> type[T]:
     optional_fields: Any = {}
-    for field_name, model_field in model.model_fields.items():
-        if model_field.default_factory is not None or model_field.validate_default:
-            optional_fields[field_name] = (model_field.annotation, model_field)
+    for field_name, field_info in model.model_fields.items():
+        field_dict = field_info.asdict()
+        if not field_info.is_required():
+            optional_fields[field_name] = (field_info.annotation, field_info)
         else:
-            new_field_info = FieldInfo.merge_field_infos(model_field, FieldInfo(default=None))
-            optional_fields[field_name] = (model_field.annotation, new_field_info)
+            optional_fields[field_name] = (
+                Annotated[field_dict["annotation"] | None, *field_dict["metadata"], Field(**field_dict["attributes"])],  # noqa: F821
+                None,
+            )
     return create_model(f"Optional{model.__name__}", __base__=model, **optional_fields)
 
 
