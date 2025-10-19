@@ -389,16 +389,16 @@ wheels = [
 
 [[package]]
 name = "bitcart"
-version = "1.18.0.0"
+version = "1.19.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp" },
     { name = "jsonrpcclient" },
     { name = "universalasync" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/8c/de/bb971c2a2d0d66af036f72135d421f7c6d4901597dd6367d6583f00333ce/bitcart-1.18.0.0.tar.gz", hash = "sha256:c6ca6438bcd439882cf608db7a53dbe5756e4dd47124f6594b16ccc147d7b1a0", size = 146919, upload-time = "2025-07-11T13:26:20.775Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/c8/76/6ee2a6e25ed206878a8ff3b050aeec99bb5dc0bb743cfe5a7f617784e75a/bitcart-1.19.0.0.tar.gz", hash = "sha256:618ed3e943c52f2ad848a6b6233a0b9910e74d16d1db0d6d2697c52af24863c9", size = 153994, upload-time = "2025-10-19T13:39:09.299Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/14/76/91d4a7519c2e09a8f4aa4e2bdbeddc17ee23365db9ba256dd0eae9d6c4a0/bitcart-1.18.0.0-py3-none-any.whl", hash = "sha256:18d9c4dd4a8b6433b49e8f673cbd19f0d68dfe5efc9c87b8b289ee2c4fb3f202", size = 20909, upload-time = "2025-07-11T13:26:19.52Z" },
+    { url = "https://files.pythonhosted.org/packages/a8/6e/0cf04a72edd31d59e793ac71ebc6559086995156ef38678945c205e56914/bitcart-1.19.0.0-py3-none-any.whl", hash = "sha256:01b350425a8b6a4f13c5b5b653f170ab1f68a20f9de7012067e2f83aa5a41b7a", size = 20987, upload-time = "2025-10-19T13:39:08.374Z" },
 ]
 
 [[package]]
@@ -4064,11 +4064,11 @@ wheels = [
 
 [[package]]
 name = "universalasync"
-version = "0.4.0.1"
+version = "0.5.0.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/0e/b0/4f9831dbd39b82190cc7eb9d3b89e37dc7c4ecb16f7e4a2ed2dbd38c647c/universalasync-0.4.0.1.tar.gz", hash = "sha256:aadf1f20170366b76fb0317a343775c403842c8db25062f7d68184a09b3e882c", size = 58741, upload-time = "2024-12-16T15:28:12.908Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/94/65/9f4d9d630d2458548767f6a974b3e9fa316809aa5f11f02122ad22b2bf51/universalasync-0.5.0.0.tar.gz", hash = "sha256:e1085d6e71681cf362e24df00685261b88e0bee62252f869c3d311cc21f1a7cd", size = 71176, upload-time = "2025-10-19T12:39:19.814Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/79/70/b927626118b4571c1b3b494a33372d37c3d264f2c62e0c3284b0ff5d3866/universalasync-0.4.0.1-py3-none-any.whl", hash = "sha256:55691b23f8265ff9a658d5eaee5a0375d75ac46432862198178c9a360062ba52", size = 5873, upload-time = "2024-12-16T15:28:10.829Z" },
+    { url = "https://files.pythonhosted.org/packages/b0/5c/a932bcd7f3a4a9d682498662ab12425c911d1ee45c41f9d81cfa35097fe5/universalasync-0.5.0.0-py3-none-any.whl", hash = "sha256:a22c0aa58dcbc9008c3ed9ae8b707a8e64035e0798ec9033fdb5aa4e9948bc75", size = 5979, upload-time = "2025-10-19T12:39:19.022Z" },
 ]
 
 [[package]]
