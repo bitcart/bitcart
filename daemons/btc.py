@@ -87,6 +87,9 @@ class BTCDaemon(BaseDaemon):
         self.LIGHTNING_PUBLIC_CHANNELS = (
             self.env("LIGHTNING_PUBLIC_CHANNELS", cast=bool, default=False) if self.LIGHTNING_SUPPORTED else False
         )
+        self.LIGHTNING_ALLOW_INCOMING_CHANNELS = (
+            self.env("LIGHTNING_ALLOW_INCOMING_CHANNELS", cast=bool, default=False) if self.LIGHTNING_SUPPORTED else False
+        )
         self.SERVER = self.env("SERVER", default="")
         self.ONESERVER = self.env("ONESERVER", cast=bool, default=False)
         self.PROXY_URL = self.env("PROXY_URL", default=None)
@@ -140,6 +143,7 @@ class BTCDaemon(BaseDaemon):
             "forget_config": True,
             "electrum_path": self.DATA_PATH,
             "lightning_forward_payments": self.LIGHTNING_PUBLIC_CHANNELS,
+            "use_recoverable_channels": not self.LIGHTNING_ALLOW_INCOMING_CHANNELS,
             self.NET.lower(): True,
         }
         options.update(self.get_proxy_settings())
