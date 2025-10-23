@@ -35,10 +35,10 @@ logger = get_logger(__name__)
 
 settings = Settings()
 broker = TasksBroker(url=settings.redis_url).with_result_backend(
-    RedisAsyncResultBackend(redis_url=settings.redis_url, keep_results=False)
+    RedisAsyncResultBackend(redis_url=settings.redis_url, keep_results=False, result_ex_time=60)
 )
 client_tasks_broker = TasksBroker(url=settings.redis_url, queue_name="taskiq_client_tasks").with_result_backend(
-    RedisAsyncResultBackend(redis_url=settings.redis_url, keep_results=False)
+    RedisAsyncResultBackend(redis_url=settings.redis_url, keep_results=False, result_ex_time=60)
 )
 redis_scheduler_source = ListRedisScheduleSource(settings.redis_url)
 label_scheduler_resource = LabelScheduleSource(broker)
