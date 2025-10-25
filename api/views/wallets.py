@@ -115,6 +115,21 @@ async def get_wallet_channels(
         return []
 
 
+@router.get("/{model_id}/peers/list_ln_peers")
+async def get_wallet_channels(
+    wallet_service: FromDishka[WalletService],
+    model_id: str,
+    user: models.User = Security(utils.authorization.auth_dependency, scopes=[AuthScopes.WALLET_MANAGEMENT]),
+) -> Any:
+    try:
+        coin = await wallet_service.get_wallet_coin_by_id(model_id, user)
+        return await coin.list_ln_peers()
+    except (BitcartBaseError, HTTPException) as e:
+        if isinstance(e, HTTPException) and e.status_code != 422:
+            raise
+        return []
+
+
 @router.post("/{model_id}/channels/open")
 async def open_wallet_channel(
     wallet_service: FromDishka[WalletService],
@@ -129,6 +144,22 @@ async def open_wallet_channel(
         if isinstance(e, HTTPException) and e.status_code != 422:
             raise
         raise HTTPException(400, "Failed to open channel") from None
+
+
+@router.post("/{model_id}/peers/add_ln_peer")
+async def add_ln_peer(
+    wallet_service: FromDishka[WalletService],
+    model_id: str,
+    params: OpenChannelScheme,
+    user: models.User = Security(utils.authorization.auth_dependency, scopes=[AuthScopes.WALLET_MANAGEMENT]),
+) -> Any:
+    try:
+        coin = await wallet_service.get_wallet_coin_by_id(model_id, user)
+        return await coin.add_peer(params.node_id)
+    except (BitcartBaseError, HTTPException) as e:
+        if isinstance(e, HTTPException) and e.status_code != 422:
+            raise
+        raise HTTPException(400, "Failed to connect to peer") from None
 
 
 @router.post("/{model_id}/channels/close")
