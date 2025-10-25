@@ -114,10 +114,10 @@ class PaymentProcessor:
         self,
         invoice: models.Invoice,
         method: models.PaymentMethod,
+        wallet: models.Wallet,
         confirmations: int,
         tx_hashes: list[str],
         sent_amount: Decimal,
-        wallet: models.Wallet,
         *,
         di_context: AsyncContainer,
     ) -> None:
@@ -145,10 +145,10 @@ class PaymentProcessor:
                                 self.update_invoice_confirmations,
                                 invoice,
                                 method,
+                                wallet,
                                 confirmations,
                                 invoice.tx_hashes,
                                 cast(Decimal, invoice.sent_amount),
-                                wallet,
                                 container=self.container,
                                 logger=logger,
                             )
@@ -281,7 +281,7 @@ class PaymentProcessor:
         )
         invoice_data = await self.get_request(coin, method)
         return min(
-            constants.MAX_CONFIRMATION_WATCH, invoice_data.get("confirmations", 0)
+            constants.get_max_confirmation_watch(method.currency), invoice_data.get("confirmations", 0)
         )  # don't store arbitrary number of confirmations
 
     async def process_expire_task(self, invoice: models.Invoice, *, di_context: AsyncContainer) -> None:
