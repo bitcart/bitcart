@@ -229,7 +229,7 @@ class BaseCoin(metaclass=ABCMeta):
     async def open_channel(self, *args: Any, **kwargs: Any) -> bool:
         return False
     
-    async def list_ln_peers(self, *args: Any, **kwargs: Any) -> bool:
+    async def list_ln_peers(self, *args: Any, **kwargs: Any) -> List[str]:
         return []
     
     async def add_peer(self, *args: Any, **kwargs: Any) -> bool:
