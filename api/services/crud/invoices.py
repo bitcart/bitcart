@@ -475,6 +475,8 @@ class InvoiceService(CRUDService[models.Invoice]):
         self,
         invoice: models.Invoice,
         method: models.PaymentMethod,
+        wallet: models.Wallet,
+        *,
         confirmations: int,
         tx_hashes: list[str] | None = None,
         sent_amount: Decimal = Decimal(0),
@@ -485,7 +487,11 @@ class InvoiceService(CRUDService[models.Invoice]):
         status = invoice.status
         if confirmations >= 1:
             status = InvoiceStatus.CONFIRMED
-        transaction_speed = invoice.store.checkout_settings.transaction_speed
+        transaction_speed = (
+            wallet.transaction_speed
+            if wallet.transaction_speed is not None
+            else invoice.store.checkout_settings.transaction_speed
+        )
         if confirmations >= transaction_speed:
             status = InvoiceStatus.COMPLETE
         await self.update_status(invoice, status, method, tx_hashes, sent_amount)

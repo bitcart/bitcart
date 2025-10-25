@@ -59,10 +59,28 @@ async def test_wallet_invalid_xpub(client: TestClient, token: str) -> None:
 
 
 @pytest.mark.parametrize(
+    "transaction_speed",
+    [
+        pytest.param(-1, id="Too low transaction speed"),
+        pytest.param(201, id="Too high transaction speed"),
+    ],
+)
+async def test_wallet_transaction_speed_validation(client: TestClient, token: str, transaction_speed: int) -> None:
+    check_validation_failed(
+        await client.post(
+            "/wallets",
+            json={"name": "test", "xpub": TEST_XPUB, "transaction_speed": transaction_speed},
+            headers={"Authorization": f"Bearer {token}"},
+        ),
+        BAD_TX_SPEED_MESSAGE,
+    )
+
+
+@pytest.mark.parametrize(
     "data,error",
     [
         pytest.param({"transaction_speed": -1}, BAD_TX_SPEED_MESSAGE, id="Too low transaction speed"),
-        pytest.param({"transaction_speed": 11}, BAD_TX_SPEED_MESSAGE, id="Too high transaction speed"),
+        pytest.param({"transaction_speed": 201}, BAD_TX_SPEED_MESSAGE, id="Too high transaction speed"),
         pytest.param({"underpaid_percentage": -1}, BAD_UNDERPAID_PERCENTAGE_MESSAGE, id="Too low underpaid percentage"),
         pytest.param({"underpaid_percentage": 100}, BAD_UNDERPAID_PERCENTAGE_MESSAGE, id="Too high underpaid percentage"),
         pytest.param({"recommended_fee_target_blocks": 0}, BAD_TARGET_FEE_BLOCKS_MESSAGE, id="Too low target fee blocks"),

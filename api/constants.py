@@ -7,7 +7,6 @@ VERSION = "0.10.0.1"  # Version, used for openapi schemas and update checks
 WEBSITE = "https://bitcart.ai"  # Bitcart official site
 GIT_REPO_URL = "https://github.com/bitcart/bitcart"  # Bitcart github repository
 DOCKER_REPO_URL = "https://github.com/bitcart/bitcart-docker"  # Bitcart Docker Packaging repository
-MAX_CONFIRMATION_WATCH = 10  # maximum number of confirmations to save
 FEE_ETA_TARGETS = [25, 10, 5, 2, 1]  # supported target blocks confirmation ETA fee
 EVENTS_CHANNEL = "events"  # default redis channel for event system (inter-process communication)
 LOGSERVER_PORT = 9020  # port for logserver in the worker
@@ -82,3 +81,14 @@ class PayoutStatus:
 
 
 SENT_PAYOUT_STATUSES = [PayoutStatus.SENT, PayoutStatus.COMPLETE]
+
+
+def get_max_confirmation_watch(currency: str) -> int:
+    match currency:
+        case "xmr":
+            return 32
+        case "default" | _:
+            return 10
+
+
+MAX_CONFIRMATION_WATCH = get_max_confirmation_watch("default")  # maximum number of confirmations to save
