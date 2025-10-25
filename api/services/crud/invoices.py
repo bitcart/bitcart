@@ -478,6 +478,7 @@ class InvoiceService(CRUDService[models.Invoice]):
         confirmations: int,
         tx_hashes: list[str] | None = None,
         sent_amount: Decimal = Decimal(0),
+        wallet: models.Wallet | None = None,
     ) -> None:
         if tx_hashes is None:
             tx_hashes = []
@@ -485,7 +486,12 @@ class InvoiceService(CRUDService[models.Invoice]):
         status = invoice.status
         if confirmations >= 1:
             status = InvoiceStatus.CONFIRMED
-        transaction_speed = invoice.store.checkout_settings.transaction_speed
+        wallet_to_use = wallet if wallet is not None else method.wallet
+        transaction_speed = (
+            wallet_to_use.transaction_speed
+            if wallet_to_use.transaction_speed is not None
+            else invoice.store.checkout_settings.transaction_speed
+        )
         if confirmations >= transaction_speed:
             status = InvoiceStatus.COMPLETE
         await self.update_status(invoice, status, method, tx_hashes, sent_amount)

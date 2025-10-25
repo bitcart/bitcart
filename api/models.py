@@ -177,6 +177,7 @@ class Wallet(RecordModel):
     hint: Mapped[str | None] = mapped_column(Text)  # TODO: eventually handle None vs "" better
     contract: Mapped[str | None] = mapped_column(Text)
     additional_xpub_data: Mapped[dict[str, Any]] = mapped_column(MutableDict.as_mutable(JSONB()), default=dict)
+    transaction_speed: Mapped[int | None] = mapped_column(Integer)
     user_id: Mapped[str | None] = mapped_column(Text, ForeignKey(User.id, ondelete="SET NULL"))
 
     balance: Decimal
