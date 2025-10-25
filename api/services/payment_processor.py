@@ -122,7 +122,9 @@ class PaymentProcessor:
         di_context: AsyncContainer,
     ) -> None:
         invoice_service = await di_context.get(InvoiceService)
-        await invoice_service.update_confirmations(invoice, method, confirmations, tx_hashes, sent_amount, wallet)
+        await invoice_service.update_confirmations(
+            invoice, method, wallet, confirmations=confirmations, tx_hashes=tx_hashes, sent_amount=sent_amount
+        )
 
     async def new_block_handler(self, instance: BTC, event: str, height: int) -> None:
         async with self.locks["new_block"], self.container(scope=Scope.REQUEST) as container:
@@ -175,14 +177,19 @@ class PaymentProcessor:
         if electrum_status == InvoiceStatus.UNCONFIRMED:  # for on-chain invoices only
             await invoice_service.update_status(invoice, InvoiceStatus.PAID, method, tx_hashes, sent_amount)
             await invoice_service.update_confirmations(
-                invoice, method, confirmations=0, tx_hashes=tx_hashes, sent_amount=sent_amount, wallet=wallet
+                invoice, method, wallet, confirmations=0, tx_hashes=tx_hashes, sent_amount=sent_amount
             )  # to trigger complete for stores accepting 0-conf
         if electrum_status == InvoiceStatus.COMPLETE:  # for paid lightning invoices or confirmed on-chain invoices
             if method.lightning:
                 await invoice_service.update_status(invoice, InvoiceStatus.COMPLETE, method, tx_hashes, sent_amount)
             else:
                 await invoice_service.update_confirmations(
-                    invoice, method, await self.get_confirmations(method, wallet), tx_hashes, sent_amount, wallet
+                    invoice,
+                    method,
+                    wallet,
+                    confirmations=await self.get_confirmations(method, wallet),
+                    tx_hashes=tx_hashes,
+                    sent_amount=sent_amount,
                 )
         return True
 

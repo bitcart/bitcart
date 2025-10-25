@@ -1,4 +1,4 @@
-"""add wallet.transaction_speed
+"""Add wallet.transaction_speed
 
 Revision ID: 898eb02ada93
 Revises: 704cd14b069a
