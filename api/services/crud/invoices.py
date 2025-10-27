@@ -506,8 +506,8 @@ class InvoiceService(CRUDService[models.Invoice]):
         set_exception_status: str | None = None,
     ) -> bool:
         # load it in current session to apply updates
-        invoice = await self.merge_object(invoice)
-        method = await self.session.merge(method) if method else None
+        invoice = await self.get(invoice.id)
+        method = await self.payment_method_repository.get_one_or_none(id=method.id) if method else None
         if tx_hashes is None:
             tx_hashes = []
         if (
