@@ -7,7 +7,7 @@ from typing import Any, NewType, cast
 import pytest
 import pytest_mock
 from bitcart import BTC  # type: ignore[attr-defined]
-from dishka import Provider, Scope, decorate, from_context, make_async_container, provide
+from dishka import Provider, Scope, decorate, from_context, provide
 from fastapi import FastAPI
 from filelock import FileLock
 from httpx import AsyncClient
@@ -17,15 +17,13 @@ from pwdlib.hashers.bcrypt import BcryptHasher
 from sqlalchemy import text
 
 from api.db import AsyncEngine, create_async_engine
-from api.ioc import get_providers, setup_dishka
+from api.ioc import build_container, setup_dishka
 from api.logging import configure as configure_logging
 from api.models import Model
 from api.plugins import PluginObjects
 from api.services.coins import CoinService
 from api.services.exchange_rate import ExchangeRateService
 from api.settings import Settings
-from api.tasks import broker, client_tasks_broker
-from api.types import ClientTasksBroker, TasksBroker
 from main import get_app
 
 pytest_plugins = ["tests.fixtures.pytest.data"]
@@ -144,11 +142,8 @@ def settings(tmp_path_factory: pytest.TempPathFactory) -> Settings:
 
 @pytest.fixture(scope="session")
 def app(settings: Settings) -> Generator[FastAPI]:
-    container = make_async_container(
-        *get_providers(),
-        TestingProvider(),
-        context={Settings: settings, TasksBroker: broker, ClientTasksBroker: client_tasks_broker},
-        start_scope=Scope.RUNTIME,
+    container = build_container(
+        settings, extra_providers=(TestingProvider(),), include_plugins=False, start_scope=Scope.RUNTIME
     )
     app = get_app(settings)
     setup_dishka(container=container, app=app)

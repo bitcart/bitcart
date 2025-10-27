@@ -7,7 +7,6 @@ from typing import Any
 
 import structlog
 from advanced_alchemy.exceptions import AdvancedAlchemyError, NotFoundError
-from dishka import make_async_container
 from dishka.integrations.taskiq import setup_dishka as taskiq_setup_dishka
 from fastapi import FastAPI, Request
 from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
@@ -21,7 +20,7 @@ from starlette.staticfiles import StaticFiles
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 from api.db import AsyncSession
-from api.ioc import get_providers, setup_dishka
+from api.ioc import build_container, setup_dishka
 from api.ioc.services import ServicesProvider
 from api.logfire import (
     configure_logfire,
@@ -30,13 +29,11 @@ from api.logfire import (
 from api.logging import configure as configure_logging
 from api.logging import generate_correlation_id, get_logger
 from api.openapi import get_openapi_parameters, set_openapi_generator
-from api.plugins import PluginObjects, build_plugin_di_context, init_plugins, load_plugins
 from api.sentry import configure_sentry
 from api.services.ext.tor import TorService
 from api.services.plugin_registry import PluginRegistry
 from api.settings import Settings
 from api.tasks import broker, client_tasks_broker
-from api.types import ClientTasksBroker, TasksBroker
 from api.utils.common import excepthook_handler, handle_event_loop_exception
 from api.views import router
 from worker import start_broker_basic
@@ -244,20 +241,7 @@ def configure_production_app() -> FastAPI:
     settings = Settings()
     configure_logging(settings=settings, logfire=True)
     configure_logfire(settings, "server")
-    plugin_classes, plugin_providers = load_plugins(settings)
-    plugin_objects = init_plugins(plugin_classes)
-    plugin_context = build_plugin_di_context(plugin_objects)
-    container = make_async_container(
-        *get_providers(),
-        *plugin_providers,
-        context={
-            Settings: settings,
-            PluginObjects: plugin_objects,
-            TasksBroker: broker,
-            ClientTasksBroker: client_tasks_broker,
-            **plugin_context,
-        },
-    )
+    container = build_container(settings)
     configure_sentry(settings)
     app = get_app(settings)
     app.state.broker = broker

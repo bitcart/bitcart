@@ -10,28 +10,27 @@ from multiprocessing import Process
 import sqlalchemy
 from alembic import config, script
 from alembic.runtime import migration
-from dishka import AsyncContainer, make_async_container
+from dishka import AsyncContainer
 from dishka.integrations.taskiq import setup_dishka
 from taskiq import TaskiqEvents, TaskiqState
 from taskiq.api import run_receiver_task, run_scheduler_task
 
 from api import constants
 from api.db import create_async_engine
-from api.ioc import get_providers
+from api.ioc import build_container
 from api.ioc.worker import WorkerProvider
 from api.logfire import configure_logfire
 from api.logging import configure as configure_logging
 from api.logging import get_logger
 from api.logserver import main as start_logserver
 from api.logserver import wait_for_port
-from api.plugins import PluginObjects, build_plugin_di_context, init_plugins, load_plugins
 from api.sentry import configure_sentry
 from api.services.coins import CoinService
 from api.services.notification_manager import NotificationManager
 from api.services.plugin_registry import PluginRegistry
 from api.settings import Settings
-from api.tasks import broker, client_tasks_broker, scheduler
-from api.types import ClientTasksBroker, TasksBroker
+from api.tasks import broker, scheduler
+from api.types import TasksBroker
 from api.utils.common import excepthook_handler, handle_event_loop_exception
 
 logger = get_logger("worker")
@@ -97,21 +96,7 @@ def get_app(process: Process) -> TasksBroker:
     configure_sentry(settings)
     configure_logfire(settings, "worker")
     configure_logging(settings=settings, logfire=True)
-    plugin_classes, plugin_providers = load_plugins(settings)
-    plugin_objects = init_plugins(plugin_classes)
-    plugin_context = build_plugin_di_context(plugin_objects)
-    container = make_async_container(
-        *get_providers(),
-        WorkerProvider(),
-        *plugin_providers,
-        context={
-            Settings: settings,
-            PluginObjects: plugin_objects,
-            TasksBroker: broker,
-            ClientTasksBroker: client_tasks_broker,
-            **plugin_context,
-        },
-    )
+    container = build_container(settings, extra_providers=(WorkerProvider(),))
     broker.add_event_handler(TaskiqEvents.WORKER_STARTUP, functools.partial(lifespan_start, container))
     broker.add_event_handler(TaskiqEvents.WORKER_SHUTDOWN, functools.partial(lifespan_stop, container))
     setup_dishka(container, broker)
