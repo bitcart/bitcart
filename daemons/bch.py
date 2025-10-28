@@ -1,8 +1,12 @@
+import json
 from collections import defaultdict
 from decimal import Decimal
 
 from btc import BTCDaemon
 from utils import format_satoshis, get_exception_message, load_json_dict, modify_payment_url, rpc
+
+with open("daemons/tokens/cashtokens.json") as f:
+    CASHTOKENS = json.loads(f.read())
 
 
 class BCHDaemon(BTCDaemon):
@@ -374,6 +378,10 @@ class BCHDaemon(BTCDaemon):
         except Exception as e:
             raise Exception("Invalid arguments for transfer function") from e
         return await self.writecontract(address, "transfer", to, value, unsigned=unsigned, wallet=wallet)
+
+    @rpc
+    def get_tokens(self, wallet=None):
+        return CASHTOKENS
 
 
 if __name__ == "__main__":
