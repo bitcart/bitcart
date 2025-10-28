@@ -46,7 +46,7 @@ class PayoutManager:
         payout.update(status=status)
         async with self.container(scope=Scope.REQUEST) as container:
             payout_service = await container.get(PayoutService)
-            payout = await payout_service.get(payout.id)
+            payout = await payout_service.merge_object(payout)
         await self.ipn_sender.send_invoice_ipn(payout, status)
         await self.plugin_registry.run_hook("payout_status", payout, status)
         if status == PayoutStatus.SENT:
