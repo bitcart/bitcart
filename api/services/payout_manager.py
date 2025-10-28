@@ -59,9 +59,14 @@ class PayoutManager:
         cls, coin: BTC, wallet: models.Wallet, destination: str, amount: PayoutAmount, divisibility: int
     ) -> str:
         if not coin.is_eth_based:
-            if amount == SEND_ALL:
-                amount = "!"
-            raw_tx = await coin.pay_to(destination, amount, broadcast=False)
+            if wallet.contract:
+                if amount == SEND_ALL:
+                    amount = Decimal((await coin.server.getbalance())["confirmed"])
+                raw_tx = await coin.server.transfer(wallet.contract, destination, amount, unsigned=True)
+            else:
+                if amount == SEND_ALL:
+                    amount = "!"
+                raw_tx = await coin.pay_to(destination, amount, broadcast=False)
         else:
             if wallet.contract:
                 if amount == SEND_ALL:
@@ -131,7 +136,7 @@ class PayoutManager:
                 max_fee_amount = currency_table.normalize(wallet.currency, max_fee / rate, divisibility=divisibility)
                 if predicted_fee > max_fee_amount:
                     return None
-            if coin.is_eth_based:
+            if coin.is_eth_based or wallet.contract:
                 raw_tx = await coin.server.signtransaction(raw_tx)
             else:
                 await coin.server.addtransaction(raw_tx)

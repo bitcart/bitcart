@@ -16,15 +16,14 @@ from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 from aiohttp import web
 
-CONVERT_RATE = 100000000
-
 
 def noop_cast(v):
     return v
 
 
-def format_satoshis(x):
-    return f"{(Decimal(x) / CONVERT_RATE):.08f}" if x is not None else None
+def format_satoshis(x, decimal_point=8):
+    convert_rate = 10**decimal_point
+    return f"{(Decimal(x) / convert_rate):.{decimal_point}f}" if x is not None else None
 
 
 def load_spec(spec_file, exit_on_error=True):
