@@ -271,7 +271,7 @@ class BCHDaemon(BTCDaemon):
     @rpc(requires_wallet=True)
     async def getbalance(self, wallet):
         if not self.wallets[wallet]["contract"]:
-            return await self.wallets[wallet]["cmd"].getbalance()
+            return self.wallets[wallet]["cmd"].getbalance()
 
         class BasicTokenMeta(self.electrum.token_meta.TokenMeta):
             def _icon_to_bytes(self, icon) -> bytes:
