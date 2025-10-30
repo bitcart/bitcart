@@ -35,7 +35,7 @@ class BNB:
 
 
 class MATIC:
-    coingecko_id = "matic-network"
+    coingecko_id = "polygon"
 
 
 class TRX:
