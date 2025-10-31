@@ -626,7 +626,7 @@ requires-dist = [{ name = "python-decouple" }]
 [package.metadata.requires-dev]
 bch = [
     { name = "aiohttp", specifier = "<4.0" },
-    { name = "electron-cash", url = "https://github.com/Electron-Cash/Electron-Cash/archive/9fcc5b52e737cb1f34ed258c83cbfb62c31fc70d.zip" },
+    { name = "electron-cash", url = "https://github.com/Electron-Cash/Electron-Cash/archive/f251d3cd4c3f3734e988db6c68b0996641565034.zip" },
 ]
 bnb = [
     { name = "aiohttp", specifier = "<4.0" },
@@ -649,7 +649,7 @@ daemons = [
     { name = "aiohttp", specifier = "<4.0" },
     { name = "aiolimiter" },
     { name = "async-lru" },
-    { name = "electron-cash", url = "https://github.com/Electron-Cash/Electron-Cash/archive/9fcc5b52e737cb1f34ed258c83cbfb62c31fc70d.zip" },
+    { name = "electron-cash", url = "https://github.com/Electron-Cash/Electron-Cash/archive/f251d3cd4c3f3734e988db6c68b0996641565034.zip" },
     { name = "electrum", extras = ["crypto"], git = "https://github.com/spesmilo/electrum?rev=0f4d8d6d57bbff3428950cf531bc98eae473beec" },
     { name = "electrum-ecc", git = "https://github.com/bitcart/electrum-ecc?rev=d90e8c79fb7d83fdea9ad0de94dce07f836f69bb" },
     { name = "electrum-grs", extras = ["crypto"], git = "https://github.com/Groestlcoin/electrum-grs?rev=a10de858525b7045b835a840200cf9fcff3bfe9e" },
@@ -674,7 +674,7 @@ dev = [
     { name = "asyncpg", specifier = ">=0.30.0" },
     { name = "bitcart", specifier = ">=1.18.0.0" },
     { name = "dishka", specifier = ">=1.4.2" },
-    { name = "electron-cash", url = "https://github.com/Electron-Cash/Electron-Cash/archive/9fcc5b52e737cb1f34ed258c83cbfb62c31fc70d.zip" },
+    { name = "electron-cash", url = "https://github.com/Electron-Cash/Electron-Cash/archive/f251d3cd4c3f3734e988db6c68b0996641565034.zip" },
     { name = "electrum", extras = ["crypto"], git = "https://github.com/spesmilo/electrum?rev=0f4d8d6d57bbff3428950cf531bc98eae473beec" },
     { name = "electrum-ecc", git = "https://github.com/bitcart/electrum-ecc?rev=d90e8c79fb7d83fdea9ad0de94dce07f836f69bb" },
     { name = "electrum-grs", extras = ["crypto"], git = "https://github.com/Groestlcoin/electrum-grs?rev=a10de858525b7045b835a840200cf9fcff3bfe9e" },
@@ -842,7 +842,7 @@ name = "cffi"
 version = "2.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "pycparser", marker = "implementation_name != 'PyPy'" },
+    { name = "pycparser", marker = "implementation_name != 'PyPy' and platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/eb/56/b1ba7935a17738ae8453301356628e8147c79dbb825bcbc73dc7401f9846/cffi-2.0.0.tar.gz", hash = "sha256:44d1b5909021139fe36001ae048dbdde8214afa20200eda0f64c068cac5d5529", size = 523588, upload-time = "2025-09-08T23:24:04.541Z" }
 wheels = [
@@ -1324,7 +1324,7 @@ wheels = [
 [[package]]
 name = "electron-cash"
 version = "4.4.2"
-source = { url = "https://github.com/Electron-Cash/Electron-Cash/archive/9fcc5b52e737cb1f34ed258c83cbfb62c31fc70d.zip" }
+source = { url = "https://github.com/Electron-Cash/Electron-Cash/archive/f251d3cd4c3f3734e988db6c68b0996641565034.zip" }
 dependencies = [
     { name = "certifi" },
     { name = "dnspython" },
@@ -1340,7 +1340,7 @@ dependencies = [
     { name = "requests" },
     { name = "stem" },
 ]
-sdist = { hash = "sha256:f3b6c5007b59a4b17d3e4221b565db10938e1f1cd09f9f96b97caf4fde441a24" }
+sdist = { hash = "sha256:856c7a66801c5e149ac03e8c8e36506f833da9e7c13b3ffc7ad66a8647b2baf1" }
 
 [package.metadata]
 requires-dist = [
