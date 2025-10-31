@@ -3,7 +3,7 @@ from collections import defaultdict
 from decimal import Decimal
 
 from btc import BTCDaemon
-from utils import format_satoshis, get_exception_message, load_json_dict, modify_payment_url, rpc
+from utils import format_satoshis, get_exception_message, modify_payment_url, rpc
 
 with open("daemons/tokens/cashtokens.json") as f:
     CASHTOKENS = json.loads(f.read())
@@ -223,7 +223,6 @@ class BCHDaemon(BTCDaemon):
 
     @rpc
     def get_default_fee(self, tx: str | int, wallet=None) -> float:
-        tx = load_json_dict(tx, "Invalid transaction")
         return self.format_satoshis(
             self.electrum_config.estimate_fee(self.get_tx_size(tx) if isinstance(tx, str | dict) else tx), wallet
         )

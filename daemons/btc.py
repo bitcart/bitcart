@@ -571,7 +571,7 @@ class BTCDaemon(BaseDaemon):
     def get_default_fee(self, tx: str | int, wallet=None) -> float:
         return self.format_satoshis(
             self.electrum.fee_policy.FeePolicy(self.electrum_config.FEE_POLICY).estimate_fee(
-                self.get_tx_size(tx) if isinstance(tx, str) else tx, network=self.network
+                self.get_tx_size(tx) if isinstance(tx, str | dict) else tx, network=self.network
             ),
             wallet,
         )
