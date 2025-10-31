@@ -74,6 +74,7 @@ class BTCDaemon(BaseDaemon):
         # initialize wallet storages
         self.wallets = {}
         self.wallets_updates = {}
+        self.contracts = {}
         # initialize not yet created network
         self.loop = None
         self.network = None
@@ -222,9 +223,22 @@ class BTCDaemon(BaseDaemon):
             and (server_height == 0 or server_lag > 1 or (wallet and not wallet.is_up_to_date()))
         )
 
-    async def load_wallet(self, xpub, config, diskless=False):
-        if xpub in self.wallets:
-            wallet_data = self.wallets[xpub]
+    async def fetch_token_info(self, contract, wallet):
+        raise NotImplementedError
+
+    async def add_contract(self, contract, wallet):
+        if not contract:
+            return
+        if contract in self.contracts:
+            return
+        decimals, symbol = await self.fetch_token_info(contract, wallet)
+        self.contracts[contract] = {"decimals": decimals, "symbol": symbol}
+
+    async def load_wallet(self, xpub, config, diskless=False, *, contract=None):
+        wallet_key = self.get_wallet_key(xpub, contract)
+        if wallet_key in self.wallets:
+            wallet_data = self.wallets[wallet_key]
+            await self.add_contract(contract, wallet_data["wallet"])
             return wallet_data["wallet"], wallet_data["cmd"]
         command_runner = self.create_commands(config)
         if not xpub:
@@ -234,15 +248,16 @@ class BTCDaemon(BaseDaemon):
             wallet = (await self.restore_wallet(command_runner, xpub, config))["wallet"]
         else:
             wallet_dir = os.path.dirname(config.get_wallet_path())
-            wallet_path = os.path.join(wallet_dir, xpub)
+            wallet_path = os.path.join(wallet_dir, wallet_key)
             if not os.path.exists(wallet_path):
                 await self.restore_wallet(command_runner, xpub, config, wallet_path=wallet_path)
             storage = self.electrum.storage.WalletStorage(wallet_path)
             wallet = self.create_wallet(storage, config)
         self.init_wallet(wallet)
         self.load_cmd_wallet(command_runner, wallet)
-        self.wallets[xpub] = {"wallet": wallet, "cmd": command_runner}
-        self.wallets_updates[xpub] = deque(maxlen=self.POLLING_CAP)
+        self.wallets[wallet_key] = {"wallet": wallet, "cmd": command_runner, "contract": contract}
+        self.wallets_updates[wallet_key] = deque(maxlen=self.POLLING_CAP)
+        await self.add_contract(contract, wallet)
         return wallet, command_runner
 
     def add_wallet_to_command(self, wallet, req_method, exec_method, **kwargs):
@@ -257,10 +272,10 @@ class BTCDaemon(BaseDaemon):
         method = self.ALIASES.get(method, method)
         return self.electrum.commands.known_commands[method]
 
-    async def _get_wallet(self, req_id, req_method, xpub, diskless=False):
+    async def _get_wallet(self, req_id, req_method, xpub, diskless=False, *, contract=None):
         wallet = cmd = error = None
         try:
-            wallet, cmd = await self.load_wallet(xpub, config=self.electrum_config, diskless=diskless)
+            wallet, cmd = await self.load_wallet(xpub, config=self.electrum_config, diskless=diskless, contract=contract)
             while self.is_still_syncing(wallet):
                 await asyncio.sleep(0.1)
         except Exception as e:
@@ -306,8 +321,17 @@ class BTCDaemon(BaseDaemon):
             return get_exception_message(e.original_exception)
         return get_exception_message(e)
 
+    def get_wallet_key(self, xpub, contract=None, **extra_params):
+        key = xpub
+        if contract:
+            key += f"_{contract}"
+        return key
+
     async def execute_method(self, req_id, req_method, xpub, contract, extra_params, req_args, req_kwargs):
-        wallet, cmd, error = await self._get_wallet(req_id, req_method, xpub, diskless=extra_params.get("diskless", False))
+        wallet_key = self.get_wallet_key(xpub, contract, **extra_params)
+        wallet, cmd, error = await self._get_wallet(
+            req_id, req_method, xpub, diskless=extra_params.get("diskless", False), contract=contract
+        )
         if error:
             return error.send()
         exec_method, custom, error = await self.get_exec_method(cmd, req_id, req_method)
@@ -317,7 +341,7 @@ class BTCDaemon(BaseDaemon):
             return JsonResponse(code=-32000, error="Wallet not loaded", id=req_id).send()
         try:
             result = await self.get_exec_result(
-                xpub, req_method, req_args, req_kwargs, exec_method, custom, wallet=wallet, config=self.electrum_config
+                wallet_key, req_method, req_args, req_kwargs, exec_method, custom, wallet=wallet, config=self.electrum_config
             )
             return JsonResponse(result=result, id=req_id).send()
         except BaseException as e:
@@ -325,6 +349,11 @@ class BTCDaemon(BaseDaemon):
                 print(traceback.format_exc())
             error_message = self.get_exception_message(e)
             return JsonResponse(code=self.get_error_code(error_message), error=error_message, id=req_id).send()
+
+    def _find_matching_wallet_key(self, wallet):
+        for wallet_key in self.wallets:
+            if wallet == self.wallets[wallet_key]["wallet"]:
+                return wallet_key
 
     async def _process_events(self, event, *args):
         mapped_event = self.EVENT_MAPPING.get(event)
@@ -395,6 +424,26 @@ class BTCDaemon(BaseDaemon):
             and wallet.lnworker.get_invoice_status(invoice) == self.electrum.invoices.PR_PAID
         )
 
+    def format_satoshis(self, x, wallet=None):
+        return format_satoshis(x)
+
+    def process_new_payment(self, wallet, request_id, status):
+        request = self._get_request(wallet, request_id)
+        paid_via_lightning = self.is_paid_via_lightning(wallet, request)
+        tx_hashes = self.get_tx_hashes_for_invoice(wallet, request) if not paid_via_lightning else [request.rhash]
+        sent_amount = (
+            self.get_sent_amount(wallet, self._get_request_address(request), tx_hashes, request=request)
+            if not paid_via_lightning
+            else self.format_satoshis(request.get_amount_sat(), self._find_matching_wallet_key(wallet))
+        )
+        return {
+            "address": str(request_id),
+            "status": status,
+            "status_str": self.get_status_str(status),
+            "tx_hashes": tx_hashes,
+            "sent_amount": sent_amount,
+        }
+
     def process_events(self, event, *args):
         """Override in your subclass if needed"""
         wallet = None
@@ -408,32 +457,18 @@ class BTCDaemon(BaseDaemon):
             data, wallet = self.process_new_transaction(args)
         elif event == "new_payment":
             wallet, address, status = args
-            request = self._get_request(wallet, address)
-            paid_via_lightning = self.is_paid_via_lightning(wallet, request)
-            tx_hashes = self.get_tx_hashes_for_invoice(wallet, request) if not paid_via_lightning else [request.rhash]
-            sent_amount = (
-                self.get_sent_amount(wallet, self._get_request_address(request), tx_hashes)
-                if not paid_via_lightning
-                else format_satoshis(request.get_amount_sat())
-            )
-            data = {
-                "address": str(address),
-                "status": status,
-                "status_str": self.get_status_str(status),
-                "tx_hashes": tx_hashes,
-                "sent_amount": sent_amount,
-            }
+            data = self.process_new_payment(wallet, address, status)
         elif event == "verified_tx":
             data, wallet = self.process_verified_tx(args)
         else:
             return None, None
         return data, wallet
 
-    def get_sent_amount(self, wallet, address, tx_hashes):
+    def get_sent_amount(self, wallet, address, tx_hashes, request):
         sent_amount = 0
         for tx in tx_hashes:
             sent_amount += wallet.db.get_transaction(tx).output_value_for_address(address)
-        return format_satoshis(sent_amount)
+        return self.format_satoshis(sent_amount, self._find_matching_wallet_key(wallet))
 
     @rpc(requires_wallet=True)
     async def get_request(self, *args, **kwargs):
@@ -447,9 +482,9 @@ class BTCDaemon(BaseDaemon):
         if paid_via_lightning:
             result["tx_hashes"] = [request.rhash]
         result["sent_amount"] = (
-            self.get_sent_amount(wallet_obj, result["address"], result["tx_hashes"])
+            self.get_sent_amount(wallet_obj, result["address"], result["tx_hashes"], request=result)
             if not paid_via_lightning
-            else format_satoshis(request.get_amount_sat())
+            else self.format_satoshis(request.get_amount_sat(), wallet)
         )
         return result
 
@@ -534,10 +569,11 @@ class BTCDaemon(BaseDaemon):
 
     @rpc
     def get_default_fee(self, tx: str | int, wallet=None) -> float:
-        return format_satoshis(
+        return self.format_satoshis(
             self.electrum.fee_policy.FeePolicy(self.electrum_config.FEE_POLICY).estimate_fee(
-                self.get_tx_size(tx) if isinstance(tx, str) else tx, network=self.network
-            )
+                self.get_tx_size(tx) if isinstance(tx, str | dict) else tx, network=self.network
+            ),
+            wallet,
         )
 
     @rpc
@@ -556,7 +592,9 @@ class BTCDaemon(BaseDaemon):
 
     @rpc(requires_wallet=True)
     def getaddressbalance_wallet(self, address, wallet):
-        confirmed, unconfirmed, unmatured = map(format_satoshis, self.get_address_balance(address, wallet))
+        confirmed, unconfirmed, unmatured = (
+            self.format_satoshis(x, wallet) for x in self.get_address_balance(address, wallet)
+        )
         return {"confirmed": confirmed, "unconfirmed": unconfirmed, "unmatured": unmatured}
 
     @rpc
@@ -592,7 +630,7 @@ class BTCDaemon(BaseDaemon):
         if tx is None:
             raise Exception("No such blockchain transaction")
         delta = self.wallets[wallet]["wallet"].get_wallet_delta(tx)
-        return format_satoshis(delta.fee)
+        return self.format_satoshis(delta.fee, wallet)
 
     @rpc
     async def modifypaymenturl(self, url, amount, divisibility=None, wallet=None):

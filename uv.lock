@@ -389,16 +389,16 @@ wheels = [
 
 [[package]]
 name = "bitcart"
-version = "1.19.0.0"
+version = "1.19.1.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp" },
     { name = "jsonrpcclient" },
     { name = "universalasync" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/c8/76/6ee2a6e25ed206878a8ff3b050aeec99bb5dc0bb743cfe5a7f617784e75a/bitcart-1.19.0.0.tar.gz", hash = "sha256:618ed3e943c52f2ad848a6b6233a0b9910e74d16d1db0d6d2697c52af24863c9", size = 153994, upload-time = "2025-10-19T13:39:09.299Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/46/54/01d101027ce4364906f04ae9d721e43086976cd0e71a26f9781cc552a6c0/bitcart-1.19.1.0.tar.gz", hash = "sha256:64f555427e9db1ce7a766dec5c66cda98c48fd77ed32cc77e695e42f1e800bfb", size = 154024, upload-time = "2025-10-31T14:17:20.973Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a8/6e/0cf04a72edd31d59e793ac71ebc6559086995156ef38678945c205e56914/bitcart-1.19.0.0-py3-none-any.whl", hash = "sha256:01b350425a8b6a4f13c5b5b653f170ab1f68a20f9de7012067e2f83aa5a41b7a", size = 20987, upload-time = "2025-10-19T13:39:08.374Z" },
+    { url = "https://files.pythonhosted.org/packages/a7/78/bf7bb7b2d665c6b8c1fd1463187462c3c37933b2156b74d44268a4363bba/bitcart-1.19.1.0-py3-none-any.whl", hash = "sha256:52ee95f93679a7a574db27e9b7b41740654af9cfee4ea77cc8c80be5bf7eb186", size = 21150, upload-time = "2025-10-31T14:17:20.031Z" },
 ]
 
 [[package]]
@@ -626,7 +626,7 @@ requires-dist = [{ name = "python-decouple" }]
 [package.metadata.requires-dev]
 bch = [
     { name = "aiohttp", specifier = "<4.0" },
-    { name = "electron-cash", url = "https://github.com/Electron-Cash/Electron-Cash/archive/9fcc5b52e737cb1f34ed258c83cbfb62c31fc70d.zip" },
+    { name = "electron-cash", url = "https://github.com/Electron-Cash/Electron-Cash/archive/f251d3cd4c3f3734e988db6c68b0996641565034.zip" },
 ]
 bnb = [
     { name = "aiohttp", specifier = "<4.0" },
@@ -649,7 +649,7 @@ daemons = [
     { name = "aiohttp", specifier = "<4.0" },
     { name = "aiolimiter" },
     { name = "async-lru" },
-    { name = "electron-cash", url = "https://github.com/Electron-Cash/Electron-Cash/archive/9fcc5b52e737cb1f34ed258c83cbfb62c31fc70d.zip" },
+    { name = "electron-cash", url = "https://github.com/Electron-Cash/Electron-Cash/archive/f251d3cd4c3f3734e988db6c68b0996641565034.zip" },
     { name = "electrum", extras = ["crypto"], git = "https://github.com/spesmilo/electrum?rev=0f4d8d6d57bbff3428950cf531bc98eae473beec" },
     { name = "electrum-ecc", git = "https://github.com/bitcart/electrum-ecc?rev=d90e8c79fb7d83fdea9ad0de94dce07f836f69bb" },
     { name = "electrum-grs", extras = ["crypto"], git = "https://github.com/Groestlcoin/electrum-grs?rev=a10de858525b7045b835a840200cf9fcff3bfe9e" },
@@ -674,7 +674,7 @@ dev = [
     { name = "asyncpg", specifier = ">=0.30.0" },
     { name = "bitcart", specifier = ">=1.18.0.0" },
     { name = "dishka", specifier = ">=1.4.2" },
-    { name = "electron-cash", url = "https://github.com/Electron-Cash/Electron-Cash/archive/9fcc5b52e737cb1f34ed258c83cbfb62c31fc70d.zip" },
+    { name = "electron-cash", url = "https://github.com/Electron-Cash/Electron-Cash/archive/f251d3cd4c3f3734e988db6c68b0996641565034.zip" },
     { name = "electrum", extras = ["crypto"], git = "https://github.com/spesmilo/electrum?rev=0f4d8d6d57bbff3428950cf531bc98eae473beec" },
     { name = "electrum-ecc", git = "https://github.com/bitcart/electrum-ecc?rev=d90e8c79fb7d83fdea9ad0de94dce07f836f69bb" },
     { name = "electrum-grs", extras = ["crypto"], git = "https://github.com/Groestlcoin/electrum-grs?rev=a10de858525b7045b835a840200cf9fcff3bfe9e" },
@@ -842,7 +842,7 @@ name = "cffi"
 version = "2.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "pycparser", marker = "implementation_name != 'PyPy'" },
+    { name = "pycparser", marker = "implementation_name != 'PyPy' and platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/eb/56/b1ba7935a17738ae8453301356628e8147c79dbb825bcbc73dc7401f9846/cffi-2.0.0.tar.gz", hash = "sha256:44d1b5909021139fe36001ae048dbdde8214afa20200eda0f64c068cac5d5529", size = 523588, upload-time = "2025-09-08T23:24:04.541Z" }
 wheels = [
@@ -1324,7 +1324,7 @@ wheels = [
 [[package]]
 name = "electron-cash"
 version = "4.4.2"
-source = { url = "https://github.com/Electron-Cash/Electron-Cash/archive/9fcc5b52e737cb1f34ed258c83cbfb62c31fc70d.zip" }
+source = { url = "https://github.com/Electron-Cash/Electron-Cash/archive/f251d3cd4c3f3734e988db6c68b0996641565034.zip" }
 dependencies = [
     { name = "certifi" },
     { name = "dnspython" },
@@ -1340,7 +1340,7 @@ dependencies = [
     { name = "requests" },
     { name = "stem" },
 ]
-sdist = { hash = "sha256:f3b6c5007b59a4b17d3e4221b565db10938e1f1cd09f9f96b97caf4fde441a24" }
+sdist = { hash = "sha256:856c7a66801c5e149ac03e8c8e36506f833da9e7c13b3ffc7ad66a8647b2baf1" }
 
 [package.metadata]
 requires-dist = [
