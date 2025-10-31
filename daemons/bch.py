@@ -174,7 +174,7 @@ class BCHDaemon(BTCDaemon):
         return self.format_satoshis(sent_amount, self._find_matching_wallet_key(wallet))
 
     def format_request(self, request, wallet):
-        if request["tokenreq"]:
+        if request.get("tokenreq"):
             contract = request["category_id"]
             if contract in self.contracts:
                 token_info = self.contracts[contract]
@@ -295,7 +295,7 @@ class BCHDaemon(BTCDaemon):
             if token_id == contract:
                 ft_amt = token_meta.format_amount(token_id, sum(u["token_data"].amount for u in utxos))
                 return {"confirmed": ft_amt}
-        return None
+        return {"confirmed": "0"}
 
     @staticmethod
     def get_outpoint_longname(utxo):
