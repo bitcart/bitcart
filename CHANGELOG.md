@@ -2,6 +2,52 @@
 
 ## Latest changes
 
+## 0.10.1.0
+
+### IMPORTANT: fix redis memory and worker CPU issues
+
+There was an issue where background tasks were creating entries in redis but were not cleaned up. The scope of issue varies instance by instance, but
+what is certain is there was a near 100% CPU usage in background worker. This is now fixed.
+After installing the update ensure to run ./restart.sh to clear redis memory.
+
+### IMPORTANT: fixes for MATIC (POL) exchange rates
+
+Coingecko has changed the id for MATIC, which means exchange rate was broken and defaulted to 1:1. This is now fixed. Update ASAP if you use MATIC.
+
+### Cashtokens support in BCH
+
+UTXO-native smart contracts in BCH chain are there! It works the same way as our existing support for ETH and similar tokens, but thanks to UTXO powers, it doesn't need any specific fixes to accept payments from anywhere.
+
+### Daemons healthcheck notifications
+
+In case a daemon is down, you can now receive notifications to your preferred source. For that, configure healthcheck store id in server policies and connect at least 1 notification provider. You will get notifications if daemons are down.
+
+### Allow customizing payment methods in invoice creation
+
+It is finally possible, you don't need to create multiple stores anymore. What you can do now is create one store, and when creating invoice, override payment methods used for this specific invoice. You can't select wallets not connected to this store.
+
+### Advanced mark as complete dialog
+
+Now mark as complete no longer uses the first available payment method to mark invoice as complete. You can select payment method used, and optionally set sent_amount and tx_hashes to whatever the value it was.
+
+### Add per-wallet transaction speed override
+
+In some wallets or chains you may want to accept payments only after a higher degree of confirmations. The policy in store applied to all wallets by default, but now you can edit it on the wallets level. It is still capped to 10 confirmations for all currencies, and 32 for XMR. Maximum limits may be adjusted after user feedback.
+
+### Other changes
+
+- Fix for product_names and refunds
+- Better error handling of database errors
+- Provide metadata accessing functions to templates
+- Create an autocomplete mode for list items endpoint
+- Make schema parsing more reliable (frontend handles it itself)
+- Add support to exact filter by metadata fields
+- Refactor pagination, add new search_query hook
+- Expose product quantities in API and display in admin panel
+- Don't require json responses in IPN
+- Add ability to allow lightning incoming channels
+- Don't truncate ULIDs in admin panel
+
 ## 0.10.0.1
 
 Fix excessive memory usage of ETH-based daemons (TRX not affected)

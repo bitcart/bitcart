@@ -3,7 +3,7 @@ import string
 
 from bitcart import COINS as _COINS  # type: ignore # TODO: mypy not supporting dynamic __all__?
 
-VERSION = "0.10.0.1"  # Version, used for openapi schemas and update checks
+VERSION = "0.10.1.0"  # Version, used for openapi schemas and update checks
 WEBSITE = "https://bitcart.ai"  # Bitcart official site
 GIT_REPO_URL = "https://github.com/bitcart/bitcart"  # Bitcart github repository
 DOCKER_REPO_URL = "https://github.com/bitcart/bitcart-docker"  # Bitcart Docker Packaging repository
