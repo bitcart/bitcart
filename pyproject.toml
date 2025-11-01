@@ -73,7 +73,7 @@ eth-based = [
 # sort alphabetically
 bch = [
     { include-group = "btc-based" },
-    "electron-cash @ https://github.com/Electron-Cash/Electron-Cash/archive/f251d3cd4c3f3734e988db6c68b0996641565034.zip",
+    "electron-cash @ https://github.com/Electron-Cash/Electron-Cash/archive/492f050ebe87d58faf57bee131912b6c0d049820.zip",
 ]
 bnb = [{ include-group = "eth-based" }]
 btc = [

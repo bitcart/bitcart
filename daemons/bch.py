@@ -106,7 +106,12 @@ class BCHDaemon(BTCDaemon):
         }
 
     def get_tx_hashes_for_invoice(self, wallet, invoice):
-        return wallet.get_payment_status(invoice["address"], invoice["amount"])[2]
+        return wallet.get_payment_status(
+            invoice["address"],
+            invoice["amount"],
+            tokenreq=invoice.get("tokenreq", False),
+            category_id=invoice.get("category_id"),
+        )[2]
 
     def get_exception_message(self, e):
         return get_exception_message(e)
@@ -169,7 +174,7 @@ class BCHDaemon(BTCDaemon):
                 if txid in tx_hashes:
                     if tokenreq and token_data and (category_id is None or token_data.id_hex == category_id):
                         sent_amount += token_data.amount
-                    else:
+                    elif not tokenreq:
                         sent_amount += v
         return self.format_satoshis(sent_amount, self._find_matching_wallet_key(wallet))
 
@@ -195,11 +200,15 @@ class BCHDaemon(BTCDaemon):
         return request
 
     @rpc(requires_wallet=True)
-    def addrequest(self, *args, **kwargs):
+    def addrequest(self, amount, *args, **kwargs):
         wallet = kwargs.pop("wallet", None)
         is_token = bool(self.wallets[wallet]["contract"])
+        if is_token:
+            token_info = self.contracts[self.wallets[wallet]["contract"]]
+            decimals = token_info["decimals"]
+            amount = Decimal(amount) / Decimal(10 ** (8 - decimals))  # adjust for satoshis() call in addrequest
         result = self.wallets[wallet]["cmd"].addrequest(
-            *args, token_request=is_token, category_id=self.wallets[wallet]["contract"], **kwargs
+            amount, *args, token_request=is_token, category_id=self.wallets[wallet]["contract"], **kwargs
         )
         return self.format_request(result, wallet)
 
