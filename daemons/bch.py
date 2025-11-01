@@ -206,7 +206,7 @@ class BCHDaemon(BTCDaemon):
         if is_token:
             token_info = self.contracts[self.wallets[wallet]["contract"]]
             decimals = token_info["decimals"]
-            amount = Decimal(amount) / Decimal(10 ** (8 - decimals))  # adjust for satoshis() call in addrequest
+            amount = Decimal(amount) / (Decimal(10) ** Decimal(8 - decimals))  # adjust for satoshis() call in addrequest
         result = self.wallets[wallet]["cmd"].addrequest(
             amount, *args, token_request=is_token, category_id=self.wallets[wallet]["contract"], **kwargs
         )

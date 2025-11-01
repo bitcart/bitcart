@@ -22,7 +22,7 @@ def noop_cast(v):
 
 
 def format_satoshis(x, decimal_point=8):
-    convert_rate = 10**decimal_point
+    convert_rate = Decimal(10) ** Decimal(decimal_point)
     return f"{(Decimal(x) / convert_rate):.{decimal_point}f}" if x is not None else None
 
 
