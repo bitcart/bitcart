@@ -280,18 +280,6 @@ class BCHDaemon(BTCDaemon):
     async def getbalance(self, wallet):
         if not self.wallets[wallet]["contract"]:
             return self.wallets[wallet]["cmd"].getbalance()
-
-        class BasicTokenMeta(self.electrum.token_meta.TokenMeta):
-            def _icon_to_bytes(self, icon) -> bytes:
-                return b""
-
-            def _bytes_to_icon(self, buf: bytes) -> bytes:
-                return b""
-
-            def gen_default_icon(self, token_id_hex: str) -> bytes:
-                return b""
-
-        token_meta = BasicTokenMeta(self.electrum_config)
         contract = self.wallets[wallet]["contract"]
         tok_utxos = self.wallets[wallet]["wallet"].get_utxos(tokens_only=True)
         tokens = defaultdict(list)
@@ -301,7 +289,7 @@ class BCHDaemon(BTCDaemon):
             tokens[token_id].append(utxo)
         for token_id, utxos in tokens.items():
             if token_id == contract:
-                ft_amt = token_meta.format_amount(token_id, sum(u["token_data"].amount for u in utxos))
+                ft_amt = self.format_satoshis(sum(u["token_data"].amount for u in utxos), wallet)
                 return {"confirmed": ft_amt}
         return {"confirmed": "0"}
 
