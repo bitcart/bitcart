@@ -2,6 +2,10 @@
 
 ## Latest changes
 
+## 0.10.1.1
+
+Fixes for cashtokens decimal formatting
+
 ## 0.10.1.0
 
 ### IMPORTANT: fix redis memory and worker CPU issues
