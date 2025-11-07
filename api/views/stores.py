@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse
 
 from api import models, utils
 from api.constants import AuthScopes
-from api.schemas.misc import RatesResponse
+from api.schemas.misc import EmailSettings, RatesResponse
 from api.schemas.stores import (
     CreateStore,
     DisplayStore,
@@ -60,6 +60,18 @@ async def set_store_checkout_settings(
 ) -> Any:
     model = await store_service.get(model_id, user)
     await model.set_json_key("checkout_settings", settings)
+    return model
+
+
+@router.patch("/{model_id}/email_settings", response_model=DisplayStore)
+async def set_store_email_settings(
+    store_service: FromDishka[StoreService],
+    model_id: str,
+    settings: EmailSettings,
+    user: models.User = Security(utils.authorization.auth_dependency, scopes=[AuthScopes.STORE_MANAGEMENT]),
+) -> Any:
+    model = await store_service.get(model_id, user)
+    await model.set_json_key("email_settings", settings)
     return model
 
 
