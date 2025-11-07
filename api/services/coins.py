@@ -92,3 +92,13 @@ class CoinService:
         if not self._cryptos[coin].is_eth_based:
             return ""
         return RPC.get(coin, {}).get(self._crypto_settings[coin]["network"], "")
+
+    async def coins_healthcheck(self) -> dict[str, str]:
+        results: dict[str, str] = {}
+        for coin_name, coin in self.cryptos.items():
+            try:
+                await coin.help()
+                results[coin_name] = "ok"
+            except Exception as e:
+                results[coin_name] = f"error: {str(e)}"
+        return results

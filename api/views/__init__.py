@@ -5,6 +5,7 @@ from api.views.configurator import router as configurator_router
 from api.views.cryptos import router as cryptos_router
 from api.views.discounts import router as discounts_router
 from api.views.files import router as files_router
+from api.views.health import router as health_router
 from api.views.invoices import router as invoices_router
 from api.views.manage import router as manage_router
 from api.views.notifications import router as notifications_router
@@ -22,7 +23,7 @@ from api.views.websocket import router as websocket_router
 
 router = APIRouter(route_class=DishkaRoute)
 
-
+router.include_router(health_router, prefix="/health", tags=["health"])
 router.include_router(users_router, prefix="/users", tags=["users"])
 router.include_router(wallets_router, prefix="/wallets", tags=["wallets"])
 router.include_router(notifications_router, prefix="/notifications", tags=["notifications"])
