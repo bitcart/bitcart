@@ -32,7 +32,7 @@ load_plugins(settings)
 
 target_metadata = Model.metadata
 
-config.set_main_option("sqlalchemy.url", settings.postgres_dsn)
+config.set_main_option("sqlalchemy.url", settings.postgres_dsn.replace("%", "%%"))
 
 del settings
 
