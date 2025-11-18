@@ -17,7 +17,7 @@ router = APIRouter(route_class=DishkaRoute)
 async def metrics(
     request: Request,
     metrics_service: FromDishka[MetricsService],
-    user: models.User = Security(utils.authorization.auth_dependency, scopes=[AuthScopes.SERVER_MANAGEMENT]),
+    user: models.User = Security(utils.authorization.auth_dependency, scopes=[AuthScopes.METRICS_MANAGEMENT]),
 ) -> Response:
     await metrics_service.calculate_metrics()
     ephemeral_registry = request.app.state.instrumentator.registry

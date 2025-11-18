@@ -55,6 +55,7 @@ class AuthScopes(enum.StrEnum):
     NOTIFICATION_MANAGEMENT = "notification_management"
     TEMPLATE_MANAGEMENT = "template_management"
     FILE_MANAGEMENT = "file_management"
+    METRICS_MANAGEMENT = "metrics_management"
     FULL_CONTROL = "full_control"
 
 

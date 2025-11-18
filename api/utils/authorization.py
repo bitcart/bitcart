@@ -21,6 +21,7 @@ CORE_SCOPES: dict[AuthScopes, str] = {
     AuthScopes.NOTIFICATION_MANAGEMENT: "Create, list or edit notification providers",
     AuthScopes.TEMPLATE_MANAGEMENT: "Create, list or edit templates",
     AuthScopes.FILE_MANAGEMENT: "Create, list or edit files",
+    AuthScopes.METRICS_MANAGEMENT: "Access to metrics",
     AuthScopes.FULL_CONTROL: "Full control over what current user has",
 }
 CORE_SCOPES_STR = {k.value: v for k, v in CORE_SCOPES.items()}
