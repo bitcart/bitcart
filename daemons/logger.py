@@ -30,6 +30,8 @@ def configure_logging(debug: bool = False):
     formatter = UTCFormatter(log_format, datefmt=date_format)
     handler.setFormatter(formatter)
     root_logger.addHandler(handler)
+    # turn off loggers which will appear later and not yet loaded
+    logging.getLogger("httpcore").setLevel(logging.CRITICAL + 1)
     for logger_name in list(logging.Logger.manager.loggerDict.keys()):
         if not logger_name.startswith("daemons.") and logger_name != "daemons" and not logger_name.startswith("electrum"):
             logging.getLogger(logger_name).disabled = True
