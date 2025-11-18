@@ -78,6 +78,8 @@ class Settings(BaseSettings):
 
     LICENSE_SERVER_URL: str = Field("https://licensing.bitcart.ai", validation_alias="LICENSE_SERVER_URL")
 
+    PROMETHEUS_METRICS_ENABLED: bool = Field(False, validation_alias="BITCART_PROMETHEUS_METRICS_ENABLED")
+
     ssh_settings: SSHSettings = Field(default_factory=lambda: load_ssh_settings(Config("conf/.env")))
 
     model_config = SettingsConfigDict(

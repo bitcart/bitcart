@@ -23,6 +23,7 @@ from api.services.ext.tor import TorService
 from api.services.ext.update import UpdateCheckService
 from api.services.health_check import HealthCheckService
 from api.services.ipn_sender import IPNSender
+from api.services.metrics_service import MetricsService
 from api.services.notification_manager import NotificationManager
 from api.services.payment_processor import PaymentProcessor
 from api.services.payout_manager import PayoutManager
@@ -54,6 +55,7 @@ class ServicesProvider(Provider):
     )
     auth_service = provide(AuthService, scope=Scope.SESSION)
     auth_service_protocol = provide(AuthService, provides=AuthServiceProtocol, scope=Scope.SESSION)
+    metrics_service = provide(MetricsService, scope=Scope.SESSION)
 
     app_provides = provide_all(
         CoinService,

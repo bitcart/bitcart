@@ -11,6 +11,7 @@ from dishka.integrations.taskiq import setup_dishka as taskiq_setup_dishka
 from fastapi import FastAPI, Request
 from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTextResponse
+from prometheus_fastapi_instrumentator import Instrumentator
 from scalar_fastapi import get_scalar_api_reference
 from sqlalchemy.exc import IntegrityError
 from starlette.applications import Starlette
@@ -237,6 +238,21 @@ def get_app(settings: Settings) -> FastAPI:
     return app
 
 
+def setup_prometheus(app: FastAPI, settings: Settings) -> None:
+    if not settings.PROMETHEUS_METRICS_ENABLED:
+        return
+    from api.views import metrics
+
+    instrumentator = Instrumentator(
+        should_ignore_untemplated=True,
+        should_instrument_requests_inprogress=True,
+        excluded_handlers=["/metrics"],
+        inprogress_labels=True,
+    ).instrument(app)
+    app.state.instrumentator = instrumentator
+    app.include_router(metrics.router)
+
+
 def configure_production_app() -> FastAPI:
     settings = Settings()
     configure_logging(settings=settings, logfire=True)
@@ -250,6 +266,7 @@ def configure_production_app() -> FastAPI:
     taskiq_setup_dishka(container=container, broker=client_tasks_broker)
     set_openapi_generator(app, settings)
     instrument_fastapi(settings, app)
+    setup_prometheus(app, settings)
     return app
 
 

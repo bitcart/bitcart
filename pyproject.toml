@@ -37,6 +37,7 @@ web = [
     "logfire[fastapi,redis,sqlalchemy]>=2.7.1",
     "msgpack>=1.1.1",
     "paramiko>=4.0.0",
+    "prometheus-fastapi-instrumentator>=7.1.0",
     "pwdlib[bcrypt]>=0.2.1",
     "py-machineid>=0.8.0",
     "pydantic-settings>=2.7.0",

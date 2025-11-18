@@ -18,7 +18,7 @@ from sqlalchemy import Select, insert, select, update
 from sqlalchemy.orm import selectinload
 from starlette.datastructures import CommaSeparatedStrings
 
-from api import invoices, models, utils
+from api import invoices, metrics, models, utils
 from api.db import AsyncSession
 from api.ext import export as export_ext
 from api.ext.moneyformat import currency_table, truncate
@@ -290,7 +290,15 @@ class InvoiceService(CRUDService[models.Invoice]):
         promocode: str | None,
         lightning: bool = False,
     ) -> dict[str, Any] | None:
-        data = await self._create_payment_method_core(invoice, wallet, product, store, discounts, promocode, lightning)
+        metrics.pending_creation_payment_methods_count.labels(
+            currency=wallet.currency, contract=wallet.contract, store=store.id, lightning=lightning
+        ).inc()
+        try:
+            data = await self._create_payment_method_core(invoice, wallet, product, store, discounts, promocode, lightning)
+        finally:
+            metrics.pending_creation_payment_methods_count.labels(
+                currency=wallet.currency, contract=wallet.contract, store=store.id, lightning=lightning
+            ).dec()
         if isinstance(data, dict):
             data["meta"] = data.pop("metadata", {})
         return data
