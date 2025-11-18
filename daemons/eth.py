@@ -28,6 +28,7 @@ from genericprocessor import (
 from genericprocessor import KeyStore as BaseKeyStore
 from genericprocessor import Wallet as BaseWallet
 from hexbytes import HexBytes
+from logger import get_logger
 from mnemonic import Mnemonic
 from storage import JSONEncoder as StorageJSONEncoder
 from storage import Storage, decimal_to_string
@@ -49,6 +50,8 @@ from web3.middleware import ExtraDataToPOAMiddleware, Web3Middleware
 from web3.middleware.base import MiddlewareOnion
 from web3.providers.rpc.async_rpc import HTTPSessionManager
 from web3.types import RPCEndpoint, RPCResponse
+
+logger = get_logger(__name__)
 
 Account.enable_unaudited_hdwallet_features()
 
@@ -101,13 +104,9 @@ class ETHFeatures(BlockchainFeatures):
 
     def __init__(self, web3):
         self.web3 = web3
-        self.get_block_safe = exception_retry_middleware(self.get_block, (BlockNotFound,), daemon_ctx.get().VERBOSE)
-        self.get_block_receipts_safe = exception_retry_middleware(
-            self.get_block_receipts, (BlockNotFound,), daemon_ctx.get().VERBOSE
-        )
-        self.get_tx_receipt_safe = exception_retry_middleware(
-            self.get_tx_receipt, (TransactionNotFound,), daemon_ctx.get().VERBOSE
-        )
+        self.get_block_safe = exception_retry_middleware(self.get_block, (BlockNotFound,))
+        self.get_block_receipts_safe = exception_retry_middleware(self.get_block_receipts, (BlockNotFound,))
+        self.get_tx_receipt_safe = exception_retry_middleware(self.get_tx_receipt, (TransactionNotFound,))
 
     async def get_block_number(self):
         return await self.web3.eth.block_number
@@ -264,11 +263,7 @@ with open("daemons/tokens/erc20.json") as f:
 # For BlockNotFound and TransactionNotFound we create _safe variants where needed
 class AsyncHTTPRetryMiddleware(Web3Middleware):
     async def async_wrap_make_request(self, make_request):
-        return exception_retry_middleware(
-            make_request,
-            (AsyncClientError, TimeoutError, asyncio.TimeoutError, Web3Exception),
-            daemon_ctx.get().VERBOSE,
-        )
+        return exception_retry_middleware(make_request, (AsyncClientError, TimeoutError, asyncio.TimeoutError, Web3Exception))
 
 
 RPC_ORIGIN = "metamask"
@@ -458,9 +453,8 @@ class ETHDaemon(BlockProcessorDaemon):
                 ]
                 [asyncio.ensure_future(self.process_transaction(tx)) for tx in txes]
             except Exception:
-                if self.VERBOSE:
-                    print(f"Error processing debug trace for {block_number}:")
-                    print(traceback.format_exc())
+                logger.error(f"Error processing debug trace for {block_number}:")
+                logger.error(traceback.format_exc())
 
     async def create_coin(self, archive=False):
         server_providers = []

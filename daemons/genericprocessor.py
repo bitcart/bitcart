@@ -14,11 +14,14 @@ from decimal import Decimal
 
 from aiohttp import ClientSession
 from base import BaseDaemon
+from logger import get_logger
 from storage import ConfigDB as StorageConfigDB
 from storage import JSONEncoder as StorageJSONEncoder
 from storage import Storage, StoredDBProperty, StoredObject, StoredProperty, decimal_to_string
 from storage import WalletDB as StorageWalletDB
 from utils import CastingDataclass, JsonResponse, get_exception_message, get_function_header, hide_logging_errors, rpc
+
+logger = get_logger(__name__)
 
 NO_HISTORY_MESSAGE = "We don't access transaction history to remain lightweight"
 WRITE_DOWN_SEED_MESSAGE = "Please keep your seed in a safe place; if you lose it, you will not be able to restore your wallet."
@@ -311,9 +314,8 @@ class Wallet:
                 try:
                     await daemon_ctx.get().process_transaction(tx)
                 except Exception:
-                    if daemon_ctx.get().VERBOSE:
-                        print(f"Error processing transaction {self.coin.get_tx_hash(tx)}:")
-                        print(traceback.format_exc())
+                    logger.error(f"Error processing transaction {self.coin.get_tx_hash(tx)}:")
+                    logger.error(traceback.format_exc())
 
     async def start(self, blocks):
         first_start = self.latest_height == -1
@@ -513,9 +515,8 @@ class Wallet:
                 wallet,
             )
         except Exception:
-            if daemon_ctx.get().VERBOSE:
-                print(f"Error processing successful payment {tx_hash} with {key}:")
-                print(traceback.format_exc())
+            logger.error(f"Error processing successful payment {tx_hash} with {key}:")
+            logger.error(traceback.format_exc())
 
 
 class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
@@ -640,9 +641,8 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
                         await self.update_server(start_new=start_new)
                         return True
                 except Exception:
-                    if self.VERBOSE:
-                        print(f"Error updating seed servers (attempt {attempt + 1}/{max_attempts}):")
-                        print(traceback.format_exc())
+                    logger.error(f"Error updating seed servers (attempt {attempt + 1}/{max_attempts}):")
+                    logger.error(traceback.format_exc())
                     if attempt < max_attempts - 1:
                         await asyncio.sleep(2**attempt)
                         continue
@@ -693,9 +693,8 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
                     await self.process_transaction(tx)
                 return tx
             except Exception:
-                if self.VERBOSE:
-                    print(f"Error processing transaction {self.coin.get_tx_hash(tx_data)}:")
-                    print(traceback.format_exc())
+                logger.error(f"Error processing transaction {self.coin.get_tx_hash(tx_data)}:")
+                logger.error(traceback.format_exc())
 
     async def process_block(self, start_height, end_height):
         for block_number in range(start_height, end_height + 1):
@@ -715,9 +714,8 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
                         transactions.append(res)
                 self.latest_blocks.append(transactions)
             except Exception:
-                if self.VERBOSE:
-                    print(f"Error processing block {block_number}:")
-                    print(traceback.format_exc())
+                logger.error(f"Error processing block {block_number}:")
+                logger.error(traceback.format_exc())
 
     async def process_block_by_chunks(self, start_height, end_height):
         tasks = []
@@ -727,7 +725,7 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
         if self.VERBOSE:
             for task in results:
                 if isinstance(task, Exception):
-                    print(get_exception_traceback(task))
+                    logger.error(get_exception_traceback(task))
 
     async def process_pending(self):
         while self.running:
@@ -740,9 +738,8 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
                 self.latest_height = current_height
                 self.synchronized = True  # set it once, as we just need to ensure initial sync was done
             except Exception:
-                if self.VERBOSE:
-                    print("Error processing pending blocks:")
-                    print(traceback.format_exc())
+                logger.error("Error processing pending blocks:")
+                logger.error(traceback.format_exc())
             await asyncio.sleep(self.BLOCK_TIME)
 
     async def trigger_event(self, data, wallet):
@@ -811,8 +808,7 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
                 while await self.is_still_syncing(wallet):
                     await asyncio.sleep(0.1)
         except Exception as e:
-            if self.VERBOSE:
-                print(traceback.format_exc())
+            logger.error(traceback.format_exc())
             if req_method not in self.supported_methods or self.supported_methods[req_method].requires_wallet:
                 error_message = self.get_exception_message(e)
                 error = JsonResponse(
@@ -856,8 +852,8 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
                 result = await self.get_exec_result(wallet_key, req_args, req_kwargs, exec_method)
                 return JsonResponse(result=result, id=req_id).send()
             except BaseException as e:
-                if self.VERBOSE and not extra_params.get("quiet_mode"):
-                    print(traceback.format_exc())
+                if not extra_params.get("quiet_mode"):
+                    logger.error(traceback.format_exc())
                 error_message = self.get_exception_message(e)
                 return JsonResponse(code=self.get_error_code(error_message), error=error_message, id=req_id).send()
             finally:

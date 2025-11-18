@@ -12,6 +12,7 @@ from types import ModuleType
 from urllib.parse import urlparse
 
 from base import BaseDaemon
+from logger import configure_logging, get_logger
 from utils import (
     JsonResponse,
     async_partial,
@@ -23,6 +24,8 @@ from utils import (
     modify_payment_url,
     rpc,
 )
+
+logger = get_logger(__name__)
 
 
 class BTCDaemon(BaseDaemon):
@@ -157,6 +160,7 @@ class BTCDaemon(BaseDaemon):
         self.electrum_config = self.create_config()
         self.copy_config_settings(self.electrum_config)
         self.configure_logging(self.electrum_config)
+        configure_logging(debug=self.VERBOSE)
 
     def configure_logging(self, electrum_config):
         self.electrum.logging.configure_logging(electrum_config)
@@ -279,8 +283,7 @@ class BTCDaemon(BaseDaemon):
             while self.is_still_syncing(wallet):
                 await asyncio.sleep(0.1)
         except Exception as e:
-            if self.VERBOSE:
-                print(traceback.format_exc())
+            logger.error(traceback.format_exc())
             if req_method not in self.supported_methods or self.supported_methods[req_method].requires_wallet:
                 error_message = self.get_exception_message(e)
                 error = JsonResponse(
@@ -345,8 +348,8 @@ class BTCDaemon(BaseDaemon):
             )
             return JsonResponse(result=result, id=req_id).send()
         except BaseException as e:
-            if self.VERBOSE and not extra_params.get("quiet_mode"):
-                print(traceback.format_exc())
+            if not extra_params.get("quiet_mode"):
+                logger.error(traceback.format_exc())
             error_message = self.get_exception_message(e)
             return JsonResponse(code=self.get_error_code(error_message), error=error_message, id=req_id).send()
 

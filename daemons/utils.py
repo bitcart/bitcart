@@ -15,6 +15,9 @@ from typing import Any
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 from aiohttp import web
+from logger import get_logger
+
+logger = get_logger(__name__)
 
 
 def noop_cast(v):
@@ -107,7 +110,7 @@ def get_exception_message(e):
 @contextmanager
 def hide_logging_errors(enable):
     if enable:
-        logging.disable(logging.ERROR)
+        logging.disable(logging.CRITICAL)
     yield
     if enable:
         logging.disable(logging.NOTSET)
@@ -140,8 +143,7 @@ async def periodic_task(self, process_func, interval):
         try:
             await process_func()
         except Exception:
-            if self.VERBOSE:
-                print(traceback.format_exc())
+            logger.error(traceback.format_exc())
         elapsed = time.time() - start
         await asyncio.sleep(max(interval - elapsed, 0))
 
@@ -188,7 +190,7 @@ def get_func_name(func):
     return func.__name__
 
 
-def exception_retry_middleware(make_request, errors, verbose, retries=5):
+def exception_retry_middleware(make_request, errors, retries=5):
     async def middleware(*args, **kwargs):
         for i in range(retries):
             try:
@@ -198,16 +200,14 @@ def exception_retry_middleware(make_request, errors, verbose, retries=5):
                 return result
             except errors:
                 if i < retries - 1:
-                    if verbose:
-                        print(f"Retrying {get_func_name(make_request)} {args} {kwargs}, attempt {i + 1}")
+                    logger.debug(f"Retrying {get_func_name(make_request)} {args} {kwargs}, attempt {i + 1}")
                     await asyncio.sleep(1)
                     continue
-                if verbose:
-                    error_msg = (
-                        f"Failed after {retries} retries: {get_func_name(make_request)} {args} {kwargs}"
-                        f" with error:\n{traceback.format_exc()}"
-                    )
-                    print(error_msg)
+                error_msg = (
+                    f"Failed after {retries} retries: {get_func_name(make_request)} {args} {kwargs}"
+                    f" with error:\n{traceback.format_exc()}"
+                )
+                logger.error(error_msg)
                 raise
 
     return middleware

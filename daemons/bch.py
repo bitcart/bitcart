@@ -3,6 +3,7 @@ from collections import defaultdict
 from decimal import Decimal
 
 from btc import BTCDaemon
+from logger import configure_logging
 from utils import format_satoshis, get_exception_message, modify_payment_url, rpc
 
 with open("daemons/tokens/cashtokens.json") as f:
@@ -43,6 +44,7 @@ class BCHDaemon(BTCDaemon):
         self.electrum.util.set_verbosity(self.VERBOSE)
         self.electrum_config = self.create_config()
         self.copy_config_settings(self.electrum_config)
+        configure_logging(debug=self.VERBOSE)
 
     def register_callbacks(self, callback_function):
         self.network.register_callback(callback_function, self.available_events)

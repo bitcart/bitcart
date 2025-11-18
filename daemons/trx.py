@@ -258,9 +258,7 @@ class TRXDaemon(ETHDaemon):
         for server in server_list:
             server_provider = TronRPCProvider(server)
             server_provider.make_request = exception_retry_middleware(
-                server_provider.make_request,
-                (httpx.HTTPError, AsyncClientError, TimeoutError, asyncio.TimeoutError),
-                self.VERBOSE,
+                server_provider.make_request, (httpx.HTTPError, AsyncClientError, TimeoutError, asyncio.TimeoutError)
             )
             server_providers.append(server_provider)
         multi_provider = MultipleProviderRPC(server_providers)

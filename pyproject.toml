@@ -184,7 +184,6 @@ mccabe = { max-complexity = 12 }
 "tests/*" = ["S"]
 "scripts/*" = ["S", "T201"]
 ".circleci/*" = ["S"]
-"daemons/*" = ["T201"]
 "backups/*" = ["T201"]
 
 [tool.ruff.lint.isort]

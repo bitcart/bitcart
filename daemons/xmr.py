@@ -29,6 +29,7 @@ from genericprocessor import KeyStore as BaseKeyStore
 from genericprocessor import Transaction as BaseTransaction
 from genericprocessor import Wallet as BaseWallet
 from jsonrpc import RPCProvider
+from logger import get_logger
 from monero import const as monero_const
 from monero import ed25519
 from monero.address import address as address_func
@@ -42,6 +43,8 @@ from monero.wallet import Wallet as MoneroWallet
 from storage import JSONEncoder as StorageJSONEncoder
 from storage import Storage
 from utils import AbstractRPCProvider, MultipleProviderRPC, exception_retry_middleware, load_json_dict, modify_payment_url, rpc
+
+logger = get_logger(__name__)
 
 MAX_FETCH_TXES = 100
 
@@ -71,9 +74,7 @@ class Transaction(BaseTransaction):
 class MoneroRPC(RPCProvider):
     def __init__(self, url):
         super().__init__(url)
-        self.request = exception_retry_middleware(
-            self.request, (AsyncClientError, TimeoutError, asyncio.TimeoutError), daemon_ctx.get().VERBOSE
-        )
+        self.request = exception_retry_middleware(self.request, (AsyncClientError, TimeoutError, asyncio.TimeoutError))
 
     @staticmethod
     def _validate_hashes(hashes):
@@ -392,14 +393,12 @@ class XMRDaemon(BlockProcessorDaemon):
                                 continue
                             await self.process_transaction(tx, unconfirmed=True)
                     except Exception:
-                        if self.VERBOSE:
-                            print(f"Error processing transaction {self.coin.get_tx_hash(tx_data)}:")
-                            print(traceback.format_exc())
+                        logger.error(f"Error processing transaction {self.coin.get_tx_hash(tx_data)}:")
+                        logger.error(traceback.format_exc())
                 self.mempool_cache = new_cache
             except Exception:
-                if self.VERBOSE:
-                    print("Error processing mempool:")
-                    print(traceback.format_exc())
+                logger.error("Error processing mempool:")
+                logger.error(traceback.format_exc())
             await asyncio.sleep(self.MEMPOOL_TIME)
 
     async def create_coin(self, archive=False):
@@ -487,9 +486,8 @@ class XMRDaemon(BlockProcessorDaemon):
                                     final_address, tx, output.payment, wallet, unconfirmed=unconfirmed
                                 )
             except Exception:
-                if self.VERBOSE:
-                    print(f"Error processing transaction {tx.hash}:")
-                    print(traceback.format_exc())
+                logger.error(f"Error processing transaction {tx.hash}:")
+                logger.error(traceback.format_exc())
 
     #########
     # Methods

@@ -5,6 +5,7 @@ import weakref
 
 from aiohttp import WSCloseCode, WSMsgType, web
 from decouple import AutoConfig
+from logger import configure_logging
 from utils import JsonResponse, authenticate, load_spec, maybe_update_key, noop_cast, parse_params
 
 
@@ -23,6 +24,7 @@ class BaseDaemon:
         self.env_names = set()
         self.config_getter = AutoConfig(search_path="conf")
         self.load_env()
+        configure_logging(debug=self.VERBOSE)
         self.load_spec()
         # Parse all custom RPC commands
         self.supported_methods = {
