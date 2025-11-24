@@ -10,6 +10,7 @@ from dishka import AsyncContainer
 from fastapi import HTTPException, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy import ColumnElement, ColumnExpressionArgument, Select, Text, Update, and_, func, or_, select, text
+from sqlalchemy import inspect as sqla_inspect
 from sqlalchemy.exc import NoResultFound, ProgrammingError
 
 from api import models, utils
@@ -359,7 +360,8 @@ class CRUDService[ModelType: ModelProtocol]:
         from api.services.plugin_registry import PluginRegistry
 
         model = await self.get(item, user, statement=statement, filters=filters) if isinstance(item, str) else item
-        old_model_data = {c.key: getattr(model, c.key) for c in self.model_type.__mapper__.columns}
+        mapper = sqla_inspect(model).mapper  # type: ignore[union-attr]
+        old_model_data = {c.key: getattr(model, c.key) for c in mapper.column_attrs}
         old_model = self.model_type(**old_model_data)
         data = self._check_data(data, update=True)
         data = await self.prepare_data(data)
