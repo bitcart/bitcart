@@ -76,7 +76,9 @@ class UserService(CRUDService[models.User]):
             del data["password"]
         return data
 
-    async def create(self, data: "ModelDictT[models.User]", auth_user: models.User | None = None) -> models.User:
+    async def create(
+        self, data: "ModelDictT[models.User]", auth_user: models.User | None = None, *, call_hooks: bool = True
+    ) -> models.User:
         data = self._check_data(data, update=False)
         captcha_code = data.pop("captcha_code", None)
         register_off = (await self.setting_service.get_setting(Policy)).disable_registration
@@ -91,7 +93,7 @@ class UserService(CRUDService[models.User]):
         elif auth_user and auth_user.is_superuser:
             is_superuser = data["is_superuser"]
         data["is_superuser"] = is_superuser
-        user = await super().create(data, auth_user)
+        user = await super().create(data, auth_user, call_hooks=call_hooks)
         if is_superuser and auth_user is None:
             await self.plugin_registry.run_hook("first_user", user)
         return user

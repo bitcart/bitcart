@@ -84,9 +84,15 @@ class ProductService(CRUDService[models.Product]):
         )
 
     async def get(
-        self, item_id: Any, user: models.User | None = None, store_id: str | None = None, *args: Any, **kwargs: Any
+        self,
+        item_id: Any,
+        user: models.User | None = None,
+        *args: Any,
+        store_id: str | None = None,
+        statement: Select[tuple[models.Product]] | None = None,
+        **kwargs: Any,
     ) -> models.Product:
-        query = select(models.Product).where(models.Product.id == item_id)
+        query = statement or select(models.Product)
         if store_id is not None:
             query = query.where(models.Product.store_id == store_id)
         return await super().get(item_id, user, *args, statement=query, **kwargs)
@@ -136,13 +142,13 @@ class ProductService(CRUDService[models.Product]):
             schema.image = ""
         return await self.update(schema, item_id, user)
 
-    async def delete(self, item: models.Product | str, user: models.User | None = None) -> models.Product:
-        item = await super().delete(item, user)
+    async def delete(self, item: models.Product | str, user: models.User | None = None, **kwargs: Any) -> models.Product:
+        item = await super().delete(item, user, **kwargs)
         self.remove_image(item)
         return item
 
-    async def delete_many(self, ids: list[str], user: models.User | None = None) -> list[models.Product]:
-        items = await super().delete_many(ids, user)
+    async def delete_many(self, ids: list[str], user: models.User | None = None, **kwargs: Any) -> list[models.Product]:
+        items = await super().delete_many(ids, user, **kwargs)
         for item in items:
             self.remove_image(item)
         return items

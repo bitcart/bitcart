@@ -1,4 +1,5 @@
 import asyncio
+import inspect
 import os
 from collections import defaultdict
 from collections.abc import Callable
@@ -145,17 +146,51 @@ class PluginRegistry:
             setting_service = await container.get(SettingService)
             return await setting_service.get_setting(self._plugin_settings[plugin_name], name=f"plugin:{plugin_name}")
 
+    async def _dispatch_function(self, func: Callable[..., Any], *args: Any, **kwargs: Any) -> Any:
+        """Call a hook/filter function with only the arguments it can accept."""
+        sig = inspect.signature(func)
+        params = list(sig.parameters.values())
+        has_var_pos = any(p.kind == inspect.Parameter.VAR_POSITIONAL for p in params)
+        has_var_kw = any(p.kind == inspect.Parameter.VAR_KEYWORD for p in params)
+        if not has_var_pos:
+            max_pos = sum(
+                1
+                for p in params
+                if p.kind
+                in (
+                    inspect.Parameter.POSITIONAL_ONLY,
+                    inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                )
+            )
+            call_args = args[:max_pos]
+        else:
+            call_args = args
+        if not has_var_kw:
+            allowed_names = {
+                p.name
+                for p in params
+                if p.kind
+                in (
+                    inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                    inspect.Parameter.KEYWORD_ONLY,
+                )
+            }
+            call_kwargs = {k: v for k, v in kwargs.items() if k in allowed_names}
+        else:
+            call_kwargs = kwargs
+        return await run_universal(func, *call_args, **call_kwargs)
+
     async def run_hook(self, name: str, *args: Any, **kwargs: Any) -> None:
         for hook in self._callbacks[name]:
             try:
-                await run_universal(hook, *args, **kwargs)
+                await self._dispatch_function(hook, *args, **kwargs)
             except Exception as e:
                 logger.error(f"Hook {name} failed: {get_exception_message(e)}")
 
     async def apply_filters(self, name: str, value: Any, *args: Any, **kwargs: Any) -> Any:
         for hook in self._callbacks[name]:
             try:
-                value = await run_universal(hook, value, *args, **kwargs)
+                value = await self._dispatch_function(hook, value, *args, **kwargs)
             except Exception as e:
                 logger.error(f"Filter {name} failed: {get_exception_message(e)}")
         return value

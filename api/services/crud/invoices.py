@@ -29,7 +29,7 @@ from api.redis import Redis
 from api.schemas.invoices import CreateInvoice, MarkCompleteOptions, MethodUpdateData
 from api.schemas.misc import BatchAction
 from api.services.coins import CoinService
-from api.services.crud import CRUDService, StatementTypeT
+from api.services.crud import CRUDAction, CRUDService, StatementTypeT
 from api.services.crud.products import ProductService
 from api.services.crud.repositories import (
     InvoiceRepository,
@@ -151,8 +151,10 @@ class InvoiceService(CRUDService[models.Invoice]):
         logger.error(f"Could not find sent amount divisibility for invoice {obj_id}, payment_id={payment_id}")
         return None
 
-    async def validate(self, data: dict[str, Any], model: models.Invoice, user: models.User | None = None) -> None:
-        await super().validate(data, model, user)
+    async def validate(
+        self, action: CRUDAction, data: dict[str, Any], model: models.Invoice, user: models.User | None = None
+    ) -> None:
+        await super().validate(action, data, model, user)
         products = data.get("products", {})
         if isinstance(products, list):
             products = dict.fromkeys(products, 1)
@@ -671,7 +673,7 @@ class InvoiceService(CRUDService[models.Invoice]):
             tx_hashes = mark_complete_options.tx_hashes or []
             await self.update_status(invoice, invoices.InvoiceStatus.COMPLETE, method, tx_hashes, sent_amount)
 
-    async def process_batch_action(self, settings: BatchAction, user: models.User) -> bool:
+    async def process_batch_action(self, settings: BatchAction, user: models.User, **kwargs: Any) -> bool:
         if settings.command == "mark_complete":
             await self.process_mark_complete(settings, user)
             return True
@@ -682,7 +684,7 @@ class InvoiceService(CRUDService[models.Invoice]):
                 user,
             )
             return True
-        return await super().process_batch_action(settings, user)
+        return await super().process_batch_action(settings, user, **kwargs)
 
     async def validate_stock_levels(self, products: dict[str, int]) -> None:
         quantities = await self.product_repository.get_quantities(products)

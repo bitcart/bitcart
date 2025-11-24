@@ -12,7 +12,7 @@ from api.db import AsyncSession
 from api.logging import get_exception_message, get_logger
 from api.schemas.misc import BatchAction
 from api.services.coins import CoinService
-from api.services.crud import CRUDService
+from api.services.crud import CRUDAction, CRUDService
 from api.services.crud.repositories import PayoutRepository, StoreRepository, WalletRepository
 from api.services.payout_manager import PayoutManager
 
@@ -45,8 +45,10 @@ class PayoutService(CRUDService[models.Payout]):
         data["status"] = PayoutStatus.PENDING
         return data
 
-    async def validate(self, data: dict[str, Any], model: models.Payout, user: models.User | None = None) -> None:
-        await super().validate(data, model, user)
+    async def validate(
+        self, action: CRUDAction, data: dict[str, Any], model: models.Payout, user: models.User | None = None
+    ) -> None:
+        await super().validate(action, data, model, user)
         if "destination" in data or "wallet_id" in data:
             wallet_currency = cast(
                 str,
@@ -64,7 +66,7 @@ class PayoutService(CRUDService[models.Payout]):
     def supported_batch_actions(self) -> list[str]:
         return super().supported_batch_actions + ["approve", "send", "cancel"]
 
-    async def process_batch_action(self, settings: BatchAction, user: models.User) -> bool:
+    async def process_batch_action(self, settings: BatchAction, user: models.User, **kwargs: Any) -> bool:
         if settings.command == "approve":
             await self.update_many(
                 update(models.Payout)
@@ -84,7 +86,7 @@ class PayoutService(CRUDService[models.Payout]):
         if settings.command == "send":
             await self.send_payouts(settings, user)
             return True
-        return await super().process_batch_action(settings, user)
+        return await super().process_batch_action(settings, user, **kwargs)
 
     async def send_payouts(self, settings: BatchAction, user: models.User) -> None:
         wallets = cast(dict[str, Any], settings.options).get("wallets", {})

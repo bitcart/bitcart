@@ -1,4 +1,5 @@
 import os
+from typing import Any
 
 import aiofiles
 from dishka import AsyncContainer
@@ -56,13 +57,13 @@ class FileService(CRUDService[models.File]):
         await self.save_file(item, file)
         return item
 
-    async def delete(self, item: models.File | str, user: models.User | None = None) -> models.File:
-        item = await super().delete(item, user)
+    async def delete(self, item: models.File | str, user: models.User | None = None, **kwargs: Any) -> models.File:
+        item = await super().delete(item, user, **kwargs)
         self.remove_file(item)
         return item
 
-    async def delete_many(self, ids: list[str], user: models.User | None = None) -> list[models.File]:
-        items = await super().delete_many(ids, user)
+    async def delete_many(self, ids: list[str], user: models.User | None = None, **kwargs: Any) -> list[models.File]:
+        items = await super().delete_many(ids, user, **kwargs)
         for item in items:
             self.remove_file(item)
         return items

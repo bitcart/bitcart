@@ -17,7 +17,7 @@ from api.logging import get_exception_message, get_logger
 from api.schemas.tasks import SyncWalletMessage
 from api.schemas.wallets import CreateWalletData
 from api.services.coins import CoinService
-from api.services.crud import CRUDService
+from api.services.crud import CRUDAction, CRUDService
 from api.services.crud.repositories import WalletRepository
 from api.services.wallet_data import WalletDataService
 from api.types import TasksBroker
@@ -128,8 +128,10 @@ class WalletService(CRUDService[models.Wallet]):
             wallet.currency, {"xpub": wallet.xpub, "contract": wallet.contract, **wallet.additional_xpub_data}
         )
 
-    async def validate(self, data: dict[str, Any], model: models.Wallet, user: models.User | None = None) -> None:
-        await super().validate(data, model, user)
+    async def validate(
+        self, action: CRUDAction, data: dict[str, Any], model: models.Wallet, user: models.User | None = None
+    ) -> None:
+        await super().validate(action, data, model, user)
         if any(key in data for key in ("xpub", "contract", "additional_xpub_data")):
             currency = data.get("currency", model.currency)
             coin = await self.coin_service.get_coin(currency)
