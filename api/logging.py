@@ -114,6 +114,7 @@ class Logging[RendererType]:
     def configure_third_party() -> None:
         logging.getLogger("sqlalchemy.engine.Engine").handlers = [logging.NullHandler()]
         logging.getLogger("python_multipart").setLevel(logging.CRITICAL + 1)
+        logging.getLogger("paramiko.transport").setLevel(logging.CRITICAL + 1)
 
     @classmethod
     def configure_stdlib(cls, *, settings: Settings, logfire: bool, logserver: bool = False) -> None:
