@@ -408,7 +408,8 @@ class ETHDaemon(BlockProcessorDaemon):
         self.trace_queue = asyncio.Queue()
         await self.create_coin(archive=True)
         with contextlib.suppress(Exception):
-            await self.archive_coin.debug_trace_block(1)
+            height = await self.archive_coin.get_block_number()
+            await self.archive_coin.debug_trace_block(height)
             self.trace_available = True
         await super().on_startup(app)
         if self.trace_available:
