@@ -80,14 +80,16 @@ class Settings(BaseSettings):
 
     PROMETHEUS_METRICS_ENABLED: bool = Field(False, validation_alias="BITCART_PROMETHEUS_METRICS_ENABLED")
 
-    ssh_settings: SSHSettings = Field(default_factory=lambda: load_ssh_settings(Config("conf/.env")))
+    ssh_settings: SSHSettings = Field(
+        default_factory=lambda: load_ssh_settings(Config("conf/.env" if os.path.exists("conf/.env") else None))
+    )
 
     model_config = SettingsConfigDict(
         env_file="conf/.env",
         extra="ignore",
     )
 
-    config: Config = Field(default_factory=lambda: Config("conf/.env"))
+    config: Config = Field(default_factory=lambda: Config("conf/.env" if os.path.exists("conf/.env") else None))
 
     @property
     def log_file(self) -> str | None:
