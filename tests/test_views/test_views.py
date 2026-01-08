@@ -1541,10 +1541,8 @@ async def test_create_invoice_randomize_wallets(client: TestClient, token: str) 
     store = await create_store(client, token, custom_store_attrs={"wallets": [x["id"] for x in wallets]})
     invoice = await create_invoice(client, token, store_id=store["id"])
     payments = invoice["payments"]
-    idx = 1
-    for payment in payments:
-        assert payment["name"] == f"BTC ({idx})"
-        idx += 1
+    for idx, payment in enumerate(payments):
+        assert payment["name"] == f"BTC ({idx + 1})"
     await client.patch(
         f"/stores/{store['id']}/checkout_settings",
         json={"randomize_wallet_selection": True},

@@ -195,15 +195,16 @@ class CRUDService[ModelType: ModelProtocol]:
             query = statement
             query = cls.apply_pagination_joins(pagination, query, model)
             queries = cls.pagination_search(pagination, model)
-            query = query.where(queries) if queries is not None else query  # sqlalchemy core requires explicit checks
+            # NOTE: for some reason mypy update caused it to complain here
+            query = query.where(queries) if queries is not None else query  # type: ignore[assignment] # sqlalchemy core requires explicit checks
             if count_only:
                 return query
-            query = query.group_by(utils.common.get_sqla_attr(cast(ModelProtocol, model), "id"))
+            query = query.group_by(utils.common.get_sqla_attr(cast(ModelProtocol, model), "id"))  # type: ignore[assignment]
             if pagination.limit != -1:
-                query = query.limit(pagination.limit)
+                query = query.limit(pagination.limit)  # type: ignore[assignment]
             desc_s = "desc" if pagination.desc else ""
-            query = query.order_by(text(f"{pagination.sort} {desc_s}"))
-            return query.offset(pagination.offset)
+            query = query.order_by(text(f"{pagination.sort} {desc_s}"))  # type: ignore[assignment]
+            return query.offset(pagination.offset)  # type: ignore[return-value]
         return statement
 
     @classmethod

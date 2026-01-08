@@ -91,7 +91,7 @@ class InvoiceService(CRUDService[models.Invoice]):
         cls, pagination: SearchPagination, statement: StatementTypeT, model: type[ModelProtocol]
     ) -> StatementTypeT:
         if model == models.Invoice and isinstance(statement, Select):
-            statement = statement.join(
+            statement = statement.join(  # type: ignore[assignment]
                 models.PaymentMethod,
                 models.Invoice.id == models.PaymentMethod.invoice_id,
                 isouter=True,

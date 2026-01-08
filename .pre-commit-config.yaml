@@ -4,7 +4,7 @@ repos:
     hooks:
       - id: check-merge-conflict
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.13.3
+    rev: v0.14.10
     hooks:
       - id: ruff-check
       - id: ruff-format
@@ -33,6 +33,6 @@ repos:
         require_serial: true
         entry: npx prettier --write --ignore-unknown
   - repo: https://github.com/astral-sh/uv-pre-commit
-    rev: 0.8.23
+    rev: 0.9.22
     hooks:
       - id: uv-lock
