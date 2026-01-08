@@ -204,6 +204,7 @@ workflows:
               v:
                 - "3.12"
                 - "3.13"
+                - "3.14"
       - bitcart/functional-tests:
           name: functional-tests
           executor: main-executor

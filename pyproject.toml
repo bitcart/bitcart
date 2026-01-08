@@ -235,6 +235,7 @@ addopts = ["-n", "auto", "--cov=api", "--cov-report", "term-missing"]
 filterwarnings = [
     "error::DeprecationWarning",
     "error::PendingDeprecationWarning",
-    "ignore:Support for class-based `config` is deprecated:DeprecationWarning", # scalar-fastapi
+    # https://github.com/MagicStack/uvloop/issues/703
+    "ignore:.*asyncio.iscoroutinefunction.*:DeprecationWarning",
 ]
 norecursedirs = ["tests/functional"]
