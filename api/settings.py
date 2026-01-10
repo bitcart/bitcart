@@ -50,6 +50,8 @@ class Settings(BaseSettings):
 
     IS_WORKER: bool = False
 
+    OTEL_ENABLED: bool = Field(False, validation_alias="BITCART_OTEL_ENABLED")
+
     OPENAPI_PATH: str | None = Field(None, validation_alias="OPENAPI_PATH")
     API_TITLE: str = Field("Bitcart", validation_alias="API_TITLE")
 

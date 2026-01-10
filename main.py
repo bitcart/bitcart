@@ -1,6 +1,6 @@
 import os
 
-if os.getenv("OTEL_AUTO_INSTRUMENT_APP", "false").lower() == "true":
+if os.getenv("BITCART_OTEL_ENABLED", "false").lower() == "true":
     from opentelemetry.instrumentation.auto_instrumentation import initialize
 
     initialize()
