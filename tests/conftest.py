@@ -16,6 +16,7 @@ from pwdlib import PasswordHash
 from pwdlib.hashers.bcrypt import BcryptHasher
 from sqlalchemy import text
 
+from api.bootstrap import get_app
 from api.db import AsyncEngine, create_async_engine
 from api.ioc import build_container, setup_dishka
 from api.logging import configure as configure_logging
@@ -24,7 +25,6 @@ from api.plugins import PluginObjects
 from api.services.coins import CoinService
 from api.services.exchange_rate import ExchangeRateService
 from api.settings import Settings
-from main import get_app
 
 pytest_plugins = ["tests.fixtures.pytest.data"]
 
