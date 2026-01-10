@@ -11,6 +11,7 @@ from dishka.integrations.taskiq import setup_dishka as taskiq_setup_dishka
 from fastapi import FastAPI, Request
 from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTextResponse
+from opentelemetry import trace
 from prometheus_fastapi_instrumentator import Instrumentator
 from scalar_fastapi import get_scalar_api_reference
 from sqlalchemy.exc import IntegrityError
@@ -23,10 +24,6 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 from api.db import AsyncSession
 from api.ioc import build_container, setup_dishka
 from api.ioc.services import ServicesProvider
-from api.logfire import (
-    configure_logfire,
-    instrument_fastapi,
-)
 from api.logging import configure as configure_logging
 from api.logging import generate_correlation_id, get_logger
 from api.openapi import get_openapi_parameters, set_openapi_generator
@@ -70,13 +67,15 @@ class LogCorrelationIdMiddleware:
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http":
             return await self.app(scope, receive, send)
-        structlog.contextvars.bind_contextvars(
-            correlation_id=generate_correlation_id(),
+        correlation_id = generate_correlation_id()
+        with structlog.contextvars.bound_contextvars(
+            correlation_id=correlation_id,
             method=scope["method"],
             path=scope["path"],
-        )
-        await self.app(scope, receive, send)
-        structlog.contextvars.unbind_contextvars("correlation_id", "method", "path")
+        ):
+            span = trace.get_current_span()
+            span.set_attribute("correlation_id", correlation_id)
+            await self.app(scope, receive, send)
 
 
 # TODO: remove when https://github.com/fastapi/fastapi/pull/11160 is merged
@@ -255,8 +254,7 @@ def setup_prometheus(app: FastAPI, settings: Settings) -> None:
 
 def configure_production_app() -> FastAPI:
     settings = Settings()
-    configure_logging(settings=settings, logfire=True)
-    configure_logfire(settings, "server")
+    configure_logging(settings=settings)
     container = build_container(settings)
     configure_sentry(settings)
     app = get_app(settings)
@@ -265,6 +263,5 @@ def configure_production_app() -> FastAPI:
     setup_dishka(container=container, app=app)
     taskiq_setup_dishka(container=container, broker=client_tasks_broker)
     set_openapi_generator(app, settings)
-    instrument_fastapi(settings, app)
     setup_prometheus(app, settings)
     return app

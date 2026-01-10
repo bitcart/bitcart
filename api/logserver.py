@@ -10,7 +10,6 @@ from typing import Any
 import msgpack
 
 from api.constants import LOGSERVER_PORT
-from api.logfire import configure_logfire
 from api.logging import configure as configure_logging
 from api.logging import get_logger
 from api.settings import Settings
@@ -86,8 +85,7 @@ def wait_for_port(host: str = "localhost", port: int = LOGSERVER_PORT, timeout: 
 
 def main() -> None:
     settings = Settings(IS_WORKER=True)
-    configure_logfire(settings, "worker")
-    configure_logging(settings=settings, logfire=True, logserver=True)
+    configure_logging(settings=settings, logserver=True)
     tcpserver = LogRecordSocketReceiver(host=settings.logserver_host)
     with contextlib.suppress(KeyboardInterrupt):
         tcpserver.serve_until_stopped()

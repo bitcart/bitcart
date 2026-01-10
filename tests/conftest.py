@@ -147,7 +147,7 @@ def app(settings: Settings) -> Generator[FastAPI]:
     )
     app = get_app(settings)
     setup_dishka(container=container, app=app)
-    configure_logging(settings=settings, logfire=False)
+    configure_logging(settings=settings)
     yield app
 
 

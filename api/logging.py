@@ -11,6 +11,7 @@ from typing import Any, TypeVar, cast
 
 import msgpack
 import structlog
+from opentelemetry import trace
 from structlog.dev import plain_traceback
 
 from api.constants import LOGSERVER_PORT
@@ -49,7 +50,7 @@ class Logging[RendererType]:
 
     """
 
-    timestamper = structlog.processors.TimeStamper(fmt="iso")
+    timestamper = structlog.processors.TimeStamper(fmt="%Y-%m-%d %H:%M:%S.%f %Z", utc=False)
 
     @classmethod
     def get_level(cls, settings: Settings) -> str:
@@ -66,23 +67,50 @@ class Logging[RendererType]:
         return []
 
     @classmethod
-    def get_common_processors(cls, *, logfire: bool) -> list[Any]:
+    def add_trace_context(cls, logger: Logger, method_name: str, event_dict: dict[str, Any]) -> dict[str, Any]:
+        if "otelTraceID" in event_dict:
+            event_dict["trace_id"] = event_dict.pop("otelTraceID")
+        if "otelSpanID" in event_dict:
+            event_dict["span_id"] = event_dict.pop("otelSpanID")
+        if "otelServiceName" in event_dict:
+            event_dict["resource.service.name"] = event_dict.pop("otelServiceName")
+        event_dict.pop("otelTraceSampled", None)
+        if "trace_id" in event_dict and "span_id" in event_dict:
+            return event_dict
+        span = trace.get_current_span()
+        if not span.is_recording():
+            return event_dict
+        ctx = span.get_span_context()
+        if not ctx.is_valid:
+            return event_dict
+        event_dict["trace_id"] = format(ctx.trace_id, "032x")
+        event_dict["span_id"] = format(ctx.span_id, "016x")
+        tp = trace.get_tracer_provider()
+        resource = getattr(tp, "resource", None)
+        attrs = getattr(resource, "attributes", {}) if resource else {}
+        svc = attrs.get("service.name")
+        if svc:
+            event_dict["resource.service.name"] = svc
+        return event_dict
+
+    @classmethod
+    def get_common_processors(cls) -> list[Any]:
         return [
             structlog.contextvars.merge_contextvars,
             structlog.stdlib.add_log_level,
             structlog.stdlib.add_logger_name,
             structlog.stdlib.ExtraAdder(),
-            cls.timestamper,
+            cls.add_trace_context,
             structlog.processors.format_exc_info,
-            structlog.processors.TimeStamper(fmt="%Y-%m-%d %H:%M:%S.%f %Z", utc=False),
+            cls.timestamper,
             structlog.stdlib.PositionalArgumentsFormatter(),
             structlog.processors.UnicodeDecoder(),
             structlog.processors.StackInfoRenderer(),
         ]
 
     @classmethod
-    def get_structlog_processors(cls, *, logfire: bool) -> list[Any]:
-        return cls.get_common_processors(logfire=logfire) + [
+    def get_structlog_processors(cls) -> list[Any]:
+        return cls.get_common_processors() + [
             structlog.stdlib.ProcessorFormatter.wrap_for_formatter,
         ]
 
@@ -96,7 +124,7 @@ class Logging[RendererType]:
 
     @classmethod
     def get_third_party_loggers(cls, settings: Settings) -> list[str]:
-        loggers_list = ["logfire", "asyncio"] + cls.debug_loggers(settings)
+        loggers_list = ["asyncio"] + cls.debug_loggers(settings)
         loggers_list.append("uvicorn" if not settings.is_production() else "uvicorn.error")
         return loggers_list
 
@@ -117,18 +145,18 @@ class Logging[RendererType]:
         logging.getLogger("paramiko.transport").setLevel(logging.CRITICAL + 1)
 
     @classmethod
-    def configure_stdlib(cls, *, settings: Settings, logfire: bool, logserver: bool = False) -> None:
+    def configure_stdlib(cls, *, settings: Settings, logserver: bool = False) -> None:
         cls.configure_third_party()
         level = cls.get_level(settings)
         console_formatter = structlog.stdlib.ProcessorFormatter(
-            foreign_pre_chain=cls.get_common_processors(logfire=logfire),
+            foreign_pre_chain=cls.get_common_processors(),
             processors=[
                 structlog.stdlib.ProcessorFormatter.remove_processors_meta,
                 cast(structlog.typing.Processor, cls.get_renderer()),
             ],
         )
         file_formatter = structlog.stdlib.ProcessorFormatter(
-            foreign_pre_chain=cls.get_common_processors(logfire=logfire),
+            foreign_pre_chain=cls.get_common_processors(),
             processors=[
                 structlog.stdlib.ProcessorFormatter.remove_processors_meta,
                 cast(structlog.typing.Processor, cls.get_file_renderer()),
@@ -167,18 +195,18 @@ class Logging[RendererType]:
             root_logger.addHandler(handler)
 
     @classmethod
-    def configure_structlog(cls, *, logfire: bool = False) -> None:
+    def configure_structlog(cls) -> None:
         structlog.configure_once(
-            processors=cls.get_structlog_processors(logfire=logfire),
+            processors=cls.get_structlog_processors(),
             logger_factory=structlog.stdlib.LoggerFactory(),
             wrapper_class=structlog.stdlib.BoundLogger,
             cache_logger_on_first_use=True,
         )
 
     @classmethod
-    def configure(cls, *, settings: Settings, logserver: bool = False, logfire: bool = False) -> None:
-        cls.configure_stdlib(settings=settings, logserver=logserver, logfire=logfire)
-        cls.configure_structlog(logfire=logfire)
+    def configure(cls, *, settings: Settings, logserver: bool = False) -> None:
+        cls.configure_stdlib(settings=settings, logserver=logserver)
+        cls.configure_structlog()
 
     @staticmethod
     def timed_log_namer(default_name: str) -> str:
@@ -224,13 +252,11 @@ class Development(Logging[structlog.dev.ConsoleRenderer]):
 Production = Development
 
 
-def configure(*, settings: Settings, logfire: bool = False, logserver: bool = False) -> None:
-    if settings.is_testing():
-        Development.configure(settings=settings, logserver=logserver, logfire=False)
-    elif settings.is_development():
-        Development.configure(settings=settings, logserver=logserver, logfire=logfire)
+def configure(*, settings: Settings, logserver: bool = False) -> None:
+    if settings.is_testing() or settings.is_development():
+        Development.configure(settings=settings, logserver=logserver)
     else:
-        Production.configure(settings=settings, logserver=logserver, logfire=logfire)
+        Production.configure(settings=settings, logserver=logserver)
 
 
 def generate_correlation_id() -> str:

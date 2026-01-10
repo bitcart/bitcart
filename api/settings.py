@@ -42,8 +42,6 @@ class Settings(BaseSettings):
 
     SENTRY_DSN: str | None = None
 
-    LOGFIRE_TOKEN: str | None = None
-
     ENABLED_CRYPTOS: Annotated[CommaSeparatedStrings, NoDecode] = Field(
         CommaSeparatedStrings("btc"), validation_alias="BITCART_CRYPTOS"
     )

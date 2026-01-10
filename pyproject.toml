@@ -34,7 +34,6 @@ web = [
     "fido2>=2.0.0",
     "jinja2>=3.1.6",
     "jsonschema>=4.25.1",
-    "logfire[fastapi,redis,sqlalchemy]>=2.7.1",
     "msgpack>=1.1.1",
     "paramiko>=4.0.0",
     "prometheus-fastapi-instrumentator>=7.1.0",
@@ -54,6 +53,11 @@ web = [
     "taskiq>=0.11.18",
     "taskiq-redis>=1.1.0",
     "uvicorn[standard]>=0.34.0",
+]
+otel = [
+    "opentelemetry-distro[otlp]>=0.60b1,<0.61",
+    "opentelemetry-instrumentation>=0.60b1,<0.61",
+    "opentelemetry-sdk>=1.39.0,<1.40.0",
 ]
 production = ["gunicorn>=23.0.0"]
 
@@ -119,6 +123,7 @@ dev = [
     { include-group = "web" },
     { include-group = "types" },
     { include-group = "daemons" },
+    { include-group = "otel" },
     { include-group = "production" },
 ]
 

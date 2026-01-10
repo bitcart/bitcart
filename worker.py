@@ -19,7 +19,6 @@ from api import constants
 from api.db import create_async_engine
 from api.ioc import build_container
 from api.ioc.worker import WorkerProvider
-from api.logfire import configure_logfire
 from api.logging import configure as configure_logging
 from api.logging import get_logger
 from api.logserver import main as start_logserver
@@ -94,8 +93,7 @@ async def lifespan_stop(container: AsyncContainer, state: TaskiqState) -> None:
 def get_app(process: Process) -> TasksBroker:
     settings = Settings(IS_WORKER=True)
     configure_sentry(settings)
-    configure_logfire(settings, "worker")
-    configure_logging(settings=settings, logfire=True)
+    configure_logging(settings=settings)
     container = build_container(settings, extra_providers=(WorkerProvider(),))
     broker.add_event_handler(TaskiqEvents.WORKER_STARTUP, functools.partial(lifespan_start, container))
     broker.add_event_handler(TaskiqEvents.WORKER_SHUTDOWN, functools.partial(lifespan_stop, container))
