@@ -468,6 +468,7 @@ version = "1.0.0"
 source = { virtual = "." }
 dependencies = [
     { name = "python-decouple" },
+    { name = "taskipy" },
 ]
 
 [package.dev-dependencies]
@@ -567,7 +568,6 @@ dev = [
     { name = "sentry-sdk", extra = ["fastapi", "sqlalchemy"] },
     { name = "sqlalchemy", extra = ["asyncio"] },
     { name = "structlog" },
-    { name = "taskipy" },
     { name = "taskiq" },
     { name = "taskiq-redis" },
     { name = "tronpy" },
@@ -684,7 +684,10 @@ xrg = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "python-decouple" }]
+requires-dist = [
+    { name = "python-decouple" },
+    { name = "taskipy", specifier = ">=1.14.1" },
+]
 
 [package.metadata.requires-dev]
 bch = [
@@ -779,7 +782,6 @@ dev = [
     { name = "sentry-sdk", extras = ["fastapi", "sqlalchemy"] },
     { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.0.36" },
     { name = "structlog", specifier = ">=24.4.0" },
-    { name = "taskipy", specifier = ">=1.14.1" },
     { name = "taskiq", specifier = ">=0.11.18" },
     { name = "taskiq-redis", specifier = ">=1.1.0" },
     { name = "tronpy" },

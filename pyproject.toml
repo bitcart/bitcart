@@ -3,7 +3,7 @@ name = "bitcart-api"
 version = "1.0.0"
 description = "Bitcart Merchants API"
 requires-python = ">=3.12"
-dependencies = ["python-decouple"]
+dependencies = ["python-decouple", "taskipy>=1.14.1"]
 
 [dependency-groups]
 lint = ["mypy>=1.13.0", "pre-commit>=4.3.0", "ruff>=0.9.5"]
@@ -120,7 +120,6 @@ dev = [
     { include-group = "types" },
     { include-group = "daemons" },
     { include-group = "production" },
-    "taskipy>=1.14.1",
 ]
 
 [tool.uv]
