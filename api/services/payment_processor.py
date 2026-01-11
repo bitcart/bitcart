@@ -9,6 +9,7 @@ from bitcart import (  # type: ignore[attr-defined]
     errors,
 )
 from dishka import AsyncContainer, Scope
+from opentelemetry.instrumentation.utils import suppress_instrumentation
 from sqlalchemy import ColumnElement, Select, or_, select
 
 from api import constants, models, utils
@@ -292,17 +293,18 @@ class PaymentProcessor:
             await self.plugin_registry.run_hook("invoice_expired", invoice)
 
     async def manage_invoice_expiration(self) -> None:
-        while True:
-            async with self.container(scope=Scope.REQUEST) as container:
-                invoice_repository = await container.get(InvoiceRepository)
-                now = utils.time.now()
-                with log_errors(logger):
-                    result = await invoice_repository.get_invoices_for_expiry(now)
-                    async for invoice in result:
-                        with log_errors(logger):
-                            asyncio.create_task(
-                                utils.common.concurrent_safe_run(
-                                    self.process_expire_task, invoice, container=self.container, logger=logger
+        with suppress_instrumentation():
+            while True:
+                async with self.container(scope=Scope.REQUEST) as container:
+                    invoice_repository = await container.get(InvoiceRepository)
+                    now = utils.time.now()
+                    with log_errors(logger):
+                        result = await invoice_repository.get_invoices_for_expiry(now)
+                        async for invoice in result:
+                            with log_errors(logger):
+                                asyncio.create_task(
+                                    utils.common.concurrent_safe_run(
+                                        self.process_expire_task, invoice, container=self.container, logger=logger
+                                    )
                                 )
-                            )
-            await asyncio.sleep(0.1)
+                await asyncio.sleep(0.1)
