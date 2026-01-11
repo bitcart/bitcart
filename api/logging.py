@@ -199,7 +199,6 @@ class Logging[RendererType]:
                     structlog.processors.CallsiteParameter.LINENO,
                 }
             ),
-            *((StructlogOTELHandler(get_logger_provider()),) if settings.OTEL_ENABLED else ()),
             structlog.processors.format_exc_info,
             cls.remove_callsite_params,
         ]
@@ -247,6 +246,7 @@ class Logging[RendererType]:
         console_formatter = structlog.stdlib.ProcessorFormatter(
             foreign_pre_chain=cls.get_common_processors(settings=settings),
             processors=[
+                *((StructlogOTELHandler(get_logger_provider()),) if settings.OTEL_ENABLED else ()),
                 structlog.stdlib.ProcessorFormatter.remove_processors_meta,
                 cast(structlog.typing.Processor, cls.get_renderer()),
             ],

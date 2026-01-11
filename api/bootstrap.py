@@ -34,7 +34,7 @@ from api.settings import Settings
 from api.tasks import broker, client_tasks_broker
 from api.utils.common import excepthook_handler, handle_event_loop_exception
 from api.views import router
-from worker import start_broker_basic
+from api.worker import start_broker_basic
 
 logger = get_logger("api")
 
