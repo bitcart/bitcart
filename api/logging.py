@@ -75,7 +75,7 @@ class StructlogOTELHandler:
         observed_timestamp = time.time_ns()
         severity_number = std_to_otel(NAME_TO_LEVEL[event_dict["level"]])
         attributes = cls._get_attributes(event_dict)
-        level_name = event_dict["level"]
+        level_name = event_dict["level"].upper()
         level_name = "WARN" if level_name == "WARNING" else level_name
         return {
             "timestamp": timestamp,
@@ -115,6 +115,11 @@ class MsgpackHandler(logging.handlers.SocketHandler):
         if "_logger" in record.__dict__:  # added by structlog
             del record.__dict__["_logger"]
         return msgpack.packb(record.__dict__, default=self.msgpack_encoder)
+
+
+class FormattingNullHandler(logging.Handler):
+    def emit(self, record: logging.LogRecord) -> None:
+        self.format(record)
 
 
 class Logging[RendererType]:
@@ -240,13 +245,22 @@ class Logging[RendererType]:
         logging.getLogger("paramiko.transport").setLevel(logging.CRITICAL + 1)
 
     @classmethod
+    def maybe_add_otel_handler(
+        cls, *, root_logger: logging.Logger, otel_formatter: logging.Formatter, settings: Settings, level: str
+    ) -> None:
+        if settings.OTEL_ENABLED:
+            otel_handler = FormattingNullHandler()
+            otel_handler.setLevel(level)
+            otel_handler.setFormatter(otel_formatter)
+            root_logger.addHandler(otel_handler)
+
+    @classmethod
     def configure_stdlib(cls, *, settings: Settings, logserver: bool = False) -> None:
         cls.configure_third_party()
         level = cls.get_level(settings)
         console_formatter = structlog.stdlib.ProcessorFormatter(
             foreign_pre_chain=cls.get_common_processors(settings=settings),
             processors=[
-                *((StructlogOTELHandler(get_logger_provider()),) if settings.OTEL_ENABLED else ()),
                 structlog.stdlib.ProcessorFormatter.remove_processors_meta,
                 cast(structlog.typing.Processor, cls.get_renderer()),
             ],
@@ -256,6 +270,13 @@ class Logging[RendererType]:
             processors=[
                 structlog.stdlib.ProcessorFormatter.remove_processors_meta,
                 cast(structlog.typing.Processor, cls.get_file_renderer()),
+            ],
+        )
+        otel_formatter = structlog.stdlib.ProcessorFormatter(
+            foreign_pre_chain=cls.get_common_processors(settings=settings),
+            processors=[
+                StructlogOTELHandler(get_logger_provider()),
+                structlog.processors.KeyValueRenderer(),
             ],
         )
         console_handler = logging.StreamHandler()
@@ -272,6 +293,9 @@ class Logging[RendererType]:
                 logger.handlers.clear()
                 logger.propagate = True
                 if logger_name.startswith("uvicorn") or logger_name.startswith("sqlalchemy.engine"):  # for better DX
+                    cls.maybe_add_otel_handler(
+                        root_logger=logger, otel_formatter=otel_formatter, settings=settings, level=level
+                    )
                     logger.addHandler(console_handler)
                     logger.propagate = False
             else:
@@ -286,6 +310,7 @@ class Logging[RendererType]:
             if file_handler is not None:
                 root_logger.addHandler(file_handler)
         else:
+            cls.maybe_add_otel_handler(root_logger=root_logger, otel_formatter=otel_formatter, settings=settings, level=level)
             handler = MsgpackHandler(settings.logserver_client_host, LOGSERVER_PORT)
             handler.setLevel(level)
             root_logger.addHandler(handler)
