@@ -1,3 +1,5 @@
+from base import BaseDaemon  # isort: skip
+
 import asyncio
 import functools
 import inspect
@@ -13,7 +15,6 @@ from dataclasses import dataclass, field
 from decimal import Decimal
 
 from aiohttp import ClientSession
-from base import BaseDaemon
 from logger import get_logger
 from storage import ConfigDB as StorageConfigDB
 from storage import JSONEncoder as StorageJSONEncoder

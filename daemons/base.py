@@ -1,6 +1,19 @@
+import importlib.util
+import os
+
+if os.getenv("BITCART_OTEL_ENABLED", "false").lower() == "true":
+    _version_path = os.path.join(os.path.dirname(__file__), os.pardir, "api", "version.py")
+    _spec = importlib.util.spec_from_file_location("api.version", _version_path)
+    _module = importlib.util.module_from_spec(_spec)
+    _spec.loader.exec_module(_module)
+    _module.append_otel_version()
+
+    from opentelemetry.instrumentation.auto_instrumentation import initialize
+
+    initialize()
+
 import asyncio
 import json
-import os
 import weakref
 
 from aiohttp import WSCloseCode, WSMsgType, web

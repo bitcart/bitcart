@@ -1,6 +1,18 @@
 import datetime
 import logging
+import os
 import sys
+
+from opentelemetry._logs import get_logger_provider
+from opentelemetry.sdk._logs import LoggingHandler
+
+
+class OTelExtraStripper(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        for attr in ("otelSpanID", "otelTraceID", "otelTraceSampled", "otelServiceName", "levellower"):
+            if hasattr(record, attr):
+                delattr(record, attr)
+        return True
 
 
 class UTCFormatter(logging.Formatter):
@@ -30,6 +42,10 @@ def configure_logging(debug: bool = False):
     formatter = UTCFormatter(log_format, datefmt=date_format)
     handler.setFormatter(formatter)
     root_logger.addHandler(handler)
+    if os.getenv("BITCART_OTEL_ENABLED", "false").lower() == "true":
+        otel_handler = LoggingHandler(level=logging.NOTSET, logger_provider=get_logger_provider())
+        otel_handler.addFilter(OTelExtraStripper())
+        root_logger.addHandler(otel_handler)
     # turn off loggers which will appear later and not yet loaded
     logging.getLogger("httpcore").setLevel(logging.CRITICAL + 1)
     for logger_name in list(logging.Logger.manager.loggerDict.keys()):

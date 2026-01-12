@@ -1,3 +1,5 @@
+from base import BaseDaemon  # isort: skip
+
 import argparse
 import asyncio
 import contextlib
@@ -11,7 +13,6 @@ from decimal import Decimal
 from types import ModuleType
 from urllib.parse import urlparse
 
-from base import BaseDaemon
 from logger import configure_logging, get_logger
 from utils import (
     JsonResponse,
