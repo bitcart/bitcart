@@ -3,6 +3,7 @@ import binascii
 import json
 import os
 import secrets
+import time
 import traceback
 from collections import deque
 from contextvars import ContextVar
@@ -161,6 +162,9 @@ class MultipleRPCMoneroProvider(MoneroRPC):
         return await self.rpc.send_request(kind, method, **kwargs)
 
 
+BLOCK_NUMBER_CACHE_TTL = 1.0  # seconds
+
+
 class XMRFeatures(BlockchainFeatures):
     rpc: MoneroRPC
 
@@ -168,9 +172,17 @@ class XMRFeatures(BlockchainFeatures):
         self.rpc = rpc
         self.get_block_safe = self.get_block
         self.get_tx_receipt_safe = self.get_tx_receipt
+        self._block_number_cache = None
+        self._block_number_cache_ts = 0.0
 
     async def get_block_number(self):
-        return (await self.rpc.request("jsonrpc", "get_block_count"))["count"] - 1
+        now = time.monotonic()
+        if self._block_number_cache is not None and now - self._block_number_cache_ts < BLOCK_NUMBER_CACHE_TTL:
+            return self._block_number_cache
+        block_number = (await self.rpc.request("jsonrpc", "get_block_count"))["count"] - 1
+        self._block_number_cache = block_number
+        self._block_number_cache_ts = now
+        return block_number
 
     async def is_connected(self):
         return True
