@@ -24,6 +24,7 @@ def upgrade() -> None:
         "UPDATE invoices SET payment_methods = ARRAY(SELECT DISTINCT wallet_id FROM walletsxstores"
         " WHERE store_id = invoices.store_id)"
     )
+    op.execute("COMMIT")
     op.alter_column("invoices", "payment_methods", nullable=False)
     # ### end Alembic commands ###
 
