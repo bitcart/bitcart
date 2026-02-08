@@ -425,8 +425,10 @@ class InvoiceService(CRUDService[models.Invoice]):
             try:
                 discount = max(
                     filter(
-                        lambda x: (not x.currencies or wallet.currency in CommaSeparatedStrings(x.currencies))
-                        and (promocode == x.promocode or not x.promocode),
+                        lambda x: (
+                            (not x.currencies or wallet.currency in CommaSeparatedStrings(x.currencies))
+                            and (promocode == x.promocode or not x.promocode)
+                        ),
                         discounts,
                     ),
                     key=attrgetter("percent"),

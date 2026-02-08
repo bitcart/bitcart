@@ -32,12 +32,8 @@ def build_container(
         plugin_classes, plugin_providers = load_plugins(settings)
         plugin_objects = init_plugins(plugin_classes)
         plugin_context = build_plugin_di_context(plugin_objects)
-        context.update(
-            {
-                PluginObjects: plugin_objects,
-                **cast(dict[type[Any], Any], plugin_context),
-            }
-        )
+        context[PluginObjects] = plugin_objects
+        context.update(cast(dict[type[Any], Any], plugin_context))
         providers.extend(plugin_providers)
     if context_overrides:
         context.update(context_overrides)

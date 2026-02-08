@@ -39,12 +39,14 @@ def get_params(schema: dict[str, Any], need_required: bool = False) -> list[str 
     return [
         prepare_param(x, need_required)
         for x in filter(
-            lambda kv: kv[0] != "schema"
-            and "required" in kv[1]
-            and (kv[1]["required"] or not need_required or kv[0] == "targets")
-            and "alias_of" not in kv[1]
-            and kv[0] not in in_group
-            and kv[0] not in USELESS_PARAMS,
+            lambda kv: (
+                kv[0] != "schema"
+                and "required" in kv[1]
+                and (kv[1]["required"] or not need_required or kv[0] == "targets")
+                and "alias_of" not in kv[1]
+                and kv[0] not in in_group
+                and kv[0] not in USELESS_PARAMS
+            ),
             merge_details(schema).items(),
         )
     ]

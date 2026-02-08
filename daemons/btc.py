@@ -694,9 +694,11 @@ class BTCDaemon(BaseDaemon):
             require_path = func in ["restore", "create"]
             command_parser._actions = list(
                 filter(
-                    lambda x: x not in group_global._group_actions
-                    and x.dest not in ["forget_config", "help"]
-                    and (x.dest != "wallet_path" or require_path),
+                    lambda x: (
+                        x not in group_global._group_actions
+                        and x.dest not in ["forget_config", "help"]
+                        and (x.dest != "wallet_path" or require_path)
+                    ),
                     command_parser._actions,
                 )
             )
