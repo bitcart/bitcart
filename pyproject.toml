@@ -132,7 +132,7 @@ override-dependencies = ["protobuf<6", "python-dateutil>=2.9.0"]
 config-settings = { "electrum_ecc.dont_compile" = "1" }
 
 [tool.taskipy.tasks]
-api = { cmd = "uvicorn main:app --timeout-graceful-shutdown 1 --reload", help = "run api service" }
+api = { cmd = "uvicorn main:app --ws websockets-sansio --timeout-graceful-shutdown 1 --reload", help = "run api service" }
 worker = { cmd = "python3 worker.py", help = "run worker service" }
 production = { cmd = "gunicorn -c gunicorn.conf.py main:app", help = "run api service in production" }
 lint = { cmd = "ruff format . && ruff check --fix .", help = "run linters with autofix" }
