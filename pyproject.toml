@@ -128,8 +128,9 @@ dev = [
 ]
 
 [tool.uv]
-override-dependencies = ["protobuf<6", "python-dateutil>=2.9.0"]
-config-settings = { "electrum_ecc.dont_compile" = "1" }
+# python-dateutil for electron-cash requiring an older version for no reason
+override-dependencies = ["python-dateutil>=2.9.0"]
+config-settings-package = { "electrum-ecc" = { "electrum_ecc.dont_compile" = "1" } }
 
 [tool.taskipy.tasks]
 api = { cmd = "uvicorn main:app --ws websockets-sansio --timeout-graceful-shutdown 1 --reload", help = "run api service" }
