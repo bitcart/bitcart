@@ -58,7 +58,7 @@ class NotificationManager:
                 logger.error(f"Failed to instantiate provider {db_provider.provider}: {e}")
                 return False
             appr.add(cast(apprise.NotifyBase, provider))
-        with apprise.LogCapture(level=apprise.logging.INFO) as output:
+        with apprise.LogCapture(level=apprise.logging.DEBUG) as output:
             if not await appr.async_notify(text):
                 error_message = output.getvalue().strip()
                 if "There are no service(s) to notify" not in error_message:
