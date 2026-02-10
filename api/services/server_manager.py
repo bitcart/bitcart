@@ -18,7 +18,7 @@ class ServerManager:
         self.container = container
 
     async def start(self) -> None:
-        asyncio.create_task(run_repeated(self.cleanup_old_logs, self.LOG_CLEANUP_INTERVAL))
+        asyncio.create_task(run_repeated(self.cleanup_old_logs, self.LOG_CLEANUP_INTERVAL, 30))
 
     async def cleanup_old_logs(self) -> None:
         async with self.container(scope=Scope.REQUEST) as container:
