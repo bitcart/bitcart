@@ -10,6 +10,7 @@ from api.services.ext.tor import TorService
 from api.services.ext.update import UpdateCheckService
 from api.services.health_check import HealthCheckService
 from api.services.payment_processor import PaymentProcessor
+from api.services.server_manager import ServerManager
 
 
 class WorkerProvider(Provider):
@@ -69,6 +70,14 @@ class WorkerProvider(Provider):
         await service.start()
         yield service
 
+    @decorate
+    async def get_server_manager(
+        self,
+        service: ServerManager,
+    ) -> AsyncIterator[ServerManager]:
+        await service.start()
+        yield service
+
     # ExchangeRateService not preloaded to avoid rate limits during develop
     TO_PRELOAD = ServicesProvider.TO_PRELOAD + [
         PaymentProcessor,
@@ -77,4 +86,5 @@ class WorkerProvider(Provider):
         ConfiguratorService,
         UpdateCheckService,
         HealthCheckService,
+        ServerManager,
     ]

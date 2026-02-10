@@ -9,8 +9,8 @@ from api.constants import AuthScopes
 from api.schemas.policies import BackupsPolicy, GlobalStorePolicy, Policy
 from api.services.backup_manager import BackupManager
 from api.services.coins import CoinService
+from api.services.management import ManagementService
 from api.services.plugin_registry import PluginRegistry
-from api.services.server_manager import ServerManager
 from api.services.settings import SettingService
 
 router = APIRouter(route_class=DishkaRoute)
@@ -54,92 +54,92 @@ async def set_store_policies(
 
 @router.post("/restart")
 async def restart_server(
-    server_manager: FromDishka[ServerManager],
+    management_service: FromDishka[ManagementService],
     user: models.User = Security(utils.authorization.auth_dependency, scopes=[AuthScopes.SERVER_MANAGEMENT]),
 ) -> Any:
-    return await server_manager.restart_server()
+    return await management_service.restart_server()
 
 
 @router.post("/plugin-reload")
 async def plugin_reload(
-    server_manager: FromDishka[ServerManager],
+    management_service: FromDishka[ManagementService],
     user: models.User = Security(utils.authorization.auth_dependency, scopes=[AuthScopes.SERVER_MANAGEMENT]),
 ) -> Any:
-    return await server_manager.plugin_reload()
+    return await management_service.plugin_reload()
 
 
 @router.post("/update")
 async def update_server(
-    server_manager: FromDishka[ServerManager],
+    management_service: FromDishka[ManagementService],
     user: models.User = Security(utils.authorization.auth_dependency, scopes=[AuthScopes.SERVER_MANAGEMENT]),
 ) -> Any:
-    return await server_manager.update_server()
+    return await management_service.update_server()
 
 
 @router.post("/cleanup/images")
 async def cleanup_images(
-    server_manager: FromDishka[ServerManager],
+    management_service: FromDishka[ManagementService],
     user: models.User = Security(utils.authorization.auth_dependency, scopes=[AuthScopes.SERVER_MANAGEMENT]),
 ) -> Any:
-    return await server_manager.cleanup_images()
+    return await management_service.cleanup_images()
 
 
 @router.post("/cleanup/logs")
 async def cleanup_logs(
-    server_manager: FromDishka[ServerManager],
+    management_service: FromDishka[ManagementService],
     user: models.User = Security(utils.authorization.auth_dependency, scopes=[AuthScopes.SERVER_MANAGEMENT]),
 ) -> Any:
-    return await server_manager.cleanup_logs()
+    return await management_service.cleanup_logs()
 
 
 @router.post("/cleanup")
 async def cleanup_server(
-    server_manager: FromDishka[ServerManager],
+    management_service: FromDishka[ManagementService],
     user: models.User = Security(utils.authorization.auth_dependency, scopes=[AuthScopes.SERVER_MANAGEMENT]),
 ) -> Any:
-    return await server_manager.cleanup_server()
+    return await management_service.cleanup_server()
 
 
 @router.get("/logs")
 async def get_logs_list(
-    server_manager: FromDishka[ServerManager],
+    management_service: FromDishka[ManagementService],
     user: models.User = Security(utils.authorization.auth_dependency, scopes=[AuthScopes.SERVER_MANAGEMENT]),
 ) -> Any:
-    return await server_manager.get_logs_list()
+    return await management_service.get_logs_list()
 
 
 @router.get("/logs/{log}")
 async def get_log_contents(
-    server_manager: FromDishka[ServerManager],
+    management_service: FromDishka[ManagementService],
     log: str,
     user: models.User = Security(utils.authorization.auth_dependency, scopes=[AuthScopes.SERVER_MANAGEMENT]),
 ) -> Any:
-    return await server_manager.get_log_contents(log)
+    return await management_service.get_log_contents(log)
 
 
 @router.delete("/logs/{log}")
 async def delete_log(
-    server_manager: FromDishka[ServerManager],
+    management_service: FromDishka[ManagementService],
     log: str,
     user: models.User = Security(utils.authorization.auth_dependency, scopes=[AuthScopes.SERVER_MANAGEMENT]),
 ) -> Any:
-    return await server_manager.delete_log(log)
+    return await management_service.delete_log(log)
 
 
 @router.get("/syncinfo")
 async def get_syncinfo(
-    server_manager: FromDishka[ServerManager],
+    management_service: FromDishka[ManagementService],
     user: models.User = Security(utils.authorization.auth_dependency, scopes=[AuthScopes.SERVER_MANAGEMENT]),
 ) -> Any:
-    return await server_manager.get_syncinfo()
+    return await management_service.get_syncinfo()
 
 
 @router.get("/testping")
 async def test_email_ping(
-    server_manager: FromDishka[ServerManager],
+    management_service: FromDishka[ManagementService],
     user: models.User = Security(utils.authorization.auth_dependency, scopes=[AuthScopes.SERVER_MANAGEMENT]),
 ) -> Any:
-    return await server_manager.test_server_email()
+    return await management_service.test_server_email()
 
 
 @router.get("/daemons")

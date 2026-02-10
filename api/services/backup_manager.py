@@ -15,8 +15,8 @@ from api.redis import Redis
 from api.schemas.misc import BackupState
 from api.schemas.policies import BackupsPolicy
 from api.schemas.tasks import ProcessNewBackupPolicyMessage
+from api.services.management import ManagementService
 from api.services.plugin_registry import PluginRegistry
-from api.services.server_manager import ServerManager
 from api.services.settings import SettingService
 from api.settings import Settings
 from api.types import TasksBroker
@@ -128,8 +128,8 @@ class BackupManager:
         exec_command = "./backup.sh"
         logger.debug(f"Running {exec_command} with env {env_vars}")
         async with self.container(scope=Scope.REQUEST) as container:
-            server_manager = await container.get(ServerManager)
-            ok, output_message = server_manager.run_host(exec_command, env=env_vars, disown=False)
+            management_service = await container.get(ManagementService)
+            ok, output_message = management_service.run_host(exec_command, env=env_vars, disown=False)
         output: dict[str, Any] = {"status": "success" if ok else "error", "message": output_message}
         await self.plugin_registry.run_hook("post_backup", backup_policy, output)
         if output["status"] == "error":
@@ -159,8 +159,8 @@ class BackupManager:
             )
 
         async with self.container(scope=Scope.REQUEST) as container:
-            server_manager = await container.get(ServerManager)
-            return await server_manager.run_management_command_core(func, "Successfully started restore process!")
+            management_service = await container.get(ManagementService)
+            return await management_service.run_management_command_core(func, "Successfully started restore process!")
 
     async def perform_backup_for_client(self) -> dict[str, Any]:
         if self.settings.DOCKER_ENV:  # pragma: no cover

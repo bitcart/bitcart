@@ -6,9 +6,9 @@ from api.logging import get_logger
 from api.schemas.policies import Policy
 from api.services.crud.stores import StoreService
 from api.services.crud.templates import TemplateService
+from api.services.management import ManagementService
 from api.services.notification_manager import NotificationManager
 from api.services.plugin_registry import PluginRegistry
-from api.services.server_manager import ServerManager
 from api.services.settings import SettingService
 from api.utils.common import run_repeated
 
@@ -28,12 +28,12 @@ class HealthCheckService:
 
     async def check_daemon_health(self) -> None:
         async with self.container(scope=Scope.REQUEST) as container:
-            server_manager = await container.get(ServerManager)
+            management_service = await container.get(ManagementService)
             setting_service = await container.get(SettingService)
             notification_manager = await container.get(NotificationManager)
             template_service = await container.get(TemplateService)
             store_service = await container.get(StoreService)
-            syncinfo_data = await server_manager.get_syncinfo()
+            syncinfo_data = await management_service.get_syncinfo()
             failed_daemons = [daemon for daemon in syncinfo_data if not daemon.get("synchronized", False)]
             if not failed_daemons:
                 return

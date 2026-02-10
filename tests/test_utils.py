@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import os
+import pathlib
 import shlex
 import subprocess
 import time
@@ -25,11 +26,12 @@ from api.schemas.wallets import DisplayWallet
 from api.services.auth import AuthService
 from api.services.crud.stores import StoreService
 from api.services.crud.templates import TemplateService
+from api.services.management import ManagementService
 from api.services.notification_manager import NotificationManager
-from api.services.server_manager import ServerManager
 from api.services.wallet_data import WalletDataService
+from api.settings import Settings
 from api.types import PasswordHasherProtocol, StrEnum
-from tests.helper import create_notification, create_store
+from tests.helper import create_notification, create_store, enabled_logs
 
 if TYPE_CHECKING:
     from httpx import AsyncClient as TestClient
@@ -198,40 +200,69 @@ async def test_notification_template(client: TestClient, token: str, user: dict[
 
 # NOTE: this only works because those methods don't call any session-based objects
 @pytest.fixture
-async def server_manager(app: FastAPI) -> ServerManager:
+async def management_service(app: FastAPI) -> ManagementService:
     async with app.state.dishka_container(scope=Scope.REQUEST) as container:
-        return await container.get(ServerManager)
+        return await container.get(ManagementService)
 
 
 @pytest.mark.anyio
-def test_run_host(mocker: pytest_mock.MockerFixture, server_manager: ServerManager) -> None:
+def test_run_host(mocker: pytest_mock.MockerFixture, management_service: ManagementService) -> None:
     test_file = os.path.expanduser("~/test-output")
     with contextlib.suppress(OSError):  # prepare for test
         os.remove(test_file)
     content = f"touch {test_file}"
     # No valid ssh connection
-    ok, error = server_manager.run_host(content)
+    ok, error = management_service.run_host(content)
     assert ok is False
     assert not os.path.exists(test_file)
     assert "Connection problem" in cast(str, error)
-    assert server_manager.run_host_output(content, "good")["status"] == "error"
+    assert management_service.run_host_output(content, "good")["status"] == "error"
     # Same with key file
-    server_manager.settings.ssh_settings.key_file = "something"
-    assert server_manager.run_host(content)[0] is False
+    management_service.settings.ssh_settings.key_file = "something"
+    assert management_service.run_host(content)[0] is False
     assert not os.path.exists(test_file)
-    server_manager.settings.ssh_settings.key_file = ""
+    management_service.settings.ssh_settings.key_file = ""
     mocker.patch("paramiko.SSHClient.connect", return_value=True)
     mocker.patch(
         "paramiko.SSHClient.exec_command",
         side_effect=lambda command: subprocess.run(shlex.split(command), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL),
     )
-    ok, error = server_manager.run_host(content)
+    ok, error = management_service.run_host(content)
     assert ok is True
     assert error is None
-    assert server_manager.run_host_output(content, "good") == {"status": "success", "message": "good"}
+    assert management_service.run_host_output(content, "good") == {"status": "success", "message": "good"}
     time.sleep(1)  # wait for command to execute (non-blocking)
     assert os.path.exists(test_file)
     os.remove(test_file)  # Cleanup
+
+
+def test_parse_log_date(settings: Settings, management_service: ManagementService) -> None:
+    with enabled_logs(settings):
+        assert management_service._parse_log_date("bitcart20210821.log") == datetime(2021, 8, 21)
+        assert management_service._parse_log_date("bitcart20250210.log") == datetime(2025, 2, 10)
+        assert management_service._parse_log_date("bitcart.log") is None  # current log, no date
+        assert management_service._parse_log_date("other20210821.log") is None  # wrong prefix
+        assert management_service._parse_log_date("bitcartinvalid.log") is None  # invalid date
+    assert management_service._parse_log_date("bitcart20210821.log") is None
+
+
+@pytest.mark.anyio
+async def test_cleanup_old_logs(settings: Settings, management_service: ManagementService, tmp_path: pathlib.Path) -> None:
+    log_dir = str(tmp_path / "logs")
+    os.makedirs(log_dir)
+    current_log = os.path.join(log_dir, "bitcart.log")
+    old_log = os.path.join(log_dir, "bitcart20200101.log")
+    recent_log = os.path.join(log_dir, "bitcart99991231.log")
+    for f in [current_log, old_log, recent_log]:
+        with open(f, "w") as fh:  # noqa: ASYNC230
+            fh.write("test\n")
+    with enabled_logs(settings, datadir=str(tmp_path)):
+        # Cleanup with 30-day retention should remove old log but keep recent one
+        await management_service.cleanup_old_logs(30)
+        assert not os.path.exists(old_log)
+        assert os.path.exists(recent_log)
+        # Current log file (bitcart.log) should never be touched
+        assert os.path.exists(current_log)
 
 
 def test_versiontuple() -> None:

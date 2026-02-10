@@ -23,6 +23,7 @@ from api.services.ext.tor import TorService
 from api.services.ext.update import UpdateCheckService
 from api.services.health_check import HealthCheckService
 from api.services.ipn_sender import IPNSender
+from api.services.management import ManagementService
 from api.services.metrics_service import MetricsService
 from api.services.notification_manager import NotificationManager
 from api.services.payment_processor import PaymentProcessor
@@ -48,7 +49,7 @@ class ServicesProvider(Provider):
         PayoutService,
         TokenService,
         SettingService,
-        ServerManager,
+        ManagementService,
         FileService,
         RefundService,
         scope=Scope.SESSION,
@@ -72,6 +73,7 @@ class ServicesProvider(Provider):
         NotificationManager,
         WalletDataService,
         HealthCheckService,
+        ServerManager,
         scope=Scope.APP,  # for tests isolation
     )
 

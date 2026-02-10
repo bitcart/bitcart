@@ -147,9 +147,9 @@ async def create_model_obj(
 
 
 @contextmanager
-def enabled_logs(settings: Settings) -> Iterator[None]:
+def enabled_logs(settings: Settings, datadir: str | None = None) -> Iterator[None]:
     old_datadir = settings.DATADIR
-    settings.DATADIR = "tests/fixtures"
+    settings.DATADIR = datadir or "tests/fixtures"
     settings.LOG_FILE_NAME = "bitcart.log"
     yield
     settings.DATADIR = old_datadir
