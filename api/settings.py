@@ -60,7 +60,6 @@ class Settings(BaseSettings):
     BACKEND_PLUGINS_DIR: str = Field("modules", validation_alias="BITCART_BACKEND_PLUGINS_DIR")
     ADMIN_PLUGINS_DIR: str = Field("data/admin_plugins", validation_alias="BITCART_ADMIN_PLUGINS_DIR")
     STORE_PLUGINS_DIR: str = Field("data/store_plugins", validation_alias="BITCART_STORE_PLUGINS_DIR")
-    DAEMON_PLUGINS_DIR: str = Field("data/daemon_plugins", validation_alias="BITCART_DAEMON_PLUGINS_DIR")
     DOCKER_PLUGINS_DIR: str = Field("data/docker_plugins", validation_alias="BITCART_DOCKER_PLUGINS_DIR")
     STATIC_DIR: str = Field("static", validation_alias="BITCART_STATIC_DIR")
 
@@ -167,15 +166,6 @@ class Settings(BaseSettings):
     @field_validator("STORE_PLUGINS_DIR", mode="before")
     @classmethod
     def set_store_plugins_dir(cls, path: str) -> str:
-        from api.utils.files import ensure_exists
-
-        path = os.path.abspath(path)
-        ensure_exists(path)
-        return path
-
-    @field_validator("DAEMON_PLUGINS_DIR", mode="before")
-    @classmethod
-    def set_daemon_plugins_dir(cls, path: str) -> str:
         from api.utils.files import ensure_exists
 
         path = os.path.abspath(path)

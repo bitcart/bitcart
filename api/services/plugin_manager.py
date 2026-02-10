@@ -80,7 +80,6 @@ class PluginManager:
             "backend": self.settings.BACKEND_PLUGINS_DIR,
             "admin": self.settings.ADMIN_PLUGINS_DIR,
             "store": self.settings.STORE_PLUGINS_DIR,
-            "daemon": self.settings.DAEMON_PLUGINS_DIR,
             "docker": self.settings.DOCKER_PLUGINS_DIR,
         }
         org_name = manifest["author"].lower()
