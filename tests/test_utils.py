@@ -257,8 +257,8 @@ async def test_cleanup_old_logs(settings: Settings, management_service: Manageme
         with open(f, "w") as fh:  # noqa: ASYNC230
             fh.write("test\n")
     with enabled_logs(settings, datadir=str(tmp_path)):
-        # Cleanup with 30-day retention should remove old log but keep recent one
-        await management_service.cleanup_old_logs(30)
+        # Cleanup with 90-day retention should remove old log but keep recent one
+        await management_service.cleanup_old_logs(90)
         assert not os.path.exists(old_log)
         assert os.path.exists(recent_log)
         # Current log file (bitcart.log) should never be touched

@@ -30,7 +30,7 @@ class Policy(Schema):
     email_settings: EmailSettings = EmailSettings()
     health_check_store_id: str = ""
     allow_eth_plugin_info: bool = True
-    log_retention_days: int = 30
+    log_retention_days: int = 90
 
     @field_validator("captcha_type")
     @classmethod
