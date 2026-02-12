@@ -3,10 +3,10 @@ name = "bitcart-api"
 version = "1.0.0"
 description = "Bitcart Merchants API"
 requires-python = ">=3.12"
-dependencies = ["python-decouple", "taskipy>=1.14.1"]
+dependencies = ["python-decouple", "rust-just>=1.46.0", "taskipy>=1.14.1"]
 
 [dependency-groups]
-lint = ["mypy>=1.13.0", "pre-commit>=4.3.0", "ruff>=0.9.5"]
+lint = ["mypy>=1.13.0", "pre-commit>=4.3.0", "prek>=0.3.1", "ruff>=0.9.5"]
 test = [
     "fakeredis>=2.31.1",
     "filelock>=3.19.1",
@@ -131,6 +131,8 @@ dev = [
 # python-dateutil for electron-cash requiring an older version for no reason
 override-dependencies = ["python-dateutil>=2.9.0"]
 config-settings-package = { "electrum-ecc" = { "electrum_ecc.dont_compile" = "1" } }
+# dependency cooldowns for security
+exclude-newer = "1 week"
 
 [tool.taskipy.tasks]
 api = { cmd = "uvicorn main:app --ws websockets-sansio --timeout-graceful-shutdown 1 --reload", help = "run api service" }

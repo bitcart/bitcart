@@ -15,12 +15,12 @@
             "name": "Uvicorn debug",
             "description": "Uvicorn debug",
             "focus": true,
-            "command": "uv run task api"
+            "command": "just api"
         },
         {
             "name": "Worker",
             "description": "Worker",
-            "command": "uv run task worker"
+            "command": "just worker"
         }
     ]
 }
