@@ -17,7 +17,7 @@ prod-api:
     gunicorn -c gunicorn.conf.py main:app
 
 # run migrations and start api service in production
-prod-up: db_migrate prod-api
+prod-api-up: db_migrate prod-api
 
 # run linters with autofix
 lint:
