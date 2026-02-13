@@ -4,12 +4,12 @@
         {
             "name": "BTC Daemon",
             "description": "BTC Daemon",
-            "command": "python3 daemons/btc.py"
+            "command": "just daemon btc"
         },
         {
             "name": "LTC Daemon",
             "description": "LTC Daemon",
-            "command": "python3 daemons/ltc.py"
+            "command": "just daemon ltc"
         },
         {
             "name": "Uvicorn debug",
