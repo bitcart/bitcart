@@ -36,7 +36,7 @@ jobs:
 
       - name: Install lint dependencies
         run: |
-          uv sync --frozen --compile-bytecode --no-dev --group web --group types --group lint
+          uv sync --frozen --compile-bytecode --no-dev --group web --group types --group lint --group test
 
       - name: Check format and lint
         run: just ci-lint

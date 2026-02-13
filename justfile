@@ -1,3 +1,5 @@
+set no-exit-message := true
+
 test_args := env("TEST_ARGS", "")
 
 [private]
