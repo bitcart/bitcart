@@ -132,39 +132,6 @@ jobs:
           path: coverage/
       # END: Can be replaced by bitcart-shared reusable action (actions/upload-test-results)
 
-  combine-test-results:
-    needs: test
-    name: combine-test-results
-    runs-on: ubuntu-latest
-    if: always()
-
-    steps:
-      - name: Download all test result artifacts
-        uses: actions/download-artifact@v6
-        with:
-          pattern: test-results-py*
-          path: test-results/
-          merge-multiple: true
-
-      - name: Upload combined test results
-        uses: actions/upload-artifact@v6
-        with:
-          name: test-results
-          path: test-results/
-
-      - name: Download all coverage artifacts
-        uses: actions/download-artifact@v6
-        with:
-          pattern: coverage-py*
-          path: coverage/
-          merge-multiple: true
-
-      - name: Upload combined coverage
-        uses: actions/upload-artifact@v6
-        with:
-          name: coverage
-          path: coverage/
-
   functional-tests:
     needs: test
     name: functional-tests
@@ -230,7 +197,7 @@ jobs:
       - name: Start Fulcrum
         run: |
           sleep 10
-          just fulcrum &
+          nohup just fulcrum > nohup.out 2> nohup.err < /dev/null &
 
       - name: Start regtest daemon
         run: |
@@ -245,7 +212,7 @@ jobs:
       - name: Run functional tests
         run: |
           sleep 15
-          just functional
+          just functional $TEST_ARGS
 
       # BEGIN: Can be replaced by bitcart-shared reusable action (actions/codecov)
       - name: Upload coverage to Codecov
