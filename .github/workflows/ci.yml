@@ -100,14 +100,10 @@ jobs:
         run: |
           uv sync --frozen --compile-bytecode --no-dev --group web --group otel --group test --group btc
 
-      - uses: JarvusInnovations/background-action@v1
+      - uses: ./.github/actions/run-in-background
         name: Prepare daemon
         with:
-          run: |
-            just testnet &
-          # wait-on not used
-          wait-on: |
-            tcp:localhost:5432
+          run: just testnet
 
       - name: Run tests
         run: |
@@ -201,28 +197,25 @@ jobs:
           sudo chmod +x /usr/local/bin/Fulcrum
           rm -rf ${ARCHIVE_NAME} Fulcrum
       # END: Can be replaced by bitcart-shared reusable action (actions/install-fulcrum)
-      - name: Start bitcoind
-        run: |
-          just bitcoind &
-          wait
+      - uses: ./.github/actions/run-in-background
+        name: Start bitcoind
+        with:
+          run: just bitcoind
 
-      - name: Start Fulcrum
-        run: |
-          sleep 10
-          just fulcrum &
-          wait
+      - uses: ./.github/actions/run-in-background
+        name: Start Fulcrum
+        with:
+          run: sleep 10 && just fulcrum
 
-      - name: Start regtest daemon
-        run: |
-          sleep 10
-          just regtest &
-          wait
+      - uses: ./.github/actions/run-in-background
+        name: Start regtest daemon
+        with:
+          run: sleep 10 && just regtest
 
-      - name: Start regtest LN daemon
-        run: |
-          sleep 10
-          just regtestln &
-          wait
+      - uses: ./.github/actions/run-in-background
+        name: Start regtest LN daemon
+        with:
+          run: sleep 10 && just regtestln
 
       - name: Run functional tests
         run: |

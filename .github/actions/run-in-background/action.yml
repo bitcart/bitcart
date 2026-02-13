@@ -1,0 +1,45 @@
+name: Run in background
+
+description: "Run a command in the background and output its logs in the post step."
+
+inputs:
+  run:
+    description: "Command to run in the background."
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - uses: ./.github/actions/with-post-step
+      with:
+        main: |
+          TMPDIR="${RUNNER_TEMP}/run-in-background-$$"
+          mkdir -p "$TMPDIR"
+          echo "RUN_IN_BG_TMPDIR=$TMPDIR" >> "$GITHUB_ENV"
+
+          CMD="(${{ inputs.run }}) wait"
+
+          CMD="$CMD > $TMPDIR/$$.out"
+          CMD="$CMD 2> $TMPDIR/$$.err"
+
+          bash --noprofile --norc -eo pipefail -c "$CMD" &
+          disown
+
+          echo "PID: $!"
+          echo "RUN_IN_BG_PID=$!" >> "$GITHUB_ENV"
+        post: |
+          if [ -n "$RUN_IN_BG_TMPDIR" ]; then
+            echo "::group::stdout"
+            for f in "$RUN_IN_BG_TMPDIR"/*.out; do
+              [ -f "$f" ] && cat "$f"
+            done
+            echo "::endgroup::"
+
+            echo "::group::stderr"
+            for f in "$RUN_IN_BG_TMPDIR"/*.err; do
+              [ -f "$f" ] && cat "$f"
+            done
+            echo "::endgroup::"
+
+            rm -rf "$RUN_IN_BG_TMPDIR"
+          fi
