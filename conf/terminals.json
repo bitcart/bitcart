@@ -15,7 +15,7 @@
             "name": "Uvicorn debug",
             "description": "Uvicorn debug",
             "focus": true,
-            "command": "just api"
+            "command": "just dev-api"
         },
         {
             "name": "Worker",

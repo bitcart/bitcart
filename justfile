@@ -5,7 +5,7 @@ default:
 # python-level tasks
 
 # run api service
-api:
+dev-api:
     uvicorn main:app --ws websockets-sansio --timeout-graceful-shutdown 1 --reload
 
 # run worker service
@@ -13,8 +13,11 @@ worker:
     python3 worker.py
 
 # run api service in production
-production:
+prod-api:
     gunicorn -c gunicorn.conf.py main:app
+
+# run migrations and start api service in production
+prod-up: db_migrate prod-api
 
 # run linters with autofix
 lint:
