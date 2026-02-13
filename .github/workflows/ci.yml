@@ -100,17 +100,14 @@ jobs:
         run: |
           uv sync --frozen --compile-bytecode --no-dev --group web --group otel --group test --group btc
 
-      - name: Prepare daemon
-        run: |
-          just testnet &
-          wait
+      - uses: JarvusInnovations/background-action@v1
+        name: Prepare daemon
+        with:
+          run: |
+            just testnet &
 
       - name: Run tests
         run: |
-          cd tests
-          # TODO: find a way to skip test_functional without manually building test list
-          TEST_FILES=$(find . -name "test_*.py" -not -name "test_functional.py" | sed 's/.\//tests\//')
-          cd ..
           just test -n 4 --splits ${{ matrix.split-count }} --group ${{ matrix.group }} $TEST_FILES
 
       # BEGIN: Can be replaced by bitcart-shared reusable action (actions/codecov)
