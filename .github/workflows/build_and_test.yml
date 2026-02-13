@@ -49,7 +49,9 @@ jobs:
 
     strategy:
       matrix:
-        python-version: ["3.12", "3.13", "3.14"]
+        python-version: ["3.13", "3.14"]
+        split-count: [4]
+        group: [1, 2, 3, 4]
 
     services:
       redis:
@@ -94,13 +96,14 @@ jobs:
       - name: Run tests
         run: |
           cd tests
+          # TODO: find a way to skip test_functional without manually building test list
           TEST_FILES=$(find . -name "test_*.py" -not -name "test_functional.py" | sed 's/.\//tests\//')
           cd ..
-          just test $TEST_ARGS $TEST_FILES
+          echo $(nproc) processes will be used for testing
+          just test $TEST_ARGS -n 4 --splits ${{ matrix.split-count }} --group ${{ matrix.group }} $TEST_FILES
 
       # BEGIN: Can be replaced by bitcart-shared reusable action (actions/codecov)
       - name: Upload coverage to Codecov
-        if: always()
         uses: codecov/codecov-action@v5
         with:
           flags: tests
@@ -109,14 +112,12 @@ jobs:
 
       # BEGIN: Can be replaced by bitcart-shared reusable action (actions/upload-test-results)
       - name: Upload test results
-        if: always()
         uses: actions/upload-artifact@v6
         with:
           name: test-results-py${{ matrix.python-version }}
           path: test-results/
 
       - name: Upload coverage artifacts
-        if: always()
         uses: actions/upload-artifact@v6
         with:
           name: coverage-py${{ matrix.python-version }}
@@ -130,11 +131,6 @@ jobs:
     services:
       redis:
         image: redis:alpine
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
         ports:
           - 6379:6379
 
@@ -143,11 +139,6 @@ jobs:
         env:
           POSTGRES_DB: bitcart_test
           POSTGRES_HOST_AUTH_METHOD: trust
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
         ports:
           - 5432:5432
 
@@ -160,7 +151,7 @@ jobs:
       - name: Set up Python ${{ matrix.python-version }}
         uses: astral-sh/setup-uv@v7
         with:
-          python-version: "3.12"
+          python-version: "3.14"
           enable-cache: true
           activate-environment: true
 
@@ -216,7 +207,6 @@ jobs:
 
       # BEGIN: Can be replaced by bitcart-shared reusable action (actions/codecov)
       - name: Upload coverage to Codecov
-        if: always()
         uses: codecov/codecov-action@v5
         with:
           flags: functional-tests
@@ -224,14 +214,12 @@ jobs:
 
       # BEGIN: Can be replaced by bitcart-shared reusable action (actions/upload-test-results)
       - name: Upload test results
-        if: always()
         uses: actions/upload-artifact@v6
         with:
           name: test-results-functional
           path: test-results/
 
       - name: Upload coverage artifacts
-        if: always()
         uses: actions/upload-artifact@v6
         with:
           name: coverage-functional
