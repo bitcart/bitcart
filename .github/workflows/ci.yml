@@ -54,7 +54,7 @@ jobs:
 
   test:
     needs: lint
-    name: test-py${{ matrix.python-version }}
+    name: test-${{ matrix.python-version }}
     runs-on: ubuntu-latest
 
     strategy:

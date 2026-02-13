@@ -49,13 +49,13 @@ lint_types:
 
 # run tests
 [group("Testing")]
-test *TEST_ARGS=test_args:
-    pytest {{ TEST_ARGS }}
+test *args:
+    pytest {{ trim(test_args + " " + args) }}
 
 # run functional tests
 [group("Testing")]
-functional *TEST_ARGS=test_args:
-    BTC_LIGHTNING=true pytest tests/functional/ --cov-append -n 0 {{ TEST_ARGS }}
+functional *args:
+    BTC_LIGHTNING=true pytest tests/functional/ --cov-append -n 0 {{ trim(test_args + " " + args) }}
 
 # create new migration
 [group("Database")]
@@ -78,7 +78,7 @@ ci-lint: lint_check lint_types
 
 # run ci checks
 [group("CI")]
-ci: ci-lint test
+ci *args: ci-lint (test args)
 
 # btc-setup tasks
 
