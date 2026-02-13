@@ -18,10 +18,12 @@ test = [
     "pytest-split>=0.11.0",
     "pytest-xdist>=3.8.0",
 ]
+pydantic-install = ["pydantic[email]>=2.10.3"]
 types = [
     "types-aiofiles>=24.1.0.20250822",
     "types-paramiko>=4.0.0.20250822",
     "types-python-dateutil>=2.9.0.20250822",
+    { include-group = "pydantic-install" },
 ]
 web = [
     "advanced-alchemy>=0.26.2",
@@ -41,7 +43,6 @@ web = [
     "pwdlib[bcrypt]>=0.2.1",
     "py-machineid>=0.8.0",
     "pydantic-settings>=2.7.0",
-    "pydantic[email]>=2.10.3",
     "pyotp>=2.9.0",
     "python-dateutil>=2.9.0",
     "python-multipart>=0.0.20",
@@ -54,6 +55,7 @@ web = [
     "taskiq>=0.11.18",
     "taskiq-redis>=1.1.0",
     "uvicorn[standard]>=0.34.0",
+    { include-group = "pydantic-install" },
 ]
 otel = [
     "opentelemetry-distro[otlp]>=0.60b1,<0.61",
