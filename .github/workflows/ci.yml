@@ -105,8 +105,9 @@ jobs:
         with:
           run: |
             just testnet &
+          # wait-on not used
           wait-on: |
-            tcp:localhost:5432 # not used
+            tcp:localhost:5432
 
       - name: Run tests
         run: |
