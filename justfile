@@ -25,10 +25,8 @@ prod-api-up: db_migrate prod-api
 
 # run coin daemons
 [group("Services")]
-run-daemon coin:
+daemon coin:
     python3 daemons/{{ coin }}.py
-
-alias daemon := run-daemon
 
 # run linters with autofix
 [group("Linting")]
@@ -80,23 +78,23 @@ ci: lint_check lint_types test
 [group("BTC setup")]
 regtest:
     rm -rf ~/.electrum/regtest
-    BTC_DEBUG=true BTC_NETWORK=regtest BTC_SERVER=127.0.0.1:51002:s BTC_LIGHTNING=true BTC_LIGHTNING_GOSSIP=true python3 daemons/btc.py
+    BTC_DEBUG=true BTC_NETWORK=regtest BTC_SERVER=127.0.0.1:51002:s BTC_LIGHTNING=true BTC_LIGHTNING_GOSSIP=true just daemon btc
 
 # start electrum regtest daemon (lightning node)
 [group("BTC setup")]
 regtestln:
     rm -rf /tmp/bitcartln
-    BTC_DEBUG=true BTC_DATA_PATH=/tmp/bitcartln BTC_NETWORK=regtest BTC_SERVER=127.0.0.1:51002:s BTC_LIGHTNING=true BTC_LIGHTNING_GOSSIP=true BTC_LIGHTNING_LISTEN=0.0.0.0:9735 BTC_PORT=5110 python3 daemons/btc.py
+    BTC_DEBUG=true BTC_DATA_PATH=/tmp/bitcartln BTC_NETWORK=regtest BTC_SERVER=127.0.0.1:51002:s BTC_LIGHTNING=true BTC_LIGHTNING_GOSSIP=true BTC_LIGHTNING_LISTEN=0.0.0.0:9735 BTC_PORT=5110 just daemon btc
 
 # start electrum testnet daemon
 [group("BTC setup")]
 testnet:
-    BTC_DEBUG=true BTC_NETWORK=testnet BTC_LIGHTNING=true python3 daemons/btc.py
+    BTC_DEBUG=true BTC_NETWORK=testnet BTC_LIGHTNING=true just daemon btc
 
 # start electrum mainnet daemon
 [group("BTC setup")]
 mainnet:
-    BTC_DEBUG=true BTC_LIGHTNING=true BTC_NETWORK=mainnet python3 daemons/btc.py
+    BTC_DEBUG=true BTC_LIGHTNING=true BTC_NETWORK=mainnet just daemon btc
 
 # start bitcoind
 [group("BTC setup")]

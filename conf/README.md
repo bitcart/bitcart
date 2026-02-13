@@ -9,7 +9,7 @@ By default it doesn't exist, and the defaults are used.
 You can override values from `.env` file by environment variables, like so:
 
 ```bash
-BTC_NETWORK=testnet python3 daemons/btc.py
+BTC_NETWORK=testnet just daemon btc
 ```
 
 This directory contains an `.env.sample` file, containing explanation of what different config values do.

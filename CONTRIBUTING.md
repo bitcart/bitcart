@@ -191,7 +191,7 @@ alembic upgrade head
 Then, open 3 terminals, and run one command in each of them:
 
 ```bash
-BTC_NETWORK=testnet python3 daemons/btc.py
+BTC_NETWORK=testnet just daemon btc
 ```
 
 ```bash
