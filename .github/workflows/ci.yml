@@ -104,10 +104,11 @@ jobs:
         name: Prepare daemon
         with:
           run: just testnet
+          key: testnet
 
       - name: Run tests
         run: |
-          just test -n 4 --splits ${{ matrix.split-count }} --group ${{ matrix.group }} $TEST_FILES
+          just test -n 4 --splits ${{ matrix.split-count }} --group ${{ matrix.group }}
 
       # BEGIN: Can be replaced by bitcart-shared reusable action (actions/codecov)
       - name: Upload coverage
@@ -116,12 +117,14 @@ jobs:
           env_vars: PYTHON
           flags: tests
           name: Tests - Python ${{ env.PYTHON }} - Group ${{ matrix.group }}
+          token: ${{ secrets.CODECOV_TOKEN }}
 
       - name: Upload test results to Codecov
         if: ${{ !cancelled() }}
         uses: codecov/codecov-action@v5
         with:
           report_type: test_results
+          token: ${{ secrets.CODECOV_TOKEN }}
       # END: Can be replaced by bitcart-shared reusable action (actions/codecov)
 
       # BEGIN: Can be replaced by bitcart-shared reusable action (actions/upload-test-results)
@@ -201,21 +204,25 @@ jobs:
         name: Start bitcoind
         with:
           run: just bitcoind
+          key: bitcoind
 
       - uses: ./.github/actions/run-in-background
         name: Start Fulcrum
         with:
           run: sleep 10 && just fulcrum
+          key: fulcrum
 
       - uses: ./.github/actions/run-in-background
         name: Start regtest daemon
         with:
           run: sleep 10 && just regtest
+          key: regtest
 
       - uses: ./.github/actions/run-in-background
         name: Start regtest LN daemon
         with:
           run: sleep 10 && just regtestln
+          key: regtestln
 
       - name: Run functional tests
         run: |
@@ -223,23 +230,20 @@ jobs:
           just functional
 
       # BEGIN: Can be replaced by bitcart-shared reusable action (actions/codecov)
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v5
-        with:
-          flags: functional-tests
-
       - name: Upload coverage
         uses: codecov/codecov-action@v5
         with:
           env_vars: PYTHON
           flags: functional-tests
           name: Functional Tests - Python ${{ env.PYTHON }}
+          token: ${{ secrets.CODECOV_TOKEN }}
 
       - name: Upload test results to Codecov
         if: ${{ !cancelled() }}
         uses: codecov/codecov-action@v5
         with:
           report_type: test_results
+          token: ${{ secrets.CODECOV_TOKEN }}
 
       # END: Can be replaced by bitcart-shared reusable action (actions/codecov)
 

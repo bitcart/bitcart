@@ -6,34 +6,34 @@ inputs:
   run:
     description: "Command to run in the background."
     required: true
+  key:
+    description: "Unique key to identify this background process (used for log file names and state)."
+    required: false
+    default: POST
 
 runs:
   using: composite
   steps:
     - uses: ./.github/actions/with-post-step
       with:
+        key: ${{ inputs.key }}
         main: |
           bash --noprofile --norc -eo pipefail -c '
-            TMPDIR="${RUNNER_TEMP}/run-in-background-$$"
-            mkdir -p "$TMPDIR"
-            echo "RUN_IN_BG_TMPDIR=$TMPDIR" >> "$GITHUB_ENV"
+            BGDIR="${RUNNER_TEMP}/run-in-background"
+            mkdir -p "$BGDIR"
 
-            (${{ inputs.run }}) > "$TMPDIR/$$.out" 2> "$TMPDIR/$$.err" &
+            (${{ inputs.run }}) > "$BGDIR/${{ inputs.key }}.out" 2> "$BGDIR/${{ inputs.key }}.err" &
             disown
           '
         post: |
-          if [ -n "$RUN_IN_BG_TMPDIR" ]; then
+          BGDIR="${RUNNER_TEMP}/run-in-background"
+          if [ -f "$BGDIR/${{ inputs.key }}.out" ]; then
             echo "::group::stdout"
-            for f in "$RUN_IN_BG_TMPDIR"/*.out; do
-              [ -f "$f" ] && cat "$f"
-            done
+            cat "$BGDIR/${{ inputs.key }}.out"
             echo "::endgroup::"
-
+          fi
+          if [ -f "$BGDIR/${{ inputs.key }}.err" ]; then
             echo "::group::stderr"
-            for f in "$RUN_IN_BG_TMPDIR"/*.err; do
-              [ -f "$f" ] && cat "$f"
-            done
+            cat "$BGDIR/${{ inputs.key }}.err"
             echo "::endgroup::"
-
-            rm -rf "$RUN_IN_BG_TMPDIR"
           fi
