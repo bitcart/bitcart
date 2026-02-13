@@ -1,4 +1,4 @@
-name: Build and Test
+name: CI
 
 on:
   push:
@@ -13,6 +13,7 @@ permissions:
 
 jobs:
   lint:
+    name: lint
     runs-on: ubuntu-latest
 
     steps:
@@ -45,6 +46,7 @@ jobs:
 
   test:
     needs: lint
+    name: test-py${{ matrix.python-version }} (${{ matrix.group }}/${{ matrix.split-count }})
     runs-on: ubuntu-latest
 
     strategy:
@@ -126,6 +128,7 @@ jobs:
 
   functional-tests:
     needs: test
+    name: functional-tests
     runs-on: ubuntu-latest
 
     services:
