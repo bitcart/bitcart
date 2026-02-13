@@ -8,8 +8,15 @@ on:
       - "*"
   pull_request:
 
+concurrency:
+  group: ${{ github.workflow_ref }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
+
+env:
+  UV_PYTHON_PREFERENCE: only-managed
 
 jobs:
   lint:
@@ -101,7 +108,6 @@ jobs:
           # TODO: find a way to skip test_functional without manually building test list
           TEST_FILES=$(find . -name "test_*.py" -not -name "test_functional.py" | sed 's/.\//tests\//')
           cd ..
-          echo $(nproc) processes will be used for testing
           just test $TEST_ARGS -n 4 --splits ${{ matrix.split-count }} --group ${{ matrix.group }} $TEST_FILES
 
       # BEGIN: Can be replaced by bitcart-shared reusable action (actions/codecov)
@@ -116,15 +122,48 @@ jobs:
       - name: Upload test results
         uses: actions/upload-artifact@v6
         with:
-          name: test-results-py${{ matrix.python-version }}
+          name: test-results-py${{ matrix.python-version }}-${{ matrix.group }}
           path: test-results/
 
       - name: Upload coverage artifacts
         uses: actions/upload-artifact@v6
         with:
-          name: coverage-py${{ matrix.python-version }}
+          name: coverage-py${{ matrix.python-version }}-${{ matrix.group }}
           path: coverage/
       # END: Can be replaced by bitcart-shared reusable action (actions/upload-test-results)
+
+  combine-test-results:
+    needs: test
+    name: combine-test-results
+    runs-on: ubuntu-latest
+    if: always()
+
+    steps:
+      - name: Download all test result artifacts
+        uses: actions/download-artifact@v6
+        with:
+          pattern: test-results-py*
+          path: test-results/
+          merge-multiple: true
+
+      - name: Upload combined test results
+        uses: actions/upload-artifact@v6
+        with:
+          name: test-results
+          path: test-results/
+
+      - name: Download all coverage artifacts
+        uses: actions/download-artifact@v6
+        with:
+          pattern: coverage-py*
+          path: coverage/
+          merge-multiple: true
+
+      - name: Upload combined coverage
+        uses: actions/upload-artifact@v6
+        with:
+          name: coverage
+          path: coverage/
 
   functional-tests:
     needs: test
