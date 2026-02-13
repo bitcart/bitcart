@@ -17,6 +17,7 @@ permissions:
 
 env:
   UV_PYTHON_PREFERENCE: only-managed
+  PYTHON: "3.14"
 
 jobs:
   lint:
@@ -29,7 +30,7 @@ jobs:
       - name: Set up Python
         uses: astral-sh/setup-uv@v7
         with:
-          python-version: "3.12"
+          python-version: ${{ env.PYTHON }}
           enable-cache: true
           activate-environment: true
 
@@ -38,7 +39,7 @@ jobs:
           uv sync --frozen --compile-bytecode --no-dev --group lint
 
       - name: Check format and lint
-        run: just lint_check
+        run: just ci-lint
 
       - name: Cache pre-commit repos
         uses: actions/cache@v5
@@ -53,7 +54,7 @@ jobs:
 
   test:
     needs: lint
-    name: test-py${{ matrix.python-version }} (${{ matrix.group }}/${{ matrix.split-count }})
+    name: test-py${{ matrix.python-version }}
     runs-on: ubuntu-latest
 
     strategy:
@@ -77,16 +78,16 @@ jobs:
           - 5432:5432
 
     env:
-      TEST_ARGS: "-o junit_family=xunit1 --junitxml test-results/pytest/coverage.xml --cov-report html:coverage"
+      TEST_ARGS: "--junitxml test-results/coverage.xml --cov-report html:coverage"
       PYTHON: ${{ matrix.python-version }}
 
     steps:
       - uses: actions/checkout@v6
 
-      - name: Set up Python ${{ matrix.python-version }}
+      - name: Set up Python ${{ env.PYTHON }}
         uses: astral-sh/setup-uv@v7
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: ${{ env.PYTHON }}
           enable-cache: true
           activate-environment: true
 
@@ -100,7 +101,9 @@ jobs:
           uv sync --frozen --compile-bytecode --no-dev --group web --group otel --group test --group btc
 
       - name: Prepare daemon
-        run: just testnet &
+        run: |
+          just testnet &
+          wait
 
       - name: Run tests
         run: |
@@ -108,27 +111,34 @@ jobs:
           # TODO: find a way to skip test_functional without manually building test list
           TEST_FILES=$(find . -name "test_*.py" -not -name "test_functional.py" | sed 's/.\//tests\//')
           cd ..
-          just test $TEST_ARGS -n 4 --splits ${{ matrix.split-count }} --group ${{ matrix.group }} $TEST_FILES
+          just test -n 4 --splits ${{ matrix.split-count }} --group ${{ matrix.group }} $TEST_FILES
 
       # BEGIN: Can be replaced by bitcart-shared reusable action (actions/codecov)
-      - name: Upload coverage to Codecov
+      - name: Upload coverage
         uses: codecov/codecov-action@v5
         with:
-          flags: tests
           env_vars: PYTHON
+          flags: tests
+          name: Tests - Python ${{ env.PYTHON }} - Group ${{ matrix.group }}
+
+      - name: Upload test results to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/codecov-action@v5
+        with:
+          report_type: test_results
       # END: Can be replaced by bitcart-shared reusable action (actions/codecov)
 
       # BEGIN: Can be replaced by bitcart-shared reusable action (actions/upload-test-results)
       - name: Upload test results
         uses: actions/upload-artifact@v6
         with:
-          name: test-results-py${{ matrix.python-version }}-${{ matrix.group }}
+          name: test-results-py${{ env.PYTHON }}-${{ matrix.group }}
           path: test-results/
 
       - name: Upload coverage artifacts
         uses: actions/upload-artifact@v6
         with:
-          name: coverage-py${{ matrix.python-version }}-${{ matrix.group }}
+          name: coverage-py${{ env.PYTHON }}-${{ matrix.group }}
           path: coverage/
       # END: Can be replaced by bitcart-shared reusable action (actions/upload-test-results)
 
@@ -152,15 +162,15 @@ jobs:
           - 5432:5432
 
     env:
-      TEST_ARGS: "--junitxml test-results/pytest/coverage.xml --cov-report html:coverage"
+      TEST_ARGS: "--junitxml test-results/coverage.xml --cov-report html:coverage"
 
     steps:
       - uses: actions/checkout@v6
 
-      - name: Set up Python ${{ matrix.python-version }}
+      - name: Set up Python ${{ env.PYTHON }}
         uses: astral-sh/setup-uv@v7
         with:
-          python-version: "3.14"
+          python-version: ${{ env.PYTHON }}
           enable-cache: true
           activate-environment: true
 
@@ -192,33 +202,52 @@ jobs:
           rm -rf ${ARCHIVE_NAME} Fulcrum
       # END: Can be replaced by bitcart-shared reusable action (actions/install-fulcrum)
       - name: Start bitcoind
-        run: just bitcoind &
+        run: |
+          just bitcoind &
+          wait
 
       - name: Start Fulcrum
         run: |
           sleep 10
-          nohup just fulcrum > nohup.out 2> nohup.err < /dev/null &
+          just fulcrum &
+          wait
 
       - name: Start regtest daemon
         run: |
           sleep 10
           just regtest &
+          wait
 
       - name: Start regtest LN daemon
         run: |
           sleep 10
           just regtestln &
+          wait
 
       - name: Run functional tests
         run: |
           sleep 15
-          just functional $TEST_ARGS
+          just functional
 
       # BEGIN: Can be replaced by bitcart-shared reusable action (actions/codecov)
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
         with:
           flags: functional-tests
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v5
+        with:
+          env_vars: PYTHON
+          flags: functional-tests
+          name: Functional Tests - Python ${{ env.PYTHON }}
+
+      - name: Upload test results to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/codecov-action@v5
+        with:
+          report_type: test_results
+
       # END: Can be replaced by bitcart-shared reusable action (actions/codecov)
 
       # BEGIN: Can be replaced by bitcart-shared reusable action (actions/upload-test-results)

@@ -1,3 +1,5 @@
+test_args := env("TEST_ARGS", "")
+
 [private]
 default:
     @just --list --unsorted --justfile {{ justfile() }}
@@ -45,12 +47,12 @@ lint_types:
 
 # run tests
 [group("Testing")]
-test *TEST_ARGS:
+test *TEST_ARGS=test_args:
     pytest {{ TEST_ARGS }}
 
 # run functional tests
 [group("Testing")]
-functional *TEST_ARGS:
+functional *TEST_ARGS=test_args:
     BTC_LIGHTNING=true pytest tests/functional/ --cov-append -n 0 {{ TEST_ARGS }}
 
 # create new migration
@@ -68,9 +70,13 @@ db_migrate:
 db_rollback:
     alembic downgrade -1
 
+# run ci checks (without tests)
+[group("CI")]
+ci-lint: lint_check lint_types
+
 # run ci checks
 [group("CI")]
-ci: lint_check lint_types test
+ci: ci-lint test
 
 # btc-setup tasks
 
