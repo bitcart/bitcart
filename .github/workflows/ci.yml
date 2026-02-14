@@ -1,0 +1,351 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - master
+    tags:
+      - "**"
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow_ref }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  UV_PYTHON_PREFERENCE: only-managed
+  PYTHON: "3.12"
+
+jobs:
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: ${{ env.PYTHON }}
+          enable-cache: true
+          activate-environment: true
+
+      - name: Install lint dependencies
+        run: |
+          uv sync --frozen --compile-bytecode --no-dev --group web --group types --group lint --group test
+
+      - name: Check format and lint
+        run: just ci-lint
+
+      - name: Cache prek repos
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/prek
+          key: v1-lint-${{ github.ref_name }}-prek-${{ hashFiles('.pre-commit-config.yaml') }}
+          restore-keys: |
+            v1-lint-${{ github.ref_name }}-prek-
+
+      - name: Run prek checks
+        run: prek run --all-files --show-diff-on-failure
+
+  test:
+    needs: lint
+    name: test-${{ matrix.python-version }} (${{ matrix.group }}/${{ matrix.split-count }})
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        python-version: ["3.12", "3.13", "3.14"]
+        split-count: [4]
+        group: [1, 2, 3, 4]
+
+    services:
+      redis:
+        image: redis:alpine
+        ports:
+          - 6379:6379
+
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: bitcart_test
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+
+    env:
+      TEST_ARGS: "-o junit_family=legacy --junitxml test-results/junit.xml --cov-report html:coverage"
+      PYTHON: ${{ matrix.python-version }}
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Python ${{ env.PYTHON }}
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: ${{ env.PYTHON }}
+          enable-cache: true
+          activate-environment: true
+
+      - name: Install system dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y libsecp256k1-dev
+
+      - name: Install Python dependencies
+        run: |
+          uv sync --frozen --compile-bytecode --no-dev --group web --group otel --group test --group btc
+
+      - uses: bitcart/bitcart-actions/actions/run-in-background@master
+        name: Prepare daemon
+        with:
+          run: just testnet
+          key: testnet
+
+      - name: Run tests
+        run: |
+          just test -n 4 --splits ${{ matrix.split-count }} --group ${{ matrix.group }}
+          coverage xml -o test-results/coverage.xml
+
+      # BEGIN: Can be replaced by bitcart-shared reusable action (actions/codecov)
+      - name: Upload coverage
+        uses: codecov/codecov-action@v5
+        with:
+          env_vars: PYTHON
+          flags: tests
+          name: Tests - Python ${{ env.PYTHON }} - Group ${{ matrix.group }}
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: test-results/coverage.xml
+          disable_search: true
+
+      - name: Upload test results to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/codecov-action@v5
+        with:
+          report_type: test_results
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: test-results/junit.xml
+          disable_search: true
+
+      # END: Can be replaced by bitcart-shared reusable action (actions/codecov)
+
+      # BEGIN: Can be replaced by bitcart-shared reusable action (actions/upload-test-results)
+      - name: Upload test results
+        uses: actions/upload-artifact@v6
+        with:
+          name: test-results-py${{ env.PYTHON }}-${{ matrix.group }}
+          path: test-results/
+
+      - name: Upload coverage artifacts
+        uses: actions/upload-artifact@v6
+        with:
+          name: coverage-py${{ env.PYTHON }}-${{ matrix.group }}
+          path: coverage/
+
+      - name: Upload coverage data
+        uses: actions/upload-artifact@v6
+        with:
+          name: coverage-data-py${{ env.PYTHON }}-${{ matrix.group }}
+          path: .coverage
+          include-hidden-files: true
+      # END: Can be replaced by bitcart-shared reusable action (actions/upload-test-results)
+
+  functional-tests:
+    needs: test
+    name: functional-tests
+    runs-on: ubuntu-latest
+
+    services:
+      redis:
+        image: redis:alpine
+        ports:
+          - 6379:6379
+
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: bitcart_test
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+
+    env:
+      TEST_ARGS: "-o junit_family=legacy --junitxml test-results/junit.xml --cov-report html:coverage"
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Python ${{ env.PYTHON }}
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: ${{ env.PYTHON }}
+          enable-cache: true
+          activate-environment: true
+
+      - name: Install system dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y libsecp256k1-dev
+
+      - name: Install Python dependencies
+        run: |
+          uv sync --frozen --compile-bytecode --no-dev --group web --group otel --group test --group btc
+
+      - name: Install regtest utils
+        run: |
+          sudo add-apt-repository -y ppa:luke-jr/bitcoincore
+          sudo apt update
+          sudo apt install -y bitcoind screen
+
+      # BEGIN: Can be replaced by bitcart-shared reusable action (actions/install-fulcrum)
+      - name: Install Fulcrum
+        run: |
+          FULCRUM_VERSION=$(curl --silent https://api.github.com/repos/cculianu/Fulcrum/releases/latest | jq -r .tag_name | tr -d v)
+          ARCHIVE_NAME=Fulcrum-${FULCRUM_VERSION}-$(uname -m)-linux.tar.gz
+          wget https://github.com/cculianu/Fulcrum/releases/download/v${FULCRUM_VERSION}/${ARCHIVE_NAME}
+          mkdir -p Fulcrum
+          tar -xvzf ${ARCHIVE_NAME} -C Fulcrum
+          sudo cp Fulcrum/${ARCHIVE_NAME/.tar.gz/}/Fulcrum /usr/local/bin/Fulcrum
+          sudo chmod +x /usr/local/bin/Fulcrum
+          rm -rf ${ARCHIVE_NAME} Fulcrum
+      # END: Can be replaced by bitcart-shared reusable action (actions/install-fulcrum)
+      - uses: bitcart/bitcart-actions/actions/run-in-background@master
+        name: Start bitcoind
+        with:
+          run: just bitcoind
+          key: bitcoind
+
+      - uses: bitcart/bitcart-actions/actions/run-in-background@master
+        name: Start Fulcrum
+        with:
+          run: sleep 10 && just fulcrum
+          key: fulcrum
+
+      - uses: bitcart/bitcart-actions/actions/run-in-background@master
+        name: Start regtest daemon
+        with:
+          run: sleep 10 && just regtest
+          key: regtest
+
+      - uses: bitcart/bitcart-actions/actions/run-in-background@master
+        name: Start regtest LN daemon
+        with:
+          run: sleep 10 && just regtestln
+          key: regtestln
+
+      - name: Run functional tests
+        run: |
+          sleep 15
+          just functional
+          coverage xml -o test-results/coverage.xml
+
+      # BEGIN: Can be replaced by bitcart-shared reusable action (actions/codecov)
+      - name: Upload coverage
+        uses: codecov/codecov-action@v5
+        with:
+          env_vars: PYTHON
+          flags: functional-tests
+          name: Functional Tests - Python ${{ env.PYTHON }}
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: test-results/coverage.xml
+          disable_search: true
+
+      - name: Upload test results to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/codecov-action@v5
+        with:
+          report_type: test_results
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: test-results/junit.xml
+          disable_search: true
+
+      # END: Can be replaced by bitcart-shared reusable action (actions/codecov)
+
+      # BEGIN: Can be replaced by bitcart-shared reusable action (actions/upload-test-results)
+      - name: Upload test results
+        uses: actions/upload-artifact@v6
+        with:
+          name: test-results-functional
+          path: test-results/
+
+      - name: Upload coverage artifacts
+        uses: actions/upload-artifact@v6
+        with:
+          name: coverage-functional
+          path: coverage/
+
+      - name: Upload coverage data
+        uses: actions/upload-artifact@v6
+        with:
+          name: coverage-data-functional
+          path: .coverage
+          include-hidden-files: true
+      # END: Can be replaced by bitcart-shared reusable action (actions/upload-test-results)
+
+  combine-coverage:
+    needs: functional-tests
+    name: combine-coverage
+    runs-on: ubuntu-latest
+    if: ${{ !cancelled() }}
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Python ${{ env.PYTHON }}
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: ${{ env.PYTHON }}
+          enable-cache: true
+          activate-environment: true
+
+      - name: Install dependencies
+        run: uv pip install coverage[toml] junitparser
+
+      - name: Download all coverage data artifacts
+        uses: actions/download-artifact@v6
+        with:
+          pattern: coverage-data-*
+          path: coverage-data/
+
+      - name: Download all test results artifacts
+        uses: actions/download-artifact@v6
+        with:
+          pattern: test-results-*
+          path: test-results-all/
+
+      - name: Combine coverage
+        run: |
+          i=0
+          for f in $(find coverage-data/ -name '.coverage'); do
+            cp "$f" ".coverage.$i"
+            i=$((i + 1))
+          done
+          coverage combine
+          coverage html -d combined-coverage/
+          coverage xml -o combined-coverage/coverage.xml
+          coverage report --format=markdown > combined-coverage/summary.md
+          echo "## Coverage Summary"
+          cat combined-coverage/summary.md
+
+      - name: Merge JUnit XML reports
+        run: |
+          junitparser merge $(find test-results-all/ -name 'junit.xml') combined-coverage/junit.xml
+
+      - name: Upload combined results
+        uses: actions/upload-artifact@v6
+        with:
+          name: combined-coverage
+          path: combined-coverage/
+
+      - name: Delete intermediate artifacts
+        uses: geekyeggo/delete-artifact@v5
+        with:
+          name: |
+            test-results-*
+            coverage-*
+            coverage-data-*
+          failOnError: false

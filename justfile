@@ -1,3 +1,7 @@
+set no-exit-message := true
+
+test_args := env("TEST_ARGS", "")
+
 [private]
 default:
     @just --list --unsorted --justfile {{ justfile() }}
@@ -45,13 +49,13 @@ lint_types:
 
 # run tests
 [group("Testing")]
-test *TEST_ARGS:
-    pytest {{ TEST_ARGS }}
+test *args:
+    pytest {{ trim(test_args + " " + args) }}
 
 # run functional tests
 [group("Testing")]
-functional *TEST_ARGS:
-    BTC_LIGHTNING=true pytest tests/functional/ --cov-append -n 0 {{ TEST_ARGS }}
+functional *args:
+    BTC_LIGHTNING=true pytest tests/functional/ --cov-append -n 0 {{ trim(test_args + " " + args) }}
 
 # create new migration
 [group("Database")]
@@ -68,9 +72,13 @@ db_migrate:
 db_rollback:
     alembic downgrade -1
 
+# run ci checks (without tests)
+[group("CI")]
+ci-lint: lint_check lint_types
+
 # run ci checks
 [group("CI")]
-ci: lint_check lint_types test
+ci *args: ci-lint (test args)
 
 # btc-setup tasks
 
