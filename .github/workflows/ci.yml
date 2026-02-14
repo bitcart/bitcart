@@ -79,7 +79,7 @@ jobs:
         run: |
           ls -la test-results || true
           cat test-results/junit.xml || true
-          just test -n 4 --splits ${{ matrix.split-count }} --group ${{ matrix.group }}
+          just test -n 4 --splits ${{ matrix.split-count }} --group ${{ matrix.group }} --durations 0
           ls -la test-results || true
           cat test-results/junit.xml || true
 
