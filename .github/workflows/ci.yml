@@ -147,6 +147,7 @@ jobs:
         with:
           name: coverage-data-py${{ env.PYTHON }}-${{ matrix.group }}
           path: .coverage
+          include-hidden-files: true
       # END: Can be replaced by bitcart-shared reusable action (actions/upload-test-results)
 
   functional-tests:
@@ -275,6 +276,7 @@ jobs:
         with:
           name: coverage-data-functional
           path: .coverage
+          include-hidden-files: true
       # END: Can be replaced by bitcart-shared reusable action (actions/upload-test-results)
 
   combine-coverage:
