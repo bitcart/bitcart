@@ -3,17 +3,13 @@
 Those guidelines apply to all python code across Bitcart repositories, and to all further opened pull requests.
 Your pull request might be rejected if it doesn't follow coding guidelines.
 
-## Formatting
+## Formatting and Linting
 
-Each python file is run through multiple formatters to make it readable and not affect coding performance.
-First of all, [isort](https://pypi.org/project/isort) is run to sort imports.
-After that code is formatted with [black](https://pypi.org/project/black) formatter.
-You can configure your editor to apply those formatters on save automatically.
+We use [ruff](https://docs.astral.sh/ruff) for both formatting and linting Python code. Ruff handles import sorting, code formatting, and linting in a single tool.
 
-## Linting
+You can run formatting and linting with autofix via `just lint`, or check without modifying files via `just lint-check`. You can also configure your editor to run ruff on save automatically.
 
-Our python files are linted through flake8.
-Make sure to fix linting issues or disable linting when appropriate.
+Make sure to fix linting issues or disable linting rules when appropriate (using `# noqa` comments or per-file ignores in `pyproject.toml`).
 
 ## General coding recommendations
 

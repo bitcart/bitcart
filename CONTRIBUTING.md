@@ -115,58 +115,34 @@ Manage any merge conflicts, commit them, and then commit them to your fork.
 You'll need the following tools to develop Bitcart locally:
 
 - [Git](https://git-scm.com)
-- [Python](https://www.python.org/downloads) at least version 3.11 (version 2 is **_not_** supported)
-- [Pip](https://pip.readthedocs.io/en/stable/installing/), with setuptools and wheel installed
-- [VirtualEnv](https://virtualenv.pypa.io/en/latest/installation/), not required, but recommended for development
+- [uv](https://docs.astral.sh/uv) — Python package manager and virtual environment manager
+- [just](https://github.com/casey/just) — command runner (installed automatically by uv as a project dependency)
 
-To install all of the following on linux, run:
-
-```
-sudo apt install python3 python3-dev python3-pip git
-sudo pip3 install setuptools wheel
-```
+Python 3.12+ is required (version 2 is **_not_** supported). uv will manage the Python installation for you.
 
 ### Setting up python development environment
 
-It is recommended to work with a virtualenv, repository's .gitignore assumes that your virtual environment is named
-env, try to don't change it's name to don't add new files to .gitignore.
-
-From a terminal, where you have cloned the `bitcart` repository, execute the following command to create the virtual
-environment and activate it(may differ on different platforms):
+From a terminal, where you have cloned the `bitcart` repository, install all dependencies using uv:
 
 ```bash
-virtualenv env
-source env/bin/activate
+uv sync
 ```
 
-Now, install python dependencies:
+This will create a virtual environment and install all project dependencies — including web, linting, testing, type checking, and all daemon groups — via the `dev` dependency group. This is everything you need for development.
 
-```
-pip3 install -r requirements.txt
-pip3 install -r requirements/dev.txt
-```
+For deployment or other non-development use cases where you only need specific packages, use `--no-dev` and select individual groups:
 
-To use Bitcart you'll need to run at least one Bitcart daemon. For each daemon you want to run, install it's requirements like so:
-
-```
-pip3 install -r requirements/daemons/coin.txt
+```bash
+uv sync --no-dev --group web --group btc
 ```
 
-Where coin is coin symbol, for example, btc.
+See `pyproject.toml` for all available dependency groups and coin-specific groups (e.g. `btc`, `eth`, `ltc`, etc.).
 
-Make sure to install the infrastructure parts of Bitcart, refer to [Manual Installation Instuctions](https://docs.bitcart.ai/deployment/manual#typical-manual-installation) and install needed requirements for the repository you are contributing to.
+Make sure to install the infrastructure parts of Bitcart, refer to [Manual Installation Instructions](https://docs.bitcart.ai/deployment/manual#typical-manual-installation) and install needed requirements for the repository you are contributing to.
 
-Install development packages:
+This repository uses [prek](https://prek.j178.dev) hooks for better development experience. Install them with:
 
-```
-pip3 install -r requirements/dev.txt
-pip3 install -r requirements/test.txt
-pip3 install -r requirements/lint.txt
-```
-
-This repository uses prek hooks for better development experience. Install them with:
-
-```
+```bash
 prek install
 ```
 
@@ -174,18 +150,20 @@ It will run automatically on commits.
 
 If you ever need to run the full prek checks on all files, run:
 
-```
+```bash
 prek run --all-files
 ```
 
-After you have completed manual installation, you can start development.
+After you have completed installation, you can start development.
 
 ### Run everything
 
-To test the changes you will need to run the server with applying changes to db if any.
+All common tasks are available via `just` (see `justfile` for the full list). Run `just` to see all available commands.
+
+To test the changes you will need to run the server with applying changes to db if any:
 
 ```bash
-alembic upgrade head
+just db-migrate
 ```
 
 Then, open 3 terminals, and run one command in each of them:
@@ -195,25 +173,48 @@ BTC_NETWORK=testnet just daemon btc
 ```
 
 ```bash
-uvicorn --reload main:app
+just dev-api
 ```
 
 ```bash
-python3 worker.py
+just worker
 ```
 
 ### Updating dependencies
 
-If you need to update some dependency, use `uv pip compile` (included in dev requirements file).
+All dependencies are managed in `pyproject.toml` using uv dependency groups. To add or update a dependency, edit `pyproject.toml` and run:
 
-You can use `scripts/compile-requirements.sh` to re-compile requirements files from input files, and
-`scripts/sync-requirements.sh` to install every requirement file.
+```bash
+uv sync
+```
 
-If you need to add a new dependency or a version constraint, edit the files in `requirements` folder, and then re-compile the requirements files.
+To update locked versions in `uv.lock`, run:
 
-Note that, the requirements in `requirements/deterministic` folder are used for docker images, and ideally you should reproduce the same environment locally
+```bash
+uv sync --upgrade-package <package-name>
+```
 
-Updating dependencies (changing locked versions) is done by automated bots like dependabot.
+Updating dependencies (changing locked versions) is also done by Renovate automatically.
+
+### Linting
+
+We use [ruff](https://docs.astral.sh/ruff) for formatting and linting Python code. You can run linters with autofix via:
+
+```bash
+just lint
+```
+
+Or check without modifying files:
+
+```bash
+just lint-check
+```
+
+Type checking is done with [mypy](https://mypy-lang.org):
+
+```bash
+just lint-types
+```
 
 ### Coding guidelines for python code
 
