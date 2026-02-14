@@ -70,7 +70,7 @@ jobs:
           - 6379:6379
 
       postgres:
-        image: postgres:17-alpine
+        image: postgres:18-alpine
         env:
           POSTGRES_DB: bitcart_test
           POSTGRES_HOST_AUTH_METHOD: trust
@@ -166,7 +166,7 @@ jobs:
           - 6379:6379
 
       postgres:
-        image: postgres:17-alpine
+        image: postgres:18-alpine
         env:
           POSTGRES_DB: bitcart_test
           POSTGRES_HOST_AUTH_METHOD: trust
@@ -306,13 +306,13 @@ jobs:
         run: uv pip install coverage[toml] junitparser
 
       - name: Download all coverage data artifacts
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           pattern: coverage-data-*
           path: coverage-data/
 
       - name: Download all test results artifacts
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           pattern: test-results-*
           path: test-results-all/
