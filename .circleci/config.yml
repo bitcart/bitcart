@@ -17,7 +17,7 @@ executors:
           POSTGRES_DB: bitcart_test
           POSTGRES_HOST_AUTH_METHOD: trust
     environment:
-      TEST_ARGS: "-o junit_family=xunit1 --junitxml test-results/pytest/coverage.xml --cov-report html:coverage --cov-report xml:coverage/coverage.xml"
+      TEST_ARGS: "-o junit_family=xunit1 --junitxml test-results/pytest/coverage.xml --cov-report html:coverage"
 
 commands:
   install_dependencies:

@@ -78,7 +78,7 @@ jobs:
           - 5432:5432
 
     env:
-      TEST_ARGS: "-o junit_family=legacy --junitxml test-results/junit.xml --cov-report xml:test-results/coverage.xml --cov-report html:coverage"
+      TEST_ARGS: "-o junit_family=legacy --junitxml test-results/junit.xml --cov-report html:coverage"
       PYTHON: ${{ matrix.python-version }}
 
     steps:
@@ -109,6 +109,7 @@ jobs:
       - name: Run tests
         run: |
           just test -n 4 --splits ${{ matrix.split-count }} --group ${{ matrix.group }}
+          coverage xml -o test-results/coverage.xml
 
       # BEGIN: Can be replaced by bitcart-shared reusable action (actions/codecov)
       - name: Upload coverage
@@ -173,7 +174,7 @@ jobs:
           - 5432:5432
 
     env:
-      TEST_ARGS: "-o junit_family=legacy --junitxml test-results/junit.xml --cov-report xml:test-results/coverage.xml --cov-report html:coverage"
+      TEST_ARGS: "-o junit_family=legacy --junitxml test-results/junit.xml --cov-report html:coverage"
 
     steps:
       - uses: actions/checkout@v6
@@ -240,6 +241,7 @@ jobs:
         run: |
           sleep 15
           just functional
+          coverage xml -o test-results/coverage.xml
 
       # BEGIN: Can be replaced by bitcart-shared reusable action (actions/codecov)
       - name: Upload coverage
