@@ -119,6 +119,7 @@ jobs:
           name: Tests - Python ${{ env.PYTHON }} - Group ${{ matrix.group }}
           token: ${{ secrets.CODECOV_TOKEN }}
           files: test-results/coverage.xml
+          disable_search: true
 
       - name: Upload test results to Codecov
         if: ${{ !cancelled() }}
@@ -127,6 +128,8 @@ jobs:
           report_type: test_results
           token: ${{ secrets.CODECOV_TOKEN }}
           files: test-results/junit.xml
+          disable_search: true
+
       # END: Can be replaced by bitcart-shared reusable action (actions/codecov)
 
       # BEGIN: Can be replaced by bitcart-shared reusable action (actions/upload-test-results)
@@ -247,6 +250,7 @@ jobs:
           name: Functional Tests - Python ${{ env.PYTHON }}
           token: ${{ secrets.CODECOV_TOKEN }}
           files: test-results/coverage.xml
+          disable_search: true
 
       - name: Upload test results to Codecov
         if: ${{ !cancelled() }}
@@ -255,6 +259,7 @@ jobs:
           report_type: test_results
           token: ${{ secrets.CODECOV_TOKEN }}
           files: test-results/junit.xml
+          disable_search: true
 
       # END: Can be replaced by bitcart-shared reusable action (actions/codecov)
 
