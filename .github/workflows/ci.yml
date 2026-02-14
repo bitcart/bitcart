@@ -100,7 +100,7 @@ jobs:
         run: |
           uv sync --frozen --compile-bytecode --no-dev --group web --group otel --group test --group btc
 
-      - uses: bitcart/bitcart-actions@master/actions/run-in-background
+      - uses: bitcart/bitcart-actions/actions/run-in-background@master
         name: Prepare daemon
         with:
           run: just testnet
@@ -213,25 +213,25 @@ jobs:
           sudo chmod +x /usr/local/bin/Fulcrum
           rm -rf ${ARCHIVE_NAME} Fulcrum
       # END: Can be replaced by bitcart-shared reusable action (actions/install-fulcrum)
-      - uses: bitcart/bitcart-actions@master/actions/run-in-background
+      - uses: bitcart/bitcart-actions/actions/run-in-background@master
         name: Start bitcoind
         with:
           run: just bitcoind
           key: bitcoind
 
-      - uses: bitcart/bitcart-actions@master/actions/run-in-background
+      - uses: bitcart/bitcart-actions/actions/run-in-background@master
         name: Start Fulcrum
         with:
           run: sleep 10 && just fulcrum
           key: fulcrum
 
-      - uses: bitcart/bitcart-actions@master/actions/run-in-background
+      - uses: bitcart/bitcart-actions/actions/run-in-background@master
         name: Start regtest daemon
         with:
           run: sleep 10 && just regtest
           key: regtest
 
-      - uses: bitcart/bitcart-actions@master/actions/run-in-background
+      - uses: bitcart/bitcart-actions/actions/run-in-background@master
         name: Start regtest LN daemon
         with:
           run: sleep 10 && just regtestln
