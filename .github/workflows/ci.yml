@@ -111,48 +111,16 @@ jobs:
           just test -n 4 --splits ${{ matrix.split-count }} --group ${{ matrix.group }}
           coverage xml -o test-results/coverage.xml
 
-      # BEGIN: Can be replaced by bitcart-shared reusable action (actions/codecov)
-      - name: Upload coverage
-        uses: codecov/codecov-action@v5
+      - uses: bitcart/bitcart-actions/actions/codecov@master
         with:
-          env_vars: PYTHON
-          flags: tests
+          token: ${{ secrets.CODECOV_TOKEN }}
           name: Tests - Python ${{ env.PYTHON }} - Group ${{ matrix.group }}
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: test-results/coverage.xml
-          disable_search: true
+          flags: tests
+          env_vars: PYTHON
 
-      - name: Upload test results to Codecov
-        if: ${{ !cancelled() }}
-        uses: codecov/codecov-action@v5
+      - uses: bitcart/bitcart-actions/actions/upload-test-results@master
         with:
-          report_type: test_results
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: test-results/junit.xml
-          disable_search: true
-
-      # END: Can be replaced by bitcart-shared reusable action (actions/codecov)
-
-      # BEGIN: Can be replaced by bitcart-shared reusable action (actions/upload-test-results)
-      - name: Upload test results
-        uses: actions/upload-artifact@v6
-        with:
-          name: test-results-py${{ env.PYTHON }}-${{ matrix.group }}
-          path: test-results/
-
-      - name: Upload coverage artifacts
-        uses: actions/upload-artifact@v6
-        with:
-          name: coverage-py${{ env.PYTHON }}-${{ matrix.group }}
-          path: coverage/
-
-      - name: Upload coverage data
-        uses: actions/upload-artifact@v6
-        with:
-          name: coverage-data-py${{ env.PYTHON }}-${{ matrix.group }}
-          path: .coverage
-          include-hidden-files: true
-      # END: Can be replaced by bitcart-shared reusable action (actions/upload-test-results)
+          suffix: py${{ env.PYTHON }}-${{ matrix.group }}
 
   functional-tests:
     needs: test
@@ -201,18 +169,8 @@ jobs:
           sudo apt update
           sudo apt install -y bitcoind screen
 
-      # BEGIN: Can be replaced by bitcart-shared reusable action (actions/install-fulcrum)
-      - name: Install Fulcrum
-        run: |
-          FULCRUM_VERSION=$(curl --silent https://api.github.com/repos/cculianu/Fulcrum/releases/latest | jq -r .tag_name | tr -d v)
-          ARCHIVE_NAME=Fulcrum-${FULCRUM_VERSION}-$(uname -m)-linux.tar.gz
-          wget https://github.com/cculianu/Fulcrum/releases/download/v${FULCRUM_VERSION}/${ARCHIVE_NAME}
-          mkdir -p Fulcrum
-          tar -xvzf ${ARCHIVE_NAME} -C Fulcrum
-          sudo cp Fulcrum/${ARCHIVE_NAME/.tar.gz/}/Fulcrum /usr/local/bin/Fulcrum
-          sudo chmod +x /usr/local/bin/Fulcrum
-          rm -rf ${ARCHIVE_NAME} Fulcrum
-      # END: Can be replaced by bitcart-shared reusable action (actions/install-fulcrum)
+      - uses: bitcart/bitcart-actions/actions/install-fulcrum@master
+
       - uses: bitcart/bitcart-actions/actions/run-in-background@master
         name: Start bitcoind
         with:
@@ -243,48 +201,16 @@ jobs:
           just functional
           coverage xml -o test-results/coverage.xml
 
-      # BEGIN: Can be replaced by bitcart-shared reusable action (actions/codecov)
-      - name: Upload coverage
-        uses: codecov/codecov-action@v5
+      - uses: bitcart/bitcart-actions/actions/codecov@master
         with:
-          env_vars: PYTHON
-          flags: functional-tests
+          token: ${{ secrets.CODECOV_TOKEN }}
           name: Functional Tests - Python ${{ env.PYTHON }}
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: test-results/coverage.xml
-          disable_search: true
+          flags: functional-tests
+          env_vars: PYTHON
 
-      - name: Upload test results to Codecov
-        if: ${{ !cancelled() }}
-        uses: codecov/codecov-action@v5
+      - uses: bitcart/bitcart-actions/actions/upload-test-results@master
         with:
-          report_type: test_results
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: test-results/junit.xml
-          disable_search: true
-
-      # END: Can be replaced by bitcart-shared reusable action (actions/codecov)
-
-      # BEGIN: Can be replaced by bitcart-shared reusable action (actions/upload-test-results)
-      - name: Upload test results
-        uses: actions/upload-artifact@v6
-        with:
-          name: test-results-functional
-          path: test-results/
-
-      - name: Upload coverage artifacts
-        uses: actions/upload-artifact@v6
-        with:
-          name: coverage-functional
-          path: coverage/
-
-      - name: Upload coverage data
-        uses: actions/upload-artifact@v6
-        with:
-          name: coverage-data-functional
-          path: .coverage
-          include-hidden-files: true
-      # END: Can be replaced by bitcart-shared reusable action (actions/upload-test-results)
+          suffix: functional
 
   combine-coverage:
     needs: functional-tests
