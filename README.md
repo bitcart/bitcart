@@ -7,7 +7,7 @@
 
 Bitcart is a platform for merchants, users and developers which offers easy setup and use.
 
-test PR 5
+test PR 6
 
 ## Linked repositories
 
