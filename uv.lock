@@ -8,11 +8,11 @@ resolution-markers = [
 ]
 
 [options]
-exclude-newer = "2026-02-06T22:11:32.791158Z"
+exclude-newer = "2026-02-07T03:04:45.226731Z"
 exclude-newer-span = "P1W"
 
 [options.exclude-newer-package]
-cryptography = { timestamp = "2026-02-13T22:11:32.789962Z", span = "PT0S" }
+cryptography = { timestamp = "2026-02-14T03:04:45.225589Z", span = "PT0S" }
 
 [manifest]
 overrides = [{ name = "python-dateutil", specifier = ">=2.9.0" }]
@@ -623,9 +623,6 @@ otel = [
 production = [
     { name = "gunicorn" },
 ]
-pydantic-install = [
-    { name = "pydantic", extra = ["email"] },
-]
 test = [
     { name = "fakeredis" },
     { name = "filelock" },
@@ -647,7 +644,6 @@ trx = [
     { name = "web3" },
 ]
 types = [
-    { name = "pydantic", extra = ["email"] },
     { name = "types-aiofiles" },
     { name = "types-paramiko" },
     { name = "types-python-dateutil" },
@@ -850,7 +846,6 @@ otel = [
     { name = "opentelemetry-sdk", specifier = ">=1.39.0,<1.40.0" },
 ]
 production = [{ name = "gunicorn", specifier = ">=23.0.0" }]
-pydantic-install = [{ name = "pydantic", extras = ["email"], specifier = ">=2.10.3" }]
 test = [
     { name = "fakeredis", specifier = ">=2.31.1" },
     { name = "filelock", specifier = ">=3.19.1" },
@@ -872,7 +867,6 @@ trx = [
     { name = "web3", specifier = ">=7,<8" },
 ]
 types = [
-    { name = "pydantic", extras = ["email"], specifier = ">=2.10.3" },
     { name = "types-aiofiles", specifier = ">=24.1.0.20250822" },
     { name = "types-paramiko", specifier = ">=4.0.0.20250822" },
     { name = "types-python-dateutil", specifier = ">=2.9.0.20250822" },
