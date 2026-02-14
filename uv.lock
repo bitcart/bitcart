@@ -8,11 +8,11 @@ resolution-markers = [
 ]
 
 [options]
-exclude-newer = "2026-02-07T12:01:54.461581Z"
+exclude-newer = "2026-02-07T21:15:11.455142Z"
 exclude-newer-span = "P1W"
 
 [options.exclude-newer-package]
-cryptography = { timestamp = "2026-02-14T12:01:54.460668Z", span = "PT0S" }
+cryptography = { timestamp = "2026-02-14T21:15:11.454042Z", span = "PT0S" }
 
 [manifest]
 overrides = [{ name = "python-dateutil", specifier = ">=2.9.0" }]
@@ -554,6 +554,7 @@ dev = [
     { name = "pyotp" },
     { name = "pytest" },
     { name = "pytest-cov" },
+    { name = "pytest-durations" },
     { name = "pytest-mock" },
     { name = "pytest-split" },
     { name = "pytest-xdist" },
@@ -627,6 +628,7 @@ test = [
     { name = "httpx-ws" },
     { name = "pytest" },
     { name = "pytest-cov" },
+    { name = "pytest-durations" },
     { name = "pytest-mock" },
     { name = "pytest-split" },
     { name = "pytest-xdist" },
@@ -776,6 +778,7 @@ dev = [
     { name = "pyotp", specifier = ">=2.9.0" },
     { name = "pytest", specifier = ">=8.3.5" },
     { name = "pytest-cov", specifier = ">=6.2.1" },
+    { name = "pytest-durations", specifier = ">=1.6.1" },
     { name = "pytest-mock", specifier = ">=3.15.0" },
     { name = "pytest-split", specifier = ">=0.11.0" },
     { name = "pytest-xdist", specifier = ">=3.8.0" },
@@ -847,6 +850,7 @@ test = [
     { name = "httpx-ws", specifier = ">=0.7.2" },
     { name = "pytest", specifier = ">=8.3.5" },
     { name = "pytest-cov", specifier = ">=6.2.1" },
+    { name = "pytest-durations", specifier = ">=1.6.1" },
     { name = "pytest-mock", specifier = ">=3.15.0" },
     { name = "pytest-split", specifier = ">=0.11.0" },
     { name = "pytest-xdist", specifier = ">=3.8.0" },
@@ -3325,6 +3329,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/5e/f7/c933acc76f5208b3b00089573cf6a2bc26dc80a8aece8f52bb7d6b1855ca/pytest_cov-7.0.0.tar.gz", hash = "sha256:33c97eda2e049a0c5298e91f519302a1334c26ac65c1a483d6206fd458361af1", size = 54328, upload-time = "2025-09-09T10:57:02.113Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/ee/49/1377b49de7d0c1ce41292161ea0f721913fa8722c19fb9c1e3aa0367eecb/pytest_cov-7.0.0-py3-none-any.whl", hash = "sha256:3b8e9558b16cc1479da72058bdecf8073661c7f57f7d3c5f22a1c23507f2d861", size = 22424, upload-time = "2025-09-09T10:57:00.695Z" },
+]
+
+[[package]]
+name = "pytest-durations"
+version = "1.6.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pytest" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/90/59/1e73dd71c87aa47bcf37e4f5c25596e94d5628bee15bdbeaaae1585a26e4/pytest_durations-1.6.1.tar.gz", hash = "sha256:bc43fbabb1fef6bb75766d35a6bf142c1e153fef01677ccd4705cc376bf2be34", size = 11630, upload-time = "2025-08-29T06:49:54.554Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c8/a2/1d1914f3ff2c85003962b3f07f7b908fc9fd745584e9a51d392a65e261f6/pytest_durations-1.6.1-py3-none-any.whl", hash = "sha256:af7e0f6b883e7897c8dc1cb294016c6144c25f93a8930d48aec4b40ef461c51e", size = 13521, upload-time = "2025-08-29T06:49:53.386Z" },
 ]
 
 [[package]]
