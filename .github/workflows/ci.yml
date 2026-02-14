@@ -54,7 +54,7 @@ jobs:
 
   test:
     needs: lint
-    name: test-${{ matrix.python-version }} ({{ matrix.group }}/{{ matrix.split-count }})
+    name: test-${{ matrix.python-version }} (${{ matrix.group }}/${{ matrix.split-count }})
     runs-on: ubuntu-latest
 
     strategy:
