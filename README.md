@@ -1,7 +1,7 @@
 # Bitcart
 
 ![Github All Contributors](https://img.shields.io/github/all-contributors/bitcart/bitcart?style=flat-square)
-[![CircleCI](https://circleci.com/gh/bitcart/bitcart.svg?style=svg)](https://circleci.com/gh/bitcart/bitcart)
+[![CI](https://github.com/bitcart/bitcart/actions/workflows/ci.yml/badge.svg)](https://github.com/bitcart/bitcart/actions/workflows/ci.yml)
 ![Codecov](https://img.shields.io/codecov/c/github/bitcart/bitcart?style=flat-square)
 [![Python versions](https://img.shields.io/pypi/pyversions/bitcart?style=flat-square)](https://docs.bitcart.ai)
 
