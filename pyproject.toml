@@ -3,10 +3,10 @@ name = "bitcart-api"
 version = "1.0.0"
 description = "Bitcart Merchants API"
 requires-python = ">=3.12"
-dependencies = ["python-decouple", "rust-just>=1.46.0", "taskipy>=1.14.1"]
+dependencies = ["python-decouple", "rust-just>=1.46.0"]
 
 [dependency-groups]
-lint = ["mypy>=1.13.0", "pre-commit>=4.3.0", "prek>=0.3.1", "ruff>=0.9.5"]
+lint = ["mypy>=1.13.0", "prek>=0.3.1", "ruff>=0.9.5"]
 test = [
     "fakeredis>=2.31.1",
     "filelock>=3.19.1",
@@ -134,21 +134,6 @@ override-dependencies = ["python-dateutil>=2.9.0"]
 config-settings-package = { "electrum-ecc" = { "electrum_ecc.dont_compile" = "1" } }
 # dependency cooldowns for security
 exclude-newer = "1 week"
-
-[tool.taskipy.tasks]
-api = { cmd = "uvicorn main:app --ws websockets-sansio --timeout-graceful-shutdown 1 --reload", help = "run api service" }
-worker = { cmd = "python3 worker.py", help = "run worker service" }
-production = { cmd = "gunicorn -c gunicorn.conf.py main:app", help = "run api service in production" }
-lint = { cmd = "ruff format . && ruff check --fix .", help = "run linters with autofix" }
-lint_check = { cmd = "ruff format --check . && ruff check .", help = "run ruff linter" }
-lint_types = { cmd = "mypy api tests main.py worker.py", help = "run mypy type verify" }
-test = { cmd = "pytest ${TEST_ARGS}", help = "run tests" }
-functional = { cmd = "BTC_LIGHTNING=true pytest tests/functional/ --cov-append -n 0 ${TEST_ARGS}", help = "run functional tests" }
-new_migration = { cmd = "alembic revision --autogenerate -m \"${MESSAGE}\"", help = "create new migration" }
-db_migration = { cmd = "task new_migration", help = "create new migration" }
-db_migrate = { cmd = "alembic upgrade head", help = "run alembic upgrade" }
-db_rollback = { cmd = "alembic downgrade -1", help = "run alembic downgrade" }
-ci = { cmd = "task lint_check && task lint_types && task test", help = "run ci checks" }
 
 [tool.ruff]
 target-version = "py312"
