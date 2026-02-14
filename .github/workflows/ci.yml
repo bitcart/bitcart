@@ -17,32 +17,12 @@ permissions:
 
 jobs:
   lint:
+    uses: bitcart/bitcart-actions/.github/workflows/lint.yml@master
     name: lint
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Set up Python
-        uses: bitcart/bitcart-actions/actions/setup-python@master
-
-      - name: Install lint dependencies
-        run: |
-          uv sync --frozen --compile-bytecode --no-dev --group web --group types --group lint --group test
-
-      - name: Check format and lint
-        run: just ci-lint
-
-      - name: Cache prek repos
-        uses: actions/cache@v5
-        with:
-          path: ~/.cache/prek
-          key: v1-lint-${{ github.ref_name }}-prek-${{ hashFiles('.pre-commit-config.yaml') }}
-          restore-keys: |
-            v1-lint-${{ github.ref_name }}-prek-
-
-      - name: Run prek checks
-        run: prek run --all-files --show-diff-on-failure
+    with:
+      install-dependencies: |
+        uv sync --frozen --compile-bytecode --no-dev --group web --group types --group lint --group test
+      extra-checks: just ci-lint
 
   test:
     needs: lint
