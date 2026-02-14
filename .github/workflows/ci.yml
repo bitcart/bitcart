@@ -79,6 +79,12 @@ jobs:
         run: |
           just test -n 4 --splits ${{ matrix.split-count }} --group ${{ matrix.group }}
 
+      - name: Upload test results (before)
+        uses: actions/upload-artifact@v6
+        with:
+          name: test-results-before${{ env.PYTHON }}-${{ matrix.group }}
+          path: test-results/
+
       - uses: bitcart/bitcart-actions/actions/codecov@master
         name: Upload coverage to Codecov
         with:
