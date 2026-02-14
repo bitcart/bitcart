@@ -78,7 +78,6 @@ jobs:
       - name: Run tests
         run: |
           just test -n 4 --splits ${{ matrix.split-count }} --group ${{ matrix.group }}
-          coverage xml -o test-results/coverage.xml
 
       - uses: bitcart/bitcart-actions/actions/codecov@master
         name: Upload coverage to Codecov
@@ -94,150 +93,18 @@ jobs:
           suffix: py${{ env.PYTHON }}-${{ matrix.group }}
 
   functional-tests:
+    uses: bitcart/bitcart-actions/.github/workflows/functional-tests.yml@master
     needs: test
     name: functional-tests
-    runs-on: ubuntu-latest
-
-    services:
-      redis:
-        image: redis:alpine
-        ports:
-          - 6379:6379
-
-      postgres:
-        image: postgres:18-alpine
-        env:
-          POSTGRES_DB: bitcart_test
-          POSTGRES_HOST_AUTH_METHOD: trust
-        ports:
-          - 5432:5432
-
-    env:
-      TEST_ARGS: "-o junit_family=legacy --junitxml test-results/junit.xml --cov-report html:coverage"
-
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Set up Python
-        uses: bitcart/bitcart-actions/actions/setup-python@master
-
-      - name: Install system dependencies
-        run: |
-          sudo apt update
-          sudo apt install -y libsecp256k1-dev
-
-      - name: Install Python dependencies
-        run: |
-          uv sync --frozen --compile-bytecode --no-dev --group web --group otel --group test --group btc
-
-      - name: Install regtest utils
-        run: |
-          sudo add-apt-repository -y ppa:luke-jr/bitcoincore
-          sudo apt update
-          sudo apt install -y bitcoind screen
-
-      - uses: bitcart/bitcart-actions/actions/install-fulcrum@master
-        name: Install Fulcrum
-
-      - uses: bitcart/bitcart-actions/actions/run-in-background@master
-        name: Start bitcoind
-        with:
-          run: just bitcoind
-          key: bitcoind
-
-      - uses: bitcart/bitcart-actions/actions/run-in-background@master
-        name: Start Fulcrum
-        with:
-          run: sleep 10 && just fulcrum
-          key: fulcrum
-
-      - uses: bitcart/bitcart-actions/actions/run-in-background@master
-        name: Start regtest daemon
-        with:
-          run: sleep 10 && just regtest
-          key: regtest
-
-      - uses: bitcart/bitcart-actions/actions/run-in-background@master
-        name: Start regtest LN daemon
-        with:
-          run: sleep 10 && just regtestln
-          key: regtestln
-
-      - name: Run functional tests
-        run: |
-          sleep 15
-          just functional
-          coverage xml -o test-results/coverage.xml
-
-      - uses: bitcart/bitcart-actions/actions/codecov@master
-        name: Upload coverage to Codecov
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          name: Functional Tests - Python ${{ env.PYTHON }}
-          flags: functional-tests
-          env_vars: PYTHON
-
-      - uses: bitcart/bitcart-actions/actions/upload-test-results@master
-        name: Upload test results
-        with:
-          suffix: functional
+    with:
+      install-dependencies: |
+        uv sync --frozen --compile-bytecode --no-dev --group web --group otel --group test --group btc
+      enable-redis: true
+      enable-postgres: true
+    secrets:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   combine-coverage:
+    uses: bitcart/bitcart-actions/.github/workflows/combine-coverage.yml@master
     needs: functional-tests
     name: combine-coverage
-    runs-on: ubuntu-latest
-    if: ${{ !cancelled() }}
-
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Set up Python
-        uses: bitcart/bitcart-actions/actions/setup-python@master
-
-      - name: Install dependencies
-        run: uv pip install coverage[toml] junitparser
-
-      - name: Download all coverage data artifacts
-        uses: actions/download-artifact@v7
-        with:
-          pattern: coverage-data-*
-          path: coverage-data/
-
-      - name: Download all test results artifacts
-        uses: actions/download-artifact@v7
-        with:
-          pattern: test-results-*
-          path: test-results-all/
-
-      - name: Combine coverage
-        run: |
-          i=0
-          for f in $(find coverage-data/ -name '.coverage'); do
-            cp "$f" ".coverage.$i"
-            i=$((i + 1))
-          done
-          coverage combine
-          coverage html -d combined-coverage/
-          coverage xml -o combined-coverage/coverage.xml
-          coverage report --format=markdown > combined-coverage/summary.md
-          echo "## Coverage Summary"
-          cat combined-coverage/summary.md
-
-      - name: Merge JUnit XML reports
-        run: |
-          junitparser merge $(find test-results-all/ -name 'junit.xml') combined-coverage/junit.xml
-
-      - name: Upload combined results
-        uses: actions/upload-artifact@v6
-        with:
-          name: combined-coverage
-          path: combined-coverage/
-
-      - name: Delete intermediate artifacts
-        uses: geekyeggo/delete-artifact@v5
-        with:
-          name: |
-            test-results-*
-            coverage-*
-            coverage-data-*
-          failOnError: false
