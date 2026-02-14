@@ -8,11 +8,11 @@ resolution-markers = [
 ]
 
 [options]
-exclude-newer = "2026-02-07T21:45:02.731044Z"
+exclude-newer = "2026-02-07T22:11:20.701678Z"
 exclude-newer-span = "P1W"
 
 [options.exclude-newer-package]
-cryptography = { timestamp = "2026-02-14T21:45:02.729818Z", span = "PT0S" }
+cryptography = { timestamp = "2026-02-14T22:11:20.700442Z", span = "PT0S" }
 
 [manifest]
 overrides = [{ name = "python-dateutil", specifier = ">=2.9.0" }]
@@ -557,7 +557,6 @@ dev = [
     { name = "pytest-durations" },
     { name = "pytest-mock" },
     { name = "pytest-split" },
-    { name = "pytest-timestamper" },
     { name = "pytest-xdist" },
     { name = "python-dateutil" },
     { name = "python-multipart" },
@@ -632,7 +631,6 @@ test = [
     { name = "pytest-durations" },
     { name = "pytest-mock" },
     { name = "pytest-split" },
-    { name = "pytest-timestamper" },
     { name = "pytest-xdist" },
 ]
 trx = [
@@ -783,7 +781,6 @@ dev = [
     { name = "pytest-durations", specifier = ">=1.6.1" },
     { name = "pytest-mock", specifier = ">=3.15.0" },
     { name = "pytest-split", specifier = ">=0.11.0" },
-    { name = "pytest-timestamper", specifier = ">=0.0.10" },
     { name = "pytest-xdist", specifier = ">=3.8.0" },
     { name = "python-dateutil", specifier = ">=2.9.0" },
     { name = "python-multipart", specifier = ">=0.0.20" },
@@ -856,7 +853,6 @@ test = [
     { name = "pytest-durations", specifier = ">=1.6.1" },
     { name = "pytest-mock", specifier = ">=3.15.0" },
     { name = "pytest-split", specifier = ">=0.11.0" },
-    { name = "pytest-timestamper", specifier = ">=0.0.10" },
     { name = "pytest-xdist", specifier = ">=3.8.0" },
 ]
 trx = [
@@ -3369,15 +3365,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/2f/16/8af4c5f2ceb3640bb1f78dfdf5c184556b10dfe9369feaaad7ff1c13f329/pytest_split-0.11.0.tar.gz", hash = "sha256:8ebdb29cc72cc962e8eb1ec07db1eeb98ab25e215ed8e3216f6b9fc7ce0ec2b5", size = 13421, upload-time = "2026-02-03T09:14:31.469Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/ae/a1/d4423657caaa8be9b31e491592b49cebdcfd434d3e74512ce71f6ec39905/pytest_split-0.11.0-py3-none-any.whl", hash = "sha256:899d7c0f5730da91e2daf283860eb73b503259cb416851a65599368849c7f382", size = 11911, upload-time = "2026-02-03T09:14:33.708Z" },
-]
-
-[[package]]
-name = "pytest-timestamper"
-version = "0.0.10"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/89/6c/c5e657db26f3716ad533157bb144cd0a5d14528df4c1c8a876c1c908ad84/pytest-timestamper-0.0.10.tar.gz", hash = "sha256:ec283fdefc46a9fdb41c1e9badac144902b89bc292e50b97bcaf880e95647977", size = 5240, upload-time = "2024-03-27T06:31:49.966Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/df/c1/484fa642565cfcdc27321de151a4e9edc731042c653fea9f05712a0a8904/pytest_timestamper-0.0.10-py3-none-any.whl", hash = "sha256:6db3507c9fd879e021b87e4516472f97471a5643993bc86dfc2a5e262f6a09c9", size = 4575, upload-time = "2024-03-27T06:31:48.42Z" },
 ]
 
 [[package]]
