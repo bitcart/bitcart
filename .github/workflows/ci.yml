@@ -77,7 +77,7 @@ jobs:
 
       - name: Run tests
         run: |
-          just test -n 4 --splits ${{ matrix.split-count }} --group ${{ matrix.group }} --pytest-durations=-1
+          just test -n 4 --splits ${{ matrix.split-count }} --group ${{ matrix.group }} --pytest-durations=-1 -vvv
 
       - uses: bitcart/bitcart-actions/actions/codecov@master
         name: Upload coverage to Codecov
