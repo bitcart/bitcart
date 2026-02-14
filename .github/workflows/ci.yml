@@ -77,21 +77,12 @@ jobs:
 
       - name: Run tests
         run: |
-          just test -n 4 --splits ${{ matrix.split-count }} --group ${{ matrix.group }} --pytest-durations=-1 -vvv
+          just test -n 4 --splits ${{ matrix.split-count }} --group ${{ matrix.group }} --pytest-durations=-1
 
       - uses: bitcart/bitcart-actions/actions/codecov@master
         name: Upload coverage to Codecov
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          name: Tests - Python ${{ env.PYTHON }} - Group ${{ matrix.group }}
-          flags: tests
-          env_vars: PYTHON
-
-      - uses: bitcart/bitcart-actions/actions/codecov@master
-        name: Upload test results to Codecov
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          upload_test_results: "true"
           name: Tests - Python ${{ env.PYTHON }} - Group ${{ matrix.group }}
           flags: tests
           env_vars: PYTHON

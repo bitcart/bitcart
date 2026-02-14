@@ -226,7 +226,6 @@ warn_untyped_fields = true
 
 [tool.pytest.ini_options]
 junit_duration_report = "call"
-junit_family = "xunit2"
 junit_suite_name = "bitcart_test_suite"
 addopts = ["-n", "auto", "--cov=api", "--cov-report", "term-missing"]
 filterwarnings = [
