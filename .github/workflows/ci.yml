@@ -87,6 +87,15 @@ jobs:
           flags: tests
           env_vars: PYTHON
 
+      - uses: bitcart/bitcart-actions/actions/codecov@master
+        name: Upload test results to Codecov
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          upload_test_results: "true"
+          name: Tests - Python ${{ env.PYTHON }} - Group ${{ matrix.group }}
+          flags: tests
+          env_vars: PYTHON
+
       - uses: bitcart/bitcart-actions/actions/upload-test-results@master
         name: Upload test results
         with:
