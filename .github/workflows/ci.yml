@@ -338,3 +338,12 @@ jobs:
         with:
           name: combined-coverage
           path: combined-coverage/
+
+      - name: Delete intermediate artifacts
+        uses: geekyeggo/delete-artifact@v5
+        with:
+          name: |
+            test-results-*
+            coverage-*
+            coverage-data-*
+          failOnError: false
