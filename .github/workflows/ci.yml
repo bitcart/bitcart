@@ -5,7 +5,7 @@ on:
     branches:
       - master
     tags:
-      - "*"
+      - "**"
   pull_request:
 
 concurrency:
@@ -54,7 +54,7 @@ jobs:
 
   test:
     needs: lint
-    name: test-${{ matrix.python-version }}
+    name: test-${{ matrix.python-version }} ({{ matrix.group }}/{{ matrix.split-count }})
     runs-on: ubuntu-latest
 
     strategy:
@@ -78,7 +78,7 @@ jobs:
           - 5432:5432
 
     env:
-      TEST_ARGS: "--junitxml test-results/coverage.xml --cov-report html:coverage"
+      TEST_ARGS: "-o junit_family=legacy --junitxml test-results/junit.xml --cov-report xml:test-results/coverage.xml --cov-report html:coverage"
       PYTHON: ${{ matrix.python-version }}
 
     steps:
@@ -118,6 +118,7 @@ jobs:
           flags: tests
           name: Tests - Python ${{ env.PYTHON }} - Group ${{ matrix.group }}
           token: ${{ secrets.CODECOV_TOKEN }}
+          files: test-results/coverage.xml
 
       - name: Upload test results to Codecov
         if: ${{ !cancelled() }}
@@ -125,6 +126,7 @@ jobs:
         with:
           report_type: test_results
           token: ${{ secrets.CODECOV_TOKEN }}
+          files: test-results/junit.xml
       # END: Can be replaced by bitcart-shared reusable action (actions/codecov)
 
       # BEGIN: Can be replaced by bitcart-shared reusable action (actions/upload-test-results)
@@ -139,6 +141,12 @@ jobs:
         with:
           name: coverage-py${{ env.PYTHON }}-${{ matrix.group }}
           path: coverage/
+
+      - name: Upload coverage data
+        uses: actions/upload-artifact@v6
+        with:
+          name: coverage-data-py${{ env.PYTHON }}-${{ matrix.group }}
+          path: .coverage
       # END: Can be replaced by bitcart-shared reusable action (actions/upload-test-results)
 
   functional-tests:
@@ -161,7 +169,7 @@ jobs:
           - 5432:5432
 
     env:
-      TEST_ARGS: "--junitxml test-results/coverage.xml --cov-report html:coverage"
+      TEST_ARGS: "-o junit_family=legacy --junitxml test-results/junit.xml --cov-report xml:test-results/coverage.xml --cov-report html:coverage"
 
     steps:
       - uses: actions/checkout@v6
@@ -237,6 +245,7 @@ jobs:
           flags: functional-tests
           name: Functional Tests - Python ${{ env.PYTHON }}
           token: ${{ secrets.CODECOV_TOKEN }}
+          files: test-results/coverage.xml
 
       - name: Upload test results to Codecov
         if: ${{ !cancelled() }}
@@ -244,6 +253,7 @@ jobs:
         with:
           report_type: test_results
           token: ${{ secrets.CODECOV_TOKEN }}
+          files: test-results/junit.xml
 
       # END: Can be replaced by bitcart-shared reusable action (actions/codecov)
 
@@ -259,4 +269,65 @@ jobs:
         with:
           name: coverage-functional
           path: coverage/
+
+      - name: Upload coverage data
+        uses: actions/upload-artifact@v6
+        with:
+          name: coverage-data-functional
+          path: .coverage
       # END: Can be replaced by bitcart-shared reusable action (actions/upload-test-results)
+
+  combine-coverage:
+    needs: functional-tests
+    name: combine-coverage
+    runs-on: ubuntu-latest
+    if: ${{ !cancelled() }}
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Python ${{ env.PYTHON }}
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: ${{ env.PYTHON }}
+          enable-cache: true
+          activate-environment: true
+
+      - name: Install dependencies
+        run: uv pip install coverage[toml] junitparser
+
+      - name: Download all coverage data artifacts
+        uses: actions/download-artifact@v6
+        with:
+          pattern: coverage-data-*
+          path: coverage-data/
+
+      - name: Download all test results artifacts
+        uses: actions/download-artifact@v6
+        with:
+          pattern: test-results-*
+          path: test-results-all/
+
+      - name: Combine coverage
+        run: |
+          i=0
+          for f in $(find coverage-data/ -name '.coverage'); do
+            cp "$f" ".coverage.$i"
+            i=$((i + 1))
+          done
+          coverage combine
+          coverage html -d combined-coverage/
+          coverage xml -o combined-coverage/coverage.xml
+          coverage report --format=markdown > combined-coverage/summary.md
+          echo "## Coverage Summary"
+          cat combined-coverage/summary.md
+
+      - name: Merge JUnit XML reports
+        run: |
+          junitparser merge $(find test-results-all/ -name 'junit.xml') combined-coverage/junit.xml
+
+      - name: Upload combined results
+        uses: actions/upload-artifact@v6
+        with:
+          name: combined-coverage
+          path: combined-coverage/
