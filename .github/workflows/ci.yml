@@ -77,7 +77,11 @@ jobs:
 
       - name: Run tests
         run: |
+          ls -la test-results
+          cat test-results/junit.xml || true
           just test -n 4 --splits ${{ matrix.split-count }} --group ${{ matrix.group }}
+          ls -la test-results
+          cat test-results/junit.xml || true
 
       - name: Upload test results (before)
         uses: actions/upload-artifact@v6
