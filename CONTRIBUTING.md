@@ -164,18 +164,18 @@ pip3 install -r requirements/test.txt
 pip3 install -r requirements/lint.txt
 ```
 
-This repository uses pre-commit hooks for better development experience. Install them with:
+This repository uses prek hooks for better development experience. Install them with:
 
 ```
-pre-commit install
+prek install
 ```
 
 It will run automatically on commits.
 
-If you ever need to run the full pre-commit checks on all files, run:
+If you ever need to run the full prek checks on all files, run:
 
 ```
-pre-commit run --all-files
+prek run --all-files
 ```
 
 After you have completed manual installation, you can start development.

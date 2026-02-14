@@ -41,16 +41,16 @@ jobs:
       - name: Check format and lint
         run: just ci-lint
 
-      - name: Cache pre-commit repos
+      - name: Cache prek repos
         uses: actions/cache@v5
         with:
-          path: ~/.cache/pre-commit
-          key: v1-lint-${{ github.ref_name }}-pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
+          path: ~/.cache/prek
+          key: v1-lint-${{ github.ref_name }}-prek-${{ hashFiles('.pre-commit-config.yaml') }}
           restore-keys: |
-            v1-lint-${{ github.ref_name }}-pre-commit-
+            v1-lint-${{ github.ref_name }}-prek-
 
-      - name: Run pre-commit checks
-        run: pre-commit run --all-files --show-diff-on-failure
+      - name: Run prek checks
+        run: prek run --all-files --show-diff-on-failure
 
   test:
     needs: lint
@@ -59,7 +59,7 @@ jobs:
 
     strategy:
       matrix:
-        python-version: ["3.13", "3.14"]
+        python-version: ["3.12", "3.13", "3.14"]
         split-count: [4]
         group: [1, 2, 3, 4]
 
