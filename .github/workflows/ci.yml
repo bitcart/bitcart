@@ -108,3 +108,5 @@ jobs:
     uses: bitcart/bitcart-actions/.github/workflows/combine-coverage.yml@master
     needs: functional-tests
     name: combine-coverage
+    secrets:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
