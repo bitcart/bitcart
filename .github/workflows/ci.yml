@@ -32,8 +32,8 @@ jobs:
     strategy:
       matrix:
         python-version: ["3.12", "3.13", "3.14"]
-        split-count: [1]
-        group: [1]
+        split-count: [2]
+        group: [1, 2]
 
     services:
       redis:
