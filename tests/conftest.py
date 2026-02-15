@@ -228,7 +228,14 @@ async def coin_service(app: FastAPI) -> CoinService:
 def mock_btc_balance(mocker: pytest_mock.MockerFixture) -> AsyncMock:
     return mocker.patch(
         "bitcart.BTC.balance",
-        new=AsyncMock(return_value={"confirmed": Decimal("1.5")}),
+        new=AsyncMock(
+            return_value={
+                "confirmed": Decimal("1.5"),
+                "unconfirmed": Decimal("0"),
+                "unmatured": Decimal("0"),
+                "lightning": Decimal("0"),
+            }
+        ),
     )
 
 
