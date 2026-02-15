@@ -189,6 +189,7 @@ class BaseDaemon:
         self.PASSWORD = self.env("PASSWORD", default="electrumz")
         self.DATA_PATH = self.env("DATA_PATH", default=None)
         self.VERBOSE = self.env("DEBUG", cast=bool, default=False)
+        self.NO_SYNC_WAIT = self.env("EXPERIMENTAL_NOSYNC", cast=bool, default=False)
         self.NET = self.env("NETWORK", default="mainnet")
         self.DEFAULT_CURRENCY = self.env("FIAT_CURRENCY", default="USD")
         self.POLLING_CAP = self.env("POLLING_CAP", cast=int, default=100)

@@ -26,14 +26,12 @@ jobs:
 
   test:
     needs: lint
-    name: test-${{ matrix.python-version }} (${{ matrix.group }}/${{ matrix.split-count }})
+    name: test-${{ matrix.python-version }}
     runs-on: ubuntu-latest
 
     strategy:
       matrix:
         python-version: ["3.12", "3.13", "3.14"]
-        split-count: [4]
-        group: [1, 2, 3, 4]
 
     services:
       redis:
@@ -72,25 +70,28 @@ jobs:
       - uses: bitcart/bitcart-actions/actions/run-in-background@master
         name: Prepare daemon
         with:
-          run: just testnet
+          run: BTC_EXPERIMENTAL_NOSYNC=true just testnet
           key: testnet
 
       - name: Run tests
         run: |
-          just test -n 4 --splits ${{ matrix.split-count }} --group ${{ matrix.group }}
+          just test -n 4 --pytest-durations=-1
 
       - uses: bitcart/bitcart-actions/actions/codecov@master
         name: Upload coverage to Codecov
+        if: ${{ !cancelled() }}
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          name: Tests - Python ${{ env.PYTHON }} - Group ${{ matrix.group }}
+          name: Tests - Python ${{ env.PYTHON }}
           flags: tests
           env_vars: PYTHON
+          upload_coverage: ${{ job.status == 'success' }}
 
       - uses: bitcart/bitcart-actions/actions/upload-test-results@master
         name: Upload test results
+        if: ${{ !cancelled() }}
         with:
-          suffix: py${{ env.PYTHON }}-${{ matrix.group }}
+          suffix: py${{ env.PYTHON }}
 
   functional-tests:
     uses: bitcart/bitcart-actions/.github/workflows/functional-tests.yml@master
@@ -106,5 +107,6 @@ jobs:
 
   combine-coverage:
     uses: bitcart/bitcart-actions/.github/workflows/combine-coverage.yml@master
-    needs: functional-tests
+    needs: [test, functional-tests]
+    if: ${{ !cancelled() }}
     name: combine-coverage

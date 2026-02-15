@@ -14,7 +14,6 @@ repos:
       - id: end-of-file-fixer
       - id: trailing-whitespace
       - id: mixed-line-ending
-      - id: requirements-txt-fixer
       - id: check-case-conflict
       - id: check-shebang-scripts-are-executable
       - id: check-json

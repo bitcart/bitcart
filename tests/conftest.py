@@ -2,7 +2,9 @@ import functools
 import os
 import tempfile
 from collections.abc import AsyncGenerator, AsyncIterator, Generator, Iterator
+from decimal import Decimal
 from typing import Any, NewType, cast
+from unittest.mock import AsyncMock
 
 import pytest
 import pytest_mock
@@ -220,6 +222,21 @@ async def mock_fetch_delayed(*args: Any, all_cryptos: dict[str, BTC], **kwargs: 
 @pytest.fixture
 async def coin_service(app: FastAPI) -> CoinService:
     return await app.state.dishka_container.get(CoinService)
+
+
+@pytest.fixture
+def mock_btc_balance(mocker: pytest_mock.MockerFixture) -> AsyncMock:
+    return mocker.patch(
+        "bitcart.BTC.balance",
+        new=AsyncMock(
+            return_value={
+                "confirmed": Decimal("1.5"),
+                "unconfirmed": Decimal("0"),
+                "unmatured": Decimal("0"),
+                "lightning": Decimal("0"),
+            }
+        ),
+    )
 
 
 @pytest.fixture(autouse=True)
