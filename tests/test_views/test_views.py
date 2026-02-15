@@ -187,7 +187,7 @@ async def check_ws_response_complete(ws: AsyncWebSocketSession, sent_amount: Dec
 
 async def check_ws_response2(ws: AsyncWebSocketSession) -> None:
     data = await ws.receive_json()
-    assert data == {"status": "success", "balance": "0.01"}
+    assert data == {"status": "success", "balance": "1.5"}
 
 
 @pytest.mark.parametrize(
@@ -778,7 +778,7 @@ async def test_batch_commands(client: TestClient, token: str, store: dict[str, A
     ] == "complete"
 
 
-async def test_wallet_ws(client: TestClient, token: str, app: FastAPI) -> None:
+async def test_wallet_ws(client: TestClient, token: str, app: FastAPI, mock_btc_balance: Any) -> None:
     redis_pool = await app.state.dishka_container.get(Redis)
     r = await client.post(
         "/wallets",
