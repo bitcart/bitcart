@@ -82,7 +82,7 @@ jobs:
         if: ${{ !cancelled() }}
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          name: Tests - Python ${{ env.PYTHON }} - Group ${{ matrix.group }}
+          name: Tests - Python ${{ env.PYTHON }}
           flags: tests
           env_vars: PYTHON
           upload_coverage: ${{ job.status == 'success' }}
@@ -91,7 +91,7 @@ jobs:
         name: Upload test results
         if: ${{ !cancelled() }}
         with:
-          suffix: py${{ env.PYTHON }}-${{ matrix.group }}
+          suffix: py${{ env.PYTHON }}
 
   functional-tests:
     uses: bitcart/bitcart-actions/.github/workflows/functional-tests.yml@master
