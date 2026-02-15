@@ -17,16 +17,16 @@ permissions:
 
 jobs:
   lint:
-    uses: bitcart/bitcart-actions/.github/workflows/lint.yml@master
     name: lint
+    uses: bitcart/bitcart-actions/.github/workflows/lint.yml@master
     with:
       install-dependencies: |
         uv sync --frozen --compile-bytecode --no-dev --group web --group types --group lint --group test
       extra-checks: just ci-lint
 
   test:
-    needs: lint
     name: test-${{ matrix.python-version }}
+    needs: lint
     runs-on: ubuntu-latest
 
     strategy:
@@ -58,14 +58,14 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - uses: bitcart/bitcart-actions/actions/install-daemon@master
-        name: Install Python dependencies
+      - name: Install Python dependencies
+        uses: bitcart/bitcart-actions/actions/install-daemon@master
         with:
           install-dependencies: |
             uv sync --frozen --compile-bytecode --no-dev --group web --group otel --group test --group btc
 
-      - uses: bitcart/bitcart-actions/actions/run-in-background@master
-        name: Prepare daemon
+      - name: Prepare daemon
+        uses: bitcart/bitcart-actions/actions/run-in-background@master
         with:
           run: BTC_EXPERIMENTAL_NOSYNC=true just testnet
           key: testnet
@@ -74,8 +74,8 @@ jobs:
         run: |
           just test -n 4 --pytest-durations=-1
 
-      - uses: bitcart/bitcart-actions/actions/codecov@master
-        name: Upload coverage to Codecov
+      - name: Upload coverage to Codecov
+        uses: bitcart/bitcart-actions/actions/codecov@master
         if: ${{ !cancelled() }}
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
@@ -84,16 +84,16 @@ jobs:
           env_vars: PYTHON
           upload_coverage: ${{ job.status == 'success' }}
 
-      - uses: bitcart/bitcart-actions/actions/upload-test-results@master
-        name: Upload test results
+      - name: Upload test results
+        uses: bitcart/bitcart-actions/actions/upload-test-results@master
         if: ${{ !cancelled() }}
         with:
           suffix: py${{ env.PYTHON }}
 
   functional-tests:
+    name: functional-tests
     uses: bitcart/bitcart-actions/.github/workflows/functional-tests.yml@master
     needs: test
-    name: functional-tests
     with:
       install-dependencies: |
         uv sync --frozen --compile-bytecode --no-dev --group web --group otel --group test --group btc
@@ -103,7 +103,7 @@ jobs:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   combine-coverage:
+    name: combine-coverage
     uses: bitcart/bitcart-actions/.github/workflows/combine-coverage.yml@master
     needs: [test, functional-tests]
     if: ${{ !cancelled() }}
-    name: combine-coverage
