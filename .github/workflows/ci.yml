@@ -87,6 +87,7 @@ jobs:
           name: Tests - Python ${{ env.PYTHON }} - Group ${{ matrix.group }}
           flags: tests
           env_vars: PYTHON
+          upload_coverage: ${{ job.status == 'success' }}
 
       - uses: bitcart/bitcart-actions/actions/upload-test-results@master
         name: Upload test results
