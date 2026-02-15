@@ -129,7 +129,7 @@ async def test_users_me(client: TestClient, user: dict[str, Any], token: str) ->
     assert "created" in j
 
 
-async def test_wallets_balance(client: TestClient, token: str, wallet: dict[str, Any]) -> None:
+async def test_wallets_balance(client: TestClient, token: str, wallet: dict[str, Any], mock_btc_balance: Any) -> None:
     assert (await client.get("/wallets/balance")).status_code == 401
     resp = await client.get("/wallets/balance", headers={"Authorization": f"Bearer {token}"})
     assert resp.status_code == 200
