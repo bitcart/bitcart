@@ -81,6 +81,7 @@ jobs:
 
       - uses: bitcart/bitcart-actions/actions/codecov@master
         name: Upload coverage to Codecov
+        if: ${{ !cancelled() }}
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           name: Tests - Python ${{ env.PYTHON }} - Group ${{ matrix.group }}
