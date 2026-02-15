@@ -3,9 +3,6 @@ import logging
 import os
 import sys
 
-from opentelemetry._logs import get_logger_provider
-from opentelemetry.sdk._logs import LoggingHandler
-
 
 class OTelExtraStripper(logging.Filter):
     def filter(self, record: logging.LogRecord) -> bool:
@@ -43,6 +40,9 @@ def configure_logging(debug: bool = False):
     handler.setFormatter(formatter)
     root_logger.addHandler(handler)
     if os.getenv("BITCART_OTEL_ENABLED", "false").lower() == "true":
+        from opentelemetry._logs import get_logger_provider
+        from opentelemetry.sdk._logs import LoggingHandler
+
         otel_handler = LoggingHandler(level=logging.NOTSET, logger_provider=get_logger_provider())
         otel_handler.addFilter(OTelExtraStripper())
         root_logger.addHandler(otel_handler)
