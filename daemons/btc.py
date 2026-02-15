@@ -219,6 +219,8 @@ class BTCDaemon(BaseDaemon):
 
     # when daemon is syncing or is synced and wallet is not, prevent running commands to avoid unexpected results
     def is_still_syncing(self, wallet=None):
+        if self.NO_SYNC_WAIT:
+            return False
         server_height = self.network.get_server_height()
         server_lag = self.network.get_local_height() - server_height
         # if wallet has unverified_tx, it means that SPV hasn't finished yet

@@ -603,7 +603,6 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
             self._should_check_seed_server = True
         max_sync_hours = self.env("MAX_SYNC_HOURS", cast=int, default=1)
         self.MAX_SYNC_BLOCKS = max_sync_hours * self.DEFAULT_MAX_SYNC_BLOCKS
-        self.NO_SYNC_WAIT = self.env("EXPERIMENTAL_NOSYNC", cast=bool, default=False)
         self.TX_SPEED = self.env("TX_SPEED", cast=str, default="network").lower()
         try:
             self.SPEED_MULTIPLIER = float(self.TX_SPEED)
@@ -791,6 +790,8 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
         pass
 
     async def is_still_syncing(self, wallet=None):
+        if self.NO_SYNC_WAIT:
+            return False
         return wallet and not wallet.is_synchronized()
 
     async def _get_wallet(self, req_id, req_method, xpub, contract, diskless=False, extra_params=None):
@@ -805,9 +806,8 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
             wallet = await self.load_wallet(xpub, contract, diskless=diskless, extra_params=extra_params)
             if should_skip:
                 return wallet, error
-            if not self.NO_SYNC_WAIT:
-                while await self.is_still_syncing(wallet):
-                    await asyncio.sleep(0.1)
+            while await self.is_still_syncing(wallet):
+                await asyncio.sleep(0.1)
         except Exception as e:
             logger.error(traceback.format_exc())
             if req_method not in self.supported_methods or self.supported_methods[req_method].requires_wallet:

@@ -72,7 +72,7 @@ jobs:
       - uses: bitcart/bitcart-actions/actions/run-in-background@master
         name: Prepare daemon
         with:
-          run: just testnet
+          run: BTC_EXPERIMENTAL_NOSYNC=true just testnet
           key: testnet
 
       - name: Run tests
