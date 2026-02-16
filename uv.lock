@@ -8,11 +8,12 @@ resolution-markers = [
 ]
 
 [options]
-exclude-newer = "2026-02-09T01:43:22.022405Z"
+exclude-newer = "2026-02-09T01:55:26.525447Z"
 exclude-newer-span = "P1W"
 
 [options.exclude-newer-package]
-cryptography = { timestamp = "2026-02-16T01:43:22.021294Z", span = "PT0S" }
+cryptography = { timestamp = "2026-02-16T01:55:26.524337Z", span = "PT0S" }
+bitcart = { timestamp = "2026-02-16T01:55:26.525452Z", span = "PT0S" }
 
 [manifest]
 overrides = [{ name = "python-dateutil", specifier = ">=2.9.0" }]
@@ -446,16 +447,16 @@ wheels = [
 
 [[package]]
 name = "bitcart"
-version = "1.19.1.0"
+version = "1.19.1.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp" },
     { name = "jsonrpcclient" },
     { name = "universalasync" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/46/54/01d101027ce4364906f04ae9d721e43086976cd0e71a26f9781cc552a6c0/bitcart-1.19.1.0.tar.gz", hash = "sha256:64f555427e9db1ce7a766dec5c66cda98c48fd77ed32cc77e695e42f1e800bfb", size = 154024, upload-time = "2025-10-31T14:17:20.973Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a0/78/cd71f57132835f6d322331a74a802126c82d488094b8ec68b0cb2304be0b/bitcart-1.19.1.1.tar.gz", hash = "sha256:a0fc9fc8fb32e1bfb548a241c9069dfba00c1d49749ed3d32083ca756d29878e", size = 159860, upload-time = "2026-02-16T01:27:14.607Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a7/78/bf7bb7b2d665c6b8c1fd1463187462c3c37933b2156b74d44268a4363bba/bitcart-1.19.1.0-py3-none-any.whl", hash = "sha256:52ee95f93679a7a574db27e9b7b41740654af9cfee4ea77cc8c80be5bf7eb186", size = 21150, upload-time = "2025-10-31T14:17:20.031Z" },
+    { url = "https://files.pythonhosted.org/packages/1b/39/31ef5852519c0aac4fd55abac5470ac3d4dfeabe24b1c9487c01719be714/bitcart-1.19.1.1-py3-none-any.whl", hash = "sha256:bdbe3628dde18c843054a21f53caede1126e09c15d36e845c8c76a14e5d0d0a1", size = 21110, upload-time = "2026-02-16T01:27:13.344Z" },
 ]
 
 [[package]]
