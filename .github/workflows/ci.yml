@@ -4,8 +4,6 @@ on:
   push:
     branches:
       - master
-    tags:
-      - "**"
   pull_request:
 
 concurrency:
@@ -24,9 +22,15 @@ jobs:
         uv sync --frozen --compile-bytecode --no-dev --group web --group types --group lint --group test
       extra-checks: just ci-lint
 
+  zizmor:
+    name: zizmor
+    uses: bitcart/bitcart-actions/.github/workflows/zizmor-audit.yml@master
+    permissions:
+      security-events: write
+
   test:
     name: test-${{ matrix.python-version }}
-    needs: lint
+    needs: [lint, zizmor]
     runs-on: ubuntu-latest
 
     strategy:
