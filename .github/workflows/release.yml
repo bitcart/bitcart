@@ -37,7 +37,7 @@ jobs:
       attestations: write
       artifact-metadata: write
     with:
-      dockerfile: ${{ matrix.dockerfile }}
+      dockerfile: bitcart-docker/compose/${{ matrix.dockerfile }}
       context: bitcart-docker/compose
       image-name: ${{ vars.DOCKERHUB_USER }}/${{ matrix.target }}
       tags: |
