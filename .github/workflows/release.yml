@@ -28,6 +28,7 @@ jobs:
       fail-fast: false
       matrix:
         include: ${{ fromJson(needs.generate-matrix.outputs.matrix) }}
+    name: build-${{ matrix.target }}
     uses: bitcart/bitcart-actions/.github/workflows/build-docker-image.yml@master
     permissions:
       contents: read
@@ -38,7 +39,7 @@ jobs:
     with:
       dockerfile: ${{ matrix.dockerfile }}
       context: bitcart-docker/compose
-      image-name: ${{ vars.DOCKERHUB_USER }}/${{ matrix.name }}
+      image-name: ${{ vars.DOCKERHUB_USER }}/${{ matrix.target }}
       tags: |
         type=raw,value=${{ github.event.release.tag_name }}
         type=raw,value=latest
