@@ -1,0 +1,51 @@
+name: Release
+
+on:
+  release:
+    types: [created]
+
+permissions:
+  contents: read
+
+jobs:
+  generate-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - id: matrix
+        run: |
+          matrix=$(jq -c '[to_entries[] | {target: .key, dockerfile: .value.dockerfile}]' .github/images.json)
+          echo "matrix=$matrix" >> $GITHUB_OUTPUT
+
+  build:
+    needs: generate-matrix
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJson(needs.generate-matrix.outputs.matrix) }}
+    uses: bitcart/bitcart-actions/.github/workflows/build-docker-image.yml@master
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+      artifact-metadata: write
+    with:
+      dockerfile: ${{ matrix.dockerfile }}
+      context: bitcart-docker/compose
+      image-name: ${{ vars.DOCKERHUB_USER }}/${{ matrix.name }}
+      tags: |
+        type=raw,value=${{ github.event.release.tag_name }}
+        type=raw,value=latest
+      dockerhub-user: ${{ vars.DOCKERHUB_USER }}
+      pre-build-script: |
+        git clone https://github.com/bitcart/bitcart-docker
+        cd bitcart-docker
+        ./dev-setup.sh ${{ github.event.release.tag_name }}
+    secrets:
+      dockerhub-token: ${{ secrets.DOCKERHUB_TOKEN }}
