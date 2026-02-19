@@ -40,6 +40,7 @@ jobs:
       dockerfile: bitcart-docker/compose/${{ matrix.dockerfile }}
       context: bitcart-docker/compose
       image-name: ${{ vars.DOCKERHUB_USER }}/${{ matrix.target }}
+      prefix: ${{ matrix.target }}
       tags: |
         type=raw,value=${{ github.event.release.tag_name }}
         type=raw,value=latest
