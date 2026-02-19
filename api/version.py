@@ -1,4 +1,4 @@
-VERSION = "0.10.1.1"  # Version, used for openapi schemas and update checks
+VERSION = "0.10.2.0"  # Version, used for openapi schemas and update checks
 
 
 def append_otel_version() -> None:
