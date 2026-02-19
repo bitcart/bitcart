@@ -183,7 +183,6 @@ mccabe = { max-complexity = 12 }
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["S"]
 "scripts/*" = ["S", "T201"]
-".circleci/*" = ["S"]
 "backups/*" = ["T201"]
 
 [tool.ruff.lint.isort]
