@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 
@@ -29,7 +29,7 @@ def notification_template() -> str:
 
 @pytest.fixture
 async def user(client: TestClient, anyio_backend: tuple[str, dict[str, Any]]) -> dict[str, Any]:
-    return await create_user(client, **static_data.SUPER_USER_DATA)
+    return await create_user(client, **cast(dict[str, Any], static_data.SUPER_USER_DATA))
 
 
 @pytest.fixture
@@ -43,12 +43,12 @@ def token(token_data: dict[str, Any]) -> str:
 
 
 @pytest.fixture
-async def limited_user(client: TestClient, anyio_backend: tuple[str, dict[str, Any]]) -> dict[str, Any]:
+async def limited_user(client: TestClient, token: str, anyio_backend: tuple[str, dict[str, Any]]) -> dict[str, Any]:
     data = {
         "email": f"nonsuperuser-{utils.common.unique_id()}@example.com",
         "is_superuser": False,
     }
-    return await create_user(client, **data)
+    return await create_user(client, token=token, **data)
 
 
 @pytest.fixture

@@ -15,13 +15,13 @@ if TYPE_CHECKING:
     from httpx import AsyncClient as TestClient
 
 
-async def create_user(client: TestClient, **custom_attrs: Any) -> dict[str, Any]:
+async def create_user(client: TestClient, *, token: str | None = None, **custom_attrs: Any) -> dict[str, Any]:
     default_attrs = {
         "email": f"user_{utils.common.unique_id()}@gmail.com",
         "password": static_data.USER_PWD,
         "is_superuser": True,
     }
-    user = await create_model_obj(client, "users", default_attrs, custom_attrs)
+    user = await create_model_obj(client, "users", default_attrs, custom_attrs, token=token)
     token = user.pop("token")
     await client.delete(f"/token/{token}", headers={"Authorization": f"Bearer {token}"})
     return user

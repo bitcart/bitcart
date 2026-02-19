@@ -9,7 +9,7 @@ from advanced_alchemy.service.typing import ModelDictT
 from dishka import AsyncContainer
 from fastapi import HTTPException, Request
 from fastapi.responses import JSONResponse
-from sqlalchemy import ColumnElement, ColumnExpressionArgument, Select, Text, Update, and_, func, or_, select, text
+from sqlalchemy import ColumnElement, ColumnExpressionArgument, Select, Text, Update, and_, false, func, or_, select
 from sqlalchemy import inspect as sqla_inspect
 from sqlalchemy.exc import NoResultFound, ProgrammingError
 
@@ -188,6 +188,18 @@ class CRUDService[ModelType: ModelProtocol]:
         return statement
 
     @classmethod
+    def apply_ordering(
+        cls, query: Select[tuple[ModelType]], pagination: SearchPagination, model: type[ModelProtocol]
+    ) -> Select[tuple[ModelType]]:
+        allowed_columns = {col.key for col in model.__mapper__.columns}
+        sort_col = pagination.sort
+        if sort_col not in allowed_columns:
+            return query.where(false())
+        col_attr = utils.common.get_sqla_attr(cast(ModelProtocol, model), sort_col)
+        order_expr = col_attr.desc() if pagination.desc else col_attr.asc()
+        return query.order_by(order_expr)
+
+    @classmethod
     def apply_pagination(
         cls, pagination: SearchPagination, statement: StatementTypeT, model: type[ModelProtocol], count_only: bool = False
     ) -> StatementTypeT:
@@ -202,8 +214,7 @@ class CRUDService[ModelType: ModelProtocol]:
             query = query.group_by(utils.common.get_sqla_attr(cast(ModelProtocol, model), "id"))  # type: ignore[assignment]
             if pagination.limit != -1:
                 query = query.limit(pagination.limit)  # type: ignore[assignment]
-            desc_s = "desc" if pagination.desc else ""
-            query = query.order_by(text(f"{pagination.sort} {desc_s}"))  # type: ignore[assignment]
+            query = cls.apply_ordering(query, pagination, model)  # type: ignore[assignment]
             return query.offset(pagination.offset)  # type: ignore[return-value]
         return statement
 

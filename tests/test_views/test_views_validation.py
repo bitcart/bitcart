@@ -228,8 +228,8 @@ async def test_create_wallet_validate_xpub_broken(
 
 async def test_access_control_strict(client: TestClient) -> None:
     user1 = await create_user(client)
-    user2 = await create_user(client)
     token1 = (await create_token(client, user1))["id"]
+    user2 = await create_user(client, token=token1)
     token2 = (await create_token(client, user2))["id"]
     # Step1: user2 can't use objects of user1 in o2m fields (i.e. store_id)
     store1 = await create_store(client, token1)

@@ -19,8 +19,8 @@ pytestmark = pytest.mark.anyio
 
 
 async def test_multiple_query(client: TestClient, token: str) -> None:
-    user1 = await create_user(client)
-    user2 = await create_user(client)
+    user1 = await create_user(client, token=token)
+    user2 = await create_user(client, token=token)
     query = f"{user1['email']}|{user2['email']}"
     resp = await client.get(f"/users?multiple=true&query={query}", headers={"Authorization": f"Bearer {token}"})
     assert resp.status_code == 200
@@ -29,8 +29,8 @@ async def test_multiple_query(client: TestClient, token: str) -> None:
 
 async def test_next_prev_url(client: TestClient, token: str) -> None:
     # create multiple users
-    await create_user(client)
-    await create_user(client)
+    await create_user(client, token=token)
+    await create_user(client, token=token)
     resp = await client.get("/users?limit=1", headers={"Authorization": f"Bearer {token}"})
     next_url = resp.json()["next"]
     assert next_url.endswith("/users?limit=1&offset=1")
@@ -135,7 +135,7 @@ async def test_date_pagination(client: TestClient, token: str, app: FastAPI) -> 
 
 
 async def test_autocomplete_response_format(client: TestClient, token: str) -> None:
-    await create_user(client)
+    await create_user(client, token=token)
     resp = await client.get("/users?autocomplete=true", headers={"Authorization": f"Bearer {token}"})
     assert resp.status_code == 200
     data = resp.json()

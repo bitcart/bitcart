@@ -433,13 +433,21 @@ async def test_management_commands(
         assert not os.path.exists(log_file)
 
 
+async def test_first_user_registration_bypasses_disable_registration(client: TestClient) -> None:
+    resp = await client.post("/users", json=static_data.POLICY_USER)
+    assert resp.status_code == 200
+    resp = await client.post("/users", json={**static_data.POLICY_USER, "email": "other@test.com"})
+    assert resp.status_code == 422
+    assert resp.json()["detail"] == "Registration disabled"
+
+
 async def test_policies(client: TestClient, token: str) -> None:
     resp = await client.get("/manage/policies")
     assert resp.status_code == 200
     assert resp.json() == {
         "allow_powered_by_bitcart": False,
         "allow_anonymous_configurator": True,
-        "disable_registration": False,
+        "disable_registration": True,  # set to True automatically after first user signed up
         "require_verified_email": False,
         "allow_file_uploads": True,
         "discourage_index": False,
@@ -999,9 +1007,15 @@ async def test_create_invoice_and_pay(client: TestClient, token: str, store: dic
     await client.delete(f"/invoices/{invoice_id}", headers={"Authorization": f"Bearer {token}"})
 
 
-async def test_get_public_store(client: TestClient, store: dict[str, Any]) -> None:
+async def test_get_public_store(client: TestClient, store: dict[str, Any], token: str) -> None:
     store_id = store["id"]
-    user_id = (await client.post("/users", json={"email": "test2auth@example.com", "password": "test12345"})).json()["id"]
+    user_id = (
+        await client.post(
+            "/users",
+            json={"email": "test2auth@example.com", "password": "test12345"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+    ).json()["id"]
     new_token = (
         await client.post(
             "/token",
@@ -1383,8 +1397,8 @@ async def test_users_display_balance(client: TestClient, token: str, wallet: dic
 
 async def test_invoice_products_access_control(client: TestClient) -> None:
     user1 = await create_user(client)
-    user2 = await create_user(client)
     token1 = (await create_token(client, user1))["access_token"]
+    user2 = await create_user(client, token=token1)
     token2 = (await create_token(client, user2))["access_token"]
     product1 = await create_product(client, token1)
     product2 = await create_product(client, token2)

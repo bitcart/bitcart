@@ -96,6 +96,7 @@ class UserService(CRUDService[models.User]):
         user = await super().create(data, auth_user, call_hooks=call_hooks)
         if is_superuser and auth_user is None:
             await self.plugin_registry.run_hook("first_user", user)
+            await self.setting_service.set_setting(Policy(disable_registration=True))
         return user
 
     async def create_with_token(

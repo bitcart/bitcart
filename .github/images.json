@@ -1,0 +1,44 @@
+{
+    "bitcart": {
+        "dockerfile": "backend.Dockerfile"
+    },
+    "bitcart-btc": {
+        "dockerfile": "btc.Dockerfile"
+    },
+    "bitcart-bch": {
+        "dockerfile": "bch.Dockerfile",
+        "bases": "bch",
+        "name": "electron-cash"
+    },
+    "bitcart-xmr": {
+        "dockerfile": "xmr.Dockerfile",
+        "bases": "eth"
+    },
+    "bitcart-eth": {
+        "dockerfile": "eth.Dockerfile",
+        "bases": "eth"
+    },
+    "bitcart-bnb": {
+        "dockerfile": "bnb.Dockerfile",
+        "bases": "eth"
+    },
+    "bitcart-matic": {
+        "dockerfile": "matic.Dockerfile",
+        "bases": "eth"
+    },
+    "bitcart-trx": {
+        "dockerfile": "trx.Dockerfile",
+        "bases": "eth"
+    },
+    "bitcart-xrg": {
+        "dockerfile": "xrg.Dockerfile",
+        "bases": "bch",
+        "name": "oregano"
+    },
+    "bitcart-ltc": {
+        "dockerfile": "ltc.Dockerfile"
+    },
+    "bitcart-grs": {
+        "dockerfile": "grs.Dockerfile"
+    }
+}
