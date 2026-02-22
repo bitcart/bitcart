@@ -2,6 +2,130 @@
 
 ## Latest changes
 
+## 0.10.2.0
+
+### Switch to github actions
+
+We switched all of our CI/CD operations from CircleCI to Github Actions.
+
+It is a long-awaited change for project maintainers, because it allows us to use a more modern and flexible system.
+
+Github provides more resources to opensource projects on github actions, and we won't have an issue like we had before with circleci which disrupted all of the project operations.
+
+This also allows us to self-host some of CI operations on our own servers via Forgejo actions in the future.
+
+This also leads to the next point
+
+### Better security
+
+Thanks to github actions adoption, now all our docker images and binaries (bitcart-cli) are signed and attested. It allows you to verify that docker image downloaded was indeed built
+by a github actions workflow, at a specific date, and with URL to view build logs.
+
+Docker images now also include SBOM files, Software Bill of Materials, which shows a complete list of all dependencies used to build our docker image.
+
+This allows for better supply chain security.
+
+For example, to verify bitcart docker image:
+
+```bash
+gh attestation verify --owner bitcart oci://bitcart/bitcart:stable
+```
+
+### IMPORTANT: security fixes
+
+Disable registration on new instances by default. After the first (admin) user signed up, registration gets disabled automatically.
+It can be re-enabled in server settings. Existing running servers are not affected.
+
+Important security update for instances with public registration: if you run such an instance, update immediately.
+
+### IMPORTANT: Log retention period
+
+For storage optimization, now server logs are automatically cleaned up if they are older than 90 days. This is configurable.
+
+### Opentelemetry
+
+Bitcart has now gained a lot of observability features even some production apps don't support!
+
+To enable prometheus metrics endpoint, set `BITCART_PROMETHEUS_METRICS_ENABLED` to true.
+
+It exposes a new `/metrics` endpoint which can be scraped with prometheus. It requires an auth token with scope of `metrics_management`.
+
+For now it only exposes http stats and one custom value:
+
+`bitcart_pending_creation_payment_methods_count` gauge - useful for debugging stuck payment methods, it shows how many payment methods are currently pending creation.
+
+Bitcart backend (api, worker) and daemons now support being instrumented by opetelemetry!
+
+For that, set `BITCART_OTEL_ENABLED` to true. Opentelemetry default distribution is installed by default in our docker images.
+
+We support traces and logs protocols, metrics are supposed to be handled by our prometheus metrics endpoint
+
+### Backups improvements
+
+Allow configuring backups to S3 by env vars (they now work properly):
+
+`S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_DEFAULT_REGION`, `S3_ENDPOINT_URL`.
+
+So it is now possible to store Bitcart backups encrypted in e.g. Backblaze B2 as well!
+
+Set `BACKUP_ENCRYPTION` env var to `true` to enable it (it can be done from admin panel's backup UI too).
+
+Backups are encrypted using the `BACKUP_ENCRYPTION_KEY`. **Ensure to write it down!**
+
+You can view the encryption key in the following way:
+
+```bash
+cat .deploy
+```
+
+Use zstd compression for backups
+
+Our backups will now use the `.tar.zst` extension. zstd compression is faster and more efficient than gzip. Recovering old .tar.gz backups should still be supported.
+
+### Better consistency across projects
+
+We now use `just` for launching tasks in e.g. docker compose files.
+
+It allows us to modify launch command and other things without modifying docker compose files, which causes an issue because it required us
+to issue an urgent release before.
+
+For manual deployments as well, you no longer need to manually run commands, just use `just` tasks to do that and in case the command changes, your workflow doesn't!
+
+For example, `just daemon btc` instead of `python3 daemons/btc.py`
+
+We have enabled dependency cooldowns of 1 week for better security of our dependencies.
+
+### Better logging in daemons
+
+Now bitcart daemons use the same consistent log format as bitcart backend, allowing for easier e.g. log parsing pipelines in your systems.
+
+### Modifications in plugins hooks
+
+`db_modify_object*` hooks now pass a second parameter: `old_model`. So in total there are 2 params passed: `model` (new object), `old_model` (old object).
+
+Add `db_delete_object*` hooks.
+
+Plugins API dispatcher should attempt to support both old and new versions of hooks signature, but updating to new signatures is always recommended.
+
+### Misc
+
+- Deploys via cloudflare tunnel now properly see client's ip address
+- Fix powered by logo display in onedomain mode
+- Add plugin deeplinks in admin panel (?plugin_id=X)
+- Updates for advanced nginx deploys
+- Update tor and cloudflared
+- Add bitcart-cli.sh autocomplete, fix saving env vars on macos (zsh)
+- Drop daemons plugins support, they were not used and can't be used reliably anyway
+- Add back the `email_settings` endpoint missed during migration to new backend
+- Added new healthcheck endpoints `/health/live` - returns ok if bitcart is running, `/health/ready` - returns ok if bitcart is running AND database, redis and coins are working properly.
+- Allow to run alembic migrations when password has special characters
+- Silence paramiko.transport logger as it's too verbose
+- Add an opt-out message to checkout page offering to use ETH plugin when checkout UX is not optimal
+- Support Python 3.14
+- XMR: add 1 second TTL to block number calls. This should help reduce number of RPC calls made
+- Fix pending triggers migration issue occuring sometimes in migrations
+- Use modern websockets-sansio protocol
+
 ## 0.10.1.1
 
 Fixes for cashtokens decimal formatting
