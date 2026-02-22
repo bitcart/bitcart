@@ -12,7 +12,6 @@ from typing import Annotated, Any, Literal, cast, overload
 
 from advanced_alchemy.base import ModelProtocol
 from aiohttp import ClientResponse, ClientSession
-from dateutil.parser import isoparse
 from dishka import AsyncContainer, Scope
 from fastapi import HTTPException
 from pydantic import Field, create_model
@@ -195,7 +194,7 @@ class SearchQuery:
                 key = cast(str, self.DATE_FORMATS[dt_format])
             return now - timedelta(**{key: val})
         try:
-            return isoparse(date)
+            return datetime.fromisoformat(date)
         except ValueError:
             return None
 

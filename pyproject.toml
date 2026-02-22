@@ -18,11 +18,7 @@ test = [
     "pytest-mock>=3.15.0",
     "pytest-xdist>=3.8.0",
 ]
-types = [
-    "types-aiofiles>=24.1.0.20250822",
-    "types-paramiko>=4.0.0.20250822",
-    "types-python-dateutil>=2.9.0.20250822",
-]
+types = ["types-aiofiles>=24.1.0.20250822", "types-paramiko>=4.0.0.20250822"]
 web = [
     "advanced-alchemy>=0.26.2",
     "aiofiles>=24.1.0",
@@ -43,7 +39,6 @@ web = [
     "pydantic-settings>=2.7.0",
     "pydantic[email]>=2.10.3",
     "pyotp>=2.9.0",
-    "python-dateutil>=2.9.0",
     "python-multipart>=0.0.20",
     "python-ulid[pydantic]>=3.0.0",
     "redis[hiredis]>=5.2.1",
@@ -129,7 +124,7 @@ dev = [
 ]
 
 [tool.uv]
-# python-dateutil for electron-cash requiring an older version for no reason
+# python-dateutil override for electron-cash (transitive dependency) requiring an older version for no reason
 override-dependencies = ["python-dateutil>=2.9.0"]
 config-settings-package = { "electrum-ecc" = { "electrum_ecc.dont_compile" = "1" } }
 # dependency cooldowns for security

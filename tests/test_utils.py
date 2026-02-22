@@ -9,7 +9,7 @@ import subprocess
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any, cast
 
@@ -355,6 +355,21 @@ def test_search_query_parse_datetime() -> None:
     check_date(utils.common.SearchQuery("start_date:-1m").parse_datetime("start_date"), days=30)
     check_date(utils.common.SearchQuery("start_date:-1y").parse_datetime("start_date"), days=30 * 12)
     check_date(utils.common.SearchQuery("start_date:-150d").parse_datetime("start_date"), days=150)
+    assert utils.common.SearchQuery("start_date:2024-01-15").parse_datetime("start_date") == datetime(2024, 1, 15)
+    assert utils.common.SearchQuery("start_date:2024-01-15T12:30:00").parse_datetime("start_date") == datetime(
+        2024, 1, 15, 12, 30, 0
+    )
+    assert utils.common.SearchQuery("start_date:2024-01-15T12:30:00+00:00").parse_datetime("start_date") == datetime(
+        2024, 1, 15, 12, 30, 0, tzinfo=UTC
+    )
+    assert utils.common.SearchQuery("start_date:2024-01-15T12:30:00Z").parse_datetime("start_date") == datetime(
+        2024, 1, 15, 12, 30, 0, tzinfo=UTC
+    )
+    assert utils.common.SearchQuery("start_date:2026-02-02T21:00:00.000Z").parse_datetime("start_date") == datetime(
+        2026, 2, 2, 21, 0, 0, tzinfo=UTC
+    )
+    assert utils.common.SearchQuery("start_date:notadate").parse_datetime("start_date") is None
+    assert utils.common.SearchQuery("start_date:2024-13-01").parse_datetime("start_date") is None
 
 
 async def check_modify_notify(

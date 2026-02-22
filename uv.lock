@@ -8,14 +8,14 @@ resolution-markers = [
 ]
 
 [options]
-exclude-newer = "2026-02-10T22:04:06.523137Z"
+exclude-newer = "2026-02-15T20:41:38.35577Z"
 exclude-newer-span = "P1W"
 
 [options.exclude-newer-package]
-bitcart = { timestamp = "2026-02-17T22:04:06.523151Z", span = "PT0S" }
-universalasync = { timestamp = "2026-02-17T22:04:06.523165Z", span = "PT0S" }
-trontxsize = { timestamp = "2026-02-17T22:04:06.523164Z", span = "PT0S" }
-tronpy = { timestamp = "2026-02-17T22:04:06.523166Z", span = "PT0S" }
+bitcart = { timestamp = "2026-02-22T20:41:38.355778Z", span = "PT0S" }
+universalasync = { timestamp = "2026-02-22T20:41:38.355787Z", span = "PT0S" }
+trontxsize = { timestamp = "2026-02-22T20:41:38.355787Z", span = "PT0S" }
+tronpy = { timestamp = "2026-02-22T20:41:38.355787Z", span = "PT0S" }
 
 [manifest]
 overrides = [{ name = "python-dateutil", specifier = ">=2.9.0" }]
@@ -560,7 +560,6 @@ dev = [
     { name = "pytest-durations" },
     { name = "pytest-mock" },
     { name = "pytest-xdist" },
-    { name = "python-dateutil" },
     { name = "python-multipart" },
     { name = "python-ulid", extra = ["pydantic"] },
     { name = "redis", extra = ["hiredis"] },
@@ -576,7 +575,6 @@ dev = [
     { name = "trontxsize" },
     { name = "types-aiofiles" },
     { name = "types-paramiko" },
-    { name = "types-python-dateutil" },
     { name = "universalasync" },
     { name = "uvicorn", extra = ["standard"] },
     { name = "web3" },
@@ -646,7 +644,6 @@ trx = [
 types = [
     { name = "types-aiofiles" },
     { name = "types-paramiko" },
-    { name = "types-python-dateutil" },
 ]
 web = [
     { name = "advanced-alchemy" },
@@ -668,7 +665,6 @@ web = [
     { name = "pydantic", extra = ["email"] },
     { name = "pydantic-settings" },
     { name = "pyotp" },
-    { name = "python-dateutil" },
     { name = "python-multipart" },
     { name = "python-ulid", extra = ["pydantic"] },
     { name = "redis", extra = ["hiredis"] },
@@ -782,7 +778,6 @@ dev = [
     { name = "pytest-durations", specifier = ">=1.6.1" },
     { name = "pytest-mock", specifier = ">=3.15.0" },
     { name = "pytest-xdist", specifier = ">=3.8.0" },
-    { name = "python-dateutil", specifier = ">=2.9.0" },
     { name = "python-multipart", specifier = ">=0.0.20" },
     { name = "python-ulid", extras = ["pydantic"], specifier = ">=3.0.0" },
     { name = "redis", extras = ["hiredis"], specifier = ">=5.2.1" },
@@ -798,7 +793,6 @@ dev = [
     { name = "trontxsize" },
     { name = "types-aiofiles", specifier = ">=24.1.0.20250822" },
     { name = "types-paramiko", specifier = ">=4.0.0.20250822" },
-    { name = "types-python-dateutil", specifier = ">=2.9.0.20250822" },
     { name = "universalasync" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.34.0" },
     { name = "web3", specifier = ">=7,<8" },
@@ -866,7 +860,6 @@ trx = [
 types = [
     { name = "types-aiofiles", specifier = ">=24.1.0.20250822" },
     { name = "types-paramiko", specifier = ">=4.0.0.20250822" },
-    { name = "types-python-dateutil", specifier = ">=2.9.0.20250822" },
 ]
 web = [
     { name = "advanced-alchemy", specifier = ">=0.26.2" },
@@ -888,7 +881,6 @@ web = [
     { name = "pydantic", extras = ["email"], specifier = ">=2.10.3" },
     { name = "pydantic-settings", specifier = ">=2.7.0" },
     { name = "pyotp", specifier = ">=2.9.0" },
-    { name = "python-dateutil", specifier = ">=2.9.0" },
     { name = "python-multipart", specifier = ">=0.0.20" },
     { name = "python-ulid", extras = ["pydantic"], specifier = ">=3.0.0" },
     { name = "redis", extras = ["hiredis"], specifier = ">=5.2.1" },
@@ -4074,15 +4066,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/b7/b8/c6ff3b10c2f7b9897650af746f0dc6c5cddf054db857bc79d621f53c7d22/types_paramiko-4.0.0.20250822.tar.gz", hash = "sha256:1b56b0cbd3eec3d2fd123c9eb2704e612b777e15a17705a804279ea6525e0c53", size = 28730, upload-time = "2025-08-22T03:03:43.262Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/79/a1/b3774ed924a66ee2c041224d89c36f0c21f4f6cf75036d6ee7698bf8a4b9/types_paramiko-4.0.0.20250822-py3-none-any.whl", hash = "sha256:55bdb14db75ca89039725ec64ae3fa26b8d57b6991cfb476212fa8f83a59753c", size = 38833, upload-time = "2025-08-22T03:03:42.072Z" },
-]
-
-[[package]]
-name = "types-python-dateutil"
-version = "2.9.0.20260124"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/fe/41/4f8eb1ce08688a9e3e23709ed07089ccdeaf95b93745bfb768c6da71197d/types_python_dateutil-2.9.0.20260124.tar.gz", hash = "sha256:7d2db9f860820c30e5b8152bfe78dbdf795f7d1c6176057424e8b3fdd1f581af", size = 16596, upload-time = "2026-01-24T03:18:42.975Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/5a/c2/aa5e3f4103cc8b1dcf92432415dde75d70021d634ecfd95b2e913cf43e17/types_python_dateutil-2.9.0.20260124-py3-none-any.whl", hash = "sha256:f802977ae08bf2260142e7ca1ab9d4403772a254409f7bbdf652229997124951", size = 18266, upload-time = "2026-01-24T03:18:42.155Z" },
 ]
 
 [[package]]
