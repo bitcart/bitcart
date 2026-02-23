@@ -8,6 +8,7 @@ from api import models, utils
 from api.constants import AuthScopes
 from api.schemas.auth import (
     ChangePassword,
+    EmailVerifyFinalize,
     EmailVerifyResponse,
     LoginFIDOData,
     ResetPasswordData,
@@ -51,9 +52,10 @@ async def reset_password(
     return True
 
 
-@router.post("/reset_password/finalize/{code}")
-async def finalize_password_reset(user_service: FromDishka[UserService], code: str, data: ResetPasswordFinalize) -> Any:
-    return await user_service.finalize_password_reset(code, data)
+@router.post("/reset_password/finalize")
+async def finalize_password_reset(request: Request, user_service: FromDishka[UserService], data: ResetPasswordFinalize) -> Any:
+    client_ip = request.client.host if request.client else "unknown"
+    return await user_service.finalize_password_reset(data.code, data, client_ip)
 
 
 @router.post("/verify")
@@ -76,9 +78,15 @@ async def send_verification_email(
     return True
 
 
-@router.post("/verify/finalize/{code}", response_model=EmailVerifyResponse)
-async def finalize_email_verification(user_service: FromDishka[UserService], code: str, add_token: bool = Query(False)) -> Any:
-    return await user_service.finalize_email_verification(code, add_token)
+@router.post("/verify/finalize", response_model=EmailVerifyResponse)
+async def finalize_email_verification(
+    user_service: FromDishka[UserService],
+    request: Request,
+    data: EmailVerifyFinalize,
+    add_token: bool = Query(False),
+) -> Any:
+    client_ip = request.client.host if request.client else "unknown"
+    return await user_service.finalize_email_verification(data.code, add_token, client_ip)
 
 
 @router.post("/password")

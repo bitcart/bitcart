@@ -52,8 +52,13 @@ class VerifyEmailData(ResetPasswordData):
 
 
 class ResetPasswordFinalize(Schema):
+    code: str
     password: str
     logout_all: bool = True
+
+
+class EmailVerifyFinalize(Schema):
+    code: str
 
 
 class EmailVerifyResponse(Schema):

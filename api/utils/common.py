@@ -20,7 +20,7 @@ from sqlalchemy.orm import InstrumentedAttribute
 from ulid import ULID
 
 from api import utils
-from api.constants import STR_TO_BOOL_MAPPING, TOTP_ALPHABET, TOTP_LENGTH
+from api.constants import STR_TO_BOOL_MAPPING, TFA_RECOVERY_ALPHABET
 from api.logging import Logger, get_exception_message, log_errors
 from api.schemas.base import Schema
 
@@ -33,8 +33,11 @@ def unique_id() -> str:
     return str(ULID())
 
 
-def unique_verify_code(length: int = TOTP_LENGTH) -> str:
-    return "".join(secrets.choice(TOTP_ALPHABET) for _ in range(length))
+def generate_hyphenated_code(part_length: int, *, upper: bool = False) -> str:
+    part1 = "".join(secrets.choice(TFA_RECOVERY_ALPHABET) for _ in range(part_length))
+    part2 = "".join(secrets.choice(TFA_RECOVERY_ALPHABET) for _ in range(part_length))
+    code = f"{part1}-{part2}"
+    return code.upper() if upper else code
 
 
 # NOTE: when https://github.com/pydantic/pydantic/issues/1673 is fixed, this can be removed

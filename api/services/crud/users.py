@@ -1,4 +1,5 @@
 import json
+from collections.abc import Callable
 from typing import Any, cast
 
 import pyotp
@@ -135,6 +136,13 @@ class UserService(CRUDService[models.User]):
         tail = path.lstrip("/")
         return f"{base}/{tail}"
 
+    async def check_rate_limit(self, rate_key: str, max_attempts: int, error_message: str) -> None:
+        attempts = await self.redis_pool.incr(rate_key)
+        if attempts == 1:
+            await self.redis_pool.expire(rate_key, constants.RESET_RATE_WINDOW)
+        if attempts > max_attempts:
+            raise HTTPException(429, error_message)
+
     async def generic_email_code_flow(
         self,
         redis_key: str,
@@ -144,18 +152,25 @@ class UserService(CRUDService[models.User]):
         user: models.User,
         next_url: str,
         expire_time: int = constants.SHORT_EXPIRATION,
+        token_generator: Callable[[], str] = utils.authorization.generate_reset_token,
     ) -> None:
+        await self.check_rate_limit(
+            f"{redis_key}:request:rate:user:{user.id}",
+            constants.RESET_REQUEST_MAX_ATTEMPTS,
+            "Too many requests. Please try again later.",
+        )
         policy = await self.setting_service.get_setting(Policy)
         email_obj = utils.Email.get_email(policy)
         if not email_obj.is_enabled():  # pragma: no cover
             return
-        code = utils.common.unique_verify_code()
-        await self.redis_pool.set(f"{redis_key}:{code}", user.id, ex=expire_time)
-        reset_url = utils.routing.get_redirect_url(next_url, code=code)
+        token = token_generator()
+        token_hash = utils.authorization.hash_reset_token(token)
+        await self.redis_pool.set(f"{redis_key}:{token_hash}", user.id, ex=expire_time)
+        reset_url = utils.routing.get_redirect_url(next_url, code=token)
         template = await self.template_service.get_global_template(template_name)
-        text = template.render(email=user.email, link=reset_url, code=code)
+        text = template.render(email=user.email, link=reset_url, code=token)
         email_obj.send_mail(user.email, text, email_title, use_html_templates=policy.use_html_templates)
-        await self.plugin_registry.run_hook(f"{hook_name}_requested", user, code)
+        await self.plugin_registry.run_hook(f"{hook_name}_requested", user, token)
 
     async def reset_user_password(self, user: models.User) -> None:
         await self.generic_email_code_flow(
@@ -176,6 +191,7 @@ class UserService(CRUDService[models.User]):
             user,
             self.prepare_next_url("/login/email"),
             expire_time=expire_time,
+            token_generator=utils.authorization.generate_verify_code,
         )
 
     async def change_password(self, user: models.User, password: str, logout_all: bool = True) -> None:
@@ -184,8 +200,14 @@ class UserService(CRUDService[models.User]):
             await self.token_service.logout_all(user)
         await self.plugin_registry.run_hook("password_changed", user)
 
-    async def finalize_password_reset(self, code: str, data: ResetPasswordFinalize) -> bool:
-        user_id = await self.redis_pool.getdel(f"{RESET_REDIS_KEY}:{code}")
+    async def finalize_password_reset(self, code: str, data: ResetPasswordFinalize, client_ip: str = "unknown") -> bool:
+        await self.check_rate_limit(
+            f"{RESET_REDIS_KEY}:rate:{client_ip}",
+            constants.RESET_FINALIZE_MAX_ATTEMPTS,
+            "Too many reset attempts. Please try again later.",
+        )
+        token_hash = utils.authorization.hash_reset_token(code)
+        user_id = await self.redis_pool.getdel(f"{RESET_REDIS_KEY}:{token_hash}")
         if user_id is None:
             raise HTTPException(422, "Invalid code")
         user = await self.get_or_none(user_id)
@@ -194,8 +216,16 @@ class UserService(CRUDService[models.User]):
         await self.change_password(user, data.password, data.logout_all)
         return True
 
-    async def finalize_email_verification(self, code: str, add_token: bool = False) -> dict[str, Any]:
-        user_id = await self.redis_pool.getdel(f"{VERIFY_REDIS_KEY}:{code}")
+    async def finalize_email_verification(
+        self, code: str, add_token: bool = False, client_ip: str = "unknown"
+    ) -> dict[str, Any]:
+        await self.check_rate_limit(
+            f"{VERIFY_REDIS_KEY}:rate:{client_ip}",
+            constants.RESET_FINALIZE_MAX_ATTEMPTS,
+            "Too many attempts. Please try again later.",
+        )
+        token_hash = utils.authorization.hash_reset_token(code)
+        user_id = await self.redis_pool.getdel(f"{VERIFY_REDIS_KEY}:{token_hash}")
         if user_id is None:
             raise HTTPException(422, "Invalid code")
         user = await self.get_or_none(user_id)

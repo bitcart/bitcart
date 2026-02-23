@@ -1,3 +1,4 @@
+import hashlib
 import secrets
 
 from dishka import FromDishka
@@ -6,8 +7,9 @@ from fastapi import HTTPException, Request
 from fastapi.security import OAuth2PasswordBearer, SecurityScopes
 
 from api import models
-from api.constants import TFA_RECOVERY_ALPHABET, TFA_RECOVERY_LENGTH, AuthScopes
+from api.constants import RESET_TOKEN_BYTES, TFA_RECOVERY_LENGTH, VERIFY_CODE_LENGTH, AuthScopes
 from api.types import AuthServiceProtocol
+from api.utils.common import generate_hyphenated_code
 
 CORE_SCOPES: dict[AuthScopes, str] = {
     AuthScopes.SERVER_MANAGEMENT: "Edit server settings",
@@ -47,12 +49,20 @@ optional_bearer_description = "Same as Bearer, but not required. Logic for unaut
 type AuthResult = models.User | None | tuple[models.User, models.Token] | tuple[None, None]
 
 
+def generate_verify_code() -> str:
+    return generate_hyphenated_code(VERIFY_CODE_LENGTH // 2, upper=True)
+
+
+def generate_reset_token() -> str:
+    return secrets.token_urlsafe(RESET_TOKEN_BYTES)
+
+
+def hash_reset_token(token: str) -> str:
+    return hashlib.sha256(token.encode()).hexdigest()
+
+
 def generate_tfa_recovery_code() -> str:
-    return (
-        "".join(secrets.choice(TFA_RECOVERY_ALPHABET) for i in range(TFA_RECOVERY_LENGTH))
-        + "-"
-        + "".join(secrets.choice(TFA_RECOVERY_ALPHABET) for i in range(TFA_RECOVERY_LENGTH))
-    )
+    return generate_hyphenated_code(TFA_RECOVERY_LENGTH)
 
 
 class AuthDependency(OAuth2PasswordBearer):

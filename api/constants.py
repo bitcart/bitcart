@@ -18,8 +18,10 @@ HTTPS_REVERSE_PROXIES = [
 ]  # reverse proxies supporting https; NOTE: maybe this could be used by accessing generator package?
 ID_LENGTH = 26  # default length of IDs of all objects except for invoice
 PUBLIC_ID_LENGTH = 22  # The length of invoice and products ids; should be shorter than usual for better UX
-TOTP_LENGTH = 6  # for email verification and such
-TOTP_ALPHABET = string.digits  # only numbers for ease of access
+RESET_TOKEN_BYTES = 32  # 256-bit tokens for URL-based reset flows
+RESET_REQUEST_MAX_ATTEMPTS = 5  # max reset emails per IP per hour
+RESET_FINALIZE_MAX_ATTEMPTS = 10  # max finalize attempts per IP per hour
+RESET_RATE_WINDOW = 60 * 60  # sliding window in seconds
 # as supported by backup.sh
 BACKUP_PROVIDERS = ["local", "scp", "s3"]
 BACKUP_FREQUENCIES = ["daily", "weekly", "monthly"]
@@ -39,7 +41,8 @@ TFA_RECOVERY_ALPHABET = "23456789BCDFGHJKMNPQRTVWXY".lower()  # avoid confusing 
 TFA_RECOVERY_LENGTH = 5  # each part has 5 chars
 FIDO2_REGISTER_KEY = "fido2_register_cache"
 FIDO2_LOGIN_KEY = "fido2_login_cache"
-VERIFY_EMAIL_EXPIRATION = 60 * 60 * 24  # 1 day
+VERIFY_CODE_LENGTH = 8  # human-typeable email verification code length
+VERIFY_EMAIL_EXPIRATION = 60 * 15  # 15 minutes
 DEFAULT_SENDMAIL_SUBJECT = "Thank you for your order"  # used in api/invoices.py
 HTTPS_REVERSE_PROXIES = ["nginx-https"]
 

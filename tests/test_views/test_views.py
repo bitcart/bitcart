@@ -1672,9 +1672,15 @@ async def test_password_reset(client: TestClient, user: dict[str, Any], token: s
         await client.post("/users/reset_password", json={"email": user["email"], "next_url": "https://example.com"})
     ).status_code == 200
     assert auth_code is not None
-    assert (await client.post("/users/reset_password/finalize/notexisting", json={"password": "12345678"})).status_code == 422
-    assert (await client.post(f"/users/reset_password/finalize/{auth_code}", json={"password": "12345678"})).status_code == 200
-    assert (await client.post(f"/users/reset_password/finalize/{auth_code}", json={"password": "12345678"})).status_code == 422
+    assert (
+        await client.post("/users/reset_password/finalize", json={"code": "notexisting", "password": "12345678"})
+    ).status_code == 422
+    assert (
+        await client.post("/users/reset_password/finalize", json={"code": auth_code, "password": "12345678"})
+    ).status_code == 200
+    assert (
+        await client.post("/users/reset_password/finalize", json={"code": auth_code, "password": "12345678"})
+    ).status_code == 422
     assert (await client.get("/users/me", headers={"Authorization": f"Bearer {token}"})).status_code == 401
     assert (await client.post("/token", json={"email": user["email"], "password": static_data.USER_PWD})).status_code == 401
     assert (await client.post("/token", json={"email": user["email"], "password": "12345678"})).status_code == 200
@@ -1772,9 +1778,9 @@ async def test_verify_email(client: TestClient, user: dict[str, Any], token: str
         await client.post("/users/verify", json={"email": user["email"], "next_url": "https://example.com"})
     ).status_code == 200
     assert auth_code is not None
-    assert (await client.post("/users/verify/finalize/notexisting", json={"password": "12345678"})).status_code == 422
-    assert (await client.post(f"/users/verify/finalize/{auth_code}", json={"password": "12345678"})).status_code == 200
-    assert (await client.post(f"/users/verify/finalize/{auth_code}", json={"password": "12345678"})).status_code == 422
+    assert (await client.post("/users/verify/finalize", json={"code": "notexisting"})).status_code == 422
+    assert (await client.post("/users/verify/finalize", json={"code": auth_code})).status_code == 200
+    assert (await client.post("/users/verify/finalize", json={"code": auth_code})).status_code == 422
     assert (await client.get("/users/me", headers={"Authorization": f"Bearer {token}"})).json()["is_verified"] is True
     assert (await client.post("/users/verify", json={"email": user["email"], "next_url": "https://example.com"})).json()[
         "detail"
