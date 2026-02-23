@@ -247,7 +247,7 @@ def setup_prometheus(app: FastAPI, settings: Settings) -> None:
         should_instrument_requests_inprogress=True,
         excluded_handlers=["/metrics"],
         inprogress_labels=True,
-    ).instrument(app)
+    ).instrument(app, metric_namespace="bitcart")
     app.state.instrumentator = instrumentator
     app.include_router(metrics.router)
 

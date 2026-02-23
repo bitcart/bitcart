@@ -9,6 +9,7 @@ from pydantic import ValidationError
 from api import models, utils
 from api.constants import AuthScopes
 from api.schemas.auth import AuthResponse, FIDO2Auth, TOTPAuth
+from api.schemas.misc import BatchAction
 from api.schemas.tokens import EditToken, HTTPCreateLoginToken, Token
 from api.services.crud.tokens import TokenService
 from api.utils.routing import (
@@ -112,3 +113,12 @@ async def patch_token(
     user: models.User = Security(utils.authorization.auth_dependency, scopes=[AuthScopes.TOKEN_MANAGEMENT]),
 ) -> Any:
     return await token_service.update(model, model_id, user)
+
+
+@router.post("/batch")
+async def batch_action(
+    token_service: FromDishka[TokenService],
+    data: BatchAction,
+    user: models.User = Security(utils.authorization.auth_dependency, scopes=[AuthScopes.TOKEN_MANAGEMENT]),
+) -> bool:
+    return await token_service.process_batch_action(data, user)

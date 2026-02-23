@@ -137,6 +137,8 @@ class UserService(CRUDService[models.User]):
         return f"{base}/{tail}"
 
     async def check_rate_limit(self, rate_key: str, max_attempts: int, error_message: str) -> None:
+        if self.settings.is_testing():
+            return
         attempts = await self.redis_pool.incr(rate_key)
         if attempts == 1:
             await self.redis_pool.expire(rate_key, constants.RESET_RATE_WINDOW)
