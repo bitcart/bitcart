@@ -65,10 +65,17 @@ class TokenService(CRUDService[models.Token]):
             if strict:
                 raise HTTPException(422, "This application requires access to server settings")
             token_dict["permissions"].remove("server_management")
-        if token and "full_control" not in token.permissions:
-            for permission in token_dict["permissions"]:
-                if permission not in token.permissions:
-                    raise HTTPException(403, "Not enough permissions")
+        permissions = token_dict["permissions"]
+        all_scopes = utils.authorization.get_all_scopes()
+        # .partition to handle selective permissions, e.g. scope:model_id
+        if invalid := {p for p in permissions if p.partition(":")[0] not in all_scopes}:
+            raise HTTPException(422, f"Invalid permission: {next(iter(invalid))}")
+        if (
+            token
+            and "full_control" not in token.permissions
+            and any(p.partition(":")[0] not in token.permissions for p in permissions)
+        ):
+            raise HTTPException(403, "Not enough permissions")
         if not checked_user.is_enabled:
             raise HTTPException(403, "Account is disabled")
         policies = await self.setting_service.get_setting(Policy)
