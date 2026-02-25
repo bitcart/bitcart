@@ -22,3 +22,4 @@ venv
 .venv
 .prettiercache
 .DS_Store
+.pyarmor/
