@@ -1,5 +1,4 @@
 from collections.abc import AsyncIterator
-from typing import cast
 
 import redis.asyncio as _async_redis
 from fastapi import Request
@@ -20,14 +19,11 @@ REDIS_RETRY = Retry(default_backoff(), retries=50)
 
 
 async def create_redis(settings: Settings) -> AsyncIterator[Redis]:
-    redis = cast(
-        Redis,
-        _async_redis.Redis.from_url(
-            settings.redis_url,
-            decode_responses=True,
-            retry_on_error=REDIS_RETRY_ON_ERRROR,
-            retry=REDIS_RETRY,
-        ),
+    redis = _async_redis.Redis.from_url(
+        settings.redis_url,
+        decode_responses=True,
+        retry_on_error=REDIS_RETRY_ON_ERRROR,
+        retry=REDIS_RETRY,
     )
     yield redis
     await redis.close()

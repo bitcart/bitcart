@@ -233,5 +233,7 @@ filterwarnings = [
     "error::PendingDeprecationWarning",
     # https://github.com/MagicStack/uvloop/issues/703
     "ignore:.*asyncio.iscoroutinefunction.*:DeprecationWarning",
+    # dishka added the warning, but didn't fix it's own invocations
+    "ignore:`dishka.integrations.starlette` will be removed:DeprecationWarning:dishka.*",
 ]
 norecursedirs = ["tests/functional"]
