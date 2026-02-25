@@ -2,6 +2,18 @@
 
 ## Latest changes
 
+## 0.10.2.1
+
+Mostly small bugfixes, update recommended if you are running an instance with public registration:
+
+- Improve password reset security
+- Add missing batch endpoint for tokens
+- Add missing `metrics_management` permission to create token UI
+- Better validation for token scopes
+- Dependency updates
+- Add missing `bitcart` prefix to prometheus metrics
+- Add support for customizing pre-save dialogs in admin panel via plugins
+
 ## 0.10.2.0
 
 ### Switch to github actions
