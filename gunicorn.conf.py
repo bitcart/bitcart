@@ -10,6 +10,7 @@ class CustomUvicornWorker(UvicornWorker):
     CONFIG_KWARGS = {"ws": "websockets-sansio"}
 
 
+control_socket_disable = True
 bind = "0.0.0.0:8000"
 workers = os.environ.get("BITCART_API_WORKERS") or multiprocessing.cpu_count() * 2 + 1
 worker_class = CustomUvicornWorker
