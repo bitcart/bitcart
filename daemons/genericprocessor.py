@@ -46,6 +46,16 @@ PR_UNCONFIRMED = 7
 daemon_ctx: ContextVar[BaseDaemon] = ContextVar("daemon")
 
 
+@dataclass
+class Transaction:
+    hash: str
+    from_addr: str
+    to: str
+    value: int
+    contract: str = None
+    divisibility: int = None
+
+
 class BlockchainFeatures(metaclass=ABCMeta):
     def __init__(self, rpc):
         self.rpc = rpc
@@ -95,8 +105,16 @@ class BlockchainFeatures(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    async def process_tx_data(self, data) -> "Transaction":
+    async def process_tx_data(self, data) -> Transaction | list[Transaction] | None:
         pass
+
+    async def parse_transactions(self, data) -> list[Transaction]:
+        result = await self.process_tx_data(data)
+        if not result:
+            return []
+        if isinstance(result, list):
+            return result
+        return [result]
 
     @abstractmethod
     def get_tx_hash(self, tx_data) -> str:
@@ -206,16 +224,6 @@ def to_wei(value: Decimal, precision=None) -> int:
     if value == Decimal(0):
         return 0
     return int(Decimal(value) * Decimal(10**precision))
-
-
-@dataclass
-class Transaction:
-    hash: str
-    from_addr: str
-    to: str
-    value: int
-    contract: str = None
-    divisibility: int = None
 
 
 @dataclass
@@ -688,10 +696,10 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
     async def process_tx_task(self, tx_data, semaphore):
         async with semaphore:
             try:
-                tx = await self.coin.process_tx_data(tx_data)
-                if tx is not None:
+                result = await self.coin.parse_transactions(tx_data)
+                for tx in result:
                     await self.process_transaction(tx)
-                return tx
+                return result
             except Exception:
                 logger.error(f"Error processing transaction {self.coin.get_tx_hash(tx_data)}:")
                 logger.error(traceback.format_exc())
@@ -711,7 +719,7 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
                 results = await asyncio.gather(*tasks)
                 for res in results:
                     if res is not None:
-                        transactions.append(res)
+                        transactions.extend(res)
                 self.latest_blocks.append(transactions)
             except Exception:
                 logger.error(f"Error processing block {block_number}:")

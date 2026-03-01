@@ -398,8 +398,8 @@ class XMRDaemon(BlockProcessorDaemon):
                 new_cache = {}
                 for tx_data in mempool:
                     try:
-                        tx = await self.coin.process_tx_data(self.create_mempool_tx(tx_data))
-                        if tx is not None:
+                        txes = await self.coin.parse_transactions(self.create_mempool_tx(tx_data))
+                        for tx in txes:
                             new_cache[tx.hash] = True
                             if tx.hash in self.mempool_cache:
                                 continue

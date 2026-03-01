@@ -42,6 +42,7 @@ from utils import (
     try_cast_num,
 )
 from web3 import AsyncWeb3
+from web3._utils.events import get_event_data
 from web3._utils.rpc_abi import RPC as ETHRPC
 from web3.contract import AsyncContract
 from web3.datastructures import AttributeDict
@@ -63,6 +64,8 @@ FEE_PARAMS = EIP1559_PARAMS + ("gasPrice", "gas")
 TX_DEFAULT_GAS = 21000
 
 RPC_SOURCE = "Infura"
+
+TRANSFER_TOPIC = AsyncWeb3.keccak(text="Transfer(address,address,uint256)").to_0x_hex()
 
 
 class JSONEncoder(StorageJSONEncoder):
@@ -141,7 +144,9 @@ class ETHFeatures(BlockchainFeatures):
             return txes
         for tx in txes:
             with contextlib.suppress(Exception):
-                tx["status"] = block_receipts[self.get_tx_hash(tx)]["status"]
+                tx_hash = self.get_tx_hash(tx)
+                tx["status"] = block_receipts[tx_hash]["status"]
+                tx["logs"] = block_receipts[tx_hash]["logs"]
         return txes
 
     async def chain_id(self):
@@ -177,28 +182,33 @@ class ETHFeatures(BlockchainFeatures):
             return
         if "status" in data and data["status"] == "0x0":
             return
-        if "input" in data and data["input"].to_0x_hex() != "0x" and (contract := daemon_ctx.get().contracts.get(data["to"])):
-            try:
-                function, args = contract.decode_function_input(data["input"])
-                to_key = daemon_ctx.get().transfer_args.to
-                value_key = daemon_ctx.get().transfer_args.value
-                if (
-                    (function.fn_name != "transfer" and function.fn_name != "transferFrom")
-                    or to_key not in args
-                    or value_key not in args
-                ):
-                    return
-                from_addr = data["from"] if function.fn_name == "transfer" else args[daemon_ctx.get().transfer_args.from_addr]
-                return Transaction(
-                    str(data["hash"].to_0x_hex()),
-                    from_addr,
-                    args[to_key],
-                    args[value_key],
-                    contract.address,
-                    contract.divisibility,
+        if "input" in data and data["input"].to_0x_hex() != "0x":
+            txes = []
+            transfer_event = daemon_ctx.get().transfer_event
+            for log in data.get("logs", []):
+                topics = log.get("topics", [])
+                if len(topics) != 3 or topics[0] != TRANSFER_TOPIC:
+                    continue
+                contract_address = self.normalize_address(log["address"])
+                contract = daemon_ctx.get().contracts.get(contract_address)
+                if not contract:
+                    continue
+                try:
+                    decoded = get_event_data(self.web3.codec, transfer_event.abi, log)
+                except Exception:
+                    return  # non-matching event, ignore
+                args = decoded["args"]
+                txes.append(
+                    Transaction(
+                        str(data["hash"].to_0x_hex()),
+                        args[transfer_event.from_addr],
+                        args[transfer_event.to],
+                        args[transfer_event.value],
+                        contract.address,
+                        contract.divisibility,
+                    )
                 )
-            except Exception:
-                return
+            return txes
         return Transaction(str(data["hash"].to_0x_hex()), data["from"], data["to"], data["value"])
 
     def find_all_trace_outputs(self, debug_data):
@@ -353,7 +363,7 @@ class Wallet(BaseWallet):
         return await self.coin.get_balance(address)
 
 
-TransferParams = namedtuple("TransferParams", ["from_addr", "to", "value"])
+TransferEventParams = namedtuple("TransferEventParams", ["abi", "from_addr", "to", "value"])
 
 
 class ETHDaemon(BlockProcessorDaemon):
@@ -387,13 +397,14 @@ class ETHDaemon(BlockProcessorDaemon):
         self.env_update_hooks = {"server": self.update_server, "archive_server": self.update_archive_server}
         self.contracts = {}
         self.contract_cache = {"decimals": {}, "symbol": {}}
-        self.transfer_args = self.parse_transfer_abi_args()
+        self.transfer_event = self.parse_transfer_event_abi()
 
-    def parse_transfer_abi_args(self):
+    def parse_transfer_event_abi(self):
         for obj in self.ABI:
-            if obj["name"] == "transferFrom" and obj["type"] == "function":
-                return TransferParams(obj["inputs"][0]["name"], obj["inputs"][1]["name"], obj["inputs"][2]["name"])
-        raise Exception("Transfer function not found in ABI")
+            if obj.get("name") == "Transfer" and obj["type"] == "event":
+                inputs = obj["inputs"]
+                return TransferEventParams(obj, inputs[0]["name"], inputs[1]["name"], inputs[2]["name"])
+        raise Exception("Transfer event not found in ABI")
 
     async def update_archive_server(self, start_new=True):
         self.ARCHIVE_SERVER = self.ARCHIVE_SERVER.split(",")

@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 import json
 import weakref
 from contextvars import ContextVar
@@ -10,7 +11,7 @@ import httpx
 import trontxsize
 from aiohttp import ClientError as AsyncClientError
 from async_lru import alru_cache
-from eth import ETHDaemon, Transaction, daemon_ctx, from_wei, load_json_dict, str_to_bool, to_wei
+from eth import TRANSFER_TOPIC, ETHDaemon, Transaction, daemon_ctx, from_wei, load_json_dict, str_to_bool, to_wei
 from eth import KeyStore as ETHKeyStore
 from eth_account import Account
 from genericprocessor import BlockchainFeatures
@@ -31,6 +32,8 @@ mnemonic = Mnemonic("english")
 TRX_ACCOUNT_PATH = "m/44'/195'/0'/0/0"
 
 DEFAULT_FEE_LIMIT = 30_000_000  # 30 TRX
+
+TRX_TRANSFER_TOPIC = TRANSFER_TOPIC.replace("0x", "")
 
 
 # For testing with aiohttp client (might be more stable)
@@ -114,12 +117,23 @@ class TRXFeatures(BlockchainFeatures):
     async def get_block(self, block, *args, **kwargs):
         if block == "latest":
             block = None
-        return (await self.web3.provider.make_request("wallet/getblockbynum", {"num": block, "detail": True})).get(
-            "transactions", []
-        )
+        return await self.web3.provider.make_request("wallet/getblockbynum", {"num": block, "detail": True})
+
+    async def get_block_receipts(self, block):
+        return await self.web3.provider.make_request("wallet/gettransactioninfobyblocknum", {"num": int(block)})
 
     async def get_block_txes(self, block):
-        return await self.get_block(block)
+        txes = (await self.get_block(block)).get("transactions", [])
+        try:
+            block_receipts = await self.get_block_receipts(block)
+            block_receipts = {x["id"]: x for x in block_receipts}
+        except Exception:
+            return txes
+        for tx in txes:
+            with contextlib.suppress(Exception):
+                tx_hash = self.get_tx_hash(tx)
+                tx["logs"] = block_receipts[tx_hash].get("log", [])
+        return txes
 
     async def chain_id(self):
         return 1
@@ -140,23 +154,32 @@ class TRXFeatures(BlockchainFeatures):
         value = contract["parameter"]["value"]
         from_address = self.normalize_address(value["owner_address"])
         if contract["type"] == "TriggerSmartContract":
-            contract_address = self.normalize_address(value["contract_address"])
-            if not (contract := daemon_ctx.get().contracts.get(contract_address)):
-                return
-            divisibility = daemon_ctx.get().DECIMALS_CACHE[contract_address]
-            data = bytes.fromhex(value["data"])
-            function = contract.get_function_by_selector(data[:4])
-            if not function:
-                return
-            try:
-                params = trx_abi.decode(["address", "uint256"], data[4:])
-            except Exception:
-                return
-            if function.name != "transfer":
-                return
-            return Transaction(
-                full_data["txID"], from_address, self.normalize_address(params[0]), params[1], contract_address, divisibility
-            )
+            txes = []
+            for log in full_data.get("logs", []):
+                topics = log.get("topics", [])
+                if len(topics) != 3 or topics[0] != TRX_TRANSFER_TOPIC:
+                    continue
+                contract_address = self.normalize_address(f"0x{log['address']}")
+                contract = daemon_ctx.get().contracts.get(contract_address)
+                if not contract:
+                    continue
+                try:
+                    decoded = contract.events.Transfer.get_event_data(log)
+                except Exception:
+                    return
+                args = decoded["args"]
+                divisibility = daemon_ctx.get().DECIMALS_CACHE[contract_address]
+                txes.append(
+                    Transaction(
+                        full_data["txID"],
+                        self.normalize_address(args["from"]),
+                        self.normalize_address(args["to"]),
+                        args["value"],
+                        contract_address,
+                        divisibility,
+                    )
+                )
+            return txes
 
         if contract["type"] != "TransferContract":
             return
