@@ -10,7 +10,7 @@ from bitcart.errors import BaseError as BitcartBaseError
 
 from api.constants import BACKUP_FREQUENCIES, BACKUP_PROVIDERS, FEE_ETA_TARGETS, MAX_CONFIRMATION_WATCH
 from api.schemas.misc import CaptchaType
-from tests.fixtures.static_data import TEST_XPUB
+from tests.fixtures.static_data import PAYOUT_DESTINATION, TEST_XPUB
 from tests.helper import create_invoice, create_payout, create_product, create_store, create_token, create_user
 
 if TYPE_CHECKING:
@@ -277,6 +277,33 @@ async def test_products_invalid_json(client: TestClient, token: str) -> None:
     )
     assert resp.status_code == 422
     assert resp.json()["detail"] == "Invalid JSON"
+
+
+async def test_payouts_invalid_amount(client: TestClient, store: dict[str, Any], wallet: dict[str, Any], token: str) -> None:
+    ERR_MESSAGE = "Amount must be >= 0. Use -1 to send full balance."
+    check_validation_failed(
+        await client.post(
+            "/payouts",
+            json={"store_id": store["id"], "wallet_id": wallet["id"], "destination": "test", "amount": -2},
+            headers={"Authorization": f"Bearer {token}"},
+        ),
+        ERR_MESSAGE,
+    )
+    assert (
+        await client.post(
+            "/payouts",
+            json={"store_id": store["id"], "wallet_id": wallet["id"], "destination": PAYOUT_DESTINATION, "amount": -1},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+    ).status_code == 200
+    check_validation_failed(
+        await client.post(
+            "/payouts",
+            json={"store_id": store["id"], "wallet_id": wallet["id"], "destination": "test", "amount": -0.5},
+            headers={"Authorization": f"Bearer {token}"},
+        ),
+        ERR_MESSAGE,
+    )
 
 
 async def test_payouts_invalid_destination(

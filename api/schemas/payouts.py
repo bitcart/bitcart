@@ -1,5 +1,6 @@
 from typing import Any
 
+from fastapi import HTTPException
 from pydantic import Field, field_validator, model_validator
 
 from api.ext.moneyformat import currency_table
@@ -28,6 +29,13 @@ class CreatePayout(BasePayout):
     amount: DecimalAsFloat
     store_id: str
     wallet_id: str
+
+    @field_validator("amount")
+    @classmethod
+    def validate_amount(cls, v: DecimalAsFloat) -> DecimalAsFloat:
+        if v < 0 and v != -1:
+            raise HTTPException(422, "Amount must be >= 0. Use -1 to send full balance.")
+        return v
 
 
 class UpdatePayout(CreatePayout):  # TODO: re-check
