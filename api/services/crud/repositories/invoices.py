@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncScalarResult
 from sqlalchemy.orm import selectinload
 
 from api import models
-from api.invoices import InvoiceStatus
+from api.invoices import PAID_STATUSES, InvoiceStatus
 from api.services.crud.repository import CRUDRepository
 
 
@@ -43,15 +43,22 @@ class InvoiceRepository(CRUDRepository[models.Invoice]):
             .where(models.Invoice.created + func.make_interval(0, 0, 0, 0, 0, models.Invoice.expiration) <= now)  # in minutes
         )
 
-    async def get_complete_grouped_total_price(self) -> dict[str, str]:
-        total_price_results = (
-            await self.session.execute(
-                select(models.Invoice.currency, func.sum(models.Invoice.price))
-                .where(models.Invoice.status == "complete")
-                .where(func.cardinality(models.Invoice.tx_hashes) > 0)
-                .group_by(models.Invoice.currency)
-            )
-        ).all()
+    async def get_complete_grouped_total_price(
+        self, *, eth_based: bool = False, eth_based_currencies: list[str] | None = None
+    ) -> dict[str, str]:
+        query = (
+            select(models.Invoice.currency, func.sum(models.Invoice.sent_amount * models.PaymentMethod.rate))
+            .where(models.Invoice.status.in_(PAID_STATUSES))
+            .where(models.Invoice.id == models.PaymentMethod.invoice_id)
+            .where(models.PaymentMethod.is_used.is_(True))
+            .where(models.Invoice.sent_amount.is_not(None))
+            .where(func.cardinality(models.Invoice.tx_hashes) > 0)
+            .where(models.PaymentMethod.rate != 0)
+            .group_by(models.Invoice.currency)
+        )
+        if eth_based and eth_based_currencies:
+            query = query.where(models.PaymentMethod.currency.in_(eth_based_currencies))
+        total_price_results = (await self.session.execute(query)).all()
         return {currency: str(price) for currency, price in total_price_results}
 
     async def get_average_methods_number(self) -> int:
@@ -73,3 +80,14 @@ class InvoiceRepository(CRUDRepository[models.Invoice]):
             ).scalar()
             or 0
         ) / 60
+
+    async def get_status_counts(self) -> dict[str, int]:
+        status_results = cast(
+            list[tuple[str, int]],
+            (
+                await self.session.execute(
+                    select(models.Invoice.status, func.count(models.Invoice.id)).group_by(models.Invoice.status)
+                )
+            ).all(),
+        )
+        return dict(status_results)
