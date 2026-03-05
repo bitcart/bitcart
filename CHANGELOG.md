@@ -2,6 +2,89 @@
 
 ## Latest changes
 
+## 0.10.3.0
+
+### Properly track contract transfers of any complexity
+
+As smart contract events are unreliable for tracking smart contract transfers, a few releases ago we switched to a more reliable parsing approach.
+This ensures that no transaction is ever missed because we parse blockchain directly and not events. But it made us not being able to parse complex transfers,
+for example Binance or Coinbase batching transactions in one.
+Now we found a reliable way to parse those, with no action required from your end. It means that we now parse any complexity transfers automatically.
+
+### Massive improvements in docker deployments
+
+Our nginx deployments configs were massively refactored and improved in security.
+
+All our deployment guides will be updated with the new recommended, even easier instructions on how to run Bitcart directly, or behind cloudflare, or
+with your own reverse proxy. All combinations were tested for and we figured out the optimal settings for each.
+Client ip address is now correctly detected in nginx access logs and in Bitcart API running.
+This is essential for features like reset password protection against attackers.
+
+Add support for ready deployment presets, for example:
+
+```bash
+./setup.sh --preset cloudflare
+```
+
+Properly configures your instance to work under cloudflare.
+
+Currently 4 presets are supported:
+
+```text
+cloudflare          Bitcart runs behind cloudflare directly
+cloudflare-proxied  Your server runs another reverse proxy, and Bitcart is behind that reverse proxy
+proxied             Bitcart is behind a reverse proxy that is not cloudflare (requires PROXY protocol)
+proxied-legacy      Bitcart is behind a reverse proxy that is not cloudflare (requires X-Forwarded-For HTTP header)
+```
+
+Proxyprotocol support via `REVERSEPROXY_PROXYPROTOCOL` - this is the recommended approach if you are running another reverse proxy on your server,
+more information in deployment guides.
+
+Fix issues where when switching from `BITCART_REVERSEPROXY` `nginx-https` to `nginx` bitcart still tried to use ssl certificates.
+
+SSL policy updates: drop TLS1 and TLS 1.1 and refresh SSL ciphers. This prevented connecting to cloudflare directly before.
+Now our SSL setup is modern and secure.
+
+Enable gzip compression of API responses (this works seamlessly with any client). It should reduce the amount of data sent over the network.
+
+Nginx configs are now nicely formatted.
+
+Add https://generator.bitcart.ai - experimental demo site where you can choose your settings and generate a ready docker-compose.yml file.
+
+Note that this is more for preview of what is generated or usage on specialized services where you need to upload docker-compose.yml file.
+
+It is still recommended to use our docker deployment scripts for ease of use (and plugins support).
+
+Trusted IP presets (with cloudflare support) for proper display of client ip address.
+
+Nginx docker image in use is now bitcart/nginx with additional modules installed to allow our advanced secure config to work.
+
+Proper support for cases when containers are running in multiple networks (e.g. if you run opentelemetry monitoring).
+
+Enable keepalive for connections to bitcart API and frontend components: this should allow for faster and more efficient requests to APIs.
+
+Improve security of reverse proxy: only if ip address is trusted, and if a header is known to be properly validated by the trusted ip address (e.g. cloudflare), it is passed to client unmodified. Otherwise it is replaced with a safe value.
+
+Add support for JSON logs in nginx.
+
+Fixes for default server when there are multiple servers hosted.
+
+Improve handling of the case when ssl certificate is not yet ready, it now rejects ssl handshake.
+
+Update acme.sh letsencrypt certificate manager to latest version
+
+### Optimize admin and store operations
+
+Optimize container networking: now admin and store no longer talk to API via publicly-accessible API url but prefer to use container networking if possible.
+This means that Bitcart should work properly in more usecases, initial load times are faster (especially over onion domains), and for example, if
+you use cloudflare, you no longer need to whitelist your own server ip in the firewall.
+
+Optimize initial admin and store loading: to protect from web scrapers taking down API, if initial request is a 404 request, admin and store no longer fetch
+details from API server-side. It is loaded up on client-side in browser in such cases. For end users it doesn't impact the experience at all, but those who call
+server non-interactively (automated bots) will no longer trigger any useless data loading. This greatly optimizes API stability.
+
+Add validation for invalid payout amounts (< 0)
+
 ## 0.10.2.1
 
 Mostly small bugfixes, update recommended if you are running an instance with public registration:
