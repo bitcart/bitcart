@@ -15,12 +15,12 @@
             "name": "Uvicorn debug",
             "description": "Uvicorn debug",
             "focus": true,
-            "command": "just dev-api"
+            "commands": ["unset DEBUG", "just dev-api"]
         },
         {
             "name": "Worker",
             "description": "Worker",
-            "command": "just worker"
+            "commands": ["unset DEBUG", "just worker"]
         }
     ]
 }

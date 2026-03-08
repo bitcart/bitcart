@@ -390,7 +390,7 @@ async def check_modify_notify(
             headers={"Authorization": f"Bearer {token}"},
         )
     ).status_code == 200
-    assert await notification_manager.notify(store, "Text") is True
+    assert (await notification_manager.notify(store, "Text")).ok is True
     # run only if conversion works
     try:
         converted = convert(value)
@@ -431,7 +431,9 @@ async def test_send_notification(client: TestClient, token: str, mocker: pytest_
     assert resp2.status_code == 200
     assert resp2.json()["provider"] == "Matrix"
     assert resp2.json()["data"] == {}
-    assert await notification_manager.notify(store, "Text") is False
+    result = await notification_manager.notify(store, "Text")
+    assert result.has_providers
+    assert not result.ok
     base_data = {"host": "matrix.org"}
     assert (
         await client.patch(
@@ -440,7 +442,7 @@ async def test_send_notification(client: TestClient, token: str, mocker: pytest_
             headers={"Authorization": f"Bearer {token}"},
         )
     ).status_code == 200
-    assert await notification_manager.notify(store, "Text") is True
+    assert (await notification_manager.notify(store, "Text")).ok is True
     # Test that some primitive types are automatically converted
     await check_modify_notify(notification_manager, client, store, notification_id, token, base_data, "verify", "test", bool)
     await check_modify_notify(notification_manager, client, store, notification_id, token, base_data, "verify", "true", bool)
