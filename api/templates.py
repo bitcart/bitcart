@@ -1,3 +1,4 @@
+import re
 from collections import defaultdict
 from typing import Any
 
@@ -8,6 +9,8 @@ from api.exceptions import TemplateLoadError
 from api.ext.moneyformat import currency_table
 from api.logging import get_exception_message, get_logger
 from api.plugins import delete_metadata, get_metadata, update_metadata
+
+TG_MD_V1_RE = re.compile(r"[_*`\[]")
 
 logger = get_logger(__name__)
 
@@ -21,8 +24,13 @@ def format_decimal(obj: Any, key: str, **kwargs: Any) -> Any:  # pragma: no cove
     return currency_table.normalize(obj.currency, value)
 
 
+def tg_escape(text: Any) -> str:
+    return TG_MD_V1_RE.sub(r"\\\g<0>", str(text))
+
+
 sandbox = SandboxedEnvironment(trim_blocks=True)
 sandbox.filters["format_decimal"] = format_decimal
+sandbox.filters["tg_escape"] = tg_escape
 sandbox.globals["get_metadata"] = get_metadata
 sandbox.globals["update_metadata"] = update_metadata
 sandbox.globals["delete_metadata"] = delete_metadata
