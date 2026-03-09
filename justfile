@@ -11,7 +11,7 @@ default:
 # run api service
 [group("Services")]
 dev-api:
-    uvicorn main:app --ws websockets-sansio --timeout-graceful-shutdown 1 --reload
+    uvicorn main:app --timeout-graceful-shutdown 1 --reload
 
 # run worker service
 [group("Services")]
