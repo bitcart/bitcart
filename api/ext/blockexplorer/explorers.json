@@ -44,5 +44,9 @@
     "grs": {
         "mainnet": "https://esplora.groestlcoin.org/tx/{}",
         "testnet": "https://esplora-test.groestlcoin.org/tx/{}"
+    },
+    "base": {
+        "mainnet": "https://basescan.org/tx/{}",
+        "sepolia": "https://sepolia.basescan.org/tx/{}"
     }
 }
