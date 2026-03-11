@@ -8,7 +8,7 @@ The following keys may be used to communicate sensitive information to developer
 
 | Name       | Fingerprint                                       |
 | ---------- | ------------------------------------------------- |
-| MrNaif2018 | AB22 4F6F 2ED1 1812 47E7 1D83 5CDE 5043 6C3D B40C |
+| MrNaif2018 | 9A3E 25D4 E6B5 480F 9825 1AF4 6FDB 24D2 AEB5 5B9A |
 
 You can import a key by running the following command with that
 individual’s fingerprint: `gpg --recv-keys "<fingerprint>"`
