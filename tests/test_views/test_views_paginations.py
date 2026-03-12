@@ -44,6 +44,28 @@ async def test_next_prev_url(client: TestClient, token: str) -> None:
     assert prev_url.endswith("/users?limit=1&offset=1")
 
 
+@pytest.mark.parametrize(
+    "query_text",
+    [
+        "SegWit (bech32",
+        "test)",
+        "test[0",
+        "price*",
+        "hello.world",
+        "a+b",
+        "x{1,2}",
+        "end$",
+        "^start",
+        "a|b",
+        "question?",
+        "back\\slash",
+    ],
+)
+async def test_regex_special_chars_in_query(client: TestClient, token: str, query_text: str) -> None:
+    resp = await client.get(f"/wallets?query={quote(query_text)}", headers={"Authorization": f"Bearer {token}"})
+    assert resp.status_code == 200
+
+
 async def test_undefined_sort(client: TestClient, token: str) -> None:
     resp = await client.get("/users?sort=fake", headers={"Authorization": f"Bearer {token}"})
     assert resp.json()["result"] == []

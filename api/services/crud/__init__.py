@@ -1,3 +1,4 @@
+import re
 from collections.abc import Awaitable, Callable
 from enum import StrEnum
 from typing import Any, cast, overload
@@ -244,7 +245,8 @@ class CRUDService[ModelType: ModelProtocol]:
 
     @staticmethod
     def get_pagination_all_columns_filter(model: type[ModelProtocol], text: str) -> list[ColumnElement[bool]]:
-        return [column.cast(Text).op("~*")(text) for column in model.__mapper__.columns]
+        escaped_text = re.escape(text)
+        return [column.cast(Text).op("~*")(escaped_text) for column in model.__mapper__.columns]
 
     async def apply_pagination_filters(
         self, pagination: SearchPagination, statement: Select[tuple[ModelType]], request: Request
