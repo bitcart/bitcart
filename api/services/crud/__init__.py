@@ -245,7 +245,7 @@ class CRUDService[ModelType: ModelProtocol]:
 
     @staticmethod
     def get_pagination_all_columns_filter(model: type[ModelProtocol], text: str) -> list[ColumnElement[bool]]:
-        escaped_text = re.escape(text)
+        escaped_text = "|".join(re.escape(part) for part in text.split("|"))
         return [column.cast(Text).op("~*")(escaped_text) for column in model.__mapper__.columns]
 
     async def apply_pagination_filters(
