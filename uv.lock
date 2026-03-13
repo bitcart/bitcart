@@ -8,14 +8,14 @@ resolution-markers = [
 ]
 
 [options]
-exclude-newer = "2026-03-02T16:49:35.174479Z"
+exclude-newer = "2026-03-06T12:40:16.6702159Z"
 exclude-newer-span = "P1W"
 
 [options.exclude-newer-package]
-bitcart = { timestamp = "2026-03-09T16:49:35.174485Z", span = "PT0S" }
-universalasync = { timestamp = "2026-03-09T16:49:35.174494Z", span = "PT0S" }
-trontxsize = { timestamp = "2026-03-09T16:49:35.174494Z", span = "PT0S" }
-tronpy = { timestamp = "2026-03-09T16:49:35.174495Z", span = "PT0S" }
+bitcart = { timestamp = "2026-03-13T12:40:16.6702345Z", span = "PT0S" }
+universalasync = { timestamp = "2026-03-13T12:40:16.6702488Z", span = "PT0S" }
+trontxsize = { timestamp = "2026-03-13T12:40:16.6702484Z", span = "PT0S" }
+tronpy = { timestamp = "2026-03-13T12:40:16.6702491Z", span = "PT0S" }
 
 [manifest]
 overrides = [{ name = "python-dateutil", specifier = ">=2.9.0" }]
@@ -513,6 +513,7 @@ daemons = [
     { name = "trontxsize" },
     { name = "universalasync" },
     { name = "web3" },
+    { name = "xrpl-py" },
 ]
 dev = [
     { name = "advanced-alchemy" },
@@ -578,6 +579,7 @@ dev = [
     { name = "universalasync" },
     { name = "uvicorn", extra = ["standard"] },
     { name = "web3" },
+    { name = "xrpl-py" },
 ]
 eth = [
     { name = "aiohttp" },
@@ -685,6 +687,10 @@ xrg = [
     { name = "aiohttp" },
     { name = "oregano" },
 ]
+xrp = [
+    { name = "aiohttp" },
+    { name = "xrpl-py" },
+]
 
 [package.metadata]
 requires-dist = [
@@ -731,6 +737,7 @@ daemons = [
     { name = "trontxsize" },
     { name = "universalasync" },
     { name = "web3", specifier = ">=7,<8" },
+    { name = "xrpl-py" },
 ]
 dev = [
     { name = "advanced-alchemy", specifier = ">=0.26.2" },
@@ -796,6 +803,7 @@ dev = [
     { name = "universalasync" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.34.0" },
     { name = "web3", specifier = ">=7,<8" },
+    { name = "xrpl-py" },
 ]
 eth = [
     { name = "aiohttp", specifier = "<4.0" },
@@ -900,6 +908,10 @@ xmr = [
 xrg = [
     { name = "aiohttp", specifier = "<4.0" },
     { name = "oregano", url = "https://github.com/Ergon-moe/Oregano/archive/6bf78d3be864c053c95ee332c6ab366e5695d8a4.zip" },
+]
+xrp = [
+    { name = "aiohttp", specifier = "<4.0" },
+    { name = "xrpl-py" },
 ]
 
 [[package]]
@@ -1363,6 +1375,18 @@ wheels = [
 ]
 
 [[package]]
+name = "deprecated"
+version = "1.3.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "wrapt" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/49/85/12f0a49a7c4ffb70572b6c2ef13c90c88fd190debda93b23f026b25f9634/deprecated-1.3.1.tar.gz", hash = "sha256:b1b50e0ff0c1fddaa5708a2c6b0a6588bb09b892825ab2b214ac9ea9d92a5223", size = 2932523, upload-time = "2025-10-30T08:19:02.757Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/84/d0/205d54408c08b13550c733c4b85429e7ead111c7f0014309637425520a9a/deprecated-1.3.1-py2.py3-none-any.whl", hash = "sha256:597bfef186b6f60181535a29fbe44865ce137a5079f295b479886c82729d5f3f", size = 11298, upload-time = "2025-10-30T08:19:00.758Z" },
+]
+
+[[package]]
 name = "dishka"
 version = "1.8.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1390,6 +1414,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/c0/1f/924e3caae75f471eae4b26bd13b698f6af2c44279f67af317439c2f4c46a/ecdsa-0.19.1.tar.gz", hash = "sha256:478cba7b62555866fcb3bb3fe985e06decbdb68ef55713c4e5ab98c57d508e61", size = 201793, upload-time = "2025-03-13T11:52:43.25Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/cb/a3/460c57f094a4a165c84a1341c373b0a4f5ec6ac244b998d5021aade89b77/ecdsa-0.19.1-py2.py3-none-any.whl", hash = "sha256:30638e27cf77b7e15c4c4cc1973720149e1033827cfd00661ca5c8cc0cdb24c3", size = 150607, upload-time = "2025-03-13T11:52:41.757Z" },
+]
+
+[[package]]
+name = "ecpy"
+version = "1.2.5"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/e0/48/3f8c1a252e3a46fd04e6fabc5e11c933b9c39cf84edd4e7c906e29c23750/ECPy-1.2.5.tar.gz", hash = "sha256:9635cffb9b6ecf7fd7f72aea1665829ac74a1d272006d0057d45a621aae20228", size = 38458, upload-time = "2020-10-26T11:56:16.313Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e8/35/4a113189f7138035a21bd255d30dc7bffc77c942c93b7948d2eac2e22429/ECPy-1.2.5-py3-none-any.whl", hash = "sha256:559c92e42406d9d1a6b2b8fc26e6ad7bc985f33903b72f426a56cb1073a25ce3", size = 43075, upload-time = "2020-10-26T11:56:13.613Z" },
 ]
 
 [[package]]
@@ -4059,6 +4092,15 @@ wheels = [
 ]
 
 [[package]]
+name = "types-deprecated"
+version = "1.3.1.20260130"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/b5/97/9924e496f88412788c432891cacd041e542425fe0bffff4143a7c1c89ac4/types_deprecated-1.3.1.20260130.tar.gz", hash = "sha256:726b05e5e66d42359b1d6631835b15de62702588c8a59b877aa4b1e138453450", size = 8455, upload-time = "2026-01-30T03:58:17.401Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d2/b2/6f920582af7efcd37165cd6321707f3ad5839dd24565a8a982f2bd9c6fd1/types_deprecated-1.3.1.20260130-py3-none-any.whl", hash = "sha256:593934d85c38ca321a9d301f00c42ffe13e4cf830b71b10579185ba0ce172d9a", size = 9077, upload-time = "2026-01-30T03:58:16.633Z" },
+]
+
+[[package]]
 name = "types-paramiko"
 version = "4.0.0.20250822"
 source = { registry = "https://pypi.org/simple" }
@@ -4386,6 +4428,25 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/c7/79/12135bdf8b9c9367b8701c2c19a14c913c120b882d50b014ca0d38083c2c/wsproto-1.3.2.tar.gz", hash = "sha256:b86885dcf294e15204919950f666e06ffc6c7c114ca900b060d6e16293528294", size = 50116, upload-time = "2025-11-20T18:18:01.871Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/a4/f5/10b68b7b1544245097b2a1b8238f66f2fc6dcaeb24ba5d917f52bd2eed4f/wsproto-1.3.2-py3-none-any.whl", hash = "sha256:61eea322cdf56e8cc904bd3ad7573359a242ba65688716b0710a5eb12beab584", size = 24405, upload-time = "2025-11-20T18:18:00.454Z" },
+]
+
+[[package]]
+name = "xrpl-py"
+version = "4.5.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "base58" },
+    { name = "deprecated" },
+    { name = "ecpy" },
+    { name = "httpx" },
+    { name = "pycryptodome" },
+    { name = "types-deprecated" },
+    { name = "typing-extensions" },
+    { name = "websockets" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/51/e7/8faf71e5b9b314d329a13cdc7966ad565a6e52a875adeaee0f778b1b8ef1/xrpl_py-4.5.0.tar.gz", hash = "sha256:3ee25fcb748bdf6afe18aad8f74ba71ffa23bf681409fda3a9eb029e4381fc74", size = 175681, upload-time = "2026-02-12T23:41:52.176Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/1d/3c/65c853f906f5003c06c5e0cbc50e47bac2ecca17957a9d3a3d823efd8c38/xrpl_py-4.5.0-py3-none-any.whl", hash = "sha256:aa4720b5bf8070d8303346111f1095ec9afe13abdf49b2dc4b988d28ebc227ca", size = 314897, upload-time = "2026-02-12T23:41:50.609Z" },
 ]
 
 [[package]]
