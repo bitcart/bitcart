@@ -94,6 +94,7 @@ ltc = [
 matic = [{ include-group = "eth-based" }]
 trx = [{ include-group = "eth-based" }, "async-lru", "tronpy", "trontxsize"]
 xmr = [{ include-group = "daemon-base" }, "monero", "universalasync"]
+xrp = [{ include-group = "daemon-base" }, "xrpl-py"]
 xrg = [
     { include-group = "btc-based" },
     "oregano @ https://github.com/Ergon-moe/Oregano/archive/6bf78d3be864c053c95ee332c6ab366e5695d8a4.zip",
@@ -109,6 +110,7 @@ daemons = [
     { include-group = "matic" },
     { include-group = "trx" },
     { include-group = "xmr" },
+    { include-group = "xrp" },
     { include-group = "xrg" },
 ]
 

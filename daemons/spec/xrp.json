@@ -1,0 +1,37 @@
+{
+    "electrum_map": {
+        "Account not found": -32010,
+        "actNotFound": -32010,
+        "tecDST_TAG_NEEDED": -32011,
+        "tecUNFUNDED_PAYMENT": -32012,
+        "tecNO_DST": -32013,
+        "tecINSUFF_FEE": -32014,
+        "invalidParams": -32015
+    },
+    "exceptions": {
+        "-32010": {
+            "exc_name": "AccountNotFoundError",
+            "docstring": "Account not found on the XRP Ledger (may need to be funded with 1 XRP reserve)"
+        },
+        "-32011": {
+            "exc_name": "DestinationTagRequiredError",
+            "docstring": "Destination tag is required for this account"
+        },
+        "-32012": {
+            "exc_name": "InsufficientFundsError",
+            "docstring": "Insufficient XRP balance for this payment"
+        },
+        "-32013": {
+            "exc_name": "DestinationNotFoundError",
+            "docstring": "Destination account does not exist"
+        },
+        "-32014": {
+            "exc_name": "InsufficientFeeError",
+            "docstring": "Transaction fee is below the minimum required"
+        },
+        "-32015": {
+            "exc_name": "InvalidParamsError",
+            "docstring": "Invalid parameters provided"
+        }
+    }
+}
