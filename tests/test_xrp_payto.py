@@ -14,7 +14,6 @@ This test:
 """
 
 import asyncio
-import json
 import os
 import sys
 import traceback
@@ -35,10 +34,10 @@ def import_xrp_module():
     import importlib.util
 
     daemons_dir = os.path.join(os.path.dirname(__file__), "..", "daemons")
-    with open(os.path.join(daemons_dir, "xrp.py"), "r") as f:
+    with open(os.path.join(daemons_dir, "xrp.py")) as f:
         source = f.read()
     lines = source.split("\n")
-    filtered = [l for l in lines if l.strip() not in ("daemon = XRPDaemon()", "daemon.start()")]
+    filtered = [line for line in lines if line.strip() not in ("daemon = XRPDaemon()", "daemon.start()")]
     spec = importlib.util.spec_from_file_location("xrp", os.path.join(daemons_dir, "xrp.py"))
     module = importlib.util.module_from_spec(spec)
     code = compile("\n".join(filtered), os.path.join(daemons_dir, "xrp.py"), "exec")
@@ -46,7 +45,7 @@ def import_xrp_module():
     return module
 
 
-def test_result(name, success, detail=""):
+def check_result(name, success, detail=""):
     global passed, failed
     if success:
         passed += 1
@@ -60,8 +59,8 @@ def test_result(name, success, detail=""):
 async def get_funded_wallet():
     """Get a funded testnet wallet from the XRPL faucet via HTTP API."""
     import aiohttp
-    from xrpl.core.keypairs import generate_seed, derive_keypair, derive_classic_address
     from xrpl.asyncio.clients import AsyncJsonRpcClient
+    from xrpl.core.keypairs import derive_classic_address, derive_keypair, generate_seed
 
     print("  Requesting funded wallet from XRPL testnet faucet...")
 
@@ -71,16 +70,18 @@ async def get_funded_wallet():
     address = derive_classic_address(pub)
 
     # Fund it via faucet API
-    async with aiohttp.ClientSession() as session:
-        async with session.post(
+    async with (
+        aiohttp.ClientSession() as session,
+        session.post(
             "https://faucet.altnet.rippletest.net/accounts",
             json={"destination": address},
             headers={"Content-Type": "application/json"},
-        ) as resp:
-            if resp.status != 200:
-                body = await resp.text()
-                raise Exception(f"Faucet returned {resp.status}: {body}")
-            data = await resp.json()
+        ) as resp,
+    ):
+        if resp.status != 200:
+            body = await resp.text()
+            raise Exception(f"Faucet returned {resp.status}: {body}")
+        await resp.json()
 
     # Wait a moment for the funding tx to validate
     await asyncio.sleep(5)
@@ -100,7 +101,7 @@ async def get_funded_wallet():
     return wallet, client
 
 
-async def run_tests():
+async def run_tests():  # noqa: C901
     global passed, failed
 
     print("=" * 60)
@@ -112,30 +113,26 @@ async def run_tests():
     MultipleRPCXRPLProvider = xrp_mod.MultipleRPCXRPLProvider
     XRPFeatures = xrp_mod.XRPFeatures
     KeyStore = xrp_mod.KeyStore
-    Wallet = xrp_mod.Wallet
-    Invoice = xrp_mod.Invoice
-    Transaction = xrp_mod.Transaction
     XRPDaemon = xrp_mod.XRPDaemon
     DIVISIBILITY = xrp_mod.DIVISIBILITY
     from utils import MultipleProviderRPC
-    from genericprocessor import from_wei
 
     # ── Setup: Get funded wallets ──
     print("\n--- Setup: Faucet Wallets ---")
 
     try:
         sender_wallet, client = await get_funded_wallet()
-        test_result("Faucet wallet (sender)", True, sender_wallet.address)
+        check_result("Faucet wallet (sender)", True, sender_wallet.address)
     except Exception as e:
-        test_result("Faucet wallet (sender)", False, str(e))
+        check_result("Faucet wallet (sender)", False, str(e))
         print("FATAL: Cannot get faucet wallet. Aborting.")
         return False
 
     try:
         receiver_wallet, _ = await get_funded_wallet()
-        test_result("Faucet wallet (receiver)", True, receiver_wallet.address)
+        check_result("Faucet wallet (receiver)", True, receiver_wallet.address)
     except Exception as e:
-        test_result("Faucet wallet (receiver)", False, str(e))
+        check_result("Faucet wallet (receiver)", False, str(e))
         print("FATAL: Cannot get receiver wallet. Aborting.")
         return False
 
@@ -148,9 +145,9 @@ async def run_tests():
         await multi.start()
         xrp_provider = MultipleRPCXRPLProvider(multi)
         coin = XRPFeatures(xrp_provider)
-        test_result("XRPFeatures connected", await coin.is_connected())
+        check_result("XRPFeatures connected", await coin.is_connected())
     except Exception as e:
-        test_result("XRPFeatures connected", False, str(e))
+        check_result("XRPFeatures connected", False, str(e))
         return False
 
     # ── 1. Check sender balance ──
@@ -159,32 +156,30 @@ async def run_tests():
     try:
         sender_balance = await coin.get_balance(sender_wallet.address)
         sender_xrp = sender_balance / Decimal(10**DIVISIBILITY)
-        test_result("Sender balance",
-                     sender_balance > 0,
-                     f"{sender_xrp} XRP ({sender_balance} drops)")
+        check_result("Sender balance", sender_balance > 0, f"{sender_xrp} XRP ({sender_balance} drops)")
     except Exception as e:
-        test_result("Sender balance", False, str(e))
+        check_result("Sender balance", False, str(e))
         return False
 
     try:
         receiver_balance_before = await coin.get_balance(receiver_wallet.address)
         receiver_xrp_before = receiver_balance_before / Decimal(10**DIVISIBILITY)
-        test_result("Receiver balance (before)",
-                     True,
-                     f"{receiver_xrp_before} XRP")
+        check_result("Receiver balance (before)", True, f"{receiver_xrp_before} XRP")
     except Exception as e:
-        test_result("Receiver balance (before)", False, str(e))
+        check_result("Receiver balance (before)", False, str(e))
 
     # ── 2. KeyStore from faucet seed ──
     print("\n--- KeyStore from Faucet Seed ---")
 
     try:
         ks = KeyStore(key=sender_wallet.seed)
-        test_result("KeyStore address matches faucet",
-                     ks.address == sender_wallet.address,
-                     f"ks={ks.address}, faucet={sender_wallet.address}")
+        check_result(
+            "KeyStore address matches faucet",
+            ks.address == sender_wallet.address,
+            f"ks={ks.address}, faucet={sender_wallet.address}",
+        )
     except Exception as e:
-        test_result("KeyStore from faucet seed", False, str(e))
+        check_result("KeyStore from faucet seed", False, str(e))
         return False
 
     # ── 3. Build unsigned payment ──
@@ -204,30 +199,35 @@ async def run_tests():
             "destination_tag": dest_tag,
         }
         payment = Payment(**payment_fields)
-        test_result("Unsigned Payment object",
-                     payment.account == sender_wallet.address
-                     and payment.destination == receiver_wallet.address
-                     and payment.destination_tag == dest_tag,
-                     f"amount={payment.amount} drops, dt={payment.destination_tag}")
+        check_result(
+            "Unsigned Payment object",
+            payment.account == sender_wallet.address
+            and payment.destination == receiver_wallet.address
+            and payment.destination_tag == dest_tag,
+            f"amount={payment.amount} drops, dt={payment.destination_tag}",
+        )
     except Exception as e:
-        test_result("Unsigned Payment object", False, str(e))
+        check_result("Unsigned Payment object", False, str(e))
 
     # ── 4. Autofill + Sign + Submit (the actual payto flow) ──
     print("\n--- Signed Payment (Live Send) ---")
 
     tx_hash = None
     try:
-        from xrpl.asyncio.transaction import autofill, sign as xrpl_sign
-        from xrpl.wallet import Wallet as XRPLWallet
+        from xrpl.asyncio.transaction import autofill
+        from xrpl.asyncio.transaction import sign as xrpl_sign
         from xrpl.models.requests import SubmitOnly
+        from xrpl.wallet import Wallet as XRPLWallet
 
         # Autofill (adds sequence, fee, last_ledger_sequence)
         prepared = await autofill(payment, client)
-        test_result("Autofill transaction",
-                     prepared.sequence is not None and prepared.fee is not None,
-                     f"seq={prepared.sequence}, fee={prepared.fee}")
+        check_result(
+            "Autofill transaction",
+            prepared.sequence is not None and prepared.fee is not None,
+            f"seq={prepared.sequence}, fee={prepared.fee}",
+        )
     except Exception as e:
-        test_result("Autofill transaction", False, str(e))
+        check_result("Autofill transaction", False, str(e))
 
     try:
         # Sign
@@ -239,11 +239,9 @@ async def run_tests():
 
         # Verify signed.blob() works (blob is a method in xrpl-py 4.x)
         tx_blob = signed.blob()
-        test_result("Sign transaction (signed.blob())",
-                     tx_blob is not None and len(tx_blob) > 0,
-                     f"blob_len={len(tx_blob)}")
+        check_result("Sign transaction (signed.blob())", tx_blob is not None and len(tx_blob) > 0, f"blob_len={len(tx_blob)}")
     except Exception as e:
-        test_result("Sign transaction", False, str(e))
+        check_result("Sign transaction", False, str(e))
 
     try:
         # Submit
@@ -251,11 +249,11 @@ async def run_tests():
         engine_result = response.result.get("engine_result", "")
         tx_hash = response.result.get("tx_json", {}).get("hash", "")
 
-        test_result("Submit transaction",
-                     engine_result == "tesSUCCESS",
-                     f"engine_result={engine_result}, hash={tx_hash[:16]}...")
+        check_result(
+            "Submit transaction", engine_result == "tesSUCCESS", f"engine_result={engine_result}, hash={tx_hash[:16]}..."
+        )
     except Exception as e:
-        test_result("Submit transaction", False, str(e))
+        check_result("Submit transaction", False, str(e))
 
     if not tx_hash:
         print("  WARN: No tx hash, skipping on-chain verification")
@@ -266,7 +264,7 @@ async def run_tests():
         # Wait for the tx to be validated (usually 3-5 seconds)
         print("  Waiting for ledger validation...")
         validated = False
-        for attempt in range(15):
+        for _attempt in range(15):
             await asyncio.sleep(2)
             try:
                 tx_data = await coin.get_transaction(tx_hash)
@@ -275,8 +273,7 @@ async def run_tests():
                     break
             except Exception:
                 pass
-        test_result("Transaction validated on-chain", validated,
-                     f"attempts={attempt + 1}")
+        check_result("Transaction validated on-chain", validated)
 
         if validated:
             # Debug: print tx_data keys to understand structure
@@ -284,42 +281,47 @@ async def run_tests():
             # The Tx response nests data differently — check for tx_json wrapper
             actual_tx = tx_data.get("tx_json", tx_data)
             print(f"  DEBUG actual_tx keys: {list(actual_tx.keys())[:10]}")
-            print(f"  DEBUG meta type: {type(tx_data.get('meta'))}, keys: {list(tx_data.get('meta', {}).keys())[:5] if isinstance(tx_data.get('meta'), dict) else 'N/A'}")
+            meta_obj = tx_data.get("meta", {})
+            meta_keys = list(meta_obj.keys())[:5] if isinstance(meta_obj, dict) else "N/A"
+            print(f"  DEBUG meta type: {type(meta_obj)}, keys: {meta_keys}")
             print(f"  DEBUG top-level Account: {tx_data.get('Account', 'MISSING')}")
             print(f"  DEBUG tx_json Account: {actual_tx.get('Account', 'MISSING')}")
             print(f"  DEBUG tx_json DestinationTag: {actual_tx.get('DestinationTag', 'MISSING')}")
 
             # Check tx details
             try:
-                test_result("TX destination matches",
-                             actual_tx.get("Destination") == receiver_wallet.address,
-                             f"got={actual_tx.get('Destination')}")
-                test_result("TX destination_tag matches",
-                             actual_tx.get("DestinationTag") == dest_tag,
-                             f"got={actual_tx.get('DestinationTag')}")
-                test_result("TX account matches",
-                             actual_tx.get("Account") == sender_wallet.address,
-                             f"got={actual_tx.get('Account')}")
+                check_result(
+                    "TX destination matches",
+                    actual_tx.get("Destination") == receiver_wallet.address,
+                    f"got={actual_tx.get('Destination')}",
+                )
+                check_result(
+                    "TX destination_tag matches",
+                    actual_tx.get("DestinationTag") == dest_tag,
+                    f"got={actual_tx.get('DestinationTag')}",
+                )
+                check_result(
+                    "TX account matches", actual_tx.get("Account") == sender_wallet.address, f"got={actual_tx.get('Account')}"
+                )
 
                 meta = tx_data.get("meta", {})
                 delivered = meta.get("delivered_amount", "0")
                 expected_drops = str(int(amount_xrp * 10**DIVISIBILITY))
-                test_result("TX delivered_amount correct",
-                             delivered == expected_drops,
-                             f"delivered={delivered}, expected={expected_drops}")
-                test_result("TX result is tesSUCCESS",
-                             meta.get("TransactionResult") == "tesSUCCESS")
+                check_result(
+                    "TX delivered_amount correct",
+                    delivered == expected_drops,
+                    f"delivered={delivered}, expected={expected_drops}",
+                )
+                check_result("TX result is tesSUCCESS", meta.get("TransactionResult") == "tesSUCCESS")
             except Exception as e:
-                test_result("TX details verification", False, str(e))
+                check_result("TX details verification", False, str(e))
 
             # Check confirmations
             try:
                 confs = await coin.get_confirmations(tx_hash, tx_data)
-                test_result("get_confirmations",
-                             isinstance(confs, int) and confs >= 1,
-                             f"confirmations={confs}")
+                check_result("get_confirmations", isinstance(confs, int) and confs >= 1, f"confirmations={confs}")
             except Exception as e:
-                test_result("get_confirmations", False, str(e))
+                check_result("get_confirmations", False, str(e))
 
             # ── 6. Test process_tx_data on our real transaction ──
             print("\n--- process_tx_data (Real TX) ---")
@@ -337,23 +339,21 @@ async def run_tests():
             print(f"  DEBUG ledger_format TransactionType: {ledger_format.get('TransactionType')}")
             try:
                 parsed_tx = await coin.process_tx_data(ledger_format)
-                test_result("process_tx_data parses real tx (ledger format)",
-                             parsed_tx is not None)
+                check_result("process_tx_data parses real tx (ledger format)", parsed_tx is not None)
                 if parsed_tx:
-                    test_result("Parsed TX hash",
-                                 parsed_tx.hash == tx_hash)
-                    test_result("Parsed TX from_addr",
-                                 parsed_tx.from_addr == sender_wallet.address)
-                    test_result("Parsed TX to",
-                                 parsed_tx.to == receiver_wallet.address)
-                    test_result("Parsed TX destination_tag",
-                                 parsed_tx.destination_tag == dest_tag,
-                                 f"got={parsed_tx.destination_tag}")
-                    test_result("Parsed TX value (drops)",
-                                 parsed_tx.value == int(amount_xrp * 10**DIVISIBILITY),
-                                 f"value={parsed_tx.value}")
-            except Exception as e:
-                test_result("process_tx_data (real tx)", False, traceback.format_exc())
+                    check_result("Parsed TX hash", parsed_tx.hash == tx_hash)
+                    check_result("Parsed TX from_addr", parsed_tx.from_addr == sender_wallet.address)
+                    check_result("Parsed TX to", parsed_tx.to == receiver_wallet.address)
+                    check_result(
+                        "Parsed TX destination_tag", parsed_tx.destination_tag == dest_tag, f"got={parsed_tx.destination_tag}"
+                    )
+                    check_result(
+                        "Parsed TX value (drops)",
+                        parsed_tx.value == int(amount_xrp * 10**DIVISIBILITY),
+                        f"value={parsed_tx.value}",
+                    )
+            except Exception:
+                check_result("process_tx_data (real tx)", False, traceback.format_exc())
 
             # Test actual ledger format from get_block_txes
             try:
@@ -373,15 +373,17 @@ async def run_tests():
                         if "tx_json" in our_tx_raw:
                             print("  DEBUG: Ledger also uses tx_json wrapper!")
                         parsed_ledger = await coin.process_tx_data(our_tx_raw)
-                        test_result("process_tx_data (actual ledger format)",
-                                     parsed_ledger is not None,
-                                     f"parsed={parsed_ledger is not None}")
+                        check_result(
+                            "process_tx_data (actual ledger format)",
+                            parsed_ledger is not None,
+                            f"parsed={parsed_ledger is not None}",
+                        )
                     else:
-                        test_result("process_tx_data (actual ledger format)", True, "skipped - tx not in ledger response")
+                        check_result("process_tx_data (actual ledger format)", True, "skipped - tx not in ledger response")
                 else:
-                    test_result("process_tx_data (actual ledger format)", True, "skipped - no ledger_index")
-            except Exception as e:
-                test_result("process_tx_data (actual ledger)", False, traceback.format_exc())
+                    check_result("process_tx_data (actual ledger format)", True, "skipped - no ledger_index")
+            except Exception:
+                check_result("process_tx_data (actual ledger)", False, traceback.format_exc())
 
             # ── 7. Verify receiver balance increased ──
             print("\n--- Balance Verification ---")
@@ -391,22 +393,26 @@ async def run_tests():
                 receiver_xrp_after = receiver_balance_after / Decimal(10**DIVISIBILITY)
                 balance_diff = receiver_balance_after - receiver_balance_before
                 expected_diff = int(amount_xrp * 10**DIVISIBILITY)
-                test_result("Receiver balance increased",
-                             balance_diff == expected_diff,
-                             f"before={receiver_xrp_before} XRP, after={receiver_xrp_after} XRP, diff={balance_diff} drops")
+                check_result(
+                    "Receiver balance increased",
+                    balance_diff == expected_diff,
+                    f"before={receiver_xrp_before} XRP, after={receiver_xrp_after} XRP, diff={balance_diff} drops",
+                )
             except Exception as e:
-                test_result("Receiver balance check", False, str(e))
+                check_result("Receiver balance check", False, str(e))
 
             try:
                 sender_balance_after = await coin.get_balance(sender_wallet.address)
                 sender_xrp_after = sender_balance_after / Decimal(10**DIVISIBILITY)
                 # Sender should have lost amount + fee
                 sender_lost = sender_balance - sender_balance_after
-                test_result("Sender balance decreased",
-                             sender_lost >= int(amount_xrp * 10**DIVISIBILITY),
-                             f"before={sender_xrp} XRP, after={sender_xrp_after} XRP, lost={sender_lost} drops (includes fee)")
+                check_result(
+                    "Sender balance decreased",
+                    sender_lost >= int(amount_xrp * 10**DIVISIBILITY),
+                    f"before={sender_xrp} XRP, after={sender_xrp_after} XRP, lost={sender_lost} drops (includes fee)",
+                )
             except Exception as e:
-                test_result("Sender balance check", False, str(e))
+                check_result("Sender balance check", False, str(e))
 
     # ── 8. Test _sign_transaction helper ──
     print("\n--- _sign_transaction Helper ---")
@@ -425,11 +431,9 @@ async def run_tests():
         # Create a daemon instance to test _sign_transaction
         daemon_inst = XRPDaemon.__new__(XRPDaemon)
         blob = daemon_inst._sign_transaction(test_payment.to_xrpl(), ks.seed)
-        test_result("_sign_transaction returns blob",
-                     isinstance(blob, str) and len(blob) > 0,
-                     f"blob_len={len(blob)}")
-    except Exception as e:
-        test_result("_sign_transaction", False, traceback.format_exc())
+        check_result("_sign_transaction returns blob", isinstance(blob, str) and len(blob) > 0, f"blob_len={len(blob)}")
+    except Exception:
+        check_result("_sign_transaction", False, traceback.format_exc())
 
     # ── 9. X-address handling in payment ──
     print("\n--- X-Address Payment Support ---")
@@ -439,18 +443,17 @@ async def run_tests():
 
         # Create X-address with embedded destination tag
         x_addr_with_tag = classic_address_to_xaddress(receiver_wallet.address, 54321, True)
-        test_result("X-address created with tag",
-                     True,
-                     f"x_addr={x_addr_with_tag[:20]}...")
+        check_result("X-address created with tag", True, f"x_addr={x_addr_with_tag[:20]}...")
 
         # Verify X-address decomposition (what payto does)
-        from xrpl.core.addresscodec import is_valid_xaddress, xaddress_to_classic_address
+        from xrpl.core.addresscodec import xaddress_to_classic_address
+
         classic, tag, _ = xaddress_to_classic_address(x_addr_with_tag)
-        test_result("X-address decomposition",
-                     classic == receiver_wallet.address and tag == 54321,
-                     f"classic={classic}, tag={tag}")
+        check_result(
+            "X-address decomposition", classic == receiver_wallet.address and tag == 54321, f"classic={classic}, tag={tag}"
+        )
     except Exception as e:
-        test_result("X-address handling", False, str(e))
+        check_result("X-address handling", False, str(e))
 
     # Cleanup
     await multi.stop()

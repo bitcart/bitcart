@@ -179,6 +179,7 @@ mccabe = { max-complexity = 12 }
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["S"]
+"tests/test_xrp_*" = ["S", "T201"]
 "scripts/*" = ["S", "T201"]
 "backups/*" = ["T201"]
 
@@ -218,7 +219,7 @@ no_implicit_reexport = true
 strict_equality = true
 disallow_untyped_defs = true
 skip_cache_mtime_checks = true
-exclude = ["daemons", "backups"]
+exclude = ["daemons", "backups", "tests/test_xrp_"]
 
 [tool.pydantic-mypy]
 init_forbid_extra = true

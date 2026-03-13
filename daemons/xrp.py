@@ -1,27 +1,24 @@
-from base import BaseDaemon  # isort: skip
-
 import os
 import secrets
 from collections import deque
 from dataclasses import dataclass
 from decimal import Decimal
 
-from logger import get_logger
-from storage import Storage, decimal_to_string
-from utils import AbstractRPCProvider, MultipleProviderRPC, exception_retry_middleware, load_json_dict, rpc
-
 from genericprocessor import (
+    NOOP_PATH,
     BlockchainFeatures,
     BlockProcessorDaemon,
-    Invoice as BaseInvoice,
-    KeyStore as BaseKeyStore,
-    Transaction as BaseTransaction,
-    Wallet as BaseWallet,
     WalletDB,
     from_wei,
     str_to_bool,
-    NOOP_PATH,
 )
+from genericprocessor import Invoice as BaseInvoice
+from genericprocessor import KeyStore as BaseKeyStore
+from genericprocessor import Transaction as BaseTransaction
+from genericprocessor import Wallet as BaseWallet
+from logger import get_logger
+from storage import Storage, decimal_to_string
+from utils import AbstractRPCProvider, MultipleProviderRPC, exception_retry_middleware, load_json_dict, rpc
 
 logger = get_logger(__name__)
 
@@ -42,8 +39,7 @@ class XRPLRPCProvider(AbstractRPCProvider):
         self.client = AsyncJsonRpcClient(url)
 
     async def send_single_request(self, request_obj, **kwargs):
-        response = await self.client.request(request_obj)
-        return response
+        return await self.client.request(request_obj)
 
     async def send_ping_request(self):
         from xrpl.models.requests import ServerInfo
@@ -111,9 +107,7 @@ class XRPFeatures(BlockchainFeatures):
         from xrpl.models.requests import AccountInfo
 
         try:
-            response = await self._request(
-                AccountInfo(account=address, ledger_index="validated", strict=True)
-            )
+            response = await self._request(AccountInfo(account=address, ledger_index="validated", strict=True))
             return Decimal(response.result["account_data"]["Balance"])
         except Exception:
             return Decimal(0)
@@ -130,9 +124,7 @@ class XRPFeatures(BlockchainFeatures):
     async def get_block_txes(self, block):
         from xrpl.models.requests import Ledger
 
-        response = await self._request(
-            Ledger(ledger_index=int(block), transactions=True, expand=True)
-        )
+        response = await self._request(Ledger(ledger_index=int(block), transactions=True, expand=True))
         return response.result.get("ledger", {}).get("transactions", [])
 
     async def chain_id(self):
@@ -228,7 +220,7 @@ class KeyStore(BaseKeyStore):
             self.address = derive_classic_address(pub)
             self.seed = key
             return
-        except Exception:
+        except Exception:  # noqa: S110
             pass
         # Try as classic address (watching-only)
         if is_valid_classic_address(key):
@@ -298,9 +290,7 @@ class Wallet(BaseWallet):
         if dest_tag is not None:
             d["destination_tag"] = dest_tag
             # Override URI to include destination tag and use wallet address (not tag string)
-            d["URI"] = await self.coin.get_payment_uri(
-                self.address, req.amount, self.divisibility, destination_tag=dest_tag
-            )
+            d["URI"] = await self.coin.get_payment_uri(self.address, req.amount, self.divisibility, destination_tag=dest_tag)
         return d
 
 
@@ -333,9 +323,7 @@ class XRPDaemon(BlockProcessorDaemon):
         providers = []
         for server in server_list:
             provider = XRPLRPCProvider(server)
-            provider.send_single_request = exception_retry_middleware(
-                provider.send_single_request, (Exception,)
-            )
+            provider.send_single_request = exception_retry_middleware(provider.send_single_request, (Exception,))
             providers.append(provider)
         multi = MultipleProviderRPC(providers)
         await multi.start()
@@ -372,9 +360,7 @@ class XRPDaemon(BlockProcessorDaemon):
             if tx.destination_tag is not None:
                 tag_key = str(tx.destination_tag)
                 if tag_key in self.wallets[wallet_key].request_addresses:
-                    self.loop.create_task(
-                        self.wallets[wallet_key].process_new_payment(tag_key, tx, amount, wallet_key)
-                    )
+                    self.loop.create_task(self.wallets[wallet_key].process_new_payment(tag_key, tx, amount, wallet_key))
 
     # ── Wallet loading ──
 
@@ -487,7 +473,6 @@ class XRPDaemon(BlockProcessorDaemon):
     @rpc(requires_network=True)
     async def payto(self, destination, amount, fee=None, feerate=None, gas=None, unsigned=False, wallet=None, *args, **kwargs):
         from xrpl.core.addresscodec import is_valid_xaddress, xaddress_to_classic_address
-        from xrpl.models.requests import AccountInfo
         from xrpl.models.transactions import Payment
         from xrpl.utils import xrp_to_drops
 
@@ -522,7 +507,8 @@ class XRPDaemon(BlockProcessorDaemon):
         private_key = self.wallets[wallet].get_private_key()
 
         # Autofill sequence, fee, last_ledger_sequence then sign
-        from xrpl.asyncio.transaction import autofill, sign as xrpl_sign
+        from xrpl.asyncio.transaction import autofill
+        from xrpl.asyncio.transaction import sign as xrpl_sign
         from xrpl.wallet import Wallet as XRPLWallet
 
         client = self.coin.provider.rpc.current_rpc.client
