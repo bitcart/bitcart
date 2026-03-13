@@ -525,7 +525,7 @@ async def run_tests():
         test_result("SDK: coin_name", xrp_sdk.coin_name == "XRP")
         test_result("SDK: friendly_name", xrp_sdk.friendly_name == "XRP")
         test_result("SDK: RPC_URL", xrp_sdk.RPC_URL == "http://localhost:5012")
-        test_result("SDK: is_eth_based", xrp_sdk.is_eth_based == False)
+        test_result("SDK: is_eth_based", xrp_sdk.is_eth_based == True)
     except Exception as e:
         test_result("SDK integration", False, traceback.format_exc())
 

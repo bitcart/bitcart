@@ -543,6 +543,30 @@ class XRPDaemon(BlockProcessorDaemon):
     def signmessage(self, address=None, message=None, wallet=None):
         raise NotImplementedError("Message signing not yet supported for XRP")
 
+    @rpc(requires_wallet=True, requires_network=True)
+    async def signtransaction(self, tx, wallet=None):
+        """Override base class: autofill then sign using wallet seed."""
+        from xrpl.asyncio.transaction import autofill
+        from xrpl.core.keypairs import derive_keypair
+        from xrpl.models.transactions import Payment
+        from xrpl.transaction import sign as xrpl_sign
+        from xrpl.wallet import Wallet as XRPLWallet
+
+        if isinstance(tx, str):
+            tx = load_json_dict(tx, "Invalid transaction")
+        seed = self.wallets[wallet].keystore.seed
+        if not seed:
+            raise Exception("No seed available for signing (watching-only wallet)")
+        pub, priv = derive_keypair(seed)
+        xrpl_wallet = XRPLWallet(public_key=pub, private_key=priv)
+        tx_obj = Payment.from_xrpl(tx)
+        # Autofill sequence, fee, last_ledger_sequence if missing
+        if tx_obj.sequence is None or tx_obj.fee is None:
+            client = self.coin.provider.rpc.current_rpc.client
+            tx_obj = await autofill(tx_obj, client)
+        signed = xrpl_sign(tx_obj, xrpl_wallet)
+        return signed.blob()
+
     def _sign_transaction(self, tx, private_key):
         from xrpl.core.keypairs import derive_keypair
         from xrpl.models.transactions import Payment
@@ -551,8 +575,7 @@ class XRPDaemon(BlockProcessorDaemon):
 
         if isinstance(tx, str):
             tx = load_json_dict(tx, "Invalid transaction")
-        # The keystore stores the seed, derive keypair from it
-        # XRPLWallet expects hex private key, not the seed
+        # private_key here should be a seed (sXXX... format)
         pub, priv = derive_keypair(private_key)
         xrpl_wallet = XRPLWallet(public_key=pub, private_key=priv)
         tx_obj = Payment.from_xrpl(tx)
