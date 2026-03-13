@@ -44,5 +44,9 @@
     "grs": {
         "mainnet": "https://esplora.groestlcoin.org/tx/{}",
         "testnet": "https://esplora-test.groestlcoin.org/tx/{}"
+    },
+    "xrp": {
+        "mainnet": "https://xrpscan.com/tx/{}",
+        "testnet": "https://testnet.xrpl.org/transactions/{}"
     }
 }

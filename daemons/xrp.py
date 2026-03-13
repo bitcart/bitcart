@@ -1,21 +1,16 @@
 from base import BaseDaemon  # isort: skip
 
-import asyncio
 import os
 import secrets
-import time
-import traceback
 from collections import deque
 from dataclasses import dataclass
 from decimal import Decimal
 
 from logger import get_logger
 from storage import Storage, decimal_to_string
-from utils import MultipleProviderRPC, exception_retry_middleware, load_json_dict, rpc
+from utils import AbstractRPCProvider, MultipleProviderRPC, exception_retry_middleware, load_json_dict, rpc
 
 from genericprocessor import (
-    PR_PAID,
-    PR_UNPAID,
     BlockchainFeatures,
     BlockProcessorDaemon,
     Invoice as BaseInvoice,
@@ -23,10 +18,8 @@ from genericprocessor import (
     Transaction as BaseTransaction,
     Wallet as BaseWallet,
     WalletDB,
-    daemon_ctx,
     from_wei,
     str_to_bool,
-    to_wei,
     NOOP_PATH,
 )
 
@@ -39,7 +32,7 @@ MAX_DESTINATION_TAG = 2**32 - 1
 # ─── Multi-server RPC provider ───────────────────────────────────────────────
 
 
-class XRPLRPCProvider:
+class XRPLRPCProvider(AbstractRPCProvider):
     """Thin wrapper around xrpl AsyncJsonRpcClient compatible with MultipleProviderRPC."""
 
     def __init__(self, url):
@@ -48,9 +41,14 @@ class XRPLRPCProvider:
         self.endpoint_uri = url
         self.client = AsyncJsonRpcClient(url)
 
-    async def make_request(self, request_obj, **kwargs):
+    async def send_single_request(self, request_obj, **kwargs):
         response = await self.client.request(request_obj)
         return response
+
+    async def send_ping_request(self):
+        from xrpl.models.requests import ServerInfo
+
+        await self.client.request(ServerInfo())
 
 
 class MultipleRPCXRPLProvider:
@@ -161,27 +159,30 @@ class XRPFeatures(BlockchainFeatures):
         return uri
 
     async def process_tx_data(self, data):
-        if data.get("TransactionType") != "Payment":
-            return None
+        # xrpl-py 4.x wraps tx fields under "tx_json" in both Tx and Ledger responses
+        tx = data.get("tx_json", data)
         meta = data.get("metaData") or data.get("meta") or {}
+        if tx.get("TransactionType") != "Payment":
+            return None
         result = meta.get("TransactionResult", "")
         if result != "tesSUCCESS":
             return None
         # Always use delivered_amount for actual amount (handles partial payments)
-        delivered = meta.get("delivered_amount", data.get("Amount"))
+        # xrpl-py 4.x uses "DeliverMax" instead of "Amount"
+        delivered = meta.get("delivered_amount", tx.get("DeliverMax", tx.get("Amount")))
         if isinstance(delivered, dict):
             # Issued currency (trust line token) — skip for native XRP support
             return None
         return Transaction(
             hash=data.get("hash", ""),
-            from_addr=data.get("Account", ""),
-            to=self.normalize_address(data.get("Destination", "")),
+            from_addr=tx.get("Account", ""),
+            to=self.normalize_address(tx.get("Destination", "")),
             value=int(delivered),
-            destination_tag=data.get("DestinationTag"),
+            destination_tag=tx.get("DestinationTag"),
         )
 
     def get_tx_hash(self, tx_data):
-        return tx_data.get("hash", "")
+        return tx_data.get("hash", tx_data.get("tx_json", {}).get("hash", ""))
 
     async def get_confirmations(self, tx_hash, data=None):
         if data is None:
@@ -294,7 +295,7 @@ class Wallet(BaseWallet):
     async def export_request(self, req):
         d = await super().export_request(req)
         dest_tag = getattr(req, "destination_tag", None)
-        if dest_tag:
+        if dest_tag is not None:
             d["destination_tag"] = dest_tag
             # Override URI to include destination tag and use wallet address (not tag string)
             d["URI"] = await self.coin.get_payment_uri(
@@ -332,8 +333,8 @@ class XRPDaemon(BlockProcessorDaemon):
         providers = []
         for server in server_list:
             provider = XRPLRPCProvider(server)
-            provider.make_request = exception_retry_middleware(
-                provider.make_request, (Exception,)
+            provider.send_single_request = exception_retry_middleware(
+                provider.send_single_request, (Exception,)
             )
             providers.append(provider)
         multi = MultipleProviderRPC(providers)
@@ -432,24 +433,27 @@ class XRPDaemon(BlockProcessorDaemon):
     @rpc(requires_network=True)
     async def get_used_fee(self, tx_hash, wallet=None):
         data = await self.coin.get_transaction(tx_hash)
-        fee_drops = int(data.get("Fee", "0"))
+        tx_json = data.get("tx_json", data)
+        fee_drops = int(tx_json.get("Fee", "0"))
         return self.coin.to_dict(from_wei(fee_drops, DIVISIBILITY))
 
     @rpc(requires_network=True)
     async def gettransaction(self, tx, wallet=None):
         data = await self.coin.get_transaction(tx)
+        # xrpl-py 4.x nests tx fields under tx_json
+        tx_json = data.get("tx_json", data)
+        meta = data.get("meta", {})
         result = {
             "tx_hash": data.get("hash", ""),
-            "from_address": data.get("Account", ""),
-            "to_address": data.get("Destination", ""),
-            "amount": data.get("Amount", "0"),
-            "fee": data.get("Fee", "0"),
-            "destination_tag": data.get("DestinationTag"),
+            "from_address": tx_json.get("Account", ""),
+            "to_address": tx_json.get("Destination", ""),
+            "amount": tx_json.get("DeliverMax", tx_json.get("Amount", "0")),
+            "fee": tx_json.get("Fee", "0"),
+            "destination_tag": tx_json.get("DestinationTag"),
             "ledger_index": data.get("ledger_index"),
             "validated": data.get("validated", False),
             "confirmations": await self.coin.get_confirmations(tx, data),
         }
-        meta = data.get("meta", {})
         if meta:
             result["delivered_amount"] = meta.get("delivered_amount")
             result["transaction_result"] = meta.get("TransactionResult")
@@ -532,7 +536,7 @@ class XRPDaemon(BlockProcessorDaemon):
         # Submit the signed tx blob
         from xrpl.models.requests import SubmitOnly
 
-        response = await self.coin._request(SubmitOnly(tx_blob=signed.to_xrpl_dict()["tx_blob"]))
+        response = await self.coin._request(SubmitOnly(tx_blob=signed.blob()))
         return self.coin.to_dict(response.result)
 
     @rpc(requires_wallet=True)
@@ -540,15 +544,20 @@ class XRPDaemon(BlockProcessorDaemon):
         raise NotImplementedError("Message signing not yet supported for XRP")
 
     def _sign_transaction(self, tx, private_key):
-        from xrpl.core.binarycodec import encode
-        from xrpl.core.keypairs import sign
+        from xrpl.core.keypairs import derive_keypair
+        from xrpl.models.transactions import Payment
+        from xrpl.transaction import sign as xrpl_sign
+        from xrpl.wallet import Wallet as XRPLWallet
 
         if isinstance(tx, str):
             tx = load_json_dict(tx, "Invalid transaction")
-        encoded = encode(tx)
-        signature = sign(bytes.fromhex(encoded), private_key)
-        tx["TxnSignature"] = signature
-        return encode(tx)
+        # The keystore stores the seed, derive keypair from it
+        # XRPLWallet expects hex private key, not the seed
+        pub, priv = derive_keypair(private_key)
+        xrpl_wallet = XRPLWallet(public_key=pub, private_key=priv)
+        tx_obj = Payment.from_xrpl(tx)
+        signed = xrpl_sign(tx_obj, xrpl_wallet)
+        return signed.blob()
 
     @rpc
     def validatecontract(self, address, wallet=None):
