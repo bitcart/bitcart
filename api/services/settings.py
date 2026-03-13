@@ -82,7 +82,7 @@ class SettingService:
 
         for key in coin_service.cryptos:
             crypto = coin_service.cryptos[key]
-            if not crypto.is_eth_based or crypto.coin_name in ("TRX", "XMR"):
+            if not crypto.is_eth_based or crypto.coin_name in ("TRX", "XMR", "XRP"):
                 continue
             if data.rpc_urls.get(key) is None:
                 data.rpc_urls[key] = coin_service.get_default_rpc(key)

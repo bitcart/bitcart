@@ -414,7 +414,7 @@ class XRPDaemon(BlockProcessorDaemon):
 
         blob = tx if isinstance(tx, str) else load_json_dict(tx, "Invalid transaction").get("tx_blob", tx)
         response = await self.coin._request(SubmitOnly(tx_blob=blob))
-        return self.coin.to_dict(response.result)
+        return response.result.get("tx_json", {}).get("hash", "")
 
     @rpc(requires_network=True)
     async def get_default_fee(self, tx, wallet=None):
