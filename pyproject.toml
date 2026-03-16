@@ -51,8 +51,10 @@ web = [
     "uvicorn[standard]>=0.34.0",
 ]
 otel = [
-    "opentelemetry-distro[otlp]>=0.60b1,<0.61",
-    "opentelemetry-instrumentation>=0.60b1,<0.61",
+    "opentelemetry-distro[otlp]>=0.61b0,<0.62",
+    "opentelemetry-instrumentation>=0.61b0,<0.62",
+    # required for LoggingHandler in daemon
+    "opentelemetry-instrumentation-logging>=0.61b0,<0.62",
     "opentelemetry-sdk>=1.40.0,<1.41.0",
 ]
 production = ["gunicorn>=23.0.0"]
