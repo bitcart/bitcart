@@ -6,7 +6,7 @@ import sys
 
 class OTelExtraStripper(logging.Filter):
     def filter(self, record: logging.LogRecord) -> bool:
-        for attr in ("otelSpanID", "otelTraceID", "otelTraceSampled", "otelServiceName", "levellower"):
+        for attr in ("levellower",):
             if hasattr(record, attr):
                 delattr(record, attr)
         return True
@@ -41,9 +41,9 @@ def configure_logging(debug: bool = False):
     root_logger.addHandler(handler)
     if os.getenv("BITCART_OTEL_ENABLED", "false").lower() == "true":
         from opentelemetry._logs import get_logger_provider
-        from opentelemetry.sdk._logs import LoggingHandler
+        from opentelemetry.instrumentation.logging.handler import LoggingHandler
 
-        otel_handler = LoggingHandler(level=logging.NOTSET, logger_provider=get_logger_provider())
+        otel_handler = LoggingHandler(level=logging.NOTSET, logger_provider=get_logger_provider(), log_code_attributes=True)
         otel_handler.addFilter(OTelExtraStripper())
         root_logger.addHandler(otel_handler)
     # turn off loggers which will appear later and not yet loaded

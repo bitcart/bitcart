@@ -148,15 +148,6 @@ class Logging[RendererType]:
 
     @classmethod
     def add_trace_context(cls, logger: Logger, method_name: str, event_dict: dict[str, Any]) -> dict[str, Any]:
-        if "otelTraceID" in event_dict:
-            event_dict["trace_id"] = event_dict.pop("otelTraceID")
-        if "otelSpanID" in event_dict:
-            event_dict["span_id"] = event_dict.pop("otelSpanID")
-        if "otelServiceName" in event_dict:
-            event_dict["service.name"] = event_dict.pop("otelServiceName")
-        event_dict.pop("otelTraceSampled", None)
-        if "trace_id" in event_dict and "span_id" in event_dict:
-            return event_dict
         span = trace.get_current_span()
         if not span.is_recording():
             return event_dict
