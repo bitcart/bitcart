@@ -66,12 +66,7 @@ btc-derived = [
     { include-group = "btc-based" },
     "electrum-ecc @ git+https://github.com/bitcart/electrum-ecc@d90e8c79fb7d83fdea9ad0de94dce07f836f69bb",
 ]
-eth-based = [
-    { include-group = "daemon-base" },
-    "aiolimiter",
-    "mnemonic",
-    "web3>=7,<8",
-]
+eth-based = [{ include-group = "daemon-base" }, "aiolimiter", "mnemonic", "web3>=7,<8"]
 
 # sort alphabetically
 bch = [

@@ -20,6 +20,5 @@ modules/*
 !modules/__init__.py
 venv
 .venv
-.prettiercache
 .DS_Store
 .pyarmor/
