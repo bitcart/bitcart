@@ -2087,3 +2087,15 @@ async def test_mark_complete_validation(client: TestClient, token: str, store: d
     )
     assert resp.status_code == 422
     assert "Payment method does-not-exist not found" in resp.json()["detail"]
+
+
+async def test_get_invoice_of_another_user(client: TestClient, token: str, limited_user: dict[str, Any]) -> None:
+    # Create an invoice as the main (super) user
+    invoice = await create_invoice(client, token)
+    invoice_id = invoice["id"]
+    # Create a token for the limited user
+    limited_token = (await create_token(client, limited_user))["access_token"]
+    # Fetch the invoice as the limited user - should succeed (not 404)
+    resp = await client.get(f"/invoices/{invoice_id}", headers={"Authorization": f"Bearer {limited_token}"})
+    assert resp.status_code == 200
+    assert resp.json()["id"] == invoice_id
