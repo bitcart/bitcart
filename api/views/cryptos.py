@@ -59,7 +59,10 @@ async def get_fiatlist(
     s: set[str] | list[str] = set(await exchange_rate_service.get_fiatlist())
     s = await plugin_registry.apply_filters("get_fiatlist", s)
     if query is not None:
-        pattern = re.compile(query, re.IGNORECASE)
+        try:
+            pattern = re.compile(query, re.IGNORECASE)
+        except re.error:
+            return []
         s = [x for x in s if pattern.match(x)]
     return sorted(s)
 
