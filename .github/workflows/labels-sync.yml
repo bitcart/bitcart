@@ -16,4 +16,4 @@ jobs:
       - uses: EndBug/label-sync@v2
         with:
           config-file: "https://raw.githubusercontent.com/bitcart/.github/master/labels.yml"
-          delete-other-labels: false
+          delete-other-labels: true
