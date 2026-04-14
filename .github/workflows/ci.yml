@@ -85,7 +85,7 @@ jobs:
         uses: bitcart/bitcart-actions/actions/codecov@master
         if: ${{ !cancelled() }}
         with:
-          token: ${{ secrets.CODECOV_TOKEN }} # zizmor: ignore[secrets-outside-env] # safe for codecov
+          token: ${{ secrets.CODECOV_TOKEN }}
           name: Tests - Python ${{ env.PYTHON }}
           flags: tests
           env_vars: PYTHON
