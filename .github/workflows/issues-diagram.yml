@@ -1,0 +1,15 @@
+name: Issues Diagram
+
+on:
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  update-diagram:
+    name: update-diagram
+    uses: bitcart/bitcart-actions/.github/workflows/issues-diagram.yml@master

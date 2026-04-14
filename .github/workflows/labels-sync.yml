@@ -11,9 +11,4 @@ permissions:
 jobs:
   sync-labels:
     name: sync-labels
-    runs-on: ubuntu-latest
-    steps:
-      - uses: EndBug/label-sync@v2
-        with:
-          config-file: "https://raw.githubusercontent.com/bitcart/.github/master/labels.yml"
-          delete-other-labels: true
+    uses: bitcart/bitcart-actions/.github/workflows/labels-sync.yml@master
