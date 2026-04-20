@@ -122,7 +122,8 @@ dev = [
 
 [tool.uv]
 # python-dateutil override for electron-cash (transitive dependency) requiring an older version for no reason
-override-dependencies = ["python-dateutil>=2.9.0"]
+# electrum can run with higher dnspython versions, we need to eventually update it there
+override-dependencies = ["python-dateutil>=2.9.0", "dnspython>=2.8.0"]
 config-settings-package = { "electrum-ecc" = { "electrum_ecc.dont_compile" = "1" } }
 # dependency cooldowns for security
 exclude-newer = "1 week"
@@ -134,6 +135,11 @@ trontxsize = "0 days"
 universalasync = "0 days"
 tronpy = "0 days"
 mako = "0 days" # remove when 7 days passed since 1.3.11
+
+[tool.uv.audit]
+# ecdsa is not used in production, but we need to evaluate it's usage in electron-cash
+# see https://github.com/bitcart/bitcart/issues/576
+ignore = ["GHSA-wj6h-64fc-37mp"]
 
 [tool.ruff]
 target-version = "py312"
