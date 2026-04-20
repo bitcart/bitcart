@@ -35,7 +35,6 @@ web = [
     "packaging>=26.0",
     "paramiko>=4.0.0",
     "prometheus-client>=0.25.0",
-    "prometheus-fastapi-instrumentator>=7.1.0",
     "pwdlib[bcrypt]>=0.2.1",
     "py-machineid>=0.8.0",
     "pydantic-settings>=2.7.0",
