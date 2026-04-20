@@ -255,7 +255,7 @@ class BTCDaemon(BaseDaemon):
             wallet = (await self.restore_wallet(command_runner, xpub, config))["wallet"]
         else:
             wallet_dir = os.path.dirname(config.get_wallet_path())
-            wallet_path = os.path.join(wallet_dir, wallet_key)
+            wallet_path = os.path.join(wallet_dir, os.path.basename(wallet_key))
             if not os.path.exists(wallet_path):
                 await self.restore_wallet(command_runner, xpub, config, wallet_path=wallet_path)
             storage = self.electrum.storage.WalletStorage(wallet_path)

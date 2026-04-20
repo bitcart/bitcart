@@ -27,7 +27,7 @@ from api.utils.common import run_repeated
 
 logger = get_logger(__name__)
 
-RELEASE_REGEX = r"^([0-9]+(.[0-9]+)*(-[0-9]+)?)$"
+RELEASE_REGEX = r"^([0-9]+(\.[0-9]+)*(-[0-9]+)?)$"
 REDIS_KEY = "bitcart_update_ext"
 SELECTED_POLICY_KEYS = {
     "allow_powered_by_bitcart",
@@ -138,7 +138,7 @@ class UpdateCheckService:
     async def get_update_data(self) -> str | None:
         update_url = cast(str, self.settings.UPDATE_URL)
         async with ClientSession() as session:
-            if update_url.startswith("https://api.github.com"):
+            if update_url.startswith("https://api.github.com/"):
                 async with session.get(update_url) as resp:
                     data = await resp.json()
             else:
