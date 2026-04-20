@@ -6,7 +6,7 @@ requires-python = ">=3.12"
 dependencies = ["python-decouple", "rust-just>=1.46.0"]
 
 [dependency-groups]
-lint = ["mypy>=1.13.0", "prek>=0.3.1", "ruff>=0.9.5"]
+lint = ["deptry>=0.25.1", "mypy>=1.13.0", "prek>=0.3.1", "ruff>=0.9.5"]
 test = [
     "fakeredis>=2.31.1",
     "filelock>=3.19.1",
@@ -32,7 +32,9 @@ web = [
     "jinja2>=3.1.6",
     "jsonschema>=4.25.1",
     "msgpack>=1.1.1",
+    "packaging>=26.0",
     "paramiko>=4.0.0",
+    "prometheus-client>=0.25.0",
     "prometheus-fastapi-instrumentator>=7.1.0",
     "pwdlib[bcrypt]>=0.2.1",
     "py-machineid>=0.8.0",
@@ -45,6 +47,7 @@ web = [
     "scalar-fastapi>=1.4.0",
     "sentry-sdk[fastapi,sqlalchemy]",
     "sqlalchemy[asyncio]>=2.0.36",
+    "starlette>=0.52.1",
     "structlog>=24.4.0",
     "taskiq>=0.11.18",
     "taskiq-redis>=1.1.0",
@@ -66,7 +69,15 @@ btc-derived = [
     { include-group = "btc-based" },
     "electrum-ecc @ git+https://github.com/bitcart/electrum-ecc@d90e8c79fb7d83fdea9ad0de94dce07f836f69bb",
 ]
-eth-based = [{ include-group = "daemon-base" }, "aiolimiter", "mnemonic", "web3>=7,<8"]
+eth-based = [
+    { include-group = "daemon-base" },
+    "aiolimiter",
+    "eth-account",
+    "eth-keys",
+    "hexbytes",
+    "mnemonic",
+    "web3>=7,<8",
+]
 
 # sort alphabetically
 bch = [
@@ -89,7 +100,7 @@ ltc = [
     "scrypt>=0.6.0",
 ]
 matic = [{ include-group = "eth-based" }]
-trx = [{ include-group = "eth-based" }, "async-lru", "tronpy", "trontxsize"]
+trx = [{ include-group = "eth-based" }, "async-lru", "httpx", "tronpy", "trontxsize"]
 xmr = [{ include-group = "daemon-base" }, "monero", "universalasync"]
 xrg = [
     { include-group = "btc-based" },
@@ -140,6 +151,59 @@ mako = "0 days" # remove when 7 days passed since 1.3.11
 # ecdsa is not used in production, but we need to evaluate it's usage in electron-cash
 # see https://github.com/bitcart/bitcart/issues/576
 ignore = ["GHSA-wj6h-64fc-37mp"]
+
+[tool.deptry]
+# daemons/ is a flat directory of sibling modules - treat them as first-party
+known_first_party = [
+    "base",
+    "bch",
+    "btc",
+    "eth",
+    "genericprocessor",
+    "jsonrpc",
+    "logger",
+    "storage",
+    "utils",
+]
+extend_exclude = ["backups", "scripts"]
+# NOTE: deptry does not follow `include-group`, so every group holding a direct dep must be listed
+# We have to do this as it considers all dependency-groups as dev
+# TODO: try to fix their side
+non_dev_dependency_groups = [
+    "bch",
+    "btc",
+    "daemon-base",
+    "eth-based",
+    "grs",
+    "ltc",
+    "otel",
+    "production",
+    "trx",
+    "web",
+    "xmr",
+    "xrg",
+]
+
+# explicit top-level names for packages that are not installed in the CI lint env
+[tool.deptry.package_module_name_map]
+electron-cash = "electroncash"
+opentelemetry-distro = "opentelemetry"
+opentelemetry-instrumentation = "opentelemetry"
+opentelemetry-instrumentation-logging = "opentelemetry"
+opentelemetry-sdk = "opentelemetry"
+python-ulid = "ulid"
+
+[tool.deptry.per_rule_ignores]
+# not directly imported but required at runtime
+DEP002 = [
+    "asyncpg", # sqlalchemy async postgres driver
+    "electrum-ecc", # required by electrum cryptography
+    "gunicorn", # CLI / entrypoint
+    "py-machineid", # used by bitcart runtime
+    "python-multipart", # fastapi form parsing
+    "rust-just", # CLI / entrypoint
+    "scrypt", # required by electrum-ltc
+]
 
 [tool.ruff]
 target-version = "py312"

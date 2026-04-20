@@ -30,6 +30,12 @@ repos:
         args: [--no-progress, --offline, --persona=auditor]
   - repo: local
     hooks:
+      - id: deptry
+        name: deptry
+        entry: uv run --no-sync deptry .
+        language: system
+        pass_filenames: false
+        always_run: true
       - id: oxfmt
         name: oxfmt
         types: [text]

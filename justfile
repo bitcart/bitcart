@@ -47,6 +47,11 @@ lint-check:
 lint-types:
     mypy api tests main.py worker.py
 
+# run dependency checks
+[group("Linting")]
+lint-deps:
+    deptry .
+
 # run tests
 [group("Testing")]
 test *args:
@@ -74,7 +79,7 @@ db-rollback:
 
 # run ci checks (without tests)
 [group("CI")]
-ci-lint: lint-check lint-types
+ci-lint: lint-check lint-types lint-deps
 
 # run ci checks
 [group("CI")]
