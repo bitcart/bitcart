@@ -12,7 +12,6 @@ from fastapi import FastAPI, Request
 from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTextResponse
 from opentelemetry import trace
-from prometheus_fastapi_instrumentator import Instrumentator
 from scalar_fastapi import get_scalar_api_reference
 from sqlalchemy.exc import IntegrityError
 from starlette.applications import Starlette
@@ -240,15 +239,10 @@ def get_app(settings: Settings) -> FastAPI:
 def setup_prometheus(app: FastAPI, settings: Settings) -> None:
     if not settings.PROMETHEUS_METRICS_ENABLED:
         return
+    from api.metrics import PrometheusMiddleware
     from api.views import metrics
 
-    instrumentator = Instrumentator(
-        should_ignore_untemplated=True,
-        should_instrument_requests_inprogress=True,
-        excluded_handlers=["/metrics"],
-        inprogress_labels=True,
-    ).instrument(app, metric_namespace="bitcart")
-    app.state.instrumentator = instrumentator
+    app.add_middleware(PrometheusMiddleware)
     app.include_router(metrics.router)
 
 
