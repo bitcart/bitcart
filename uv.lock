@@ -9,15 +9,15 @@ resolution-markers = [
 ]
 
 [options]
-exclude-newer = "2026-04-13T19:59:16.89288Z"
+exclude-newer = "2026-04-13T20:27:39.580458821Z"
 exclude-newer-span = "P1W"
 
 [options.exclude-newer-package]
-mako = { timestamp = "2026-04-20T19:59:16.892895Z", span = "PT0S" }
-bitcart = { timestamp = "2026-04-20T19:59:16.892888Z", span = "PT0S" }
-universalasync = { timestamp = "2026-04-20T19:59:16.892894Z", span = "PT0S" }
-trontxsize = { timestamp = "2026-04-20T19:59:16.892894Z", span = "PT0S" }
-tronpy = { timestamp = "2026-04-20T19:59:16.892895Z", span = "PT0S" }
+mako = { timestamp = "2026-04-20T20:27:39.580469072Z", span = "PT0S" }
+bitcart = { timestamp = "2026-04-20T20:27:39.580465985Z", span = "PT0S" }
+universalasync = { timestamp = "2026-04-20T20:27:39.580468252Z", span = "PT0S" }
+trontxsize = { timestamp = "2026-04-20T20:27:39.580467818Z", span = "PT0S" }
+tronpy = { timestamp = "2026-04-20T20:27:39.5804686Z", span = "PT0S" }
 
 [manifest]
 overrides = [
