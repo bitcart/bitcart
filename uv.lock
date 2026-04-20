@@ -9,16 +9,16 @@ resolution-markers = [
 ]
 
 [options]
-exclude-newer = "2026-04-07T11:41:43.538369Z"
+exclude-newer = "2026-04-13T08:47:25.47071Z"
 exclude-newer-span = "P1W"
 
 [options.exclude-newer-package]
-pytest = { timestamp = "2026-04-14T11:41:43.538383Z", span = "PT0S" }
-bitcart = { timestamp = "2026-04-14T11:41:43.538378Z", span = "PT0S" }
-universalasync = { timestamp = "2026-04-14T11:41:43.538382Z", span = "PT0S" }
-cryptography = { timestamp = "2026-04-14T11:41:43.538383Z", span = "PT0S" }
-trontxsize = { timestamp = "2026-04-14T11:41:43.538382Z", span = "PT0S" }
-tronpy = { timestamp = "2026-04-14T11:41:43.538382Z", span = "PT0S" }
+pytest = { timestamp = "2026-04-20T08:47:25.470726Z", span = "PT0S" }
+bitcart = { timestamp = "2026-04-20T08:47:25.47072Z", span = "PT0S" }
+universalasync = { timestamp = "2026-04-20T08:47:25.470725Z", span = "PT0S" }
+cryptography = { timestamp = "2026-04-20T08:47:25.470725Z", span = "PT0S" }
+trontxsize = { timestamp = "2026-04-20T08:47:25.470724Z", span = "PT0S" }
+tronpy = { timestamp = "2026-04-20T08:47:25.470725Z", span = "PT0S" }
 
 [manifest]
 overrides = [{ name = "python-dateutil", specifier = ">=2.9.0" }]
@@ -766,10 +766,10 @@ dev = [
     { name = "monero" },
     { name = "msgpack", specifier = ">=1.1.1" },
     { name = "mypy", specifier = ">=1.13.0" },
-    { name = "opentelemetry-distro", extras = ["otlp"], specifier = ">=0.61b0,<0.62" },
-    { name = "opentelemetry-instrumentation", specifier = ">=0.61b0,<0.62" },
-    { name = "opentelemetry-instrumentation-logging", specifier = ">=0.61b0,<0.62" },
-    { name = "opentelemetry-sdk", specifier = ">=1.40.0,<1.41.0" },
+    { name = "opentelemetry-distro", extras = ["otlp"], specifier = "==0.61b0" },
+    { name = "opentelemetry-instrumentation", specifier = "==0.61b0" },
+    { name = "opentelemetry-instrumentation-logging", specifier = "==0.61b0" },
+    { name = "opentelemetry-sdk", specifier = "==1.40.0" },
     { name = "oregano", url = "https://github.com/Ergon-moe/Oregano/archive/6bf78d3be864c053c95ee332c6ab366e5695d8a4.zip" },
     { name = "paramiko", specifier = ">=4.0.0" },
     { name = "prek", specifier = ">=0.3.1" },
@@ -838,10 +838,10 @@ matic = [
     { name = "web3", specifier = ">=7,<8" },
 ]
 otel = [
-    { name = "opentelemetry-distro", extras = ["otlp"], specifier = ">=0.61b0,<0.62" },
-    { name = "opentelemetry-instrumentation", specifier = ">=0.61b0,<0.62" },
-    { name = "opentelemetry-instrumentation-logging", specifier = ">=0.61b0,<0.62" },
-    { name = "opentelemetry-sdk", specifier = ">=1.40.0,<1.41.0" },
+    { name = "opentelemetry-distro", extras = ["otlp"], specifier = "==0.61b0" },
+    { name = "opentelemetry-instrumentation", specifier = "==0.61b0" },
+    { name = "opentelemetry-instrumentation-logging", specifier = "==0.61b0" },
+    { name = "opentelemetry-sdk", specifier = "==1.40.0" },
 ]
 production = [{ name = "gunicorn", specifier = ">=23.0.0" }]
 test = [
