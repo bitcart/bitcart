@@ -27,7 +27,7 @@ jobs:
     uses: bitcart/bitcart-actions/.github/workflows/zizmor-audit.yml@master
     permissions:
       contents: read
-      security-events: write
+      security-events: write # needed for github advanced security
 
   test:
     name: test-${{ matrix.python-version }}

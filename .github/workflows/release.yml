@@ -4,12 +4,17 @@ on:
   release:
     types: [created]
 
+concurrency:
+  group: ${{ github.workflow_ref }}-${{ github.event.release.tag_name }}
+  cancel-in-progress: false
+
 permissions:
   contents: read
 
 jobs:
   generate-matrix:
     runs-on: ubuntu-latest
+    name: generate-matrix
     outputs:
       matrix: ${{ steps.matrix.outputs.matrix }}
     steps:
@@ -32,10 +37,10 @@ jobs:
     uses: bitcart/bitcart-actions/.github/workflows/build-docker-image.yml@master
     permissions:
       contents: read
-      packages: write
-      id-token: write
-      attestations: write
-      artifact-metadata: write
+      packages: write # publishing to GHCR
+      id-token: write # OIDC for provenance
+      attestations: write # github attestations
+      artifact-metadata: write # artifact storage metadata (recommended by actions/attest)
     with:
       dockerfile: bitcart-docker/compose/${{ matrix.dockerfile }}
       context: bitcart-docker/compose

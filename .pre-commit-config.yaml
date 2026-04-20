@@ -27,6 +27,7 @@ repos:
     rev: v1.24.1
     hooks:
       - id: zizmor
+        args: [--no-progress, --offline, --persona=auditor]
   - repo: local
     hooks:
       - id: oxfmt

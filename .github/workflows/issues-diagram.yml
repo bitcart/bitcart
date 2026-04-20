@@ -5,11 +5,11 @@ on:
     - cron: "0 3 * * *"
   workflow_dispatch:
 
-permissions:
-  contents: read
-  issues: write
+permissions: {}
 
 jobs:
   update-diagram:
     name: update-diagram
     uses: bitcart/bitcart-actions/.github/workflows/issues-diagram.yml@master
+    permissions:
+      issues: write # to create issues diagram
