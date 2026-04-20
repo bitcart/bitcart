@@ -133,8 +133,7 @@ bitcart = "0 days"
 trontxsize = "0 days"
 universalasync = "0 days"
 tronpy = "0 days"
-cryptography = "0 days" # remove when 7 days passed since 46.0.7
-pytest = "0 days" # remove when 7 days passed since 9.0.3
+mako = "0 days" # remove when 7 days passed since 1.3.11
 
 [tool.ruff]
 target-version = "py312"
