@@ -22,6 +22,15 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Validate release tag
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          if ! printf '%s' "$TAG" | grep -Eq '^[A-Za-z0-9._+][A-Za-z0-9._+-]*$'; then
+            echo "Invalid release tag: $TAG" >&2
+            exit 1
+          fi
+
       - id: matrix
         run: |
           matrix=$(jq -c '[to_entries[] | {target: .key, dockerfile: .value.dockerfile}]' .github/images.json)
