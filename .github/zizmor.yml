@@ -7,6 +7,3 @@ rules:
     config:
       allow:
         - CODECOV_TOKEN # coverage uploads is safe
-  unpinned-images: # TODO: remove when enabling pinning
-    ignore:
-      - ci.yml
