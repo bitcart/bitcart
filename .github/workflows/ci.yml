@@ -45,7 +45,7 @@ jobs:
           - 6379:6379
 
       postgres:
-        image: postgres:18-alpine
+        image: postgres:18-alpine@sha256:54451ecb8ab38c24c3ec123f2fd501303a3a1856a5c66e98cecf2460d5e1e9d7
         env:
           POSTGRES_DB: bitcart_test
           POSTGRES_HOST_AUTH_METHOD: trust
