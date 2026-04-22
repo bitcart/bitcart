@@ -16,7 +16,7 @@ permissions:
 jobs:
   lint:
     name: lint
-    uses: bitcart/bitcart-actions/.github/workflows/lint.yml@master
+    uses: bitcart/bitcart-actions/.github/workflows/lint.yml@c754f3cad8df1d5af262ed262986c5abdc1e80ed # master
     with:
       install-dependencies: |
         uv sync --frozen --compile-bytecode --no-dev --group web --group types --group lint --group test
@@ -24,7 +24,7 @@ jobs:
 
   zizmor:
     name: zizmor
-    uses: bitcart/bitcart-actions/.github/workflows/zizmor-audit.yml@master
+    uses: bitcart/bitcart-actions/.github/workflows/zizmor-audit.yml@c754f3cad8df1d5af262ed262986c5abdc1e80ed # master
     permissions:
       contents: read
       security-events: write # needed for github advanced security
@@ -56,23 +56,23 @@ jobs:
       TEST_ARGS: "-o junit_family=legacy --junitxml test-results/junit.xml --cov-report html:coverage"
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           persist-credentials: false
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: bitcart/bitcart-actions/actions/setup-python@master
+        uses: bitcart/bitcart-actions/actions/setup-python@c754f3cad8df1d5af262ed262986c5abdc1e80ed # master
         with:
           python-version: ${{ matrix.python-version }}
 
       - name: Install Python dependencies
-        uses: bitcart/bitcart-actions/actions/install-daemon@master
+        uses: bitcart/bitcart-actions/actions/install-daemon@c754f3cad8df1d5af262ed262986c5abdc1e80ed # master
         with:
           install-dependencies: |
             uv sync --frozen --compile-bytecode --no-dev --group web --group otel --group test --group btc
 
       - name: Prepare daemon
-        uses: bitcart/bitcart-actions/actions/run-in-background@master
+        uses: bitcart/bitcart-actions/actions/run-in-background@c754f3cad8df1d5af262ed262986c5abdc1e80ed # master
         with:
           run: BTC_EXPERIMENTAL_NOSYNC=true just testnet
           key: testnet
@@ -82,7 +82,7 @@ jobs:
           just test -n 4 --pytest-durations=-1
 
       - name: Upload coverage to Codecov
-        uses: bitcart/bitcart-actions/actions/codecov@master
+        uses: bitcart/bitcart-actions/actions/codecov@c754f3cad8df1d5af262ed262986c5abdc1e80ed # master
         if: ${{ !cancelled() }}
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
@@ -92,14 +92,14 @@ jobs:
           upload_coverage: ${{ job.status == 'success' }}
 
       - name: Upload test results
-        uses: bitcart/bitcart-actions/actions/upload-test-results@master
+        uses: bitcart/bitcart-actions/actions/upload-test-results@c754f3cad8df1d5af262ed262986c5abdc1e80ed # master
         if: ${{ !cancelled() }}
         with:
           suffix: py${{ env.PYTHON }}
 
   functional-tests:
     name: functional-tests
-    uses: bitcart/bitcart-actions/.github/workflows/functional-tests.yml@master
+    uses: bitcart/bitcart-actions/.github/workflows/functional-tests.yml@c754f3cad8df1d5af262ed262986c5abdc1e80ed # master
     needs: test
     with:
       install-dependencies: |
@@ -111,6 +111,6 @@ jobs:
 
   combine-coverage:
     name: combine-coverage
-    uses: bitcart/bitcart-actions/.github/workflows/combine-coverage.yml@master
+    uses: bitcart/bitcart-actions/.github/workflows/combine-coverage.yml@c754f3cad8df1d5af262ed262986c5abdc1e80ed # master
     needs: [test, functional-tests]
     if: ${{ !cancelled() }}
