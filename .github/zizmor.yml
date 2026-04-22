@@ -1,9 +1,8 @@
 rules:
   unpinned-uses:
     config:
-      # TODO: allow only bitcart/*
       policies:
-        "*": ref-pin
+        "bitcart/*": ref-pin
   secrets-outside-env:
     config:
       allow:
