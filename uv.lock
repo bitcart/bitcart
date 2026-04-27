@@ -13,7 +13,6 @@ exclude-newer = "0001-01-01T00:00:00Z" # This has no effect and is included for 
 exclude-newer-span = "P1W"
 
 [options.exclude-newer-package]
-mako = { timestamp = "0001-01-01T00:00:00Z", span = "PT0S" }
 bitcart = { timestamp = "0001-01-01T00:00:00Z", span = "PT0S" }
 universalasync = { timestamp = "0001-01-01T00:00:00Z", span = "PT0S" }
 trontxsize = { timestamp = "0001-01-01T00:00:00Z", span = "PT0S" }
