@@ -309,6 +309,11 @@
         "divisibility": 8,
         "crypto": true
     },
+    "SUI": {
+        "name": "Sui",
+        "divisibility": 9,
+        "crypto": true
+    },
     "TRX": {
         "name": "Tron",
         "divisibility": 6,
