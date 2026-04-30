@@ -5,7 +5,13 @@ from unittest.mock import Mock
 import pytest
 import pytest_mock
 
-from api.ext.exchanges.kraken import KRAKEN_ASSET_PAIRS_URL, KRAKEN_TICKER_URL, Kraken
+from api.ext.exchanges.kraken import (
+    KRAKEN_ASSET_PAIRS_URL,
+    KRAKEN_TICKER_URL,
+    Kraken,
+    get_kraken_result,
+    normalize_kraken_pair,
+)
 
 ONLINE_ASSET_PAIRS = {
     "XXBTZUSD": {"wsname": "XBT/USD", "status": "online"},
@@ -69,3 +75,42 @@ async def test_kraken_get_rate_adds_inverse_pairs(mocker: pytest_mock.MockerFixt
     exchange = kraken_exchange()
 
     assert await exchange.get_rate("EUR_ETH") == Decimal("0.0005")
+
+
+@pytest.mark.parametrize(
+    "pair",
+    [
+        {},
+        {"wsname": None},
+        {"wsname": ""},
+        {"wsname": "XBTUSD"},
+    ],
+)
+def test_normalize_kraken_pair_rejects_invalid_wsname(pair: dict[str, Any]) -> None:
+    assert normalize_kraken_pair(pair) is None
+
+
+def test_normalize_kraken_pair_skips_synthetic_markets() -> None:
+    assert normalize_kraken_pair({"wsname": "XBT/USD:BTNL"}) is None
+
+
+def test_get_kraken_result_raises_on_error() -> None:
+    response = {"error": ["EAPI:Rate limit", "EService:Unavailable"], "result": {}}
+
+    with pytest.raises(ValueError, match="Kraken Ticker request failed: EAPI:Rate limit, EService:Unavailable"):
+        get_kraken_result(response, "Ticker")
+
+
+@pytest.mark.anyio
+async def test_kraken_refresh_raises_on_kraken_error(mocker: pytest_mock.MockerFixture) -> None:
+    mocker.patch(
+        "api.ext.exchanges.kraken.utils.common.send_request",
+        side_effect=[
+            {"error": ["EGeneral:Invalid arguments"], "result": {}},
+            kraken_response({}),
+        ],
+    )
+    exchange = kraken_exchange()
+
+    with pytest.raises(ValueError, match="Kraken AssetPairs request failed: EGeneral:Invalid arguments"):
+        await exchange.refresh()

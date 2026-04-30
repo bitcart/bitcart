@@ -19,6 +19,8 @@ def normalize_kraken_pair(pair: dict[str, Any]) -> str | None:
     wsname = pair.get("wsname")
     if not isinstance(wsname, str) or "/" not in wsname:
         return None
+    if wsname.endswith(":BTNL"):
+        return None  # skip synthetic markets
     base, quote = wsname.split("/", maxsplit=1)
     return f"{normalize_kraken_asset(base)}_{normalize_kraken_asset(quote)}"
 
