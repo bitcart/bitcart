@@ -651,6 +651,9 @@ otel = [
 production = [
     { name = "gunicorn" },
 ]
+sui = [
+    { name = "aiohttp" },
+]
 test = [
     { name = "fakeredis" },
     { name = "filelock" },
@@ -901,6 +904,7 @@ otel = [
     { name = "opentelemetry-sdk", specifier = "==1.41.0" },
 ]
 production = [{ name = "gunicorn", specifier = ">=23.0.0" }]
+sui = [{ name = "aiohttp", specifier = "<4.0" }]
 test = [
     { name = "fakeredis", specifier = ">=2.31.1" },
     { name = "filelock", specifier = ">=3.19.1" },
