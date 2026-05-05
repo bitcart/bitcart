@@ -26,7 +26,7 @@ web = [
     "alembic>=1.16.1",
     "apprise>=1.9.4",
     "asyncpg>=0.30.0",
-    "bitcart @ file:///home/user/LND/bitcart-sdk",
+    "bitcart>=1.18.0.0",
     "dishka>=1.4.2",
     "fastapi>=0.115.6",
     "fido2>=2.0.0",
