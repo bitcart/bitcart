@@ -85,6 +85,52 @@ async def get_wallet_symbol(
     return await wallet_data_service.get_wallet_symbol(wallet)
 
 
+@router.get("/{model_id}/status")
+async def get_wallet_status(
+    wallet_service: FromDishka[WalletService],
+    model_id: str,
+    user: models.User = Security(utils.authorization.auth_dependency, scopes=[AuthScopes.WALLET_MANAGEMENT]),
+) -> Any:
+    try:
+        coin = await wallet_service.get_wallet_coin_by_id(model_id, user)
+        return await coin.server.getinfo()
+    except (BitcartBaseError, HTTPException) as e:
+        if isinstance(e, HTTPException) and e.status_code != 422:
+            raise
+        return {}
+
+
+@router.get("/{model_id}/logs")
+async def get_wallet_logs(
+    wallet_service: FromDishka[WalletService],
+    model_id: str,
+    source: str = "all",
+    user: models.User = Security(utils.authorization.auth_dependency, scopes=[AuthScopes.WALLET_MANAGEMENT]),
+) -> Any:
+    try:
+        coin = await wallet_service.get_wallet_coin_by_id(model_id, user)
+        return await coin.server.get_logs(source=source)
+    except (BitcartBaseError, HTTPException) as e:
+        if isinstance(e, HTTPException) and e.status_code != 422:
+            raise
+        return []
+
+
+@router.get("/{model_id}/nodeuri")
+async def get_wallet_node_uri(
+    wallet_service: FromDishka[WalletService],
+    model_id: str,
+    user: models.User = Security(utils.authorization.auth_dependency, scopes=[AuthScopes.WALLET_MANAGEMENT]),
+) -> Any:
+    try:
+        coin = await wallet_service.get_wallet_coin_by_id(model_id, user)
+        return await coin.server.get_node_uri()
+    except (BitcartBaseError, HTTPException) as e:
+        if isinstance(e, HTTPException) and e.status_code != 422:
+            raise
+        return {"uris": [], "clearnet_uri": "", "onion_uri": "", "identity_pubkey": "", "tor_enabled": False}
+
+
 @router.get("/{model_id}/checkln")
 async def check_wallet_lightning(
     wallet_service: FromDishka[WalletService],
@@ -124,11 +170,11 @@ async def open_wallet_channel(
 ) -> Any:
     try:
         coin = await wallet_service.get_wallet_coin_by_id(model_id, user)
-        return await coin.open_channel(params.node_id, params.amount)
+        return await coin.open_channel(params.node_id, params.amount, private=params.private)
     except (BitcartBaseError, HTTPException) as e:
         if isinstance(e, HTTPException) and e.status_code != 422:
             raise
-        raise HTTPException(400, "Failed to open channel") from None
+        raise HTTPException(400, f"Failed to open channel: {e}") from None
 
 
 @router.post("/{model_id}/channels/close")
@@ -144,7 +190,7 @@ async def close_wallet_channel(
     except (BitcartBaseError, HTTPException) as e:
         if isinstance(e, HTTPException) and e.status_code != 422:
             raise
-        raise HTTPException(400, "Failed to close channel") from None
+        raise HTTPException(400, f"Failed to close channel: {e}") from None
 
 
 @router.post("/{model_id}/lnpay")
@@ -160,4 +206,4 @@ async def wallet_lnpay(
     except (BitcartBaseError, HTTPException) as e:
         if isinstance(e, HTTPException) and e.status_code != 422:
             raise
-        raise HTTPException(400, "Failed to pay the invoice") from None
+        raise HTTPException(400, f"Failed to pay invoice: {e}") from None

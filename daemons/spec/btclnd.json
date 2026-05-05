@@ -1,0 +1,32 @@
+{
+    "version": "0.20.1",
+    "electrum_map": {
+        "wallet already exists": -32008,
+        "invalid passphrase": -32005,
+        "unable to find a path to destination": -32010,
+        "invoice expired": -32012,
+        "unknown payment hash": -32012,
+        "insufficient local balance": -32006,
+        "unable to route payment": -32010,
+        "chain backend is still syncing": -32013,
+        "no wallets loaded": -32000,
+        "wallet not loaded": -32000,
+        "channel not found": -32003,
+        "peer not found": -32003,
+        "already connected to peer": -32008,
+        "invoice is already canceled": -32012,
+        "invoice is already settled": -32012,
+        "not enough witness outputs to create funding transaction": -32006,
+        "Number of pending channels exceed maximum": -32006,
+        "channels cannot be created before the wallet is fully synced": -32013,
+        "is too large": -32006,
+        "is too small": -32006,
+        "insufficient funds": -32006
+    },
+    "exceptions": {
+        "-32013": {
+            "exc_name": "ChainSyncingError",
+            "docstring": "Chain backend is still syncing. Please wait for sync to complete."
+        }
+    }
+}

@@ -52,6 +52,7 @@ class BalanceResponse(Schema):
 class OpenChannelScheme(Schema):
     node_id: str
     amount: DecimalAsFloat
+    private: bool = False
 
 
 class CloseChannelScheme(Schema):

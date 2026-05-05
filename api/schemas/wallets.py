@@ -52,13 +52,18 @@ class InfoWallet(MetadataOutput, CreateWallet):
 class DisplayWallet(InfoWallet, TimestampedSchema):
     user: "InfoUser"
     balance: Money
+    lightning_balance: Money = "0"
     error: bool = False
 
     @model_validator(mode="before")
     @classmethod
     def set_balance(cls, values: dict[str, Any]) -> dict[str, Any]:
+        currency = cast(str, values.get("currency"))
+        divisibility = values.get("divisibility")
         if "balance" in values:
-            values["balance"] = currency_table.format_decimal(
-                cast(str, values.get("currency")), values["balance"], divisibility=values.get("divisibility")
+            values["balance"] = currency_table.format_decimal(currency, values["balance"], divisibility=divisibility)
+        if "lightning_balance" in values:
+            values["lightning_balance"] = currency_table.format_decimal(
+                currency, values["lightning_balance"], divisibility=divisibility
             )
         return values

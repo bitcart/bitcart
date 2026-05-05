@@ -367,6 +367,20 @@ class InvoiceService(CRUDService[models.Invoice]):
             if lightning:  # pragma: no cover
                 try:
                     await coin.node_id
+                    # Check inbound liquidity — skip lightning PM if no capacity
+                    # to receive this payment. Works for both LND and Electrum.
+                    try:
+                        channels = await coin.list_channels()
+                        amount_sat = int(request_price * 10**divisibility) if request_price else 0
+                        active_channels = [
+                            ch for ch in channels
+                            if ch.get("state") == "OPEN" or ch.get("peer_state") == "GOOD"
+                        ]
+                        total_inbound = sum(ch.get("remote_balance", 0) for ch in active_channels)
+                        if not active_channels or (amount_sat and total_inbound < amount_sat):
+                            return None  # Skip lightning PM — no inbound capacity
+                    except Exception:
+                        pass  # If channel check fails, proceed with lightning anyway
                     method = coin.add_invoice
                 except errors.LightningUnsupportedError:  # type: ignore[misc]
                     return None

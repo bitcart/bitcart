@@ -43,6 +43,11 @@ class WalletService(CRUDService[models.Wallet]):
         self.wallet_data_service = wallet_data_service
 
     async def finalize_create(self, data: dict[str, Any], user: models.User | None = None) -> models.Wallet:
+        # Auto-enable lightning for coins that default to it (e.g. BTCLND/LND)
+        currency = data.get("currency", "")
+        coin_class = COINS.get(currency.upper())
+        if coin_class and getattr(coin_class, "lightning_default", False):
+            data["lightning_enabled"] = True
         wallet = await super().finalize_create(data, user)
         await self.session.commit()
         await self.broker.publish("sync_wallet", SyncWalletMessage(wallet_id=wallet.id))
@@ -51,7 +56,11 @@ class WalletService(CRUDService[models.Wallet]):
     async def _fetch_balance(self, semaphore: asyncio.BoundedSemaphore, model: models.Wallet) -> None:
         async with semaphore:
             model.balance = Decimal(0)
-            success, model.divisibility, model.balance = await self.wallet_data_service.get_confirmed_wallet_balance(model)
+            model.lightning_balance = Decimal(0)
+            success, divisibility, full_balance = await self.wallet_data_service.get_wallet_balance(model)
+            model.divisibility = divisibility
+            model.balance = full_balance.get("confirmed", Decimal(0)) if isinstance(full_balance, dict) else full_balance
+            model.lightning_balance = full_balance.get("lightning", Decimal(0)) if isinstance(full_balance, dict) else Decimal(0)
             model.error = not success
             try:
                 model.xpub_name = getattr(await self.coin_service.get_coin(model.currency), "xpub_name", "Xpub")
@@ -118,6 +127,10 @@ class WalletService(CRUDService[models.Wallet]):
                 "required": self._prepare_output(getattr(coin, "required_xpub_fields", [])),
                 "properties": self._prepare_output(coin.additional_xpub_fields),
                 "xpub_name": getattr(coin, "xpub_name", "Xpub"),
+                "hot_wallet_only": getattr(coin, "hot_wallet_only", False),
+                "lightning_default": getattr(coin, "lightning_default", False),
+                "supports_tor": getattr(coin, "supports_tor", False),
+                "supports_zero_conf": getattr(coin, "supports_zero_conf", False),
             }
             for currency, coin in self.coin_service.cryptos.items()
         }
@@ -127,6 +140,17 @@ class WalletService(CRUDService[models.Wallet]):
         return await self.coin_service.get_coin(
             wallet.currency, {"xpub": wallet.xpub, "contract": wallet.contract, **wallet.additional_xpub_data}
         )
+
+    async def validate_delete(self, model: models.Wallet, user: models.User | None = None) -> None:
+        """Close the wallet on the coin daemon before deleting from the database."""
+        await super().validate_delete(model, user)
+        try:
+            coin = await self.coin_service.get_coin(
+                model.currency, {"xpub": model.xpub, "contract": model.contract, **model.additional_xpub_data}
+            )
+            await coin.server.close_wallet()
+        except Exception:
+            pass  # daemon may not be running; proceed with delete anyway
 
     async def validate(
         self, action: CRUDAction, data: dict[str, Any], model: models.Wallet, user: models.User | None = None
