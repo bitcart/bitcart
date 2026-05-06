@@ -76,7 +76,11 @@ class StructlogOTELHandler:
         severity_number = std_to_otel(NAME_TO_LEVEL[event_dict["level"]])
         attributes = cls._get_attributes(event_dict)
         level_name = event_dict["level"].upper()
-        level_name = "WARN" if level_name == "WARNING" else level_name
+        _python_to_otel_severity_text = {
+            "WARNING": "WARN",
+            "CRITICAL": "FATAL",
+        }
+        level_name = _python_to_otel_severity_text.get(level_name, level_name)
         return {
             "timestamp": timestamp,
             "observed_timestamp": observed_timestamp,

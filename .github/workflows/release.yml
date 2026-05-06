@@ -4,18 +4,32 @@ on:
   release:
     types: [created]
 
+concurrency:
+  group: ${{ github.workflow_ref }}-${{ github.event.release.tag_name }}
+  cancel-in-progress: false
+
 permissions:
   contents: read
 
 jobs:
   generate-matrix:
     runs-on: ubuntu-latest
+    name: generate-matrix
     outputs:
       matrix: ${{ steps.matrix.outputs.matrix }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
+
+      - name: Validate release tag
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          if ! printf '%s' "$TAG" | grep -Eq '^[A-Za-z0-9._+][A-Za-z0-9._+-]*$'; then
+            echo "Invalid release tag: $TAG" >&2
+            exit 1
+          fi
 
       - id: matrix
         run: |
@@ -32,10 +46,10 @@ jobs:
     uses: bitcart/bitcart-actions/.github/workflows/build-docker-image.yml@master
     permissions:
       contents: read
-      packages: write
-      id-token: write
-      attestations: write
-      artifact-metadata: write
+      packages: write # publishing to GHCR
+      id-token: write # OIDC for provenance
+      attestations: write # github attestations
+      artifact-metadata: write # artifact storage metadata (recommended by actions/attest)
     with:
       dockerfile: bitcart-docker/compose/${{ matrix.dockerfile }}
       context: bitcart-docker/compose

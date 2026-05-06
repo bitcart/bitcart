@@ -23,7 +23,7 @@ EXCHANGE_ACTIVE_TIME = 12 * 60 * 60
 
 
 def get_inverse_dict(d: dict[str, Decimal]) -> dict[str, Decimal]:
-    return {str(ExchangePair(k).inverse()): 1 / v for k, v in d.items()}
+    return {str(ExchangePair(k).inverse()): 1 / v for k, v in d.items() if v != 0}
 
 
 class BaseExchange(metaclass=ABCMeta):

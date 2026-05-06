@@ -8,7 +8,7 @@ import aiofiles
 from dishka import AsyncContainer, Scope
 from fastapi import HTTPException, UploadFile
 from jsonschema import validate
-from packaging.requirements import Requirement
+from packaging.requirements import Requirement  # TODO: drop requirement on packaging
 
 from api import constants, utils
 from api.constants import VERSION

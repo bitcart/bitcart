@@ -153,6 +153,14 @@ async def test_fiatlist(client: TestClient) -> None:
     j3 = resp3.json()
     assert isinstance(j3, list)
     assert "USD" in j3
+    resp4 = await client.get("/cryptos/fiatlist?query=BTC|USD")
+    assert resp4.status_code == 200
+    j4 = resp4.json()
+    assert "BTC" in j4
+    assert "USD" in j4
+    resp5 = await client.get(r"/cryptos/fiatlist?query=btc\\")
+    assert resp5.status_code == 200
+    assert resp5.json() == []
 
 
 @pytest.mark.exchange_rates(cryptos={"btc": BTC(), "ltc": LTC()})

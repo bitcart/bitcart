@@ -256,12 +256,12 @@ class InvoiceService(CRUDService[models.Invoice]):
     ) -> list[dict[str, Any]] | None:
         results = []
         method = await self._create_payment_method(invoice, wallet, product, store, discounts, promocode)
-        if method is not SKIP_PAYMENT_METHOD and method is not None:
+        if method is not None:
             results.append(method)
         coin_settings = self.coin_service.get_coin_settings(wallet.currency)
         if coin_settings and coin_settings["lightning"] and wallet.lightning_enabled:  # pragma: no cover
             method = await self._create_payment_method(invoice, wallet, product, store, discounts, promocode, lightning=True)
-            if method is not SKIP_PAYMENT_METHOD and method is not None:
+            if method is not None:
                 results.append(method)
         return results
 
@@ -321,6 +321,8 @@ class InvoiceService(CRUDService[models.Invoice]):
         method = await self.plugin_registry.apply_filters(
             "pre_create_payment_method", None, coin, invoice, wallet, product, store, discounts, promocode, lightning
         )
+        if method is SKIP_PAYMENT_METHOD:  # pragma: no cover
+            return None
         if method is not None:  # pragma: no cover
             return method
         symbol = await self.wallet_data_service.get_wallet_symbol(wallet, coin)
@@ -349,7 +351,7 @@ class InvoiceService(CRUDService[models.Invoice]):
             "create_payment_method", None, wallet, coin, request_price, invoice, product, store, lightning
         )
         if method is SKIP_PAYMENT_METHOD:  # pragma: no cover
-            return method
+            return None
         # set defaults
         data: dict[str, Any] = {
             "currency": wallet.currency,

@@ -1,5 +1,4 @@
 import math
-import re
 from typing import Any
 
 from dishka import FromDishka
@@ -59,8 +58,8 @@ async def get_fiatlist(
     s: set[str] | list[str] = set(await exchange_rate_service.get_fiatlist())
     s = await plugin_registry.apply_filters("get_fiatlist", s)
     if query is not None:
-        pattern = re.compile(query, re.IGNORECASE)
-        s = [x for x in s if pattern.match(x)]
+        terms = [t.lower() for t in query.split("|") if t]
+        s = [x for x in s if any(x.lower().startswith(t) for t in terms)]
     return sorted(s)
 
 

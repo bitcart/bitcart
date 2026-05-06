@@ -27,7 +27,7 @@ jobs:
     uses: bitcart/bitcart-actions/.github/workflows/zizmor-audit.yml@master
     permissions:
       contents: read
-      security-events: write
+      security-events: write # needed for github advanced security
 
   test:
     name: test-${{ matrix.python-version }}
@@ -40,12 +40,12 @@ jobs:
 
     services:
       redis:
-        image: redis:alpine
+        image: redis:alpine@sha256:c5e375abb885e6b2021c0377879e4890bf76f9065b8922ffc113f2b226b9fc17
         ports:
           - 6379:6379
 
       postgres:
-        image: postgres:18-alpine
+        image: postgres:18-alpine@sha256:54451ecb8ab38c24c3ec123f2fd501303a3a1856a5c66e98cecf2460d5e1e9d7
         env:
           POSTGRES_DB: bitcart_test
           POSTGRES_HOST_AUTH_METHOD: trust
@@ -56,7 +56,7 @@ jobs:
       TEST_ARGS: "-o junit_family=legacy --junitxml test-results/junit.xml --cov-report html:coverage"
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
 
@@ -85,7 +85,7 @@ jobs:
         uses: bitcart/bitcart-actions/actions/codecov@master
         if: ${{ !cancelled() }}
         with:
-          token: ${{ secrets.CODECOV_TOKEN }} # zizmor: ignore[secrets-outside-env] # safe for codecov
+          token: ${{ secrets.CODECOV_TOKEN }}
           name: Tests - Python ${{ env.PYTHON }}
           flags: tests
           env_vars: PYTHON

@@ -7,7 +7,7 @@ from uvicorn.workers import UvicornWorker
 
 
 class CustomUvicornWorker(UvicornWorker):
-    pass
+    CONFIG_KWARGS = {"ws": "websockets-sansio"}
 
 
 control_socket_disable = True
