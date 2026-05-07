@@ -136,7 +136,12 @@ class BTCLNDDaemon(BaseDaemon):
                 os.path.expanduser("~"), ".bitcart-btclnd", self.LND_NETWORK
             )
         os.makedirs(self.DATA_PATH, exist_ok=True)
-        self.port_manager = PortManager(self.DATA_PATH)
+        self.port_manager = PortManager(
+            self.DATA_PATH,
+            base_grpc_port=self.BASE_GRPC_PORT,
+            base_rest_port=self.BASE_REST_PORT,
+            base_p2p_port=self.BASE_P2P_PORT,
+        )
         self.binary_manager = LNDBinaryManager(self.DATA_PATH, self.LND_VERSION)
         self.lnd_binary_path: str | None = None
         self.running = True
@@ -167,6 +172,13 @@ class BTCLNDDaemon(BaseDaemon):
             self.NEUTRINO_PEERS = list(
                 self.DEFAULT_NEUTRINO_PEERS.get(self.LND_NETWORK, [])
             )
+        # Base ports for the per-wallet PortManager. Override these to
+        # shift the publicly-exposed p2p range away from defaults that
+        # collide with other lightning daemons running on the same host.
+        # gRPC and REST stay internal to the daemon; only p2p is published.
+        self.BASE_GRPC_PORT = self.env("BASE_GRPC_PORT", cast=int, default=PortManager.BASE_GRPC_PORT)
+        self.BASE_REST_PORT = self.env("BASE_REST_PORT", cast=int, default=PortManager.BASE_REST_PORT)
+        self.BASE_P2P_PORT = self.env("BASE_P2P_PORT", cast=int, default=PortManager.BASE_P2P_PORT)
         # LND binary path (empty = auto-detect/download)
         self.LND_BINARY_PATH = self.env("LND_BINARY", default="")
         # Extra arguments to pass to LND

@@ -155,11 +155,24 @@ class PortManager:
     BASE_REST_PORT = 8080
     BASE_P2P_PORT = 9735
 
-    def __init__(self, data_path: str):
+    def __init__(
+        self,
+        data_path: str,
+        *,
+        base_grpc_port: int | None = None,
+        base_rest_port: int | None = None,
+        base_p2p_port: int | None = None,
+    ):
         self.data_path = data_path
         self.port_map_path = os.path.join(data_path, "port_map.json")
         self.port_map: dict[str, dict[str, int]] = {}
         self.lock = asyncio.Lock()
+        # Per-instance overrides allow deployments (e.g. docker) to shift the
+        # publicly-exposed p2p range away from defaults that collide with
+        # other lightning daemons running on the same host.
+        self.base_grpc_port = base_grpc_port if base_grpc_port is not None else self.BASE_GRPC_PORT
+        self.base_rest_port = base_rest_port if base_rest_port is not None else self.BASE_REST_PORT
+        self.base_p2p_port = base_p2p_port if base_p2p_port is not None else self.BASE_P2P_PORT
         self._load()
         self._prune_stale_entries()
 
@@ -262,9 +275,9 @@ class PortManager:
             used_socks = {v.get("tor_socks", 0) for v in self.port_map.values()}
             used_ctrl = {v.get("tor_control", 0) for v in self.port_map.values()}
             entry = {
-                "grpc": self._next_available(self.BASE_GRPC_PORT, used_grpc),
-                "rest": self._next_available(self.BASE_REST_PORT, used_rest),
-                "p2p": self._next_available(self.BASE_P2P_PORT, used_p2p),
+                "grpc": self._next_available(self.base_grpc_port, used_grpc),
+                "rest": self._next_available(self.base_rest_port, used_rest),
+                "p2p": self._next_available(self.base_p2p_port, used_p2p),
                 "tor_socks": self._next_available(TorProcess.BASE_SOCKS_PORT, used_socks),
                 "tor_control": self._next_available(TorProcess.BASE_CONTROL_PORT, used_ctrl),
             }
