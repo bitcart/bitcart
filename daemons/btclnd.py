@@ -1774,6 +1774,12 @@ class BTCLNDDaemon(BaseDaemon):
             amount=amount_sat,
             sat_per_vbyte=sat_per_vbyte,
         )
+        # The payout flow calls payto(..., unsigned=True) and expects to pass
+        # the returned value directly to broadcast(). LND already broadcasts
+        # via SendCoins, so we return the txid as a plain string here; the
+        # subsequent broadcast() call recognizes it and no-ops.
+        if kwargs.get("unsigned"):
+            return txid
         return {"txid": txid}
 
     @rpc(requires_wallet=True, requires_network=True)
@@ -1781,11 +1787,17 @@ class BTCLNDDaemon(BaseDaemon):
         """Broadcast a raw transaction to the network.
 
         Args:
-            tx: Raw transaction hex
+            tx: Raw transaction hex, OR a 64-char txid hex string returned by
+                payto(unsigned=True) — in the latter case the tx is already on
+                the network so this becomes a no-op.
 
         Returns:
-            Result string (empty on success)
+            txid (string) on success.
         """
+        # Already-broadcast path: payto(unsigned=True) returns a 32-byte txid
+        # as 64 hex chars; broadcast then receives that same string.
+        if isinstance(tx, str) and len(tx) == 64 and all(c in "0123456789abcdefABCDEF" for c in tx):
+            return tx
         client = self._get_client(wallet)
         tx_bytes = bytes.fromhex(tx) if isinstance(tx, str) else tx
         error = await client.publish_transaction(tx_bytes)
