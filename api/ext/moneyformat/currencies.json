@@ -323,5 +323,10 @@
         "name": "Monero",
         "divisibility": 8,
         "crypto": true
+    },
+    "BTCLND": {
+        "name": "Bitcoin (LND)",
+        "divisibility": 8,
+        "crypto": true
     }
 }

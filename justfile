@@ -109,6 +109,48 @@ testnet:
 mainnet:
     BTC_DEBUG=true BTC_LIGHTNING=true BTC_NETWORK=mainnet just daemon btc
 
+# btclnd-setup tasks
+
+# start btclnd signet daemon
+[group("BTCLND setup")]
+btclnd-signet:
+    BTCLND_DEBUG=true BTCLND_NETWORK=signet just daemon btclnd
+
+# start btclnd regtest daemon
+[group("BTCLND setup")]
+btclnd-regtest:
+    BTCLND_DEBUG=true BTCLND_NETWORK=regtest just daemon btclnd
+
+# start btclnd testnet daemon
+[group("BTCLND setup")]
+btclnd-testnet:
+    BTCLND_DEBUG=true BTCLND_NETWORK=testnet just daemon btclnd
+
+# start btclnd mainnet daemon
+[group("BTCLND setup")]
+btclnd-mainnet:
+    BTCLND_DEBUG=true BTCLND_NETWORK=mainnet just daemon btclnd
+
+# start btclnd regtest environment (bitcoind + 2 LND nodes)
+[group("BTCLND setup")]
+btclnd-regtest-env:
+    tests/functional/btclnd/bootstrap.sh start
+
+# stop btclnd regtest environment
+[group("BTCLND setup")]
+btclnd-regtest-env-stop:
+    tests/functional/btclnd/bootstrap.sh stop
+
+# run btclnd daemon in regtest (for testing, no Tor)
+[group("BTCLND setup")]
+btclnd-regtest-daemon:
+    BTCLND_DEBUG=true BTCLND_NETWORK=regtest BTCLND_TOR=false just daemon btclnd
+
+# run btclnd functional tests
+[group("BTCLND setup")]
+btclnd-functional *args:
+    pytest tests/functional/btclnd/ -v -n 0 --no-cov {{ trim(args) }}
+
 # start bitcoind
 [group("BTC setup")]
 bitcoind:

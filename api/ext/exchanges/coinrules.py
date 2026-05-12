@@ -48,3 +48,7 @@ class GRS:
 
 class XMR:
     coingecko_id = "monero"
+
+
+class BTCLND:
+    coingecko_id = "bitcoin"

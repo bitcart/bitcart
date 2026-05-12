@@ -38,7 +38,9 @@ class CoinService:
             rpc_user = self.settings.config(f"{env_name}_LOGIN", default=default_user)
             rpc_password = self.settings.config(f"{env_name}_PASSWORD", default=default_password)
             crypto_network = self.settings.config(f"{env_name}_NETWORK", default="mainnet")
-            crypto_lightning = self.settings.config(f"{env_name}_LIGHTNING", cast=bool, default=False)
+            # Use coin class's lightning_default if available (e.g., LND always has lightning)
+            lightning_default = getattr(coin, "lightning_default", False)
+            crypto_lightning = self.settings.config(f"{env_name}_LIGHTNING", cast=bool, default=lightning_default)
             credentials: dict[str, Any] = {"rpc_url": rpc_url, "rpc_user": rpc_user, "rpc_pass": rpc_password}
             self._crypto_settings[crypto] = {
                 "credentials": credentials,

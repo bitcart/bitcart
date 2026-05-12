@@ -17,6 +17,7 @@ test = [
     "pytest-durations>=1.6.1",
     "pytest-mock>=3.15.0",
     "pytest-xdist>=3.8.0",
+    "pytest-randomly>=4.1.0",
 ]
 types = ["types-aiofiles>=24.1.0.20250822", "types-paramiko>=4.0.0.20250822"]
 web = [
@@ -25,7 +26,7 @@ web = [
     "alembic>=1.16.1",
     "apprise>=1.9.4",
     "asyncpg>=0.30.0",
-    "bitcart>=1.18.0.0",
+    "bitcart @ git+https://github.com/BareBits/bitcart-sdk.git@lnd-integration",
     "dishka>=1.4.2",
     "fastapi>=0.115.6",
     "fido2>=2.0.0",
@@ -89,6 +90,14 @@ btc = [
     { include-group = "btc-derived" },
     "electrum[crypto] @ git+https://github.com/spesmilo/electrum@0f4d8d6d57bbff3428950cf531bc98eae473beec",
 ]
+btclnd = [
+    { include-group = "daemon-base" },
+    "grpcio>=1.62.0",
+    "protobuf>=4.25.0",
+    "grpcio-tools>=1.62.0",
+    "peewee>=3.17.0",
+    "aiorpcx>=0.25.0",
+]
 eth = [{ include-group = "eth-based" }]
 grs = [
     { include-group = "btc-derived" },
@@ -111,6 +120,7 @@ daemons = [
     { include-group = "bch" },
     { include-group = "bnb" },
     { include-group = "btc" },
+    { include-group = "btclnd" },
     { include-group = "eth" },
     { include-group = "grs" },
     { include-group = "ltc" },

@@ -22,3 +22,4 @@ venv
 .venv
 .DS_Store
 .pyarmor/
+.regtest/

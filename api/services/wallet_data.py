@@ -56,7 +56,14 @@ class WalletDataService:
             coin = coin or await self.coin_service.get_coin(
                 wallet.currency, {"xpub": wallet.xpub, "contract": wallet.contract, **wallet.additional_xpub_data}
             )
-            symbol = await self.get_wallet_symbol(wallet, coin)
+            # For rate calculations, use the internal currency name (e.g. "BTCLND")
+            # not display_symbol (e.g. "BTC"). Rate rules are keyed by internal name
+            # (BTCLND_SATS, BTCLND_BTC). display_symbol is only for customer-facing
+            # payment method labels.
+            if self.get_coin_contract(coin):
+                symbol = await self.get_wallet_symbol(wallet, coin)
+            else:
+                symbol = wallet.currency
             if symbol.lower() == currency.lower():
                 return Decimal(1)
             rate = Decimal(1)
@@ -94,6 +101,6 @@ class WalletDataService:
         data = (
             await coin.server.readcontract(contract, "symbol")
             if (contract := self.get_coin_contract(coin))
-            else wallet.currency
+            else getattr(coin, "display_symbol", wallet.currency)
         )
         return await self.plugin_registry.apply_filters("get_wallet_symbol", data, wallet, coin)

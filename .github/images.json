@@ -5,6 +5,9 @@
     "bitcart-btc": {
         "dockerfile": "btc.Dockerfile"
     },
+    "bitcart-btclnd": {
+        "dockerfile": "btclnd.Dockerfile"
+    },
     "bitcart-bch": {
         "dockerfile": "bch.Dockerfile",
         "bases": "bch",
