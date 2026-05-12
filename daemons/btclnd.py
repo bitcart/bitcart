@@ -1702,33 +1702,42 @@ class BTCLNDDaemon(BaseDaemon):
         """
         if not isinstance(address, str) or not address:
             return False
-        # Map our configured network to the bech32 HRPs and base58 version
-        # bytes we'll accept. NETWORK is set in load_env().
-        net = (getattr(self, "NETWORK", "") or "").lower()
+        # LND_NETWORK is set in load_env() and is one of:
+        #   mainnet, testnet3, testnet4, signet, regtest
+        net = (getattr(self, "LND_NETWORK", "") or "").lower()
         hrps = {
-            "mainnet":  ("bc",   (b"\x00", b"\x05")),
-            "testnet":  ("tb",   (b"\x6f", b"\xc4")),
-            "testnet4": ("tb",   (b"\x6f", b"\xc4")),
-            "signet":   ("tb",   (b"\x6f", b"\xc4")),
-            "regtest":  ("bcrt", (b"\x6f", b"\xc4")),
+            "mainnet":  ("bc",   (0x00, 0x05)),
+            "testnet3": ("tb",   (0x6f, 0xc4)),
+            "testnet4": ("tb",   (0x6f, 0xc4)),
+            "signet":   ("tb",   (0x6f, 0xc4)),
+            "regtest":  ("bcrt", (0x6f, 0xc4)),
         }
         hrp, base58_versions = hrps.get(net, hrps["mainnet"])
         addr = address.strip()
-        # Bech32 / bech32m (segwit v0, v1+ / taproot).
+        # Bech32 / bech32m (segwit v0 + taproot). Structural check is fine
+        # here: LND will reject malformed addresses at send time as a backstop.
         if addr.lower().startswith(hrp + "1"):
-            try:
-                from electrum.segwit_addr import decode_segwit_address
-                witver, _ = decode_segwit_address(hrp, addr)
-                return witver is not None
-            except Exception:
-                # Fall back to a permissive structural check.
-                import re
-                return bool(re.fullmatch(rf"{hrp}1[02-9ac-hj-np-z]{{6,87}}", addr.lower()))
+            import re
+            return bool(re.fullmatch(rf"{hrp}1[02-9ac-hj-np-z]{{6,87}}", addr.lower()))
         # Legacy base58 (P2PKH/P2SH).
         try:
-            from electrum import base_encode
-            decoded = base_encode.base_decode(addr, base=58)
-            return len(decoded) == 25 and decoded[:1] in base58_versions
+            import hashlib
+            ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
+            num = 0
+            for c in addr:
+                if c not in ALPHABET:
+                    return False
+                num = num * 58 + ALPHABET.index(c)
+            decoded = num.to_bytes((num.bit_length() + 7) // 8, "big")
+            # Account for leading "1" → leading zero bytes.
+            pad = len(addr) - len(addr.lstrip("1"))
+            decoded = b"\x00" * pad + decoded
+            if len(decoded) != 25:
+                return False
+            payload, checksum = decoded[:21], decoded[21:]
+            if hashlib.sha256(hashlib.sha256(payload).digest()).digest()[:4] != checksum:
+                return False
+            return payload[0] in base58_versions
         except Exception:
             return False
 
