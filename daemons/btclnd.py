@@ -179,6 +179,12 @@ class BTCLNDDaemon(BaseDaemon):
         self.BASE_GRPC_PORT = self.env("BASE_GRPC_PORT", cast=int, default=PortManager.BASE_GRPC_PORT)
         self.BASE_REST_PORT = self.env("BASE_REST_PORT", cast=int, default=PortManager.BASE_REST_PORT)
         self.BASE_P2P_PORT = self.env("BASE_P2P_PORT", cast=int, default=PortManager.BASE_P2P_PORT)
+        # Host advertised in getlndinfo responses. Defaults to 127.0.0.1 for
+        # the common case where callers run on the docker host and the gRPC
+        # port range is published to localhost. Set to the daemon service
+        # name (e.g. "btclnd") when callers run as sidecars on the same
+        # docker network.
+        self.GRPC_PUBLIC_HOST = self.env("GRPC_PUBLIC_HOST", default="127.0.0.1")
         # LND binary path (empty = auto-detect/download)
         self.LND_BINARY_PATH = self.env("LND_BINARY", default="")
         # Extra arguments to pass to LND
@@ -1479,6 +1485,39 @@ class BTCLNDDaemon(BaseDaemon):
         if wallet not in self.wallets:
             raise Exception("Wallet not loaded")
         return self.wallets[wallet].seed
+
+    @rpc(requires_wallet=True)
+    def getlndinfo(self, wallet):
+        """Return LND gRPC connection info for this wallet.
+
+        Reads the wallet's tls.cert and admin.macaroon from disk and returns
+        them base64-encoded so callers in other containers (or on the host)
+        can connect directly to this wallet's LND gRPC interface.
+
+        Returns:
+            Dict with host, grpc_port, network, tls_cert (b64), macaroon (b64).
+        """
+        import base64
+
+        if wallet not in self.wallets:
+            raise Exception("Wallet not loaded")
+        inst = self.wallets[wallet]
+        proc = inst.process
+        with open(proc.tls_cert_path, "rb") as f:
+            tls_cert_b64 = base64.b64encode(f.read()).decode("ascii")
+        with open(proc.macaroon_path, "rb") as f:
+            macaroon_b64 = base64.b64encode(f.read()).decode("ascii")
+        # LND binds to 127.0.0.1 inside this container; the cert SANs include
+        # both 127.0.0.1 and localhost (see lnd_process.py --tlsextraip /
+        # --tlsextradomain). Override via BTCLND_GRPC_PUBLIC_HOST when callers
+        # reach the daemon over the docker network or a different address.
+        return {
+            "host": self.GRPC_PUBLIC_HOST,
+            "grpc_port": inst.grpc_port,
+            "network": self.LND_NETWORK,
+            "tls_cert": tls_cert_b64,
+            "macaroon": macaroon_b64,
+        }
 
     @rpc(requires_wallet=True)
     def get_updates(self, wallet):

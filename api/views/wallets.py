@@ -146,6 +146,21 @@ async def check_wallet_lightning(
         return False
 
 
+@router.get("/{model_id}/lndinfo")
+async def get_wallet_lnd_info(
+    wallet_service: FromDishka[WalletService],
+    model_id: str,
+    user: models.User = Security(utils.authorization.auth_dependency, scopes=[AuthScopes.WALLET_MANAGEMENT]),
+) -> Any:
+    try:
+        coin = await wallet_service.get_wallet_coin_by_id(model_id, user)
+        return await coin.server.getlndinfo()
+    except (BitcartBaseError, HTTPException) as e:
+        if isinstance(e, HTTPException) and e.status_code != 422:
+            raise
+        raise HTTPException(400, f"Failed to get LND info: {e}") from None
+
+
 @router.get("/{model_id}/channels")
 async def get_wallet_channels(
     wallet_service: FromDishka[WalletService],
