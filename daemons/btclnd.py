@@ -1774,11 +1774,13 @@ class BTCLNDDaemon(BaseDaemon):
             amount=amount_sat,
             sat_per_vbyte=sat_per_vbyte,
         )
-        # The payout flow calls payto(..., unsigned=True) and expects to pass
-        # the returned value directly to broadcast(). LND already broadcasts
-        # via SendCoins, so we return the txid as a plain string here; the
-        # subsequent broadcast() call recognizes it and no-ops.
-        if kwargs.get("unsigned"):
+        # The payout flow calls coin.pay_to(broadcast=False), which translates
+        # to server.payto(addtransaction=False). The Bitcart SDK also has an
+        # `unsigned=True` convention. Either signal means "return raw_tx for
+        # later broadcast" — but LND's SendCoins already broadcasts, so we
+        # return the txid as a plain string and the subsequent broadcast()
+        # call no-ops on the already-broadcast tx.
+        if kwargs.get("unsigned") or kwargs.get("addtransaction") is False:
             return txid
         return {"txid": txid}
 
