@@ -1689,6 +1689,49 @@ class BTCLNDDaemon(BaseDaemon):
                 return format_satoshis(abs(tx.total_fees))
         raise Exception("No such blockchain transaction")
 
+    @rpc(requires_wallet=False, requires_network=False)
+    async def validateaddress(self, address, wallet=None, **kwargs):
+        """Validate a Bitcoin on-chain address.
+
+        Bitcart's payout validator calls `coin.server.validateaddress(...)`
+        before accepting a payout destination; without this method,
+        PayoutService.validate raises ProcedureNotFoundError. We accept any
+        well-formed bech32 (segwit/taproot) or base58 (P2PKH/P2SH) address
+        for the currently-configured network; LND will reject malformed
+        addresses at send time anyway.
+        """
+        if not isinstance(address, str) or not address:
+            return False
+        # Map our configured network to the bech32 HRPs and base58 version
+        # bytes we'll accept. NETWORK is set in load_env().
+        net = (getattr(self, "NETWORK", "") or "").lower()
+        hrps = {
+            "mainnet":  ("bc",   (b"\x00", b"\x05")),
+            "testnet":  ("tb",   (b"\x6f", b"\xc4")),
+            "testnet4": ("tb",   (b"\x6f", b"\xc4")),
+            "signet":   ("tb",   (b"\x6f", b"\xc4")),
+            "regtest":  ("bcrt", (b"\x6f", b"\xc4")),
+        }
+        hrp, base58_versions = hrps.get(net, hrps["mainnet"])
+        addr = address.strip()
+        # Bech32 / bech32m (segwit v0, v1+ / taproot).
+        if addr.lower().startswith(hrp + "1"):
+            try:
+                from electrum.segwit_addr import decode_segwit_address
+                witver, _ = decode_segwit_address(hrp, addr)
+                return witver is not None
+            except Exception:
+                # Fall back to a permissive structural check.
+                import re
+                return bool(re.fullmatch(rf"{hrp}1[02-9ac-hj-np-z]{{6,87}}", addr.lower()))
+        # Legacy base58 (P2PKH/P2SH).
+        try:
+            from electrum import base_encode
+            decoded = base_encode.base_decode(addr, base=58)
+            return len(decoded) == 25 and decoded[:1] in base58_versions
+        except Exception:
+            return False
+
     @rpc(requires_wallet=True, requires_network=True)
     async def payto(self, destination, amount, fee=None, wallet=None, **kwargs):
         """Send Bitcoin on-chain or pay a lightning invoice.
