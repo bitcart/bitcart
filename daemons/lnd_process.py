@@ -22,6 +22,21 @@ logger = get_logger(__name__)
 
 LND_VERSION = "v0.20.1-beta"
 
+# True when bitcart-docker (or any other compose-based deploy) runs us
+# — the btclnd image sets `ENV IN_DOCKER=1` in btclnd.Dockerfile, and it
+# stays unset on manual / bare-metal deploys. Used below to switch a
+# couple of network-binding choices that have different security
+# profiles in containerized vs bare-metal contexts.
+_IN_DOCKER = os.environ.get("IN_DOCKER") == "1"
+
+# LND gRPC listen address. 0.0.0.0 inside docker (reachable by sibling
+# containers via the compose network, NOT internet-exposed because the
+# compose `ports:` line in compose/generated.yml forwards the gRPC port
+# range to 127.0.0.1 of the host); 127.0.0.1 on manual/bare-metal
+# installs (no compose firewall in front of LND, so 0.0.0.0 there would
+# actually publish the port to the wider internet).
+_RPC_LISTEN_HOST = "0.0.0.0" if _IN_DOCKER else "127.0.0.1"
+
 # GitHub release URL pattern for LND binaries
 LND_RELEASE_URL = (
     "https://github.com/lightningnetwork/lnd/releases/download/{version}/"
@@ -597,7 +612,7 @@ class LNDProcess:
             "--bitcoin.active",
             network_flag,
             "--bitcoin.node=neutrino",
-            f"--rpclisten=127.0.0.1:{self.grpc_port}",
+            f"--rpclisten={_RPC_LISTEN_HOST}:{self.grpc_port}",
             "--norest",
             f"--listen=0.0.0.0:{self.p2p_port}",
             f"--lnddir={self.data_dir}",
@@ -607,6 +622,11 @@ class LNDProcess:
             "--gc-canceled-invoices-on-the-fly",
             "--tlsextradomain=localhost",
             "--tlsextraip=127.0.0.1",
+            # Sibling-container gRPC clients dial us via the compose
+            # service name; sign the cert for that name so they don't
+            # need a runtime ssl_target_name_override. No-op outside
+            # docker — no cross-host gRPC happens there.
+            *(["--tlsextradomain=btclnd"] if _IN_DOCKER else []),
             # Neutrino performance: persist filters to avoid re-download on restart
             "--neutrino.persistfilters",
             # Database: compact on startup to prevent unbounded growth
