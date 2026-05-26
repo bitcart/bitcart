@@ -389,7 +389,46 @@ class Wallet:
             raise Exception("Out of bounds amount")
         timestamp = int(time.time())
         expiration = expiration or 0
+        # Account-model chains (ETH, TRX, XMR…) share a single receive address
+        # per wallet, so two pending requests with identical amounts cannot be
+        # told apart when an onchain payment lands. Bump the amount by the
+        # smallest representable unit per collision so the onchain matcher
+        # can disambiguate. Stablecoins on these chains (USDT-TRC20, USDC-ERC20)
+        # are the common case — pegged to USD they produce identical token
+        # amounts for identical USD invoices.
+        amount = self._disambiguate_pending_amount(address, amount)
         return await self.create_payment_request_object(address, amount, message, expiration, timestamp)
+
+    def _disambiguate_pending_amount(self, address, amount):
+        """Return ``amount`` bumped by ``10**-divisibility`` per existing
+        same-address same-amount pending request, so each pending request
+        has a unique on-chain amount target.
+
+        Capped at 99 iterations as a defensive guard — in normal operation
+        collisions are rare and 99 simultaneous identical-amount requests
+        would already indicate abuse or misconfiguration.
+        """
+        if amount <= Decimal(0):
+            return amount
+        min_unit = Decimal(1) / (Decimal(10) ** self.divisibility)
+        bumped = amount
+        for _ in range(99):
+            if not self._has_pending_request_with_amount(address, bumped):
+                return bumped
+            bumped += min_unit
+        # Pool exhausted; fall back to the original amount and let the
+        # caller observe the collision (preserves previous behaviour).
+        return amount
+
+    def _has_pending_request_with_amount(self, address, amount):
+        for req in self.receive_requests.values():
+            if (
+                getattr(req, "address", None) == address
+                and getattr(req, "amount", None) == amount
+                and getattr(req, "status", None) == PR_UNPAID
+            ):
+                return True
+        return False
 
     async def create_payment_request_object(self, address, amount, message, expiration, timestamp):
         return Invoice(
