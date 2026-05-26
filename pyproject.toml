@@ -99,6 +99,7 @@ ltc = [
     "scrypt>=0.6.0",
 ]
 matic = [{ include-group = "eth-based" }]
+sui = [{ include-group = "daemon-base" }]
 trx = [{ include-group = "eth-based" }, "async-lru", "httpx", "tronpy", "trontxsize"]
 xmr = [{ include-group = "daemon-base" }, "monero", "universalasync"]
 xrg = [
@@ -114,6 +115,7 @@ daemons = [
     { include-group = "grs" },
     { include-group = "ltc" },
     { include-group = "matic" },
+    { include-group = "sui" },
     { include-group = "trx" },
     { include-group = "xmr" },
     { include-group = "xrg" },
@@ -163,6 +165,7 @@ known_first_party = [
     "jsonrpc",
     "logger",
     "storage",
+    "sui",
     "utils",
 ]
 extend_exclude = ["backups", "scripts"]
@@ -178,6 +181,7 @@ non_dev_dependency_groups = [
     "ltc",
     "otel",
     "production",
+    "sui",
     "trx",
     "web",
     "xmr",
