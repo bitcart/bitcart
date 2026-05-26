@@ -3,9 +3,10 @@ from prometheus_client import Counter, Gauge, Histogram, Summary
 NAMESPACE = "bitcart"
 
 pending_creation_payment_methods_count = Gauge(
-    "bitcart_pending_creation_payment_methods_count",
+    "pending_creation_payment_methods_count",
     "Number of payment methods pending creation",
     labelnames=["currency", "contract", "store", "lightning"],
+    namespace=NAMESPACE,
     multiprocess_mode="livesum",
 )
 

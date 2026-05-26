@@ -2,8 +2,9 @@ import re
 import time
 from re import Pattern
 
+from starlette.datastructures import Headers
 from starlette.requests import Request
-from starlette.routing import BaseRoute, Match, Mount
+from starlette.routing import Match, Mount, Route
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from api.metrics import (
@@ -16,22 +17,19 @@ from api.metrics import (
 )
 
 
-def _get_route_name(scope: Scope, routes: list[BaseRoute]) -> str | None:
-    partial: str | None = None
+def _get_route_name(scope: Scope, routes: list[Route]) -> str | None:
     for route in routes:
         match, child_scope = route.matches(scope)
         if match == Match.FULL:
-            path: str | None = getattr(route, "path", None)
+            path = route.path
             merged = {**scope, **child_scope}
             if isinstance(route, Mount) and route.routes:
                 child = _get_route_name(merged, route.routes)
                 if child is None:
                     return None
-                path = (path or "") + child
+                path += child
             return path
-        if match == Match.PARTIAL and partial is None:
-            partial = getattr(route, "path", None)
-    return partial
+    return None
 
 
 def _resolve_handler(request: Request) -> str | None:
@@ -48,14 +46,8 @@ def _resolve_handler(request: Request) -> str | None:
     return route_name
 
 
-def _content_length(headers: list[tuple[bytes, bytes]]) -> int:
-    for name, value in headers:
-        if name.lower() == b"content-length":
-            try:
-                return int(value.decode("latin-1"))
-            except (ValueError, UnicodeDecodeError):
-                return 0
-    return 0
+def _content_length(headers: Headers) -> int:
+    return int(headers.get("content-length") or 0)
 
 
 class PrometheusMiddleware:
@@ -80,7 +72,7 @@ class PrometheusMiddleware:
         async def send_wrapper(message: Message) -> None:
             nonlocal status, response_headers
             if message["type"] == "http.response.start":
-                status = message["status"]
+                status = int(message["status"])
                 response_headers = message.get("headers", [])
             await send(message)
 
@@ -92,7 +84,7 @@ class PrometheusMiddleware:
             http_requests_inprogress.labels(method=method, handler=handler).dec()
             grouped_status = f"{str(status)[0]}xx"
             http_requests_total.labels(method=method, status=grouped_status, handler=handler).inc()
+            http_request_size_bytes.labels(handler=handler).observe(_content_length(request.headers))
+            http_response_size_bytes.labels(handler=handler).observe(_content_length(Headers(raw=response_headers)))
             http_request_duration_highr_seconds.observe(duration)
             http_request_duration_seconds.labels(method=method, handler=handler).observe(duration)
-            http_request_size_bytes.labels(handler=handler).observe(_content_length(scope.get("headers", [])))
-            http_response_size_bytes.labels(handler=handler).observe(_content_length(response_headers))
