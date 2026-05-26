@@ -5,29 +5,27 @@ import traceback
 from collections.abc import AsyncIterator, Awaitable, Callable
 from typing import Any
 
-import structlog
 from advanced_alchemy.exceptions import AdvancedAlchemyError, NotFoundError
 from dishka.integrations.taskiq import setup_dishka as taskiq_setup_dishka
 from fastapi import FastAPI, Request
 from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTextResponse
-from opentelemetry import trace
 from scalar_fastapi import get_scalar_api_reference
 from sqlalchemy.exc import IntegrityError
 from starlette.applications import Starlette
 from starlette.middleware.cors import CORSMiddleware
 from starlette.responses import Response
 from starlette.staticfiles import StaticFiles
-from starlette.types import ASGIApp, Receive, Scope, Send
+from starlette.types import Receive, Scope, Send
 
 from api.db import AsyncSession
 from api.ioc import build_container, setup_dishka
 from api.ioc.services import ServicesProvider
 from api.logging import configure as configure_logging
-from api.logging import generate_correlation_id, get_logger
+from api.logging import get_logger
+from api.middleware import LogCorrelationIdMiddleware, OnionHostMiddleware, PrometheusMiddleware
 from api.openapi import get_openapi_parameters, set_openapi_generator
 from api.sentry import configure_sentry
-from api.services.ext.tor import TorService
 from api.services.plugin_registry import PluginRegistry
 from api.settings import Settings
 from api.tasks import broker, client_tasks_broker
@@ -57,24 +55,6 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     with contextlib.suppress(asyncio.CancelledError):
         await broker_task
     await app.state.dishka_container.close()
-
-
-class LogCorrelationIdMiddleware:
-    def __init__(self, app: ASGIApp) -> None:
-        self.app = app
-
-    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        if scope["type"] != "http":
-            return await self.app(scope, receive, send)
-        correlation_id = generate_correlation_id()
-        with structlog.contextvars.bound_contextvars(
-            correlation_id=correlation_id,
-            method=scope["method"],
-            path=scope["path"],
-        ):
-            span = trace.get_current_span()
-            span.set_attribute("correlation_id", correlation_id)
-            await self.app(scope, receive, send)
 
 
 # TODO: remove when https://github.com/fastapi/fastapi/pull/11160 is merged
@@ -208,16 +188,7 @@ def get_app(settings: Settings) -> FastAPI:
             redoc_favicon_url="/favicon.ico",
         )
 
-    @app.middleware("http")
-    async def add_onion_host(request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
-        tor_service = await request.state.dishka_container.get(TorService)
-        response = await call_next(request)
-        host = request.headers.get("host", "").split(":")[0]
-        onion_host = await tor_service.get_data("onion_host", "")
-        if onion_host and not tor_service.is_onion(host):
-            response.headers["Onion-Location"] = onion_host + request.url.path
-        return response
-
+    app.add_middleware(OnionHostMiddleware)
     app.add_middleware(LogCorrelationIdMiddleware)
     app.add_middleware(
         CORSMiddleware,
@@ -239,7 +210,6 @@ def get_app(settings: Settings) -> FastAPI:
 def setup_prometheus(app: FastAPI, settings: Settings) -> None:
     if not settings.PROMETHEUS_METRICS_ENABLED:
         return
-    from api.metrics import PrometheusMiddleware
     from api.views import metrics
 
     app.add_middleware(PrometheusMiddleware)
