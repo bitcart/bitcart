@@ -46,7 +46,7 @@ web = [
     "scalar-fastapi>=1.4.0",
     "sentry-sdk[fastapi,sqlalchemy]",
     "sqlalchemy[asyncio]>=2.0.36",
-    "starlette>=0.52.1",
+    "starlette>=1.0.0",
     "structlog>=24.4.0",
     "taskiq>=0.11.18",
     "taskiq-redis>=1.1.0",
@@ -144,8 +144,8 @@ bitcart = "0 days"
 trontxsize = "0 days"
 universalasync = "0 days"
 tronpy = "0 days"
-# remove when 7 days passed since 5.0.0
-paramiko = "0 days"
+# remove when 7 days passed since 1.0.1
+starlette = "0 days"
 
 [tool.uv.audit]
 # ecdsa is not used in production, but we need to evaluate it's usage in electron-cash
@@ -301,7 +301,5 @@ filterwarnings = [
     "error::PendingDeprecationWarning",
     # https://github.com/MagicStack/uvloop/issues/703
     "ignore:.*asyncio.iscoroutinefunction.*:DeprecationWarning",
-    # dishka added the warning, but didn't fix it's own invocations
-    "ignore:`dishka.integrations.starlette` will be removed:DeprecationWarning:dishka.*",
 ]
 norecursedirs = ["tests/functional"]

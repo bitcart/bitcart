@@ -2,6 +2,7 @@ import re
 import time
 from re import Pattern
 
+from starlette.requests import Request
 from starlette.routing import BaseRoute, Match, Mount
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
@@ -16,6 +17,7 @@ from api.metrics import (
 
 
 def _get_route_name(scope: Scope, routes: list[BaseRoute]) -> str | None:
+    partial: str | None = None
     for route in routes:
         match, child_scope = route.matches(scope)
         if match == Match.FULL:
@@ -27,24 +29,19 @@ def _get_route_name(scope: Scope, routes: list[BaseRoute]) -> str | None:
                     return None
                 path = (path or "") + child
             return path
-    return None
+        if match == Match.PARTIAL and partial is None:
+            partial = getattr(route, "path", None)
+    return partial
 
 
-def _resolve_handler(scope: Scope) -> str | None:
-    app = scope.get("app")
-    router = getattr(app, "router", None)
-    if router is None:
-        return None
-    route_name = _get_route_name(scope, router.routes)
-    if route_name is None and getattr(router, "redirect_slashes", False) and scope.get("path") != "/":
-        redirect_scope = dict(scope)
-        original_path = scope["path"]
-        if original_path.endswith("/"):
-            redirect_scope["path"] = original_path[:-1]
-            trim = True
-        else:
-            redirect_scope["path"] = original_path + "/"
-            trim = False
+def _resolve_handler(request: Request) -> str | None:
+    router = request.app.router
+    route_name = _get_route_name(request.scope, router.routes)
+    if not route_name and router.redirect_slashes and request.url.path != "/":
+        path = request.url.path
+        trim = path.endswith("/")
+        new_path = path[:-1] if trim else path + "/"
+        redirect_scope = {**request.scope, "path": new_path}
         route_name = _get_route_name(redirect_scope, router.routes)
         if route_name is not None:
             route_name = route_name + "/" if trim else route_name[:-1]
@@ -71,11 +68,12 @@ class PrometheusMiddleware:
             return await self.app(scope, receive, send)
 
         start = time.perf_counter()
-        handler = _resolve_handler(scope)
+        request = Request(scope)
+        handler = _resolve_handler(request)
         if handler is None or any(p.search(handler) for p in self.excluded_handlers):
             return await self.app(scope, receive, send)
 
-        method = scope["method"]
+        method = request.method
         status = 500
         response_headers: list[tuple[bytes, bytes]] = []
 
