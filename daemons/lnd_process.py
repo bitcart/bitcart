@@ -653,10 +653,17 @@ class LNDProcess:
             # With Tor onion, also enable NAT traversal so LND advertises
             # both the .onion and a clearnet address
             cmd.append("--nat")
-        # Add neutrino peers
+        # Add neutrino peers as ADDITIONAL persistent peers, not exclusive
+        # ones. --neutrino.connect puts neutrino in connect-only mode: it
+        # talks ONLY to the listed peers and disables DNS-seed peer
+        # discovery entirely. With the (stale) default bootstrap peers that
+        # meant a single dead host could wedge sync at the genesis block
+        # forever. --neutrino.addpeer keeps these as persistent hints while
+        # still discovering live peers via DNS seeds, so a dead hint is
+        # harmless instead of fatal.
         for peer in self.neutrino_peers:
             if peer.strip():
-                cmd.append(f"--neutrino.connect={peer.strip()}")
+                cmd.append(f"--neutrino.addpeer={peer.strip()}")
         # Debug level
         if self.debug:
             cmd.append("--debuglevel=debug")
