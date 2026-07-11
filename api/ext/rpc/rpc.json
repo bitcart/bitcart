@@ -14,5 +14,9 @@
     "matic": {
         "mainnet": "https://polygon-rpc.com",
         "testnet": "https://matic-mumbai.chainstacklabs.com"
+    },
+    "arbeth": {
+        "mainnet": "https://arb1.arbitrum.io/rpc",
+        "testnet": "https://sepolia-rollup.arbitrum.io/rpc"
     }
 }

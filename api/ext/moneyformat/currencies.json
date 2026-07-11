@@ -299,6 +299,11 @@
         "divisibility": 8,
         "crypto": true
     },
+    "ARBETH": {
+        "name": "Ethereum (Arbitrum)",
+        "divisibility": 8,
+        "crypto": true
+    },
     "BNB": {
         "name": "Binance Coin",
         "divisibility": 8,
