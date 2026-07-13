@@ -521,11 +521,18 @@ class BTCLNDDaemon(BaseDaemon):
             tor_process=tor_proc,
             uris=list(info.uris) if info else [],
         )
+        # Register wallet before starting the monitor so the recovery hook can
+        # always find this instance if LND crashes immediately after launch.
+        self.wallets[wallet_key] = wallet_inst
+        # Recovery hook: if LND crashes and its monitor restarts it, the wallet
+        # comes back LOCKED, so re-unlock it and rebuild the RPC client.
+        lnd_proc.on_restart = functools.partial(
+            self._recover_lnd_after_restart, wallet_key
+        )
         # Start process monitor and event subscriptions
         lnd_proc.start_monitor()
         self._start_event_subscriptions(wallet_inst)
-        # Register wallet
-        self.wallets[wallet_key] = wallet_inst
+        # Wallet already registered above (before the monitor started)
         self.wallets_updates[wallet_key] = deque(maxlen=self.POLLING_CAP)
         # Restore persisted request_addresses for on-chain payment tracking
         wallet_inst.request_addresses = self._load_request_addresses(wallet_key)
@@ -623,6 +630,69 @@ class BTCLNDDaemon(BaseDaemon):
         logger.error(f"Wallet {wallet_key}: exhausted {max_retries} unlock/init retries")
         await lnd_proc.stop()
         raise Exception("LND wallet unlock/init timed out - RPC services never became available")
+
+    async def _recover_lnd_after_restart(
+        self, wallet_key: str, max_retries: int = 15, retry_delay: float = 2.0
+    ):
+        """Re-unlock and reconnect a wallet's LND after an unexpected restart.
+
+        LNDProcess._monitor relaunches LND in place after a crash, but a fresh
+        LND always comes back up with its wallet LOCKED. This hook — invoked by
+        the monitor once the restarted process is accepting connections —
+        unlocks the wallet again with the stored password and rebuilds the gRPC
+        client, so the wallet's existing subscription/poller tasks (which retry
+        on their own) resume instead of exhausting their retries and dying.
+
+        Unlike _unlock_or_init_with_retry, a failure here never stops the LND
+        process: this runs inside the monitor task, so tearing the process down
+        (which cancels that very task) would be self-defeating. On failure it
+        logs and returns, leaving the process up for the next crash/restart
+        cycle and for the subscription tasks' own retry loops.
+        """
+        wallet_inst = self.wallets.get(wallet_key)
+        if wallet_inst is None:
+            return
+        client = wallet_inst.grpc_client
+        lnd_proc = wallet_inst.process
+        logger.warning(f"LND for wallet {wallet_key} restarted; re-unlocking wallet")
+        await client.connect_unlocker()
+        unlocked = False
+        for _attempt in range(max_retries):
+            try:
+                await client.unlock_wallet(self.LND_WALLET_PASSWORD)
+                unlocked = True
+                break
+            except grpc.aio.AioRpcError as e:
+                error_detail = (e.details() or "").lower()
+                if "wallet already unlocked" in error_detail:
+                    unlocked = True
+                    break
+                # WalletUnlocker may not be ready the instant the port opens.
+                if "waiting to start" in error_detail or "rpc services not available" in error_detail:
+                    await asyncio.sleep(retry_delay)
+                    try:
+                        await client.connect_unlocker()
+                    except Exception:
+                        pass
+                    continue
+                logger.error(
+                    f"Re-unlock of wallet {wallet_key} after restart failed: "
+                    f"code={e.code()}, details={e.details()}"
+                )
+                return
+        if not unlocked:
+            logger.error(f"Wallet {wallet_key}: exhausted re-unlock retries after LND restart")
+            return
+        # Wallet is unlocked again — rebuild the authenticated client so the
+        # existing event tasks pick up the fresh stubs on their next retry.
+        await self._wait_for_macaroon(lnd_proc, timeout=60)
+        await client.close()
+        await client.connect()
+        info = await self._wait_for_getinfo(client, timeout=60)
+        if info is not None:
+            wallet_inst.identity_pubkey = info.identity_pubkey
+            wallet_inst.synced_to_chain = info.synced_to_chain
+        logger.info(f"Wallet {wallet_key} re-unlocked and reconnected after LND restart")
 
     async def _wait_for_macaroon(self, lnd_proc: LNDProcess, timeout: int = 60):
         """Wait for the admin macaroon file to appear after wallet init."""
