@@ -554,6 +554,10 @@ class LNDProcess:
 
     MAX_RESTARTS = 5
     RESTART_BACKOFF_BASE = 2  # seconds, doubles each restart
+    # A crash after the process stayed up at least this long is treated as a
+    # fresh incident: the restart budget is forgiven once recovery succeeds.
+    # A rapid crash-loop keeps accumulating and still hits MAX_RESTARTS.
+    HEALTHY_UPTIME_SECS = 120
 
     def __init__(
         self,
@@ -584,6 +588,16 @@ class LNDProcess:
         self.restart_count = 0
         self._monitor_task: asyncio.Task | None = None
         self._should_run = False
+        # Optional async recovery hook set by the owning manager. _monitor
+        # calls it after an unexpected-crash restart, once the fresh LND
+        # process is accepting connections again, so the manager can re-unlock
+        # the wallet (LND always restarts LOCKED) and rebuild its RPC client.
+        # Signature: `async def hook() -> None`. When None, restart behaviour
+        # is unchanged.
+        self.on_restart = None
+        # Monotonic timestamp of the most recent start(), used to distinguish a
+        # healthy-then-crashed run from a rapid crash-loop.
+        self._started_at = 0.0
         # Circular buffer of recent log lines for the status UI
         from collections import deque
 
@@ -713,6 +727,7 @@ class LNDProcess:
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
+        self._started_at = asyncio.get_running_loop().time()
         # Start background log reader tasks
         asyncio.create_task(self._read_output(self.process.stdout, "stdout"))
         asyncio.create_task(self._read_output(self.process.stderr, "stderr"))
@@ -813,14 +828,22 @@ class LNDProcess:
         """Monitor the LND process and restart on unexpected exit.
 
         Uses exponential backoff between restart attempts, up to MAX_RESTARTS.
+        After each restart the wallet is re-unlocked via the on_restart hook,
+        because a freshly started LND always comes back up with its wallet
+        LOCKED — without re-unlocking, every subsequent RPC fails with
+        "wallet locked" until the daemon is manually restarted.
         """
         while self._should_run:
             if self.process is None:
                 await asyncio.sleep(1)
                 continue
+            started_at = self._started_at
             returncode = await self.process.wait()
             if not self._should_run:
                 break  # intentional shutdown
+            # How long the crashed process stayed up, used below to decide
+            # whether to forgive the restart budget.
+            uptime = asyncio.get_running_loop().time() - started_at
             if self.restart_count >= self.MAX_RESTARTS:
                 logger.critical(
                     f"LND crashed {self.restart_count} times, giving up. "
@@ -834,5 +857,27 @@ class LNDProcess:
                 f"restarting in {backoff}s (attempt {self.restart_count}/{self.MAX_RESTARTS})"
             )
             await asyncio.sleep(backoff)
-            if self._should_run:
-                await self.start()
+            if not self._should_run:
+                break
+            await self.start()
+            # A restarted LND comes back up LOCKED. Hand off to the manager's
+            # recovery hook to re-unlock the wallet and rebuild the RPC client
+            # once the new process is accepting connections.
+            if self.on_restart is not None:
+                if not await self.wait_for_ready():
+                    logger.error(
+                        "Restarted LND did not become ready; leaving it to the "
+                        "next crash/restart cycle"
+                    )
+                    continue
+                try:
+                    await self.on_restart()
+                except Exception:
+                    logger.exception("LND post-restart recovery hook failed")
+                else:
+                    # Recovery succeeded. If the previous run had been healthy
+                    # for a while, this looks like an isolated crash rather than
+                    # a loop, so forgive the restart budget and give future,
+                    # unrelated crashes a fresh set of attempts.
+                    if uptime >= self.HEALTHY_UPTIME_SECS:
+                        self.restart_count = 0
