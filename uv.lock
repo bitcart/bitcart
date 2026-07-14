@@ -516,6 +516,15 @@ dependencies = [
 ]
 
 [package.dev-dependencies]
+arbeth = [
+    { name = "aiohttp" },
+    { name = "aiolimiter" },
+    { name = "eth-account" },
+    { name = "eth-keys" },
+    { name = "hexbytes" },
+    { name = "mnemonic" },
+    { name = "web3" },
+]
 bch = [
     { name = "aiohttp" },
     { name = "electron-cash" },
@@ -769,6 +778,15 @@ requires-dist = [
 ]
 
 [package.metadata.requires-dev]
+arbeth = [
+    { name = "aiohttp", specifier = "<4.0" },
+    { name = "aiolimiter" },
+    { name = "eth-account" },
+    { name = "eth-keys" },
+    { name = "hexbytes" },
+    { name = "mnemonic" },
+    { name = "web3", specifier = ">=7,<8" },
+]
 bch = [
     { name = "aiohttp", specifier = "<4.0" },
     { name = "electron-cash", url = "https://github.com/Electron-Cash/Electron-Cash/archive/492f050ebe87d58faf57bee131912b6c0d049820.zip" },
