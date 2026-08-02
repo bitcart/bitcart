@@ -168,7 +168,9 @@ class TRXFeatures(BlockchainFeatures):
                 except Exception:
                     return
                 args = decoded["args"]
-                divisibility = daemon_ctx.get().DECIMALS_CACHE[contract_address]
+                divisibility = getattr(contract, "divisibility", None)
+                if divisibility is None:
+                    continue
                 txes.append(
                     Transaction(
                         full_data["txID"],
@@ -270,7 +272,6 @@ class TRXDaemon(ETHDaemon):
     def __init__(self):
         super().__init__()
         self.CONTRACTS_CACHE = weakref.WeakValueDictionary()
-        self.DECIMALS_CACHE = {}
 
     async def create_coin(self, archive=False):
         server_list = self.SERVER[:]
@@ -300,7 +301,7 @@ class TRXDaemon(ETHDaemon):
             value = self.CONTRACTS_CACHE.get(contract)
             if value is None:
                 value = await self.coin.web3.get_contract(contract)
-                self.DECIMALS_CACHE[contract] = await value.functions.decimals()
+                value.divisibility = await value.functions.decimals()
                 self.CONTRACTS_CACHE[contract] = value
 
             return value
