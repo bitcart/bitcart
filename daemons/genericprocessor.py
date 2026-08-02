@@ -930,6 +930,7 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
             if not self.addresses[address]:
                 self.addresses.pop(address, None)
             self.wallets.pop(key, None)
+            self.wallet_locks.pop(key, None)
             return True
         finally:
             if not locked:
