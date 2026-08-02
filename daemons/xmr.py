@@ -109,7 +109,6 @@ class MoneroRPC(RPCProvider):
                     height=None if tx["in_pool"] else tx["block_height"],
                     timestamp=datetime.fromtimestamp(tx["block_timestamp"]) if "block_timestamp" in tx else None,
                     output_indices=tx.get("output_indices", None),
-                    blob=binascii.unhexlify(tx["as_hex"]) or None,
                     json=as_json,
                 )
             )
@@ -369,6 +368,7 @@ class XMRDaemon(BlockProcessorDaemon):
         super().__init__()
         self.network_const = self.NETWORK_MAPPING.get(self.NET.lower())
         self.mempool_cache = {}
+        self._offline_wallets = {}
         if not self.network_const:
             raise ValueError(
                 f"Invalid network passed: {self.NET}. Valid choices are {', '.join(self.NETWORK_MAPPING.keys())}."
@@ -387,7 +387,6 @@ class XMRDaemon(BlockProcessorDaemon):
             height=None,
             timestamp=None,
             output_indices=None,
-            blob=binascii.unhexlify(tx["tx_blob"]) or None,
             json=as_json,
         )
 
@@ -396,6 +395,10 @@ class XMRDaemon(BlockProcessorDaemon):
             try:
                 mempool = await self.coin.rpc.get_mempool()
                 new_cache = {}
+                # Clean up offline wallet cache for addresses no longer tracked
+                stale = set(self._offline_wallets) - set(self.addresses)
+                for addr in stale:
+                    del self._offline_wallets[addr]
                 for tx_data in mempool:
                     try:
                         txes = await self.coin.parse_transactions(self.create_mempool_tx(tx_data))
@@ -469,6 +472,13 @@ class XMRDaemon(BlockProcessorDaemon):
             payment_id[i] ^= shared_secret[i]
         return address_func(address).with_payment_id(binascii.hexlify(payment_id).decode())
 
+    def _get_offline_wallet(self, address, view_key):
+        w = self._offline_wallets.get(address)
+        if w is None or w._backend._svk != view_key:
+            w = MoneroWallet(OfflineWallet(address, view_key=view_key))
+            self._offline_wallets[address] = w
+        return w
+
     async def process_transaction(self, tx, unconfirmed=False):
         if tx.divisibility is None:
             tx.divisibility = self.DIVISIBILITY
@@ -481,12 +491,7 @@ class XMRDaemon(BlockProcessorDaemon):
                 first_wallet = self.wallets[next(iter(self.addresses[address]))]
             except StopIteration:
                 continue
-            w = MoneroWallet(
-                OfflineWallet(
-                    address,
-                    view_key=first_wallet.keystore.public_key,
-                )
-            )
+            w = self._get_offline_wallet(address, first_wallet.keystore.public_key)
             try:
                 for output in tx.monero_tx.outputs(wallet=w):
                     if output.payment is not None:
