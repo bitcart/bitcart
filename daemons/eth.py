@@ -523,6 +523,19 @@ class ETHDaemon(BlockProcessorDaemon):
     def get_default_server_url(self):
         return HTTPSessionManager.get_default_http_endpoint()
 
+    def _post_close_wallet(self, key):
+        self._cleanup_contracts()
+
+    def _cleanup_contracts(self):
+        used_contracts = {getattr(w, "contract", None) for w in self.wallets.values()}
+        stale = [c for c in self.contracts if self.contracts[c] not in used_contracts]
+        for c in stale:
+            del self.contracts[c]
+        for cache in self.contract_cache.values():
+            stale_keys = [k for k in cache if k not in self.contracts]
+            for k in stale_keys:
+                del cache[k]
+
     async def add_contract(self, contract, wallet):
         if not contract:
             return
