@@ -416,7 +416,7 @@ class ETHDaemon(BlockProcessorDaemon):
     async def on_startup(self, app):
         await self.maybe_update_seed_server(start_new=False)
         self.trace_available = False
-        self.trace_queue = asyncio.Queue()
+        self.trace_queue = asyncio.Queue(maxsize=self.ARCHIVE_CONCURRENCY * self.ARCHIVE_RATE_LIMIT)
         await self.create_coin(archive=True)
         with contextlib.suppress(Exception):
             await self.archive_coin.debug_trace_block(1)
