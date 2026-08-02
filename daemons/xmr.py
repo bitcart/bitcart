@@ -109,7 +109,6 @@ class MoneroRPC(RPCProvider):
                     height=None if tx["in_pool"] else tx["block_height"],
                     timestamp=datetime.fromtimestamp(tx["block_timestamp"]) if "block_timestamp" in tx else None,
                     output_indices=tx.get("output_indices", None),
-                    blob=binascii.unhexlify(tx["as_hex"]) or None,
                     json=as_json,
                 )
             )
@@ -387,7 +386,6 @@ class XMRDaemon(BlockProcessorDaemon):
             height=None,
             timestamp=None,
             output_indices=None,
-            blob=binascii.unhexlify(tx["tx_blob"]) or None,
             json=as_json,
         )
 
