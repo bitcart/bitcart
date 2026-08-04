@@ -88,10 +88,10 @@ class TokenService(CRUDService[models.Token]):
         return await self.create_token_normal(token_scheme)
 
     async def create_token_totp_auth(self, auth_data: TOTPAuth) -> dict[str, Any]:
-        token_data = await self.redis_pool.get(f"{TFA_REDIS_KEY}:{auth_data.token}")
-        if token_data is None:
+        raw_data = await self.redis_pool.get(f"{TFA_REDIS_KEY}:{auth_data.token}")
+        if raw_data is None:
             raise HTTPException(422, "Invalid token")
-        token_data = CreateDBToken(**json.loads(token_data))
+        token_data = CreateDBToken(**json.loads(raw_data))
         user = await self.user_repository.get_one_or_none(id=token_data.user_id)
         if not user:  # pragma: no cover
             raise HTTPException(422, "Invalid token")
@@ -160,10 +160,10 @@ class TokenService(CRUDService[models.Token]):
         await self.repository.delete_where(models.Token.user_id == user.id)
 
     async def create_token_fido2_begin(self, auth_data: FIDO2Auth) -> dict[str, Any]:  # pragma: no
-        token_data = await self.redis_pool.get(f"{TFA_REDIS_KEY}:{auth_data.token}")
-        if token_data is None:
+        raw_data = await self.redis_pool.get(f"{TFA_REDIS_KEY}:{auth_data.token}")
+        if raw_data is None:
             raise HTTPException(422, "Invalid token")
-        token_data = CreateDBToken(**json.loads(token_data))
+        token_data = CreateDBToken(**json.loads(raw_data))
         user = await self.user_repository.get_one_or_none(id=token_data.user_id)
         if not user:
             raise HTTPException(422, "Invalid token")
@@ -179,10 +179,10 @@ class TokenService(CRUDService[models.Token]):
         if "token" not in data or "auth_host" not in data:
             raise HTTPException(422, "Missing name")
         auth_host = data["auth_host"]
-        token_data = await self.redis_pool.get(f"{TFA_REDIS_KEY}:{data['token']}")
-        if token_data is None:
+        raw_data = await self.redis_pool.get(f"{TFA_REDIS_KEY}:{data['token']}")
+        if raw_data is None:
             raise HTTPException(422, "Invalid token")
-        token_data = CreateDBToken(**json.loads(token_data))
+        token_data = CreateDBToken(**json.loads(raw_data))
         user = await self.user_repository.get_one_or_none(id=token_data.user_id)
         if not user:
             raise HTTPException(422, "Invalid token")

@@ -24,6 +24,9 @@ async def create_redis(settings: Settings) -> AsyncIterator[Redis]:
         decode_responses=True,
         retry_on_error=REDIS_RETRY_ON_ERRROR,
         retry=REDIS_RETRY,
+        # TODO: re-check if those 2 are necessary
+        socket_timeout=None,
+        socket_connect_timeout=None,
     )
     yield redis
     await redis.close()

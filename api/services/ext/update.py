@@ -174,10 +174,10 @@ class UpdateCheckService:
                 return
             if latest_tag and utils.common.versiontuple(latest_tag) > utils.common.versiontuple(VERSION):
                 logger.info(f"New update available: {latest_tag}")
-                await cast(Awaitable[int], self.redis_pool.hset(REDIS_KEY, "new_update_tag", latest_tag))
+                await self.redis_pool.hset(REDIS_KEY, "new_update_tag", latest_tag)
             else:
                 logger.info("No updates found")
-                await cast(Awaitable[int], self.redis_pool.hdel(REDIS_KEY, "new_update_tag"))  # clean after previous checks
+                await self.redis_pool.hdel(REDIS_KEY, "new_update_tag")  # clean after previous checks
 
     async def start(self) -> None:
         asyncio.create_task(self.refresh())

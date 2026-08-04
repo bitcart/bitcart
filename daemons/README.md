@@ -34,20 +34,21 @@ Note: to specify which electrum module to use, and if you need to customize some
 ```python
 import customelectrum
 
+
 class MyDaemon(BTCDaemon):
-  electrum = customdaemon
-  NETWORK_MAPPING = {"mainnet": electrum.networks.set_mainnet}
+    electrum = customdaemon
+    NETWORK_MAPPING = {"mainnet": electrum.networks.set_mainnet}
 ```
 
 It would make all daemons dependent on your coin's daemon also require your `customelectrum` module to be installed. Instead do:
 
 ```python
 class MyDaemon(BTCDaemon):
-  def load_electrum(self):
-    import customelectrum
+    def load_electrum(self):
+        import customelectrum
 
-    self.electrum = customelectrum
-    self.NETWORK_MAPPING = {"mainnet": self.electrum.networks.set_mainnet}
+        self.electrum = customelectrum
+        self.NETWORK_MAPPING = {"mainnet": self.electrum.networks.set_mainnet}
 ```
 
 It would import the `customelectrum` module only on startup
@@ -59,7 +60,7 @@ It would import the `customelectrum` module only on startup
 ```python
 class CustomDaemon(BTCDaemon):
     name = "COIN"
-    DEFAULT_PORT = 5000 # assigned in order of addition
+    DEFAULT_PORT = 5000  # assigned in order of addition
     electrum = custom_electrum
 ```
 

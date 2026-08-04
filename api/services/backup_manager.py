@@ -2,7 +2,7 @@ import asyncio
 import contextlib
 import os
 import time
-from typing import Any
+from typing import Any, cast
 
 import aiofiles
 from dishka import AsyncContainer, Scope
@@ -140,7 +140,7 @@ class BackupManager:
 
     async def download_backup(self, file_id: str) -> FileResponse:
         if self.settings.DOCKER_ENV:  # pragma: no cover
-            filename = await self.redis_pool.getdel(f"backups:{file_id}")
+            filename = cast(str, await self.redis_pool.getdel(f"backups:{file_id}"))
             if filename:
                 headers = {"Content-Disposition": f"attachment; filename={os.path.basename(filename)}"}
                 return FileResponse(os.path.join(self.settings.BACKUPS_DIR, filename), headers=headers)

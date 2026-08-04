@@ -19,6 +19,7 @@ For imports, in most cases prefer the long form to maintain readability:
 
 ```python
 import functools
+
 functools.partial(...)
 ```
 
@@ -26,6 +27,7 @@ Over the short form:
 
 ```python
 from functools import partial
+
 partial(...)
 ```
 

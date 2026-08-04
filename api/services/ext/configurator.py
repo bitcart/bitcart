@@ -208,7 +208,7 @@ class ConfiguratorService:
             return False, str(e)
 
     async def set_task(self, task_id: str, data: dict[str, Any]) -> None:
-        await cast(Awaitable[int], self.redis_pool.hset(REDIS_KEY, mapping={task_id: json.dumps(data)}))
+        await self.redis_pool.hset(REDIS_KEY, mapping={task_id: json.dumps(data)})
 
     async def create_new_task(self, script: str, ssh_settings: SSHSettings, is_manual: bool) -> dict[str, Any]:
         deploy_id = utils.common.unique_id()
@@ -286,7 +286,7 @@ class ConfiguratorService:
                         value["output"] = "No output available. Current instance has been restarted"
                         await self.set_task(key, value)
             if to_delete:
-                await cast(Awaitable[int], self.redis_pool.hdel(REDIS_KEY, *to_delete))
+                await self.redis_pool.hdel(REDIS_KEY, *to_delete)
 
     async def start(self) -> None:
         asyncio.create_task(self.refresh_pending_deployments())

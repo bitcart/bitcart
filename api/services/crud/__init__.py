@@ -6,7 +6,7 @@ from typing import Any, cast, overload
 from advanced_alchemy.base import ModelProtocol
 from advanced_alchemy.filters import StatementFilter, StatementTypeT
 from advanced_alchemy.repository import LoadSpec
-from advanced_alchemy.service.typing import ModelDictT
+from advanced_alchemy.utils.serialization import ModelDictT
 from dishka import AsyncContainer
 from fastapi import HTTPException, Request
 from fastapi.responses import JSONResponse
@@ -151,7 +151,7 @@ class CRUDService[ModelType: ModelProtocol]:
         filter_list = list(filters)
         self._add_user_filter(filter_list, user)
         try:
-            results, count = await self.repository.list_and_count(
+            results, count = await self.repository.get_many_and_count(
                 *filter_list,
                 statement=statement,
                 **kwargs,
@@ -460,7 +460,7 @@ class CRUDService[ModelType: ModelProtocol]:
             filters = [repository.model_type.id.in_(field_ids)]
             if "user_id" in data:
                 filters.append(repository.model_type.user_id == data["user_id"])
-            data[field_key] = await repository.list(*filters)
+            data[field_key] = await repository.get_many(*filters)
             if len(data[field_key]) != len(field_ids):
                 raise unauthorized_access_exception()
 

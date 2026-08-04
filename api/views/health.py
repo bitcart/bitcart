@@ -1,5 +1,4 @@
-from collections.abc import Awaitable
-from typing import Any, cast
+from typing import Any
 
 from dishka import FromDishka
 from dishka.integrations.fastapi import DishkaRoute
@@ -30,7 +29,7 @@ async def ready(db: FromDishka[AsyncEngine], redis: FromDishka[Redis], coin_serv
             content={"status": "degraded", "detail": "database unreachable"},
         )
     try:
-        await cast(Awaitable[bool], redis.ping())
+        await redis.ping()
     except Exception:
         return JSONResponse(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,

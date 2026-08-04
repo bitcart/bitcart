@@ -1,10 +1,12 @@
 import re
 import time
+from collections.abc import Sequence
 from re import Pattern
 
+from fastapi.routing import RouteContext, iter_route_contexts
 from starlette.datastructures import Headers
 from starlette.requests import Request
-from starlette.routing import Match, Mount, Route
+from starlette.routing import BaseRoute, Match, Mount
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from api.metrics import (
@@ -17,18 +19,19 @@ from api.metrics import (
 )
 
 
-def _get_route_name(scope: Scope, routes: list[Route]) -> str | None:
-    for route in routes:
+def _get_route_name(scope: Scope, routes: Sequence[BaseRoute | RouteContext]) -> str | None:
+    for route in iter_route_contexts(routes):
         match, child_scope = route.matches(scope)
-        if match == Match.FULL:
-            path = route.path
-            merged = {**scope, **child_scope}
-            if isinstance(route, Mount) and route.routes:
-                child = _get_route_name(merged, route.routes)
-                if child is None:
-                    return None
-                path += child
-            return path
+        if match != Match.FULL:
+            continue
+        path = route.path or ""
+        original_route = route.original_route
+        if isinstance(original_route, Mount) and original_route.routes:
+            child = _get_route_name({**scope, **child_scope}, original_route.routes)
+            if child is None:
+                return None
+            path += child
+        return path
     return None
 
 

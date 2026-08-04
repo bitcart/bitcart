@@ -45,16 +45,13 @@ class TorService:
         onion_host = ""
         if onion_host_info:
             onion_host = onion_host_info["hostname"] or ""
-        await cast(
-            Awaitable[int],
-            self.redis_pool.hset(
-                REDIS_KEY,
-                mapping={
-                    "onion_host": onion_host,
-                    "services_dict": json.dumps(services_dict),
-                    "anonymous_services_dict": json.dumps(anonymous_services_dict),
-                },
-            ),
+        await self.redis_pool.hset(
+            REDIS_KEY,
+            mapping={
+                "onion_host": onion_host,
+                "services_dict": json.dumps(services_dict),
+                "anonymous_services_dict": json.dumps(anonymous_services_dict),
+            },
         )
 
     async def get_data(self, key: str, default: Any = None, json_decode: bool = False) -> Any:
