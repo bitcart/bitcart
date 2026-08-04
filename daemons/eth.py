@@ -759,15 +759,24 @@ class ETHDaemon(BlockProcessorDaemon):
             raise Exception(f"Invalid arguments for {function} function") from e
         return exec_function
 
+    def _get_contract_cache_key(self, address):
+        if isinstance(address, self.CONTRACT_TYPE):
+            return address.address
+        try:
+            return self.coin.normalize_address(address)
+        except Exception:
+            return address
+
     @rpc(requires_network=True)
     async def readcontract(self, address, function, *args, **kwargs):
         cacheable_function = function in ("decimals", "symbol")
-        if cacheable_function and (value := self.contract_cache[function].get(address)) is not None:
+        cache_key = self._get_contract_cache_key(address) if cacheable_function else None
+        if cacheable_function and (value := self.contract_cache[function].get(cache_key)) is not None:
             return value
         exec_function = await self.load_contract_exec_function(address, function, *args, **kwargs)
         result = await exec_function.call()
         if cacheable_function:
-            self.contract_cache[function][address] = result
+            self.contract_cache[function][cache_key] = result
         return result
 
     @rpc(requires_wallet=True)
