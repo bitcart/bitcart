@@ -2,7 +2,7 @@ import re
 from collections import defaultdict
 from typing import Any
 
-from jinja2 import TemplateError
+from jinja2 import TemplateError, Undefined
 from jinja2.sandbox import SandboxedEnvironment
 
 from api.exceptions import TemplateLoadError
@@ -15,10 +15,10 @@ TG_MD_V1_RE = re.compile(r"[_*`\[]")
 logger = get_logger(__name__)
 
 
-def format_decimal(obj: Any, key: str, **kwargs: Any) -> Any:  # pragma: no cover
-    if not hasattr(obj, key):
+def format_decimal(obj: Any, key: str, **kwargs: Any) -> Any:
+    value = sandbox.getattr(obj, key)
+    if isinstance(value, Undefined):
         return ""
-    value = getattr(obj, key)
     if not hasattr(obj, "currency"):
         return value
     return currency_table.normalize(obj.currency, value)

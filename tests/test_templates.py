@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 import pytest
 
 from api import exceptions, templates
@@ -5,6 +7,11 @@ from api import exceptions, templates
 
 class DummyInvoice:
     buyer_email = "test@test.com"
+
+
+class DummyPricedInvoice:
+    currency = "USD"
+    price = Decimal("10.5")
 
 
 def test_default_template_render(notification_template: str) -> None:
@@ -33,3 +40,21 @@ def test_add_template() -> None:
     template = templates.Template("product")
     manager.add_template(template)
     assert manager.templates["product"] == template
+
+
+def test_format_decimal_legitimate_field() -> None:
+    template = templates.Template("test", '{{ invoice | format_decimal("price") }}')
+    assert template.render(invoice=DummyPricedInvoice()) == "10.50"
+
+
+def test_format_decimal_attribute_isolation() -> None:
+    template = templates.Template("test", '{{ namespace() | format_decimal("__class__") }}')
+    assert template.render() == ""
+
+    chained = (
+        '{% set a = namespace() | format_decimal("__class__") %}'
+        '{% set b = a | format_decimal("__init__") %}'
+        '{% set c = b | format_decimal("__globals__") %}'
+        "{{ c }}"
+    )
+    assert templates.Template("test", chained).render() == ""
