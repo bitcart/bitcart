@@ -18,6 +18,7 @@ env/
 htmlcov/
 modules/*
 !modules/__init__.py
+openapi.json
 venv
 .venv
 .DS_Store
