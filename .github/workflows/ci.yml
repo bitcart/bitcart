@@ -31,6 +31,7 @@ jobs:
 
   openapi:
     name: openapi
+    needs: [lint, zizmor]
     runs-on: ubuntu-latest
 
     steps:
@@ -42,10 +43,9 @@ jobs:
         uses: bitcart/bitcart-actions/actions/setup-python@master
 
       - name: Install Python dependencies
-        uses: bitcart/bitcart-actions/actions/install-daemon@master
-        with:
-          install-dependencies: |
-            uv sync --frozen --compile-bytecode --no-dev --group web
+        shell: bash
+        run: |
+          uv sync --frozen --compile-bytecode --no-dev --group web
 
       - name: Dump OpenAPI schema
         run: just openapi

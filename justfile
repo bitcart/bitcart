@@ -88,7 +88,7 @@ ci *args: ci-lint (test args)
 # dump the openapi schema
 [group("Tools")]
 openapi destination="openapi.json":
-    uv run python3 scripts/dumpopenapi.py {{ destination }}
+    python3 scripts/dumpopenapi.py {{ destination }}
 
 # btc-setup tasks
 
