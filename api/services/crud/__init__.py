@@ -303,10 +303,13 @@ class CRUDService[ModelType: ModelProtocol]:
     async def load_one(self, item: ModelType) -> None:
         pass
 
-    async def merge_object(self, item: ModelType) -> ModelType:
-        item = await self.session.merge(item)
-        await self.load_one(item)
-        return item
+    def is_in_session(self, item: ModelType) -> bool:
+        return item in self.session.sync_session
+
+    async def load_in_session(self, item: ModelType) -> ModelType:
+        if self.is_in_session(item):
+            return item
+        return await self.get(utils.common.get_sqla_attr(item, "id"))
 
     async def batch_load(self, items: list[ModelType]) -> list[ModelType]:
         for item in items:
