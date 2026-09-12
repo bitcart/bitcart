@@ -11,7 +11,7 @@ DEFAULT_DESTINATION = "openapi.json"
 
 destination = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_DESTINATION
 schema = configure_production_app().openapi()
-payload = json.dumps(schema, indent=2) + "\n"
+payload = json.dumps(schema, indent=2, ensure_ascii=False) + "\n"
 
 if destination == "-":
     sys.stdout.write(payload)

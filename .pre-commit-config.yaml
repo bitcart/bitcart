@@ -39,6 +39,7 @@ repos:
       - id: oxfmt
         name: oxfmt
         types: [text]
+        exclude: ^openapi\.json$
         language: node
         require_serial: true
         entry: npx oxfmt --no-error-on-unmatched-pattern

@@ -6,7 +6,8 @@
 .mypy_cache
 .pytest_cache/
 .ruff_cache/
-.vscode/
+.vscode/*
+!.vscode/settings.json
 /data/
 __pycache__/
 backup/

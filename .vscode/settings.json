@@ -1,0 +1,5 @@
+{
+    "files.readonlyInclude": {
+        "openapi.json": true
+    }
+}
