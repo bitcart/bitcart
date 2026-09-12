@@ -1,9 +1,10 @@
 import json
-from enum import StrEnum
+from enum import Enum, StrEnum
 from typing import Any, NotRequired, TypedDict
 
 from fastapi import FastAPI
 from fastapi.openapi.utils import get_openapi
+from fastapi.routing import APIRoute
 
 from api.constants import VERSION
 from api.logging import get_logger, log_errors
@@ -48,6 +49,13 @@ class APITag(StrEnum):
                 "description": ("Endpoints related to user management in Bitcart API."),
             },
         ]
+
+
+def generate_operation_id(route: APIRoute) -> str:
+    tag = next(iter(route.tags), "default")
+    if isinstance(tag, Enum):
+        tag = tag.value
+    return f"{tag}_{route.name}"
 
 
 class OpenAPIParameters(TypedDict):
@@ -129,5 +137,6 @@ def set_openapi_generator(app: FastAPI, settings: Settings) -> None:
 __all__ = [
     "get_openapi_parameters",
     "APITag",
+    "generate_operation_id",
     "set_openapi_generator",
 ]

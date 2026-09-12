@@ -1,4 +1,4 @@
-set no-exit-message := true
+set no-exit-message
 
 test-args := env("TEST_ARGS", "")
 
@@ -84,6 +84,11 @@ ci-lint: lint-check lint-types lint-deps
 # run ci checks
 [group("CI")]
 ci *args: ci-lint (test args)
+
+# dump the openapi schema
+[group("Tools")]
+openapi destination="openapi.json":
+    uv run python3 scripts/dumpopenapi.py {{ destination }}
 
 # btc-setup tasks
 

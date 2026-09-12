@@ -24,7 +24,7 @@ from api.ioc.services import ServicesProvider
 from api.logging import configure as configure_logging
 from api.logging import get_logger
 from api.middleware import LogCorrelationIdMiddleware, OnionHostMiddleware, PrometheusMiddleware
-from api.openapi import get_openapi_parameters, set_openapi_generator
+from api.openapi import generate_operation_id, get_openapi_parameters, set_openapi_generator
 from api.sentry import configure_sentry
 from api.services.plugin_registry import PluginRegistry
 from api.settings import Settings
@@ -148,7 +148,11 @@ def add_exception_handlers(app: FastAPI) -> None:
 
 def get_app(settings: Settings) -> FastAPI:
     app = FastAPI(
-        lifespan=lifespan, root_path=settings.ROOT_PATH, root_path_in_servers=False, **get_openapi_parameters(settings)
+        lifespan=lifespan,
+        root_path=settings.ROOT_PATH,
+        root_path_in_servers=False,
+        generate_unique_id_function=generate_operation_id,
+        **get_openapi_parameters(settings),
     )
 
     @app.get("/", include_in_schema=False)
