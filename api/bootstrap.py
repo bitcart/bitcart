@@ -24,7 +24,7 @@ from api.ioc.services import ServicesProvider
 from api.logging import configure as configure_logging
 from api.logging import get_logger
 from api.middleware import LogCorrelationIdMiddleware, OnionHostMiddleware, PrometheusMiddleware
-from api.openapi import generate_operation_id, get_openapi_parameters, set_openapi_generator
+from api.openapi import generate_operation_id, get_openapi_parameters, set_openapi_generator, set_openapi_route
 from api.sentry import configure_sentry
 from api.services.plugin_registry import PluginRegistry
 from api.settings import Settings
@@ -152,8 +152,10 @@ def get_app(settings: Settings) -> FastAPI:
         root_path=settings.ROOT_PATH,
         root_path_in_servers=False,
         generate_unique_id_function=generate_operation_id,
+        openapi_url=None,
         **get_openapi_parameters(settings),
     )
+    set_openapi_route(app)
 
     @app.get("/", include_in_schema=False)
     async def scalar_html(req: Request) -> Any:

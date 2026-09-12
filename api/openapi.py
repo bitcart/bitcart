@@ -2,8 +2,9 @@ import json
 from enum import Enum, StrEnum
 from typing import Any, NotRequired, TypedDict
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.openapi.utils import get_openapi
+from fastapi.responses import Response
 from fastapi.routing import APIRoute
 
 from api.constants import VERSION
@@ -101,6 +102,22 @@ def get_openapi_parameters(settings: Settings) -> OpenAPIParameters:
     }
 
 
+OPENAPI_URL = "/openapi.json"
+
+
+# This is required to keep same format on live endpoint and the dumped openapi schema
+def dump_openapi(schema: dict[str, Any]) -> str:
+    return json.dumps(schema, indent=2, ensure_ascii=False) + "\n"
+
+
+def set_openapi_route(app: FastAPI) -> None:
+    @app.get(OPENAPI_URL, include_in_schema=False)
+    async def openapi_json(req: Request) -> Response:
+        return Response(dump_openapi(app.openapi()), media_type="application/json")
+
+    app.openapi_url = OPENAPI_URL
+
+
 def set_openapi_generator(app: FastAPI, settings: Settings) -> None:
     def _openapi_generator() -> dict[str, Any]:
         if app.openapi_schema:
@@ -137,6 +154,8 @@ def set_openapi_generator(app: FastAPI, settings: Settings) -> None:
 __all__ = [
     "get_openapi_parameters",
     "APITag",
+    "dump_openapi",
     "generate_operation_id",
     "set_openapi_generator",
+    "set_openapi_route",
 ]
