@@ -14,10 +14,10 @@ exclude-newer-span = "P1W"
 
 [options.exclude-newer-package]
 bitcart = { timestamp = "0001-01-01T00:00:00Z", span = "PT0S" }
-universalasync = { timestamp = "0001-01-01T00:00:00Z", span = "PT0S" }
 cryptography = { timestamp = "0001-01-01T00:00:00Z", span = "PT0S" }
-trontxsize = { timestamp = "0001-01-01T00:00:00Z", span = "PT0S" }
 tronpy = { timestamp = "0001-01-01T00:00:00Z", span = "PT0S" }
+trontxsize = { timestamp = "0001-01-01T00:00:00Z", span = "PT0S" }
+universalasync = { timestamp = "0001-01-01T00:00:00Z", span = "PT0S" }
 
 [manifest]
 overrides = [
@@ -618,6 +618,7 @@ dev = [
     { name = "opentelemetry-distro", extra = ["otlp"] },
     { name = "opentelemetry-instrumentation" },
     { name = "opentelemetry-instrumentation-logging" },
+    { name = "opentelemetry-instrumentation-structlog" },
     { name = "opentelemetry-sdk" },
     { name = "oregano" },
     { name = "packaging" },
@@ -702,6 +703,7 @@ otel = [
     { name = "opentelemetry-distro", extra = ["otlp"] },
     { name = "opentelemetry-instrumentation" },
     { name = "opentelemetry-instrumentation-logging" },
+    { name = "opentelemetry-instrumentation-structlog" },
     { name = "opentelemetry-sdk" },
 ]
 production = [
@@ -868,6 +870,7 @@ dev = [
     { name = "opentelemetry-distro", extras = ["otlp"], specifier = "==0.65b0" },
     { name = "opentelemetry-instrumentation", specifier = "==0.65b0" },
     { name = "opentelemetry-instrumentation-logging", specifier = "==0.65b0" },
+    { name = "opentelemetry-instrumentation-structlog", specifier = "==0.65b0" },
     { name = "opentelemetry-sdk", specifier = "==1.44.0" },
     { name = "oregano", url = "https://github.com/Ergon-moe/Oregano/archive/6bf78d3be864c053c95ee332c6ab366e5695d8a4.zip" },
     { name = "packaging", specifier = ">=26.0" },
@@ -952,6 +955,7 @@ otel = [
     { name = "opentelemetry-distro", extras = ["otlp"], specifier = "==0.65b0" },
     { name = "opentelemetry-instrumentation", specifier = "==0.65b0" },
     { name = "opentelemetry-instrumentation-logging", specifier = "==0.65b0" },
+    { name = "opentelemetry-instrumentation-structlog", specifier = "==0.65b0" },
     { name = "opentelemetry-sdk", specifier = "==1.44.0" },
 ]
 production = [{ name = "gunicorn", specifier = ">=23.0.0" }]
@@ -2951,6 +2955,20 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/ed/0a/b70a9cddbc7b314a783e62739dbb1184f8538c1f85e8ded6d340142b9b54/opentelemetry_instrumentation_logging-0.65b0.tar.gz", hash = "sha256:c0a50cade5d54db6c6af12e2c69227ecd26f2b3b779e99ff850561d3d8dd77e3", size = 19783, upload-time = "2026-07-16T15:26:09.853Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/e2/8e/7577914681d77b180f8d6dcbac435be8e4ca6add6315da2d01ac4289eaa3/opentelemetry_instrumentation_logging-0.65b0-py3-none-any.whl", hash = "sha256:68365b31755c844f1e85f07dcd217839ff92f2d278a214bdf02d4dc806f9d915", size = 15727, upload-time = "2026-07-16T15:25:18.774Z" },
+]
+
+[[package]]
+name = "opentelemetry-instrumentation-structlog"
+version = "0.65b0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "opentelemetry-api" },
+    { name = "opentelemetry-instrumentation" },
+    { name = "opentelemetry-semantic-conventions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/37/c2/09035b8dc641737de170c27c30ecc0a4781c6f0c4c6f153a6f087fbb712a/opentelemetry_instrumentation_structlog-0.65b0.tar.gz", hash = "sha256:df8fb4cf4b7ee35f6ccfabdfb8108526e9a8e8efce89f9c16d9d8e357c1d2808", size = 13775, upload-time = "2026-07-16T15:26:21.041Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/2b/28/2e6dd4ee98a69c572134cd3af5f0cd4885a977a0ca43ed6eff0cd38be918/opentelemetry_instrumentation_structlog-0.65b0-py3-none-any.whl", hash = "sha256:28658bf846b2f7a045de7fefeb5d5db7a8e373a8def282348a69abc4177b0a96", size = 11477, upload-time = "2026-07-16T15:25:35.194Z" },
 ]
 
 [[package]]

@@ -1,16 +1,19 @@
 import importlib.util
 import os
+import sys
 
 if os.getenv("BITCART_OTEL_ENABLED", "false").lower() == "true":
-    _version_path = os.path.join(os.path.dirname(__file__), os.pardir, "api", "version.py")
-    _spec = importlib.util.spec_from_file_location("api.version", _version_path)
-    _module = importlib.util.module_from_spec(_spec)
-    _spec.loader.exec_module(_module)
-    _module.append_otel_version()
+    _api_dir = os.path.join(os.path.dirname(__file__), os.pardir, "api")
 
-    from opentelemetry.instrumentation.auto_instrumentation import initialize
+    def _load_api_module(name):
+        spec = importlib.util.spec_from_file_location(f"api.{name}", os.path.join(_api_dir, f"{name}.py"))
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[f"api.{name}"] = module
+        spec.loader.exec_module(module)
+        return module
 
-    initialize()
+    _load_api_module("version")
+    _load_api_module("otel").initialize()
 
 import asyncio
 import json

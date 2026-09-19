@@ -57,6 +57,7 @@ otel = [
     "opentelemetry-instrumentation==0.65b0",
     # required for LoggingHandler in daemon
     "opentelemetry-instrumentation-logging==0.65b0",
+    "opentelemetry-instrumentation-structlog==0.65b0",
     "opentelemetry-sdk==1.44.0",
 ]
 production = ["gunicorn>=23.0.0"]
@@ -190,6 +191,7 @@ electron-cash = "electroncash"
 opentelemetry-distro = "opentelemetry"
 opentelemetry-instrumentation = "opentelemetry"
 opentelemetry-instrumentation-logging = "opentelemetry"
+opentelemetry-instrumentation-structlog = "opentelemetry"
 opentelemetry-sdk = "opentelemetry"
 python-ulid = "ulid"
 

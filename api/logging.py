@@ -1,6 +1,5 @@
 import logging
 import re
-import time
 import traceback
 import uuid
 from collections.abc import Iterator
@@ -13,12 +12,8 @@ from typing import Any, TypeVar, cast
 import msgpack
 import structlog
 from opentelemetry import trace
-from opentelemetry._logs import LoggerProvider, LogRecord, get_logger_provider
-from opentelemetry.context import get_current
-from opentelemetry.sdk._logs._internal import std_to_otel
-from opentelemetry.semconv._incubating.attributes import code_attributes
-from opentelemetry.semconv.attributes import exception_attributes
-from structlog._log_levels import NAME_TO_LEVEL
+from opentelemetry._logs import LogRecord, NoOpLogger
+from opentelemetry.instrumentation.structlog import StructlogProcessor
 from structlog.dev import plain_traceback
 
 from api.constants import LOGSERVER_PORT
@@ -30,76 +25,6 @@ RendererType = TypeVar("RendererType")
 Logger = structlog.stdlib.BoundLogger
 
 TIME_FORMAT = "%Y-%m-%d %H:%M:%S.%f %Z"
-
-_EXCLUDE_ATTRS = {
-    "exception",
-    "exc_info",
-    "timestamp",
-    "event",
-    "message",
-    "lineno",
-    "func_name",
-    "pathname",
-    "_record",
-    "service.name",
-    "trace_id",
-    "span_id",
-}
-
-
-class StructlogOTELHandler:
-    def __init__(self, logger_provider: LoggerProvider) -> None:
-        self._logger_provider = logger_provider
-
-    @staticmethod
-    def _get_attributes(event_dict: structlog.typing.EventDict) -> dict[str, Any]:
-        attributes = {k: v for k, v in event_dict.items() if k not in _EXCLUDE_ATTRS}
-        attributes[code_attributes.CODE_FILE_PATH] = event_dict.get("pathname", "")
-        attributes[code_attributes.CODE_FUNCTION_NAME] = event_dict.get("func_name", "")
-        attributes[code_attributes.CODE_LINE_NUMBER] = event_dict.get("lineno", 0)
-        if "exc_info" in event_dict:
-            exctype, value, tb = event_dict["exc_info"]
-            if exctype is not None:
-                attributes[exception_attributes.EXCEPTION_TYPE] = exctype.__name__
-            if value is not None and value.args:
-                attributes[exception_attributes.EXCEPTION_MESSAGE] = str(value.args[0])
-            if tb is not None:
-                attributes[exception_attributes.EXCEPTION_STACKTRACE] = "".join(
-                    traceback.format_exception(*event_dict["exc_info"])
-                )
-        return attributes
-
-    @classmethod
-    def _translate(cls, event_dict: structlog.typing.EventDict) -> dict[str, Any]:
-        timestamp = int(datetime.strptime(event_dict["timestamp"], TIME_FORMAT).timestamp() * 1e9)
-        observed_timestamp = time.time_ns()
-        severity_number = std_to_otel(NAME_TO_LEVEL[event_dict["level"]])
-        attributes = cls._get_attributes(event_dict)
-        level_name = event_dict["level"].upper()
-        _python_to_otel_severity_text = {
-            "WARNING": "WARN",
-            "CRITICAL": "FATAL",
-        }
-        level_name = _python_to_otel_severity_text.get(level_name, level_name)
-        return {
-            "timestamp": timestamp,
-            "observed_timestamp": observed_timestamp,
-            "context": get_current() or None,
-            "severity_text": level_name,
-            "severity_number": severity_number,
-            "body": event_dict["event"],
-            "attributes": attributes,
-        }
-
-    def __call__(
-        self,
-        logger: structlog.typing.WrappedLogger,
-        name: str,
-        event_dict: structlog.typing.EventDict,
-    ) -> structlog.typing.EventDict:
-        otel_logger = self._logger_provider.get_logger(event_dict["logger"])
-        otel_logger.emit(LogRecord(**self._translate(event_dict)))
-        return event_dict
 
 
 class MsgpackHandler(logging.handlers.SocketHandler):
@@ -119,6 +44,19 @@ class MsgpackHandler(logging.handlers.SocketHandler):
         if "_logger" in record.__dict__:  # added by structlog
             del record.__dict__["_logger"]
         return msgpack.packb(record.__dict__, default=self.msgpack_encoder)
+
+
+class StructlogOTELProcessor(StructlogProcessor):
+    def __call__(self, logger: Any, method_name: str, event_dict: dict[str, Any]) -> dict[str, Any]:
+        otel_logger = self._logger_provider.get_logger(event_dict["logger"])
+        if not isinstance(otel_logger, NoOpLogger):
+            otel_logger.emit(self._translate(event_dict, method_name))
+        return event_dict
+
+    def _translate(self, event_dict: dict[str, Any], method_name: str | None = None) -> LogRecord:
+        record = super()._translate(event_dict, method_name)
+        record.timestamp = int(datetime.strptime(event_dict["timestamp"], TIME_FORMAT).timestamp() * 1e9)
+        return record
 
 
 class FormattingNullHandler(logging.Handler):
@@ -160,12 +98,6 @@ class Logging[RendererType]:
             return event_dict
         event_dict["trace_id"] = format(ctx.trace_id, "032x")
         event_dict["span_id"] = format(ctx.span_id, "016x")
-        tp = trace.get_tracer_provider()
-        resource = getattr(tp, "resource", None)
-        attrs = getattr(resource, "attributes", {}) if resource else {}
-        svc = attrs.get("service.name")
-        if svc:
-            event_dict["service.name"] = svc
         return event_dict
 
     @classmethod
@@ -241,13 +173,14 @@ class Logging[RendererType]:
 
     @classmethod
     def maybe_add_otel_handler(
-        cls, *, root_logger: logging.Logger, otel_formatter: logging.Formatter, settings: Settings, level: str
+        cls, *, target_logger: logging.Logger, otel_formatter: logging.Formatter, settings: Settings, level: str
     ) -> None:
-        if settings.OTEL_ENABLED:
-            otel_handler = FormattingNullHandler()
-            otel_handler.setLevel(level)
-            otel_handler.setFormatter(otel_formatter)
-            root_logger.addHandler(otel_handler)
+        if not settings.OTEL_ENABLED:
+            return
+        otel_handler = FormattingNullHandler()
+        otel_handler.setLevel(level)
+        otel_handler.setFormatter(otel_formatter)
+        target_logger.addHandler(otel_handler)
 
     @classmethod
     def configure_stdlib(cls, *, settings: Settings, logserver: bool = False) -> None:
@@ -270,7 +203,8 @@ class Logging[RendererType]:
         otel_formatter = structlog.stdlib.ProcessorFormatter(
             foreign_pre_chain=cls.get_common_processors(settings=settings),
             processors=[
-                StructlogOTELHandler(get_logger_provider()),
+                structlog.stdlib.ProcessorFormatter.remove_processors_meta,
+                cast(structlog.typing.Processor, StructlogOTELProcessor()),
                 structlog.processors.KeyValueRenderer(),
             ],
         )
@@ -289,7 +223,7 @@ class Logging[RendererType]:
                 logger.propagate = True
                 if logger_name.startswith("uvicorn") or logger_name.startswith("sqlalchemy.engine"):  # for better DX
                     cls.maybe_add_otel_handler(
-                        root_logger=logger, otel_formatter=otel_formatter, settings=settings, level=level
+                        target_logger=logger, otel_formatter=otel_formatter, settings=settings, level=level
                     )
                     logger.addHandler(console_handler)
                     logger.propagate = False
@@ -305,7 +239,9 @@ class Logging[RendererType]:
             if file_handler is not None:
                 root_logger.addHandler(file_handler)
         else:
-            cls.maybe_add_otel_handler(root_logger=root_logger, otel_formatter=otel_formatter, settings=settings, level=level)
+            cls.maybe_add_otel_handler(
+                target_logger=root_logger, otel_formatter=otel_formatter, settings=settings, level=level
+            )
             handler = MsgpackHandler(settings.logserver_client_host, LOGSERVER_PORT)
             handler.setLevel(level)
             root_logger.addHandler(handler)
