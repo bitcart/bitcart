@@ -21,7 +21,7 @@ from starlette.status import WS_1008_POLICY_VIOLATION
 
 from api import models, utils
 from api.constants import BACKUP_FREQUENCIES, BACKUP_PROVIDERS, DOCKER_REPO_URL, SUPPORTED_CRYPTOS, PayoutStatus
-from api.invoices import InvoiceStatus
+from api.invoices import InvoiceExceptionStatus, InvoiceStatus
 from api.redis import Redis
 from api.schemas.misc import CaptchaType, EmailSettings
 from api.schemas.stores import StoreCheckoutSettings, StoreThemeSettings
@@ -30,7 +30,7 @@ from api.services.coins import CoinService
 from api.services.crud.invoices import InvoiceService
 from api.services.crud.payouts import PayoutService
 from api.services.crud.refunds import RefundService
-from api.services.crud.repositories import PaymentMethodRepository
+from api.services.crud.repositories import PaymentMethodRepository, WalletRepository
 from api.services.ext.tor import TorService
 from api.services.notification_manager import NotificationManager
 from api.services.payment_processor import PaymentProcessor
@@ -1013,6 +1013,31 @@ async def test_create_invoice_and_pay(client: TestClient, token: str, store: dic
     assert final_invoice.paid_currency == payment_method.currency.upper()
     assert final_invoice.payment_id == payment_method.id
     await client.delete(f"/invoices/{invoice_id}", headers={"Authorization": f"Bearer {token}"})
+
+
+async def test_status_updates_with_detached_invoice(client: TestClient, token: str, app: FastAPI) -> None:
+    store = await create_store(client, token, custom_wallet_attrs={"transaction_speed": 1})
+    invoice = await create_invoice(client, token, store_id=store["id"], price=5)
+    invoice_id = invoice["id"]
+    async with app.state.dishka_container(scope=Scope.SESSION) as container:
+        invoice_service = await container.get(InvoiceService)
+        wallet_repository = await container.get(WalletRepository)
+        detached_invoice = await invoice_service.get(invoice_id)
+        detached_method = detached_invoice.payments[0]
+        wallet = await wallet_repository.get_one(id=detached_method.wallet_id)
+    sent_amount = detached_method.amount
+    async with app.state.dishka_container(scope=Scope.SESSION) as container:
+        invoice_service = await container.get(InvoiceService)
+        await invoice_service.update_status(detached_invoice, InvoiceStatus.PAID, detached_method, [], sent_amount)
+        await invoice_service.update_confirmations(
+            detached_invoice, detached_method, wallet, confirmations=0, tx_hashes=[], sent_amount=sent_amount
+        )
+    async with app.state.dishka_container(scope=Scope.SESSION) as container:
+        invoice_service = await container.get(InvoiceService)
+        final_invoice = await invoice_service.get(invoice_id)
+    assert final_invoice.status == InvoiceStatus.PAID
+    assert final_invoice.exception_status == InvoiceExceptionStatus.NONE
+    assert final_invoice.payment_id == detached_method.id
 
 
 async def test_get_public_store(client: TestClient, store: dict[str, Any], token: str) -> None:
