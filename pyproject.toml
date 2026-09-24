@@ -80,6 +80,7 @@ eth-based = [
 ]
 
 # sort alphabetically
+arbeth = [{ include-group = "eth-based" }]
 bch = [
     { include-group = "btc-based" },
     "electron-cash @ https://github.com/Electron-Cash/Electron-Cash/archive/492f050ebe87d58faf57bee131912b6c0d049820.zip",
@@ -108,6 +109,7 @@ xrg = [
 ]
 
 daemons = [
+    { include-group = "arbeth" },
     { include-group = "bch" },
     { include-group = "bnb" },
     { include-group = "btc" },
