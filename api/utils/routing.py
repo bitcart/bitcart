@@ -168,9 +168,16 @@ def create_crud_router(
     enabled_endpoints = dict.fromkeys(ALL_ENDPOINTS, True)
     if disabled_endpoints is not None:
         enabled_endpoints = {k: v and not disabled_endpoints.get(k, False) for k, v in enabled_endpoints.items()}
+
+    async def _no_user() -> models.User | None:
+        # Used for endpoints where auth_config is False: always resolve user to None so
+        # CRUDService._add_user_filter does not scope queries to the caller, even if a
+        # valid token happens to be sent with the request.
+        return None
+
     auth_deps = {
         endpoint: Security(
-            utils.authorization.auth_dependency if auth_config[endpoint] else utils.authorization.optional_auth_dependency,
+            utils.authorization.auth_dependency if auth_config[endpoint] else _no_user,
             scopes=required_scopes,
         )
         for endpoint in ALL_ENDPOINTS
