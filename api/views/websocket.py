@@ -1,3 +1,4 @@
+import asyncio
 from typing import Any, cast
 
 from dishka import AsyncContainer, FromDishka
@@ -35,6 +36,7 @@ class GenericWebsocketEndpoint(WebSocketEndpoint):
     AUTH_SCOPES: list[AuthScopes] = []
 
     subscriber: PubSub | None = None
+    poll_task: asyncio.Task[None] | None = None
     encoding = "json"
 
     object_service: CRUDService[Any] | None = None
@@ -72,17 +74,28 @@ class GenericWebsocketEndpoint(WebSocketEndpoint):
         if await self.maybe_exit_early(websocket):
             return
         self.subscriber = await utils.redis.make_subscriber(redis_pool, f"{self.NAME}:{self.object_id}")
-        utils.tasks.create_task(self.poll_subs(websocket))
-        await websocket.accept()
+        self.poll_task = utils.tasks.create_task(self.poll_subs(websocket))
+        try:
+            await websocket.accept()
+        except BaseException:
+            await self.close_subscriber()
+            raise
 
     async def poll_subs(self, websocket: WebSocket) -> None:
         async for message in utils.redis.listen_channel(cast(utils.redis.MyPubSub, self.subscriber)):
             await websocket.send_json(message)
 
-    async def on_disconnect(self, websocket: WebSocket, close_code: int) -> None:
+    async def close_subscriber(self) -> None:
+        if self.poll_task:
+            self.poll_task.cancel()
+            await asyncio.wait([self.poll_task])
+            self.poll_task = None
         if self.subscriber:
-            await self.subscriber.unsubscribe(f"channel:{self.NAME}:{self.object_id}")
-            # TODO: handle closing more properly!
+            await self.subscriber.aclose()
+            self.subscriber = None
+
+    async def on_disconnect(self, websocket: WebSocket, close_code: int) -> None:
+        await self.close_subscriber()
 
     async def maybe_exit_early(self, websocket: WebSocket) -> bool:
         return False

@@ -13,7 +13,6 @@ from dishka import Provider, Scope, decorate, from_context, provide
 from fastapi import FastAPI
 from filelock import FileLock
 from httpx import AsyncClient
-from httpx_ws.transport import ASGIWebSocketTransport
 from pwdlib import PasswordHash
 from pwdlib.hashers.bcrypt import BcryptHasher
 from sqlalchemy import text
@@ -27,6 +26,7 @@ from api.plugins import PluginObjects
 from api.services.coins import CoinService
 from api.services.exchange_rate import ExchangeRateService
 from api.settings import Settings
+from tests.helper import make_client
 
 pytest_plugins = ["tests.fixtures.pytest.data"]
 
@@ -155,7 +155,7 @@ def app(settings: Settings) -> Generator[FastAPI]:
 
 @pytest.fixture
 async def client(app: FastAPI, anyio_backend: tuple[str, dict[str, Any]]) -> AsyncGenerator[AsyncClient]:
-    async with AsyncClient(transport=ASGIWebSocketTransport(app=app), base_url="http://testserver") as client:
+    async with make_client(app) as client:
         yield client
 
 

@@ -16,6 +16,7 @@ from dishka import Scope
 from fastapi import FastAPI
 from httpx import Request as HttpRequest
 from httpx_ws import AsyncWebSocketSession, WebSocketDisconnect, aconnect_ws
+from redis.observability.attributes import DB_CLIENT_CONNECTION_STATE, ConnectionState
 from sqlalchemy import select
 from starlette.status import WS_1008_POLICY_VIOLATION
 
@@ -38,7 +39,16 @@ from api.services.payout_manager import PayoutManager
 from api.settings import Settings
 from api.templates import TemplateManager
 from tests.fixtures import static_data
-from tests.helper import create_invoice, create_product, create_store, create_token, create_user, create_wallet, enabled_logs
+from tests.helper import (
+    create_invoice,
+    create_product,
+    create_store,
+    create_token,
+    create_user,
+    create_wallet,
+    enabled_logs,
+    make_client,
+)
 
 if TYPE_CHECKING:
     from httpx import AsyncClient as TestClient
@@ -856,6 +866,25 @@ async def test_invoice_ws(client: TestClient, token: str, store: dict[str, Any],
         async with aconnect_ws("/ws/invoices/invalid_id", client) as websocket:
             await check_ws_response(websocket, 0)
     assert exc.value.code == WS_1008_POLICY_VIOLATION
+
+
+def get_in_use_connections(redis_pool: Redis) -> int:
+    return next(
+        count
+        for count, attributes in redis_pool.connection_pool.get_connection_count()
+        if attributes[DB_CLIENT_CONNECTION_STATE] == ConnectionState.USED.value
+    )
+
+
+async def test_ws_releases_redis_connections(client: TestClient, token: str, store: dict[str, Any], app: FastAPI) -> None:
+    redis_pool = await app.state.dishka_container.get(Redis)
+    invoice_id = (await create_invoice(client, token, store_id=store["id"]))["id"]
+    baseline = get_in_use_connections(redis_pool)
+    async with make_client(app) as ws_client:
+        for _ in range(5):
+            async with aconnect_ws(f"/ws/invoices/{invoice_id}", ws_client):
+                pass
+    assert get_in_use_connections(redis_pool) == baseline
 
 
 @pytest.mark.parametrize("currencies", ["", "DUMMY", "btc"])

@@ -7,12 +7,20 @@ from contextlib import contextmanager
 from datetime import timedelta
 from typing import TYPE_CHECKING, Any
 
+from httpx import AsyncClient
+from httpx_ws.transport import ASGIWebSocketTransport
+
 from api import utils
 from api.settings import Settings
 from tests.fixtures import static_data
 
 if TYPE_CHECKING:
+    from fastapi import FastAPI
     from httpx import AsyncClient as TestClient
+
+
+def make_client(app: FastAPI) -> AsyncClient:
+    return AsyncClient(transport=ASGIWebSocketTransport(app=app), base_url="http://testserver")
 
 
 async def create_user(client: TestClient, *, token: str | None = None, **custom_attrs: Any) -> dict[str, Any]:
