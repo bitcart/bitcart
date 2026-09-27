@@ -215,7 +215,7 @@ class ETHFeatures(BlockchainFeatures):
         return self._find_all_trace_outputs_geth(debug_data)
 
     def _find_all_trace_tx_outputs_geth(self, tx_hash, from_addr, debug_data, depth=0):
-        if depth >= self.MAX_TRACE_DEPTH:
+        if depth >= self.MAX_TRACE_DEPTH or debug_data.get("error"):
             return []
         result = []
         to_addr = debug_data.get("to")
