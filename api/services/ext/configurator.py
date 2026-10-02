@@ -1,7 +1,9 @@
 import asyncio
 import contextlib
+import ipaddress
 import json
 import re
+import socket
 import time
 from typing import Any, cast
 
@@ -44,6 +46,7 @@ BUFFER_SIZE = 17640
 
 REDIS_KEY = "bitcart_configurator_ext"
 KEY_TTL = 60 * 60 * 24  # 1 day
+DNS_TIMEOUT = 5
 
 logger = get_logger(__name__)
 
@@ -111,6 +114,15 @@ class ConfiguratorService:
             raise HTTPException(401, "Unauthorized")
         await self.plugin_registry.run_hook("configurator_server_settings", server_settings)
         return server_settings
+
+    async def check_dns_entry(self, request: Request, name: str) -> bool:
+        await self.authenticate_request(request)
+        try:
+            async with asyncio.timeout(DNS_TIMEOUT):
+                addresses = await run_in_threadpool(socket.getaddrinfo, name, None)
+        except Exception:
+            return False
+        return any(ipaddress.ip_address(sockaddr[0]).is_global for *_, sockaddr in addresses)
 
     async def get_deploy_result(self, request: Request, deploy_id: str) -> dict[str, Any]:
         await self.authenticate_request(request)

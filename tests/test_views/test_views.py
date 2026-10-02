@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import json as json_module
 import os
+import socket
 from collections import defaultdict
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any, cast
@@ -1745,9 +1746,42 @@ async def test_products_quantity_management(client: TestClient, token: str, stor
     ).status_code == 422  # disallow creating invoice with too much stock
 
 
-async def test_configurator_dns_resolve(client: TestClient) -> None:
+async def test_configurator_dns_resolve(client: TestClient, token: str) -> None:
     assert (await client.get("/configurator/dns-resolve?name=test")).json() is False
+    assert (await client.get("/configurator/dns-resolve?name=localhost")).json() is False
     assert (await client.get("/configurator/dns-resolve?name=example.com")).json() is True
+    assert (await client.get(f"/configurator/dns-resolve?name={'a' * 254}")).status_code == 422
+    headers = {"Authorization": f"Bearer {token}"}
+    await client.post("/manage/policies", json={"allow_anonymous_configurator": False}, headers=headers)
+    assert (await client.get("/configurator/dns-resolve?name=example.com")).status_code == 422
+    assert (await client.get("/configurator/dns-resolve?name=example.com", headers=headers)).json() is True
+
+
+async def test_configurator_dns_resolve_hides_internal_names(client: TestClient, mocker: pytest_mock.MockerFixture) -> None:
+    addresses = {
+        "backend": ["172.18.0.5"],
+        "worker": ["172.18.0.6"],
+        "compose-redis-1": ["172.18.0.2"],
+        "host.docker.internal": ["192.168.65.254"],
+        "ipv6-only.internal": ["fd00::5"],
+        "shop.example.com": ["172.18.0.7", "93.184.215.14"],
+    }
+
+    real_getaddrinfo = socket.getaddrinfo
+
+    def getaddrinfo(host: str, *args: Any, **kwargs: Any) -> list[Any]:
+        if host not in addresses:
+            return real_getaddrinfo(host, *args, **kwargs)
+        return [
+            (socket.AF_INET6, socket.SOCK_STREAM, 6, "", (address, 0, 0, 0))
+            if ":" in address
+            else (socket.AF_INET, socket.SOCK_STREAM, 6, "", (address, 0))
+            for address in addresses[host]
+        ]
+
+    mocker.patch("socket.getaddrinfo", getaddrinfo)
+    for name in addresses:
+        assert (await client.get(f"/configurator/dns-resolve?name={name}")).json() is (name == "shop.example.com")
 
 
 async def test_tfa_flow(client: TestClient, user: dict[str, Any], token: str) -> None:

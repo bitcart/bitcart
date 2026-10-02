@@ -1,9 +1,8 @@
-import socket
 from typing import Any
 
 from dishka import FromDishka
 from dishka.integrations.fastapi import DishkaRoute
-from fastapi import APIRouter, Security
+from fastapi import APIRouter, Query, Security
 from starlette.requests import Request
 
 from api import models, utils
@@ -38,9 +37,7 @@ async def get_server_settings(
 
 
 @router.get("/dns-resolve")
-async def check_dns_entry(name: str) -> Any:
-    try:
-        socket.getaddrinfo(name, 0)
-        return True
-    except Exception:
-        return False
+async def check_dns_entry(
+    configurator_service: FromDishka[ConfiguratorService], request: Request, name: str = Query(max_length=253)
+) -> Any:
+    return await configurator_service.check_dns_entry(request, name)
