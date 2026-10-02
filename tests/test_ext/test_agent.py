@@ -99,11 +99,11 @@ async def test_invalid_settings(url: str, message: str) -> None:
     assert exc_info.value.message.startswith(message)
 
 
-async def test_timeout(agent: FakeAgent) -> None:
+async def test_timeout(agent: FakeAgent, monkeypatch: pytest.MonkeyPatch) -> None:
     async def hang(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
         await asyncio.sleep(10)
 
-    agent.handle = hang
+    monkeypatch.setattr(agent, "handle", hang)
     with pytest.raises(AgentError) as exc_info:
         await AgentClient(await agent.start_unix(), timeout=0.2).call("ping")
     assert exc_info.value.message == "The host agent did not respond in time"

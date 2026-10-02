@@ -147,6 +147,8 @@ universalasync = "0 days"
 tronpy = "0 days"
 # remove when 7 days passed since 50.0.0
 cryptography = "0 days"
+# remove when 7 days passed since 4.0.0
+oauthlib = "0 days"
 
 [tool.uv.audit]
 # ecdsa is not used in production, but we need to evaluate it's usage in electron-cash

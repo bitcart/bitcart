@@ -141,22 +141,24 @@ async def test_management_jobs(
     assert status["state"] == "done"
     assert status["command"] == "restart"
     assert status["log"] == "Restarting\ndone"
-    assert (await host_agent.get_job("restart")).state == "running"
+    assert await host_agent.get_job("restart") == HostAgentJob(job_id=job_id, command="restart")
     assert finished == []
     await host_agent.check_jobs()
-    assert (await host_agent.get_job("restart")).state == "done"
+    assert await host_agent.get_job("restart") == HostAgentJob(job_id=job_id, command="restart", state="done")
     assert finished == [(HostAgentJob(job_id=job_id, command="restart", state="done"),)]
     resp = await client.get(f"/manage/jobs/{job_id}?log_lines=1", headers=auth(token))
     assert resp.json()["log"] == "done"
     assert resp.json()["log_complete"] is False
     await client.post("/manage/policies", json={"staging_updates": True}, headers=auth(token))
-    assert (await client.post("/manage/update", headers=auth(token))).json()["status"] == "success"
+    resp = (await client.post("/manage/update", headers=auth(token))).json()
+    assert resp["status"] == "success"
     assert fake_agent.requests[-1] == ("update", {"channel": "staging"})
-    fake_agent.finish(fake_agent.running)
+    fake_agent.finish(resp["job_id"])
     for path, command in (("plugin-reload", "reload"), ("cleanup/images", "cleanup")):
-        assert (await client.post(f"/manage/{path}", headers=auth(token))).json()["status"] == "success"
+        resp = (await client.post(f"/manage/{path}", headers=auth(token))).json()
+        assert resp["status"] == "success"
         assert fake_agent.requests[-1] == (command, {})
-        fake_agent.finish(fake_agent.running)
+        fake_agent.finish(resp["job_id"])
     with enabled_logs(settings, str(tmp_path)):
         resp = (await client.post("/manage/cleanup", headers=auth(token))).json()
     assert resp == {"status": "success", "message": "Successfully started cleanup process!", "job_id": fake_agent.running}
@@ -204,7 +206,7 @@ async def test_manual_backup(
     assert status["result"]["filename"] == "shop.tar.zst.enc"
     assert post_backup == []
     await host_agent.check_jobs()
-    assert (await host_agent.get_job("backup")).state == "done"
+    assert await host_agent.get_job("backup") == HostAgentJob(job_id=job_id, command="backup", state="done")
     assert post_backup[0][0].environment_variables == variables
     assert post_backup[0][1] == {"status": "success", "message": "Backed up\n"}
     await host_agent.check_jobs()
@@ -212,7 +214,7 @@ async def test_manual_backup(
     job_id = (await client.post("/manage/backups/backup", headers=auth(token))).json()["job_id"]
     fake_agent.finish(job_id, state="failed", log=b"upload failed\n")
     await host_agent.check_jobs()
-    assert (await host_agent.get_job("backup")).state == "failed"
+    assert await host_agent.get_job("backup") == HostAgentJob(job_id=job_id, command="backup", state="failed")
     assert post_backup[1][1] == {"status": "error", "message": "upload failed\n"}
 
 
@@ -329,7 +331,8 @@ async def test_scheduled_backup_retries(
     refreshing = asyncio.create_task(later(host_agent.refresh))
     await backup_manager.perform_backup()
     await refreshing
-    assert (await host_agent.get_job("backup")).job_id == fake_agent.running
+    assert fake_agent.running is not None
+    assert await host_agent.get_job("backup") == HostAgentJob(job_id=fake_agent.running, command="backup")
     assert len(pre_backup) == 2
 
     host_agent.client = AgentClient("")
@@ -348,10 +351,10 @@ async def test_check_jobs(app: FastAPI, host_agent: HostAgentService, fake_agent
     assert post_backup[0][1] == {"status": "error", "message": "The backup job ended as failed (exit)"}
     restart_id = (await host_agent.call("restart"))["job_id"]
     await host_agent.check_jobs()
-    assert (await host_agent.get_job("restart")).state == "running"
+    assert await host_agent.get_job("restart") == HostAgentJob(job_id=restart_id, command="restart")
     del fake_agent.jobs[restart_id]
     await host_agent.check_jobs()
-    assert (await host_agent.get_job("restart")).state == "unknown"
+    assert await host_agent.get_job("restart") == HostAgentJob(job_id=restart_id, command="restart", state="unknown")
     requests = len(fake_agent.requests)
     await host_agent.check_jobs()
     assert len(fake_agent.requests) == requests
@@ -464,9 +467,10 @@ async def test_check_jobs_deadline(host_agent: HostAgentService, fake_agent: Fak
     await host_agent.set_job(HostAgentJob(job_id="20200101T000000Z-aaaaaa", command="backup"))
     host_agent.client = AgentClient("unix:///nonexistent/agent.sock")
     await host_agent.check_jobs()
-    assert (await host_agent.get_job("restart")).job_id == recent_id
-    assert (await host_agent.get_job("restart")).state == "running"
-    assert (await host_agent.get_job("backup")).state == "unknown"
+    assert await host_agent.get_job("restart") == HostAgentJob(job_id=recent_id, command="restart")
+    assert await host_agent.get_job("backup") == HostAgentJob(
+        job_id="20200101T000000Z-aaaaaa", command="backup", state="unknown"
+    )
 
 
 async def test_replaced_running_job_is_completed(
