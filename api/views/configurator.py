@@ -8,8 +8,7 @@ from starlette.requests import Request
 
 from api import models, utils
 from api.constants import AuthScopes
-from api.schemas.configurator import ConfiguratorDeploySettings
-from api.schemas.misc import SSHSettings
+from api.schemas.configurator import ConfiguratorDeploySettings, ConfiguratorSSHSettings
 from api.services.ext.configurator import ConfiguratorService
 
 router = APIRouter(route_class=DishkaRoute)
@@ -32,7 +31,7 @@ async def get_deploy_result(configurator_service: FromDishka[ConfiguratorService
 @router.post("/server-settings")
 async def get_server_settings(
     configurator_service: FromDishka[ConfiguratorService],
-    ssh_settings: SSHSettings | None = None,
+    ssh_settings: ConfiguratorSSHSettings | None = None,
     user: models.User | None = Security(utils.authorization.optional_auth_dependency, scopes=[AuthScopes.SERVER_MANAGEMENT]),
 ) -> Any:
     return await configurator_service.get_server_settings(ssh_settings, user)

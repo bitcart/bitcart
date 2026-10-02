@@ -1,7 +1,6 @@
 import asyncio
 import os
 import re
-from collections.abc import Awaitable
 from typing import Any, cast
 
 from aiohttp import ClientSession
@@ -184,5 +183,5 @@ class UpdateCheckService:
         asyncio.create_task(run_repeated(self.refresh, 60 * 60 * 24))
 
     async def get_latest_fetched_update(self) -> dict[str, Any]:
-        new_update_tag = await cast(Awaitable[str | None], self.redis_pool.hget(REDIS_KEY, "new_update_tag"))
+        new_update_tag = await self.redis_pool.hget(REDIS_KEY, "new_update_tag")
         return {"update_available": bool(new_update_tag), "tag": new_update_tag}

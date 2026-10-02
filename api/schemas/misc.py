@@ -67,15 +67,38 @@ class BackupState(Schema):
     last_run: int | None = None
 
 
-class SSHSettings(Schema):
-    host: str = ""
-    port: int = 22
-    username: str = ""
-    password: str = ""
-    key_file: str = ""
-    key_file_password: str = ""
-    authorized_keys_file: str = ""
-    bash_profile_script: str = ""
+class HostAgentState(Schema):
+    configured: bool = False
+    available: bool = False
+    checked_at: int | None = None
+    unreachable_since: int | None = None
+    error: str | None = None
+    capabilities: dict[str, Any] | None = None
+
+
+class HostAgentJob(Schema):
+    job_id: str
+    command: str
+    state: str = "running"
+
+
+class HostAgentOverview(Schema):
+    state: HostAgentState
+    jobs: dict[str, HostAgentJob]
+
+
+class HostAgentJobStatus(Schema):
+    id: str
+    command: str
+    state: str
+    reason: str | None = None
+    created: int | None = None
+    started: int | None = None
+    finished: int | None = None
+    exit_code: int | None = None
+    result: dict[str, Any] | None = None
+    log: str
+    log_complete: bool
 
 
 class RateResult(Schema):

@@ -437,7 +437,7 @@ async def test_management_commands(
     assert (await client.post("/manage/cleanup/logs", headers={"Authorization": f"Bearer {token}"})).status_code == 200
     assert (await client.post("/manage/cleanup", headers={"Authorization": f"Bearer {token}"})).status_code == 200
     assert (await client.post("/manage/backups/backup", headers={"Authorization": f"Bearer {token}"})).status_code == 200
-    assert (await client.get("/manage/backups/download/1", headers={"Authorization": f"Bearer {token}"})).status_code == 400
+    assert (await client.get("/manage/backups/download/1", headers={"Authorization": f"Bearer {token}"})).status_code == 503
     assert (
         await client.post(
             "/manage/backups/restore",
@@ -1336,7 +1336,7 @@ async def test_configurator(client: TestClient, token: str) -> None:
     assert "BITCART_CRYPTOS=btc" in script
     assert "BITCART_HOST=bitcart.ai" in script
     assert "BTC_NETWORK=testnet" in script
-    assert "BTC_LIGHTNING=True" in script
+    assert "BTC_LIGHTNING=true" in script
     assert "BITCART_ADDITIONAL_COMPONENTS=custom,tor" in script
     deploy_settings = static_data.SCRIPT_SETTINGS.copy()
     deploy_settings["mode"] = "Remote"
@@ -1377,8 +1377,7 @@ async def test_get_server_settings(client: TestClient, token: str) -> None:
     assert resp.status_code == 200
     assert resp.json() == static_data.FALLBACK_SERVER_SETTINGS
     resp = await client.post("/configurator/server-settings", headers={"Authorization": f"Bearer {token}"})
-    assert resp.status_code == 200
-    assert resp.json() == static_data.FALLBACK_SERVER_SETTINGS  # SSH unconfigured
+    assert resp.status_code == 503
 
 
 async def test_unauthorized_m2m_access(

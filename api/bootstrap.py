@@ -19,6 +19,7 @@ from starlette.staticfiles import StaticFiles
 from starlette.types import Receive, Scope, Send
 
 from api.db import AsyncSession
+from api.ext.agent import AgentError, AgentErrorCode
 from api.ioc import build_container, setup_dishka
 from api.ioc.services import ServicesProvider
 from api.logging import configure as configure_logging
@@ -26,6 +27,7 @@ from api.logging import get_logger
 from api.middleware import LogCorrelationIdMiddleware, OnionHostMiddleware, PrometheusMiddleware
 from api.openapi import generate_operation_id, get_openapi_parameters, set_openapi_generator, set_openapi_route
 from api.sentry import configure_sentry
+from api.services.host_agent import error_response
 from api.services.plugin_registry import PluginRegistry
 from api.settings import Settings
 from api.tasks import broker, client_tasks_broker
@@ -125,10 +127,26 @@ async def db_not_found_error_handler(request: Request, exc: NotFoundError) -> JS
     )
 
 
+AGENT_ERROR_STATUSES: dict[str, int] = {
+    AgentErrorCode.NOT_FOUND: 404,
+    AgentErrorCode.INVALID_ARGUMENT: 422,
+    AgentErrorCode.UNKNOWN_COMMAND: 501,
+    AgentErrorCode.UNAVAILABLE: 503,
+}
+
+
+async def agent_error_handler(request: Request, exc: AgentError) -> JSONResponse:
+    return JSONResponse(
+        status_code=AGENT_ERROR_STATUSES.get(exc.code, 502),
+        content={"error": "Host agent error", "detail": error_response(exc)["message"]},
+    )
+
+
 exception_handlers: dict[type[Exception], Callable[[Request, Any], Awaitable[JSONResponse]]] = {
     IntegrityError: db_integrity_error_handler,
     NotFoundError: db_not_found_error_handler,
     AdvancedAlchemyError: db_exception_handler,
+    AgentError: agent_error_handler,
 }
 
 

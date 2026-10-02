@@ -26,6 +26,8 @@ Logger = structlog.stdlib.BoundLogger
 
 TIME_FORMAT = "%Y-%m-%d %H:%M:%S.%f %Z"
 
+app_loggers: set[str] = set()
+
 
 class MsgpackHandler(logging.handlers.SocketHandler):
     def __init__(self, host: str, port: int) -> None:
@@ -228,7 +230,7 @@ class Logging[RendererType]:
                     logger.addHandler(console_handler)
                     logger.propagate = False
             else:
-                logger.disabled = True
+                logger.disabled = logger_name not in app_loggers
         root_logger = logging.getLogger()
         root_logger.handlers.clear()
         root_logger.setLevel(level)
@@ -328,5 +330,6 @@ def log_errors(logger: Logger) -> Iterator[None]:  # pragma: no cover
 
 
 def get_logger(name: str) -> Logger:
+    app_loggers.add(name)
     logger: Logger = structlog.get_logger(name)
     return logger

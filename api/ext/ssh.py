@@ -1,61 +1,21 @@
-import contextlib
-from typing import Any
-
 import paramiko
 from paramiko.channel import ChannelFile, ChannelStderrFile, ChannelStdinFile
-from starlette.config import Config
 
-from api.schemas.misc import SSHSettings
-
-
-def load_ssh_settings(config: Config) -> SSHSettings:
-    settings = SSHSettings()
-    connection_string = config("SSH_CONNECTION", default="")
-    settings.host, settings.port, settings.username = parse_connection_string(connection_string)
-    settings.password = config("SSH_PASSWORD", default="")
-    settings.key_file = config("SSH_KEY_FILE", default="")
-    settings.key_file_password = config("SSH_KEY_FILE_PASSWORD", default="")
-    settings.authorized_keys_file = config("SSH_AUTHORIZED_KEYS", default="")
-    settings.bash_profile_script = config("BASH_PROFILE_SCRIPT", default="/etc/profile.d/bitcart-env.sh")
-    return settings
+from api.schemas.configurator import ConfiguratorSSHSettings
 
 
-def create_ssh_client(settings: "SSHSettings") -> paramiko.SSHClient:
+def create_ssh_client(settings: ConfiguratorSSHSettings) -> paramiko.SSHClient:
     client = paramiko.SSHClient()
     client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    kwargs: dict[str, Any] = {
-        "hostname": settings.host,
-        "port": settings.port,
-        "username": settings.username,
-        "allow_agent": False,
-        "look_for_keys": False,
-    }
-    if settings.key_file:
-        kwargs.update(key_filename=settings.key_file, passphrase=settings.key_file_password)
-    else:
-        kwargs.update(password=settings.password)
-    client.connect(**kwargs)
+    client.connect(
+        hostname=settings.host,
+        username=settings.username,
+        password=settings.password,
+        allow_agent=False,
+        look_for_keys=False,
+        timeout=10,
+    )
     return client
-
-
-def parse_connection_string(connection_string: str) -> tuple[str, int, str]:
-    username = ""
-    port = 22
-    host = connection_string
-    if host:
-        parts = host.split(":")
-        host = parts[0]
-        port = 22
-        if len(parts) == 2:
-            with contextlib.suppress(ValueError):
-                port = int(parts[1])
-        parts = host.split("@")
-        if len(parts) == 2:
-            username = parts[0]
-            host = parts[1]
-        else:
-            username = "root"
-    return host, port, username
 
 
 def prepare_shell_command(command: str) -> str:

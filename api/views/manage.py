@@ -2,13 +2,15 @@ from typing import Any
 
 from dishka import FromDishka
 from dishka.integrations.fastapi import DishkaRoute
-from fastapi import APIRouter, File, Security, UploadFile
+from fastapi import APIRouter, File, Query, Security, UploadFile
 
 from api import constants, models, utils
 from api.constants import AuthScopes
+from api.schemas.misc import HostAgentJobStatus, HostAgentOverview
 from api.schemas.policies import BackupsPolicy, GlobalStorePolicy, Policy
 from api.services.backup_manager import BackupManager
 from api.services.coins import CoinService
+from api.services.host_agent import HostAgentService
 from api.services.management import ManagementService
 from api.services.plugin_registry import PluginRegistry
 from api.services.settings import SettingService
@@ -82,6 +84,24 @@ async def cleanup_images(
     user: models.User = Security(utils.authorization.auth_dependency, scopes=[AuthScopes.SERVER_MANAGEMENT]),
 ) -> Any:
     return await management_service.cleanup_images()
+
+
+@router.get("/agent", response_model=HostAgentOverview)
+async def get_host_agent(
+    host_agent: FromDishka[HostAgentService],
+    user: models.User = Security(utils.authorization.auth_dependency, scopes=[AuthScopes.SERVER_MANAGEMENT]),
+) -> Any:
+    return await host_agent.overview()
+
+
+@router.get("/jobs/{job_id}", response_model=HostAgentJobStatus)
+async def get_job_status(
+    host_agent: FromDishka[HostAgentService],
+    job_id: str,
+    log_lines: str = Query("50", pattern=r"^([0-9]+|all)$"),
+    user: models.User = Security(utils.authorization.auth_dependency, scopes=[AuthScopes.SERVER_MANAGEMENT]),
+) -> Any:
+    return await host_agent.job_status(job_id, log_lines)
 
 
 @router.post("/cleanup/logs")
@@ -185,13 +205,13 @@ async def perform_backup(
     return await backups_manager.perform_backup_for_client()
 
 
-@router.get("/backups/download/{file_id}")
+@router.get("/backups/download/{job_id}")
 async def download_backup(
     backup_manager: FromDishka[BackupManager],
-    file_id: str,
+    job_id: str,
     user: models.User = Security(utils.authorization.auth_dependency, scopes=[AuthScopes.SERVER_MANAGEMENT]),
 ) -> Any:
-    return await backup_manager.download_backup(file_id)
+    return await backup_manager.download_backup(job_id)
 
 
 @router.post("/backups/restore")

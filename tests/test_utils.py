@@ -1,12 +1,8 @@
 from __future__ import annotations
 
 import asyncio
-import contextlib
 import os
 import pathlib
-import shlex
-import subprocess
-import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
@@ -203,37 +199,6 @@ async def test_notification_template(client: TestClient, token: str, user: dict[
 async def management_service(app: FastAPI) -> ManagementService:
     async with app.state.dishka_container(scope=Scope.REQUEST) as container:
         return await container.get(ManagementService)
-
-
-@pytest.mark.anyio
-def test_run_host(mocker: pytest_mock.MockerFixture, management_service: ManagementService) -> None:
-    test_file = os.path.expanduser("~/test-output")
-    with contextlib.suppress(OSError):  # prepare for test
-        os.remove(test_file)
-    content = f"touch {test_file}"
-    # No valid ssh connection
-    ok, error = management_service.run_host(content)
-    assert ok is False
-    assert not os.path.exists(test_file)
-    assert "Connection problem" in cast(str, error)
-    assert management_service.run_host_output(content, "good")["status"] == "error"
-    # Same with key file
-    management_service.settings.ssh_settings.key_file = "something"
-    assert management_service.run_host(content)[0] is False
-    assert not os.path.exists(test_file)
-    management_service.settings.ssh_settings.key_file = ""
-    mocker.patch("paramiko.SSHClient.connect", return_value=True)
-    mocker.patch(
-        "paramiko.SSHClient.exec_command",
-        side_effect=lambda command: subprocess.run(shlex.split(command), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL),
-    )
-    ok, error = management_service.run_host(content)
-    assert ok is True
-    assert error is None
-    assert management_service.run_host_output(content, "good") == {"status": "success", "message": "good"}
-    time.sleep(1)  # wait for command to execute (non-blocking)
-    assert os.path.exists(test_file)
-    os.remove(test_file)  # Cleanup
 
 
 def test_parse_log_date(settings: Settings, management_service: ManagementService) -> None:

@@ -10,8 +10,6 @@ from starlette.config import Config
 from starlette.datastructures import CommaSeparatedStrings
 
 from api.constants import HTTPS_REVERSE_PROXIES
-from api.ext.ssh import load_ssh_settings
-from api.schemas.misc import SSHSettings
 
 
 class Environment(StrEnum):
@@ -79,9 +77,9 @@ class Settings(BaseSettings):
 
     PROMETHEUS_METRICS_ENABLED: bool = Field(False, validation_alias="BITCART_PROMETHEUS_METRICS_ENABLED")
 
-    ssh_settings: SSHSettings = Field(
-        default_factory=lambda: load_ssh_settings(Config("conf/.env" if os.path.exists("conf/.env") else None))
-    )
+    AGENT_URL: str = Field("", validation_alias="BITCART_AGENT_URL")
+    AGENT_TOKEN: str = Field("", validation_alias="BITCART_AGENT_TOKEN")
+    AGENT_SSH_KEY_FILE: str = Field("", validation_alias="BITCART_AGENT_SSH_KEY_FILE")
 
     model_config = SettingsConfigDict(
         env_file="conf/.env",

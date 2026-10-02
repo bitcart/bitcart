@@ -33,6 +33,11 @@ class ProcessNewBackupPolicyMessage(Schema):
     new_policy: BackupsPolicy
 
 
+class AgentCallMessage(Schema):
+    command: str
+    args: dict[str, str] = {}
+
+
 class DeployTaskMessage(Schema):
     task_id: str
 
