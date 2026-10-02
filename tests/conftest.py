@@ -28,7 +28,7 @@ from api.services.exchange_rate import ExchangeRateService
 from api.settings import Settings
 from tests.helper import make_client
 
-pytest_plugins = ["tests.fixtures.pytest.data"]
+pytest_plugins = ["tests.fixtures.pytest.data", "tests.fixtures.pytest.agent"]
 
 ANYIO_BACKEND_OPTIONS = {"use_uvloop": True}
 

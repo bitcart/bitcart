@@ -2,6 +2,7 @@ from collections.abc import AsyncIterator
 
 from dishka import Provider, Scope, decorate, provide, provide_all
 
+from api.ext.agent import AgentClient
 from api.services.auth import AuthService
 from api.services.backup_manager import BackupManager
 from api.services.coins import CoinService
@@ -22,6 +23,7 @@ from api.services.ext.configurator import ConfiguratorService
 from api.services.ext.tor import TorService
 from api.services.ext.update import UpdateCheckService
 from api.services.health_check import HealthCheckService
+from api.services.host_agent import HostAgentService
 from api.services.ipn_sender import IPNSender
 from api.services.management import ManagementService
 from api.services.metrics_service import MetricsService
@@ -33,6 +35,7 @@ from api.services.plugin_registry import PluginRegistry
 from api.services.server_manager import ServerManager
 from api.services.settings import SettingService
 from api.services.wallet_data import WalletDataService
+from api.settings import Settings
 from api.types import AuthServiceProtocol
 
 
@@ -58,6 +61,10 @@ class ServicesProvider(Provider):
     auth_service_protocol = provide(AuthService, provides=AuthServiceProtocol, scope=Scope.SESSION)
     metrics_service = provide(MetricsService, scope=Scope.SESSION)
 
+    @provide(scope=Scope.APP)
+    def get_agent_client(self, settings: Settings) -> AgentClient:
+        return AgentClient(settings.AGENT_URL, settings.AGENT_TOKEN, settings.AGENT_SSH_KEY_FILE)
+
     app_provides = provide_all(
         CoinService,
         TorService,
@@ -74,6 +81,7 @@ class ServicesProvider(Provider):
         WalletDataService,
         HealthCheckService,
         ServerManager,
+        HostAgentService,
         scope=Scope.APP,  # for tests isolation
     )
 

@@ -2,7 +2,6 @@ import asyncio
 import ipaddress
 import json
 import os
-from collections.abc import Awaitable
 from dataclasses import asdict as dataclass_asdict
 from dataclasses import dataclass
 from typing import Any, cast
@@ -55,7 +54,7 @@ class TorService:
         )
 
     async def get_data(self, key: str, default: Any = None, json_decode: bool = False) -> Any:
-        data = await cast(Awaitable[str | None], self.redis_pool.hget(REDIS_KEY, key))
+        data = await self.redis_pool.hget(REDIS_KEY, key)
         data = json.loads(data) if json_decode and data else data
         return data if data else default
 

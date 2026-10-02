@@ -1,4 +1,5 @@
 import json
+from typing import Any
 
 from dishka import FromDishka
 from dishka.integrations.taskiq import inject
@@ -10,6 +11,7 @@ from api import utils
 from api.logging import get_exception_message, get_logger
 from api.redis import Redis
 from api.schemas.tasks import (
+    AgentCallMessage,
     DeployTaskMessage,
     LicenseChangedMessage,
     PluginTaskMessage,
@@ -26,6 +28,7 @@ from api.services.crud.users import UserService
 from api.services.crud.wallets import WalletService
 from api.services.exchange_rate import ExchangeRateService
 from api.services.ext.configurator import ConfiguratorService
+from api.services.host_agent import HostAgentService
 from api.services.notification_manager import NotificationManager
 from api.services.plugin_registry import PluginRegistry
 from api.settings import Settings
@@ -54,6 +57,12 @@ async def rates_action(
 ) -> str:
     func = getattr(exchange_rate_service, params.func)
     return json.dumps(await func(*params.args), cls=utils.common.DecimalAwareJSONEncoder)
+
+
+@broker.task("agent_call")
+@inject(patch_module=True)
+async def agent_call(params: AgentCallMessage, host_agent: FromDishka[HostAgentService]) -> dict[str, Any]:
+    return await host_agent.handle_call(params.command, params.args)
 
 
 @broker.task("send_verification_email")

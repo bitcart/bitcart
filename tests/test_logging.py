@@ -119,3 +119,12 @@ def test_timestamp_is_event_time(exported: InMemoryLogRecordExporter, logger: Lo
     record = only_record(exported)
     assert record.timestamp is not None
     assert record.observed_timestamp - record.timestamp < 1_000_000_000
+
+
+def test_reconfiguring_keeps_app_loggers_enabled(settings: Settings) -> None:
+    get_logger("tests.reconfigured").info("creates the stdlib logger")
+    logging.getLogger("tests.unrelated")
+    structlog.reset_defaults()
+    configure_logging(settings=settings)
+    assert logging.getLogger("tests.reconfigured").disabled is False
+    assert logging.getLogger("tests.unrelated").disabled is True

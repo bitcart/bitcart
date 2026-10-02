@@ -2,7 +2,6 @@ import asyncio
 import contextlib
 import os
 import re
-from collections.abc import Awaitable, Callable
 from datetime import datetime, timedelta
 from typing import Any, cast
 
@@ -11,10 +10,11 @@ from bitcart.errors import BaseError as BitcartBaseError
 from fastapi import HTTPException
 
 from api import utils
-from api.ext.ssh import create_ssh_client, execute_ssh_command, prepare_shell_command
-from api.logging import get_exception_message, get_logger
+from api.ext.agent import AgentError
+from api.logging import get_logger
 from api.schemas.policies import Policy
 from api.services.coins import CoinService
+from api.services.host_agent import HostAgentService, error_response
 from api.services.plugin_registry import PluginRegistry
 from api.services.settings import SettingService
 from api.settings import Settings
@@ -24,80 +24,43 @@ logger = get_logger(__name__)
 
 class ManagementService:
     def __init__(
-        self, settings: Settings, setting_service: SettingService, coin_service: CoinService, plugin_registry: PluginRegistry
+        self,
+        settings: Settings,
+        setting_service: SettingService,
+        coin_service: CoinService,
+        plugin_registry: PluginRegistry,
+        host_agent: HostAgentService,
     ) -> None:
         self.settings = settings
         self.setting_service = setting_service
         self.coin_service = coin_service
         self.plugin_registry = plugin_registry
+        self.host_agent = host_agent
 
-    async def run_management_command_core(self, func: Callable[[], Awaitable[str]], ok_output: str) -> dict[str, Any]:
-        if self.settings.DOCKER_ENV:  # pragma: no cover
-            command = await func()
-            return self.run_host_output(command, ok_output)
-        return {"status": "error", "message": "Not running in docker"}
-
-    async def run_management_command(self, command: str, hook_name: str, ok_output: str) -> dict[str, Any]:
-        async def func() -> str:
+    async def run_job(
+        self, command: str, hook_name: str, ok_output: str, args: dict[str, str] | None = None
+    ) -> dict[str, Any]:
+        try:
+            await self.host_agent.require(command)
             await self.plugin_registry.run_hook(hook_name)
-            return command
-
-        return await self.run_management_command_core(func, ok_output)
-
-    def run_host(self, command: str, env: dict[str, str] | None = None, disown: bool = True) -> tuple[bool, str | None]:
-        if env is None:
-            env = {}
-        try:
-            client = create_ssh_client(self.settings.ssh_settings)
-        except Exception as e:
-            return False, f"Connection problem: {e}"
-        env_vars = " ".join([f"{k}={v}" for k, v in env.items()])
-        try:
-            output = execute_ssh_command(
-                client,
-                f'. {self.settings.ssh_settings.bash_profile_script}; cd "$BITCART_BASE_DIRECTORY"; {env_vars} nohup'
-                f" {prepare_shell_command(command)}" + (" > /dev/null 2>&1 & disown" if disown else ""),
-            )
-            if not disown:  # pragma: no cover
-                final_out = output[1].read().decode() + "\n" + output[2].read().decode()
-                final_out = final_out.strip()
-                exitcode = output[1].channel.recv_exit_status()
-                if exitcode != 0:
-                    return False, final_out
-                return True, final_out
-        except Exception as e:  # pragma: no cover
-            logger.error(get_exception_message(e))
-            return False, f"Command execution problem: {e}"
-        finally:
-            client.close()
-        return True, None
-
-    def run_host_output(self, command: str, ok_output: str, env: dict[str, str] | None = None) -> dict[str, Any]:
-        if env is None:
-            env = {}
-        ok, error = self.run_host(command, env=env)
-        if ok:
-            return {"status": "success", "message": ok_output}
-        return {"status": "error", "message": error}
+            job_id = (await self.host_agent.call(command, args))["job_id"]
+        except AgentError as e:
+            return error_response(e)
+        return {"status": "success", "message": ok_output, "job_id": job_id}
 
     async def restart_server(self) -> dict[str, Any]:
-        return await self.run_management_command("./restart.sh", "server_restart", "Successfully started restart process!")
+        return await self.run_job("restart", "server_restart", "Successfully started restart process!")
 
     async def plugin_reload(self) -> dict[str, Any]:
-        return await self.run_management_command("./start.sh", "plugin_reload", "Successfully started plugin reload process!")
+        return await self.run_job("reload", "plugin_reload", "Successfully started plugin reload process!")
 
     async def update_server(self) -> dict[str, Any]:
-        async def func() -> str:
-            await self.plugin_registry.run_hook("server_update")
-            policy = await self.setting_service.get_setting(Policy)
-            return "./install-master.sh" if policy.staging_updates else "./update.sh"
-
-        return await self.run_management_command_core(func, "Successfully started update process!")
+        policy = await self.setting_service.get_setting(Policy)
+        channel = "staging" if policy.staging_updates else "stable"
+        return await self.run_job("update", "server_update", "Successfully started update process!", {"channel": channel})
 
     async def cleanup_images(self) -> dict[str, Any]:
-        return await self.run_management_command(
-            "./cleanup.sh", "server_cleanup_images", "Successfully started cleanup process!"
-        )
+        return await self.run_job("cleanup", "server_cleanup_images", "Successfully started cleanup process!")
 
     async def fetch_currency_info(self, coin: str) -> dict[str, Any]:
         info = {"running": True, "currency": self.coin_service.cryptos[coin].coin_name, "blockchain_height": 0}
@@ -184,11 +147,20 @@ class ManagementService:
                     os.remove(os.path.join(self.settings.log_dir, f))
 
     async def cleanup_server(self) -> dict[str, Any]:
-        data = [await self.cleanup_images(), await self.cleanup_logs()]
-        message = ""
-        for result in data:
-            if result["status"] != "success":
-                message += f"{result['message']}\n"
+        images = await self.cleanup_images()
+        logs = await self.cleanup_logs()
+        logs_ok = logs["status"] == "success"
+        if images["status"] == "success":
+            if logs_ok:
+                message = "Successfully started cleanup process!"
             else:
-                return {"status": "success", "message": "Successfully started cleanup process!"}
-        return {"status": "error", "message": message}
+                message = f"Started image cleanup. Log cleanup failed: {logs['message']}"
+            return {"status": "success", "message": message, "job_id": images["job_id"]}
+        images_message = f"Image cleanup did not start: {images['message']}"
+        if logs_ok:
+            message = f"Cleaned up logs. {images_message}"
+        else:
+            message = f"{images_message}\nLog cleanup failed: {logs['message']}"
+        if "job_id" in images:
+            return {"status": "error", "message": message, "job_id": images["job_id"]}
+        return {"status": "success" if logs_ok else "error", "message": message}
