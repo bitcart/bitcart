@@ -485,6 +485,11 @@ class InvoiceService(CRUDService[models.Invoice]):
         item.product_names = {v.id: v.name for v in item.products}
         item.product_quantities = {v.product_id: v.count for v in item.products_associations}
 
+    async def load_method_in_session(self, method: models.PaymentMethod) -> models.PaymentMethod:
+        if self.is_in_session(method):
+            return method
+        return await self.payment_method_repository.get_one(id=method.id)
+
     async def update_confirmations(
         self,
         invoice: models.Invoice,
@@ -497,6 +502,8 @@ class InvoiceService(CRUDService[models.Invoice]):
     ) -> None:
         if tx_hashes is None:
             tx_hashes = []
+        invoice = await self.load_in_session(invoice)
+        method = await self.load_method_in_session(method)
         method.update(confirmations=confirmations)
         status = invoice.status
         if confirmations >= 1:
@@ -520,8 +527,8 @@ class InvoiceService(CRUDService[models.Invoice]):
         set_exception_status: str | None = None,
     ) -> bool:
         # load it in current session to apply updates
-        invoice = await self.merge_object(invoice)
-        method = await self.session.merge(method) if method else None
+        invoice = await self.load_in_session(invoice)
+        method = await self.load_method_in_session(method) if method else None
         if tx_hashes is None:
             tx_hashes = []
         if (

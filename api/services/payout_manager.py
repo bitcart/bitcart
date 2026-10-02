@@ -1,6 +1,6 @@
 import asyncio
 from decimal import Decimal
-from typing import cast
+from typing import Any, cast
 
 import bitcart
 from bitcart import BTC  # type: ignore[attr-defined]
@@ -37,16 +37,16 @@ class PayoutManager:
         self.plugin_registry = plugin_registry
         self.container = container
 
-    async def update_status(self, payout: models.Payout, status: str) -> None:
+    async def update_status(self, payout: models.Payout, status: str, **updates: Any) -> None:
         from api.services.crud.payouts import PayoutService
         from api.services.crud.refunds import RefundService
 
         if payout.status == status or payout.status == PayoutStatus.COMPLETE:
             return
-        payout.update(status=status)
         async with self.container(scope=Scope.REQUEST) as container:
             payout_service = await container.get(PayoutService)
-            payout = await payout_service.merge_object(payout)
+            payout = await payout_service.load_in_session(payout)
+            payout.update(status=status, **updates)
         await self.ipn_sender.send_invoice_ipn(payout, status)
         await self.plugin_registry.run_hook("payout_status", payout, status)
         if status == PayoutStatus.SENT:
@@ -110,8 +110,7 @@ class PayoutManager:
             raise
 
     async def mark_payout_sent(self, payout: models.Payout, tx_hash: str) -> None:
-        payout.update(tx_hash=tx_hash)
-        await self.update_status(payout, PayoutStatus.SENT)
+        await self.update_status(payout, PayoutStatus.SENT, tx_hash=tx_hash)
 
     async def send_payout(self, payout: models.Payout, private_key: str | None = None) -> None:
         result = await self.prepare_payout_details(payout, private_key)
@@ -146,8 +145,7 @@ class PayoutManager:
 
     async def finalize_payout(self, coin: BTC, payout: models.Payout) -> None:
         used_fee = await coin.server.get_used_fee(payout.tx_hash)
-        payout.update(used_fee=used_fee)
-        await self.update_status(payout, PayoutStatus.COMPLETE)
+        await self.update_status(payout, PayoutStatus.COMPLETE, used_fee=used_fee)
 
     async def send_batch_payouts(self, payouts: list[models.Payout], private_key: str | None = None) -> None:
         coros = [self.prepare_payout_details(payout, private_key) for payout in payouts]
