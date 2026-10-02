@@ -1,9 +1,7 @@
 import asyncio
 import contextlib
-import ipaddress
 import json
 import re
-import socket
 import time
 from typing import Any, cast
 
@@ -16,7 +14,7 @@ from starlette.datastructures import CommaSeparatedStrings
 
 from api import constants, models, utils
 from api.ext.agent import AgentError
-from api.ext.ssh import ServerEnv, create_ssh_client
+from api.ext.ssh import ServerEnv, create_ssh_client, resolve_ssh_host
 from api.logging import get_logger, log_errors
 from api.redis import Redis
 from api.schemas.configurator import (
@@ -45,6 +43,7 @@ OUTPUT_INTERVAL = 0.5
 BUFFER_SIZE = 17640
 
 REDIS_KEY = "bitcart_configurator_ext"
+SSH_RATE_KEY = f"{REDIS_KEY}:ssh:rate"
 KEY_TTL = 60 * 60 * 24  # 1 day
 DNS_TIMEOUT = 5
 
@@ -104,9 +103,11 @@ class ConfiguratorService:
         return self.build_server_settings(config["settings"])
 
     async def get_server_settings(
-        self, ssh_settings: ConfiguratorSSHSettings | None = None, user: models.User | None = None
+        self, request: Request, ssh_settings: ConfiguratorSSHSettings | None = None, user: models.User | None = None
     ) -> ConfiguratorServerSettings:
         if ssh_settings:
+            await self.authenticate_request(request)
+            await self.check_ssh_access(request, ssh_settings)
             server_settings = await run_in_threadpool(self.collect_remote_server_settings, ssh_settings)
         elif user:
             server_settings = await self.collect_current_server_settings()
@@ -119,10 +120,25 @@ class ConfiguratorService:
         await self.authenticate_request(request)
         try:
             async with asyncio.timeout(DNS_TIMEOUT):
-                addresses = await run_in_threadpool(socket.getaddrinfo, name, None)
+                return bool(await run_in_threadpool(utils.common.get_global_addresses, name))
         except Exception:
             return False
-        return any(ipaddress.ip_address(sockaddr[0]).is_global for *_, sockaddr in addresses)
+
+    async def check_ssh_access(self, request: Request, ssh_settings: ConfiguratorSSHSettings) -> None:
+        if not self.settings.is_testing():
+            client_ip = request.client.host if request.client else "unknown"
+            await utils.redis.check_rate_limit(
+                self.redis_pool,
+                f"{SSH_RATE_KEY}:{client_ip}",
+                constants.CONFIGURATOR_SSH_MAX_ATTEMPTS,
+                constants.CONFIGURATOR_SSH_RATE_WINDOW,
+                "Too many SSH attempts. Please try again later.",
+            )
+        try:
+            async with asyncio.timeout(DNS_TIMEOUT):
+                await run_in_threadpool(resolve_ssh_host, ssh_settings.host)
+        except Exception:
+            raise HTTPException(422, "SSH host must resolve to a public address") from None
 
     async def get_deploy_result(self, request: Request, deploy_id: str) -> dict[str, Any]:
         await self.authenticate_request(request)
@@ -137,8 +153,11 @@ class ConfiguratorService:
         await self.authenticate_request(request, scopes=scopes)
         if this_machine:
             return await self.create_current_task(deploy_settings)
+        is_manual = deploy_settings.mode == "Manual"
+        if not is_manual:
+            await self.check_ssh_access(request, deploy_settings.ssh_settings)
         script = self.create_bash_script(deploy_settings)
-        return await self.create_new_task(script, deploy_settings.ssh_settings, deploy_settings.mode == "Manual")
+        return await self.create_new_task(script, deploy_settings.ssh_settings, is_manual)
 
     @classmethod
     def create_bash_script(cls, settings: ConfiguratorDeploySettings) -> str:

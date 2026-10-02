@@ -30,10 +30,11 @@ async def get_deploy_result(configurator_service: FromDishka[ConfiguratorService
 @router.post("/server-settings")
 async def get_server_settings(
     configurator_service: FromDishka[ConfiguratorService],
+    request: Request,
     ssh_settings: ConfiguratorSSHSettings | None = None,
     user: models.User | None = Security(utils.authorization.optional_auth_dependency, scopes=[AuthScopes.SERVER_MANAGEMENT]),
 ) -> Any:
-    return await configurator_service.get_server_settings(ssh_settings, user)
+    return await configurator_service.get_server_settings(request, ssh_settings, user)
 
 
 @router.get("/dns-resolve")

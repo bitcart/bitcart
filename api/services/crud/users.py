@@ -139,11 +139,7 @@ class UserService(CRUDService[models.User]):
     async def check_rate_limit(self, rate_key: str, max_attempts: int, error_message: str) -> None:
         if self.settings.is_testing():
             return
-        attempts = await self.redis_pool.incr(rate_key)
-        if attempts == 1:
-            await self.redis_pool.expire(rate_key, constants.RESET_RATE_WINDOW)
-        if attempts > max_attempts:
-            raise HTTPException(429, error_message)
+        await utils.redis.check_rate_limit(self.redis_pool, rate_key, max_attempts, constants.RESET_RATE_WINDOW, error_message)
 
     async def generic_email_code_flow(
         self,

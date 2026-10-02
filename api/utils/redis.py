@@ -5,6 +5,7 @@ from collections.abc import AsyncIterator
 from typing import Any
 
 import redis
+from fastapi import HTTPException
 from redis.asyncio.client import PubSub
 
 from api.redis import Redis
@@ -24,6 +25,14 @@ async def make_subscriber(redis_pool: Redis, name: str) -> MyPubSub:
 
 async def publish_message(redis_pool: Redis, channel: str, message: Any) -> int:
     return await redis_pool.publish(f"channel:{channel}", json.dumps(message))
+
+
+async def check_rate_limit(redis_pool: Redis, rate_key: str, max_attempts: int, window: int, error_message: str) -> None:
+    attempts = await redis_pool.incr(rate_key)
+    if attempts == 1:
+        await redis_pool.expire(rate_key, window)
+    if attempts > max_attempts:
+        raise HTTPException(429, error_message)
 
 
 async def listen_channel(channel: MyPubSub) -> AsyncIterator[Any]:

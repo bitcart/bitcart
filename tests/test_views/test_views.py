@@ -8,6 +8,7 @@ from collections import defaultdict
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any, cast
 
+import paramiko
 import pyotp
 import pytest
 import pytest_mock
@@ -22,7 +23,14 @@ from sqlalchemy import select
 from starlette.status import WS_1008_POLICY_VIOLATION
 
 from api import models, utils
-from api.constants import BACKUP_FREQUENCIES, BACKUP_PROVIDERS, DOCKER_REPO_URL, SUPPORTED_CRYPTOS, PayoutStatus
+from api.constants import (
+    BACKUP_FREQUENCIES,
+    BACKUP_PROVIDERS,
+    CONFIGURATOR_SSH_MAX_ATTEMPTS,
+    DOCKER_REPO_URL,
+    SUPPORTED_CRYPTOS,
+    PayoutStatus,
+)
 from api.invoices import InvoiceStatus
 from api.redis import Redis
 from api.schemas.misc import CaptchaType, EmailSettings
@@ -33,12 +41,14 @@ from api.services.crud.invoices import InvoiceService
 from api.services.crud.payouts import PayoutService
 from api.services.crud.refunds import RefundService
 from api.services.crud.repositories import PaymentMethodRepository
+from api.services.ext.configurator import SSH_RATE_KEY
 from api.services.ext.tor import TorService
 from api.services.notification_manager import NotificationManager
 from api.services.payment_processor import PaymentProcessor
 from api.services.payout_manager import PayoutManager
 from api.settings import Settings
 from api.templates import TemplateManager
+from api.types import TasksBroker
 from tests.fixtures import static_data
 from tests.helper import (
     create_invoice,
@@ -1311,7 +1321,44 @@ async def test_products_list(client: TestClient) -> None:
     assert resp.json()["result"] == []
 
 
-async def test_configurator(client: TestClient, token: str) -> None:
+PUBLIC_IP = "93.184.215.14"
+PUBLIC_HOST = "shop.example.com"
+INTERNAL_DNS = {
+    "backend": ["172.18.0.5"],
+    "worker": ["172.18.0.6"],
+    "compose-redis-1": ["172.18.0.2"],
+    "host.docker.internal": ["192.168.65.254"],
+    "ipv6-only.internal": ["fd00::5"],
+    "metadata.internal": ["169.254.169.254"],
+}
+FAKE_DNS = {**INTERNAL_DNS, PUBLIC_HOST: ["172.18.0.7", PUBLIC_IP]}
+SSH_SETTINGS = {"host": PUBLIC_HOST, "username": "root", "password": "password"}
+INTERNAL_HOSTS = ("", "localhost", "127.0.0.1", "0x7f000001", "::1", "10.0.0.1", "nonexistent.invalid", *INTERNAL_DNS)
+
+
+def make_addrinfo(*addresses: str) -> list[Any]:
+    return [
+        (socket.AF_INET6, socket.SOCK_STREAM, 6, "", (address, 0, 0, 0))
+        if ":" in address
+        else (socket.AF_INET, socket.SOCK_STREAM, 6, "", (address, 0))
+        for address in addresses
+    ]
+
+
+@pytest.fixture
+def fake_dns(mocker: pytest_mock.MockerFixture) -> None:
+    real_getaddrinfo = socket.getaddrinfo
+
+    def getaddrinfo(host: str, *args: Any, **kwargs: Any) -> list[Any]:
+        if host not in FAKE_DNS:
+            return real_getaddrinfo(host, *args, **kwargs)
+        return make_addrinfo(*FAKE_DNS[host])
+
+    mocker.patch("socket.getaddrinfo", getaddrinfo)
+
+
+@pytest.mark.usefixtures("fake_dns")
+async def test_configurator(app: FastAPI, client: TestClient, token: str, mocker: pytest_mock.MockerFixture) -> None:
     assert (await client.post("/configurator/deploy")).status_code == 422
     assert (
         await client.post(
@@ -1341,7 +1388,11 @@ async def test_configurator(client: TestClient, token: str) -> None:
     assert "BITCART_ADDITIONAL_COMPONENTS=custom,tor" in script
     deploy_settings = static_data.SCRIPT_SETTINGS.copy()
     deploy_settings["mode"] = "Remote"
+    assert (await client.post("/configurator/deploy", json=deploy_settings)).status_code == 422
+    publish = mocker.patch.object(await app.state.dishka_container.get(TasksBroker), "publish")
+    deploy_settings["ssh_settings"] = SSH_SETTINGS
     resp = await client.post("/configurator/deploy", json=deploy_settings)
+    publish.assert_called_once()
     assert (await client.get("/configurator/deploy-result/1")).status_code == 404
     assert resp.status_code == 200
     assert not resp.json()["success"]
@@ -1371,14 +1422,66 @@ async def test_supported_cryptos(client: TestClient) -> None:
     assert resp.json() == SUPPORTED_CRYPTOS
 
 
-async def test_get_server_settings(client: TestClient, token: str) -> None:
+@pytest.mark.usefixtures("fake_dns")
+async def test_get_server_settings(client: TestClient, token: str, mocker: pytest_mock.MockerFixture) -> None:
+    headers = {"Authorization": f"Bearer {token}"}
     assert (await client.get("/configurator/server-settings")).status_code == 405
     assert (await client.post("/configurator/server-settings")).status_code == 401
-    resp = await client.post("/configurator/server-settings", json={"host": ""})
+    for host in INTERNAL_HOSTS:
+        assert (await client.post("/configurator/server-settings", json={"host": host})).status_code == 422
+    connect = mocker.patch("paramiko.SSHClient.connect", side_effect=paramiko.AuthenticationException)
+    resp = await client.post("/configurator/server-settings", json=SSH_SETTINGS)
     assert resp.status_code == 200
     assert resp.json() == static_data.FALLBACK_SERVER_SETTINGS
-    resp = await client.post("/configurator/server-settings", headers={"Authorization": f"Bearer {token}"})
+    connect.assert_called_once()
+    assert connect.call_args.kwargs["hostname"] == PUBLIC_IP
+    assert connect.call_args.kwargs["port"] == 22
+    await client.post("/manage/policies", json={"allow_anonymous_configurator": False}, headers=headers)
+    assert (await client.post("/configurator/server-settings", json=SSH_SETTINGS)).status_code == 422
+    assert connect.call_count == 1
+    assert (await client.post("/configurator/server-settings", json=SSH_SETTINGS, headers=headers)).status_code == 200
+    assert connect.call_count == 2
+    resp = await client.post("/configurator/server-settings", headers=headers)
     assert resp.status_code == 503
+
+
+async def test_get_server_settings_dns_rebinding(client: TestClient, mocker: pytest_mock.MockerFixture) -> None:
+    real_getaddrinfo = socket.getaddrinfo
+    answers = [make_addrinfo(PUBLIC_IP), make_addrinfo("127.0.0.1")]
+
+    def getaddrinfo(host: str, *args: Any, **kwargs: Any) -> list[Any]:
+        if host != "rebind.example.com":
+            return real_getaddrinfo(host, *args, **kwargs)
+        return answers.pop(0)
+
+    mocker.patch("socket.getaddrinfo", getaddrinfo)
+    connect = mocker.patch("paramiko.SSHClient.connect")
+    resp = await client.post("/configurator/server-settings", json={"host": "rebind.example.com"})
+    assert resp.status_code == 200
+    assert resp.json() == static_data.FALLBACK_SERVER_SETTINGS
+    connect.assert_not_called()
+    assert answers == []
+
+
+async def test_configurator_ssh_rate_limit(app: FastAPI, client: TestClient, mocker: pytest_mock.MockerFixture) -> None:
+    redis_pool = await app.state.dishka_container.get(Redis)
+
+    async def clear_rate_limits() -> None:
+        async for key in redis_pool.scan_iter(f"{SSH_RATE_KEY}:*"):
+            await redis_pool.delete(key)
+
+    mocker.patch.object(Settings, "is_testing", return_value=False)
+    await clear_rate_limits()
+    try:
+        for _ in range(CONFIGURATOR_SSH_MAX_ATTEMPTS):
+            assert (await client.post("/configurator/server-settings", json={"host": "localhost"})).status_code == 422
+        assert (await client.post("/configurator/server-settings", json={"host": "localhost"})).status_code == 429
+        deploy_settings = {**static_data.SCRIPT_SETTINGS, "mode": "Remote", "ssh_settings": {"host": "localhost"}}
+        assert (await client.post("/configurator/deploy", json=deploy_settings)).status_code == 429
+        manual_settings = {**static_data.SCRIPT_SETTINGS, "mode": "Manual"}
+        assert (await client.post("/configurator/deploy", json=manual_settings)).status_code == 200
+    finally:
+        await clear_rate_limits()
 
 
 async def test_unauthorized_m2m_access(
@@ -1748,7 +1851,6 @@ async def test_products_quantity_management(client: TestClient, token: str, stor
 
 async def test_configurator_dns_resolve(client: TestClient, token: str) -> None:
     assert (await client.get("/configurator/dns-resolve?name=test")).json() is False
-    assert (await client.get("/configurator/dns-resolve?name=localhost")).json() is False
     assert (await client.get("/configurator/dns-resolve?name=example.com")).json() is True
     assert (await client.get(f"/configurator/dns-resolve?name={'a' * 254}")).status_code == 422
     headers = {"Authorization": f"Bearer {token}"}
@@ -1757,31 +1859,11 @@ async def test_configurator_dns_resolve(client: TestClient, token: str) -> None:
     assert (await client.get("/configurator/dns-resolve?name=example.com", headers=headers)).json() is True
 
 
-async def test_configurator_dns_resolve_hides_internal_names(client: TestClient, mocker: pytest_mock.MockerFixture) -> None:
-    addresses = {
-        "backend": ["172.18.0.5"],
-        "worker": ["172.18.0.6"],
-        "compose-redis-1": ["172.18.0.2"],
-        "host.docker.internal": ["192.168.65.254"],
-        "ipv6-only.internal": ["fd00::5"],
-        "shop.example.com": ["172.18.0.7", "93.184.215.14"],
-    }
-
-    real_getaddrinfo = socket.getaddrinfo
-
-    def getaddrinfo(host: str, *args: Any, **kwargs: Any) -> list[Any]:
-        if host not in addresses:
-            return real_getaddrinfo(host, *args, **kwargs)
-        return [
-            (socket.AF_INET6, socket.SOCK_STREAM, 6, "", (address, 0, 0, 0))
-            if ":" in address
-            else (socket.AF_INET, socket.SOCK_STREAM, 6, "", (address, 0))
-            for address in addresses[host]
-        ]
-
-    mocker.patch("socket.getaddrinfo", getaddrinfo)
-    for name in addresses:
-        assert (await client.get(f"/configurator/dns-resolve?name={name}")).json() is (name == "shop.example.com")
+@pytest.mark.usefixtures("fake_dns")
+async def test_configurator_dns_resolve_hides_internal_names(client: TestClient) -> None:
+    for name in INTERNAL_HOSTS:
+        assert (await client.get("/configurator/dns-resolve", params={"name": name})).json() is False
+    assert (await client.get("/configurator/dns-resolve", params={"name": PUBLIC_HOST})).json() is True
 
 
 async def test_tfa_flow(client: TestClient, user: dict[str, Any], token: str) -> None:

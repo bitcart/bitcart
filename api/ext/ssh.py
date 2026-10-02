@@ -1,14 +1,24 @@
 import paramiko
 from paramiko.channel import ChannelFile, ChannelStderrFile, ChannelStdinFile
 
+from api import utils
 from api.schemas.configurator import ConfiguratorSSHSettings
 
 
+def resolve_ssh_host(host: str) -> str:
+    addresses = utils.common.get_global_addresses(host)
+    if not addresses:
+        raise ValueError(f"SSH host {host!r} does not resolve to a public address")
+    return addresses[0]
+
+
 def create_ssh_client(settings: ConfiguratorSSHSettings) -> paramiko.SSHClient:
+    address = resolve_ssh_host(settings.host)
     client = paramiko.SSHClient()
     client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     client.connect(
-        hostname=settings.host,
+        hostname=address,
+        port=22,
         username=settings.username,
         password=settings.password,
         allow_agent=False,

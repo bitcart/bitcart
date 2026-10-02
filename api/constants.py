@@ -21,7 +21,9 @@ PUBLIC_ID_LENGTH = 22  # The length of invoice and products ids; should be short
 RESET_TOKEN_BYTES = 32  # 256-bit tokens for URL-based reset flows
 RESET_REQUEST_MAX_ATTEMPTS = 5  # max reset emails per IP per hour
 RESET_FINALIZE_MAX_ATTEMPTS = 10  # max finalize attempts per IP per hour
-RESET_RATE_WINDOW = 60 * 60  # sliding window in seconds
+RESET_RATE_WINDOW = 60 * 60  # fixed window in seconds
+CONFIGURATOR_SSH_MAX_ATTEMPTS = 10  # max configurator SSH attempts per IP per hour
+CONFIGURATOR_SSH_RATE_WINDOW = 60 * 60  # fixed window in seconds
 # as supported by backup.sh
 BACKUP_PROVIDERS = ["local", "scp", "s3"]
 BACKUP_FREQUENCIES = ["daily", "weekly", "monthly"]
