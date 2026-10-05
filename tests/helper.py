@@ -125,13 +125,10 @@ async def create_payout(
         custom_store_attrs = {}
     if custom_payout_attrs is None:
         custom_payout_attrs = {}
-    store = await create_store(client, token, **custom_store_attrs)
-    default_attrs = {
-        "amount": 5,
-        "destination": static_data.PAYOUT_DESTINATION,
-        "store_id": store["id"],
-        "wallet_id": store["wallets"][0],
-    }
+    if "store_id" not in custom_payout_attrs:
+        store = await create_store(client, token, **custom_store_attrs)
+        custom_payout_attrs = {"store_id": store["id"], "wallet_id": store["wallets"][0], **custom_payout_attrs}
+    default_attrs = {"amount": 5, "destination": static_data.PAYOUT_DESTINATION}
     return await create_model_obj(client, "payouts", default_attrs, custom_payout_attrs, token=token)
 
 

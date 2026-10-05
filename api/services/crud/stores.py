@@ -1,4 +1,3 @@
-from decimal import Decimal
 from typing import Any
 
 from dishka import AsyncContainer
@@ -6,6 +5,7 @@ from fastapi import HTTPException
 
 from api import models
 from api.db import AsyncSession
+from api.exceptions import ExchangeRatesUnavailableError
 from api.ext import fxrate
 from api.schemas.policies import GlobalStorePolicy
 from api.schemas.stores import DisplayStore, PublicStore
@@ -67,6 +67,8 @@ class StoreService(CRUDService[models.Store]):
         model.checkout_settings.rate_rules = rules
         try:
             result, resolved = await fxrate.calculate_rules(self.exchange_rate_service, rules, "BTC", "USD")
+        except ExchangeRatesUnavailableError:
+            raise
         except Exception as e:
             raise HTTPException(422, str(e)) from None
         await model.set_json_key("checkout_settings", model.checkout_settings)
@@ -74,17 +76,23 @@ class StoreService(CRUDService[models.Store]):
 
     async def get_store_rates(self, model_id: str, currencies: list[str]) -> dict[str, list[dict[str, Any]]]:
         model = await self.get(model_id)
-        results = []
+        results: list[dict[str, Any]] = []
         for currency in currencies:
             try:
                 parts = currency.split("_")
                 if len(parts) != 2:
-                    results.append({"rate": Decimal("NaN"), "message": f"{currency}: invalid currency pair"})
+                    results.append({"rate": None, "message": f"{currency}: invalid currency pair"})
                     continue
                 result, resolved = await fxrate.calculate_rules(
                     self.exchange_rate_service, model.checkout_settings.rate_rules, parts[0], parts[1]
                 )
+                if not fxrate.is_valid_rate(result):
+                    message = f"{currency}: no valid rate, rules gave {result} (resolved by {resolved})"
+                    results.append({"rate": None, "message": message})
+                    continue
                 results.append({"rate": result, "message": f"{currency}: {result} (resolved by {resolved})"})
+            except ExchangeRatesUnavailableError:
+                raise
             except Exception as e:
-                results.append({"rate": Decimal("NaN"), "message": f"{currency}: {str(e)}"})
+                results.append({"rate": None, "message": f"{currency}: {str(e)}"})
         return {"rates": results}

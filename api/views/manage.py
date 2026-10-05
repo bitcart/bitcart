@@ -6,10 +6,11 @@ from fastapi import APIRouter, File, Query, Security, UploadFile
 
 from api import constants, models, utils
 from api.constants import AuthScopes
-from api.schemas.misc import HostAgentJobStatus, HostAgentOverview
+from api.schemas.misc import HostAgentJobStatus, HostAgentOverview, RateSourceInfo
 from api.schemas.policies import BackupsPolicy, GlobalStorePolicy, Policy
 from api.services.backup_manager import BackupManager
 from api.services.coins import CoinService
+from api.services.exchange_rate import ExchangeRateService
 from api.services.host_agent import HostAgentService
 from api.services.management import ManagementService
 from api.services.plugin_registry import PluginRegistry
@@ -152,6 +153,14 @@ async def get_syncinfo(
     user: models.User = Security(utils.authorization.auth_dependency, scopes=[AuthScopes.SERVER_MANAGEMENT]),
 ) -> Any:
     return await management_service.get_syncinfo()
+
+
+@router.get("/ratesinfo", response_model=list[RateSourceInfo])
+async def get_ratesinfo(
+    exchange_rate_service: FromDishka[ExchangeRateService],
+    user: models.User = Security(utils.authorization.auth_dependency, scopes=[AuthScopes.SERVER_MANAGEMENT]),
+) -> Any:
+    return await exchange_rate_service.get_ratesinfo()
 
 
 @router.get("/testping")

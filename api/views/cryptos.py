@@ -1,4 +1,3 @@
-import math
 from typing import Any
 
 from dishka import FromDishka
@@ -6,6 +5,7 @@ from dishka.integrations.fastapi import DishkaRoute
 from fastapi import APIRouter, HTTPException
 
 from api import constants
+from api.ext import fxrate
 from api.logging import get_logger
 from api.schemas.base import DecimalAsFloat
 from api.services.coins import CoinService
@@ -44,7 +44,7 @@ async def rate(
         fiat_currency.upper(),
         None,
     )
-    if math.isnan(rate):
+    if not fxrate.is_valid_rate(rate):
         raise HTTPException(422, "Unsupported fiat currency")
     return rate
 

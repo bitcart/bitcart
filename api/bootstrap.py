@@ -19,11 +19,12 @@ from starlette.staticfiles import StaticFiles
 from starlette.types import Receive, Scope, Send
 
 from api.db import AsyncSession
+from api.exceptions import ExchangeRatesUnavailableError
 from api.ext.agent import AgentError, AgentErrorCode
 from api.ioc import build_container, setup_dishka
 from api.ioc.services import ServicesProvider
 from api.logging import configure as configure_logging
-from api.logging import get_logger
+from api.logging import get_exception_details, get_logger
 from api.middleware import LogCorrelationIdMiddleware, OnionHostMiddleware, PrometheusMiddleware
 from api.openapi import generate_operation_id, get_openapi_parameters, set_openapi_generator, set_openapi_route
 from api.sentry import configure_sentry
@@ -142,11 +143,20 @@ async def agent_error_handler(request: Request, exc: AgentError) -> JSONResponse
     )
 
 
+async def exchange_rates_error_handler(request: Request, exc: ExchangeRatesUnavailableError) -> JSONResponse:
+    logger.warning(f"{request.method} {request.url.path}: {get_exception_details(exc)}")
+    return JSONResponse(
+        status_code=503,
+        content={"error": "Exchange rates unavailable", "detail": "Exchange rates are temporarily unavailable"},
+    )
+
+
 exception_handlers: dict[type[Exception], Callable[[Request, Any], Awaitable[JSONResponse]]] = {
     IntegrityError: db_integrity_error_handler,
     NotFoundError: db_not_found_error_handler,
     AdvancedAlchemyError: db_exception_handler,
     AgentError: agent_error_handler,
+    ExchangeRatesUnavailableError: exchange_rates_error_handler,
 }
 
 

@@ -1,12 +1,10 @@
-import math
 from decimal import Decimal
 
 from bitcart import BTC  # type: ignore[attr-defined]
-from bitcart.errors import BaseError as BitcartBaseError
-from fastapi import HTTPException
 
 from api import models
 from api.constants import MAX_CONTRACT_DIVISIBILITY
+from api.exceptions import ExchangeRatesUnavailableError, RateUnavailableError
 from api.ext import fxrate
 from api.ext.moneyformat import currency_table
 from api.logging import get_exception_message, get_logger
@@ -48,10 +46,10 @@ class WalletDataService:
         wallet: models.Wallet,
         currency: str,
         coin: BTC | None = None,
-        extra_fallback: bool = True,
         *,
         store: models.Store | None = None,
     ) -> Decimal:
+        symbol = wallet.currency
         try:
             coin = coin or await self.coin_service.get_coin(
                 wallet.currency, {"xpub": wallet.xpub, "contract": wallet.contract, **wallet.additional_xpub_data}
@@ -59,7 +57,6 @@ class WalletDataService:
             symbol = await self.get_wallet_symbol(wallet, coin)
             if symbol.lower() == currency.lower():
                 return Decimal(1)
-            rate = Decimal(1)
             if contract := self.get_coin_contract(coin):  # pragma: no cover
                 await self.exchange_rate_service.add_contract(contract, wallet.currency)
             if store:
@@ -67,16 +64,15 @@ class WalletDataService:
                 rate, _ = await fxrate.calculate_rules(self.exchange_rate_service, rules, symbol.upper(), currency.upper())
             else:
                 rate = await self.exchange_rate_service.get_rate("coingecko", f"{symbol.upper()}_{currency.upper()}")
-            if math.isnan(rate) and extra_fallback:
-                rate = Decimal(1)  # no rate available, no conversion
-            rate = await self.plugin_registry.apply_filters("get_rate", rate, coin, currency)
-        except (BitcartBaseError, HTTPException) as e:
-            logger.error(
-                f"Error fetching rates of coin {wallet.currency.upper()} for currency {currency}, falling back to 1:\n"
-                f"{get_exception_message(e)}"
-            )
-            rate = Decimal(1)
-        return currency_table.normalize(currency, rate)
+        except ExchangeRatesUnavailableError:
+            raise
+        except Exception as e:
+            logger.error(f"Error fetching rate {symbol.upper()}_{currency.upper()}:\n{get_exception_message(e)}")
+            raise RateUnavailableError(symbol.upper(), currency.upper()) from e
+        rate = await self.plugin_registry.apply_filters("get_rate", rate, coin, currency)
+        if not fxrate.is_valid_rate(rate):
+            raise RateUnavailableError(symbol.upper(), currency.upper())
+        return rate
 
     async def get_divisibility(self, wallet: models.Wallet, coin: BTC) -> int:
         divisibility = currency_table.get_currency_data(wallet.currency)["divisibility"]

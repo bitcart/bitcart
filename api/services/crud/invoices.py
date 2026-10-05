@@ -20,10 +20,11 @@ from starlette.datastructures import CommaSeparatedStrings
 
 from api import invoices, metrics, models, utils
 from api.db import AsyncSession
+from api.exceptions import ExchangeRatesUnavailableError, RateUnavailableError
 from api.ext import export as export_ext
 from api.ext.moneyformat import currency_table, truncate
 from api.invoices import InvoiceExceptionStatus, InvoiceStatus
-from api.logging import get_exception_message, get_logger
+from api.logging import get_exception_details, get_exception_message, get_logger
 from api.plugins import SKIP_PAYMENT_METHOD
 from api.redis import Redis
 from api.schemas.invoices import CreateInvoice, MarkCompleteOptions, MethodUpdateData
@@ -276,6 +277,11 @@ class InvoiceService(CRUDService[models.Invoice]):
     ) -> list[dict[str, Any]] | None:
         try:
             return await self.create_payment_method(invoice, wallet, product, store, discounts, promocode)
+        except (RateUnavailableError, ExchangeRatesUnavailableError) as e:
+            logger.warning(
+                f"Invoice {invoice.id}: skipped payment method {wallet.currency.upper()}: {get_exception_details(e)}"
+            )
+            return None
         except Exception as e:
             logger.error(
                 f"Invoice {invoice.id}: failed creating payment method {wallet.currency.upper()}:\n{get_exception_message(e)}"
@@ -341,7 +347,10 @@ class InvoiceService(CRUDService[models.Invoice]):
         if request_price and store.checkout_settings.include_network_fee:  # pragma: no cover
             try:
                 network_fee = await self.determine_network_fee(coin, wallet, invoice, store, divisibility)
-            except Exception:
+            except (RateUnavailableError, ExchangeRatesUnavailableError) as e:
+                logger.warning(
+                    f"Invoice {invoice.id}: network fee of {wallet.currency.upper()} set to 0: {get_exception_details(e)}"
+                )
                 network_fee = Decimal(0)
             request_price += network_fee
             price += network_fee
@@ -455,9 +464,11 @@ class InvoiceService(CRUDService[models.Invoice]):
                 wallet.currency, {"xpub": wallet.xpub, **wallet.additional_xpub_data}
             )
             # rate from network currency to invoice currency
-            rate_no_contract = await self.wallet_data_service.get_rate(wallet, invoice.currency, coin=coin_no_contract)
+            rate_no_contract = await self.wallet_data_service.get_rate(
+                wallet, invoice.currency, coin=coin_no_contract, store=store
+            )
             # rate from contract currency to invoice currency
-            rate_from_base = await self.wallet_data_service.get_rate(wallet, invoice.currency)
+            rate_from_base = await self.wallet_data_service.get_rate(wallet, invoice.currency, store=store)
             # convert from contract to invoice currency, then back to contract currency
             return (fee * rate_no_contract) / rate_from_base
         return fee

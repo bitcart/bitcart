@@ -8,7 +8,7 @@ from taskiq.schedule_sources import LabelScheduleSource
 from taskiq_redis import ListRedisScheduleSource, RedisAsyncResultBackend
 
 from api import utils
-from api.logging import get_exception_message, get_logger
+from api.logging import get_exception_message, get_logger, log_errors
 from api.redis import Redis
 from api.schemas.tasks import (
     AgentCallMessage,
@@ -82,6 +82,7 @@ async def sync_wallet(
     coin_service: FromDishka[CoinService],
     redis_pool: FromDishka[Redis],
     plugin_registry: FromDishka[PluginRegistry],
+    exchange_rate_service: FromDishka[ExchangeRateService],
 ) -> None:
     model = await wallet_service.get_or_none(params.wallet_id)
     if not model:
@@ -94,12 +95,15 @@ async def sync_wallet(
     except Exception as e:
         logger.error(f"Wallet {model.id} failed to sync:\n{get_exception_message(e)}")
         await utils.redis.publish_message(redis_pool, f"wallet:{model.id}", {"status": "error", "balance": "0"})
-        return
-    await plugin_registry.run_hook("wallet_synced", model, balance)
-    logger.info(f"Wallet {model.id} synced, balance: {balance['confirmed']}")
-    await utils.redis.publish_message(
-        redis_pool, f"wallet:{model.id}", {"status": "success", "balance": str(balance["confirmed"])}
-    )
+    else:
+        await plugin_registry.run_hook("wallet_synced", model, balance)
+        logger.info(f"Wallet {model.id} synced, balance: {balance['confirmed']}")
+        await utils.redis.publish_message(
+            redis_pool, f"wallet:{model.id}", {"status": "success", "balance": str(balance["confirmed"])}
+        )
+    if model.contract:
+        with log_errors(logger):
+            await exchange_rate_service.preload_contract(model.contract, model.currency)
 
 
 @broker.task("send_notification")

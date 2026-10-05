@@ -1,10 +1,11 @@
 from decimal import Decimal
 from typing import Any
-from unittest.mock import Mock
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 import pytest_mock
 
+from api.ext.exchanges.base import REQUEST_TIMEOUT
 from api.ext.exchanges.kraken import (
     KRAKEN_ASSET_PAIRS_URL,
     KRAKEN_TICKER_URL,
@@ -31,7 +32,7 @@ def kraken_response(result: dict[str, Any]) -> dict[str, Any]:
 
 
 def kraken_exchange() -> Kraken:
-    return Kraken(None, None, [], {})  # type: ignore[arg-type]
+    return Kraken("kraken", None, Mock(save_exchange_state=AsyncMock()), [], {})  # type: ignore[arg-type]
 
 
 def mock_kraken_requests(
@@ -44,7 +45,7 @@ def mock_kraken_requests(
 
 
 @pytest.mark.anyio
-async def test_kraken_refresh_loads_all_online_pairs(mocker: pytest_mock.MockerFixture) -> None:
+async def test_kraken_fetch_quotes_loads_all_online_pairs(mocker: pytest_mock.MockerFixture) -> None:
     send_request = mock_kraken_requests(
         mocker,
         asset_pairs={**ONLINE_ASSET_PAIRS, "XXBTZJPY": {"wsname": "XBT/JPY", "status": "cancel_only"}},
@@ -52,16 +53,14 @@ async def test_kraken_refresh_loads_all_online_pairs(mocker: pytest_mock.MockerF
     )
     exchange = kraken_exchange()
 
-    await exchange.refresh()
-
-    assert exchange.quotes == {
+    assert await exchange.fetch_quotes() == {
         "BTC_USD": Decimal("100.1"),
         "ETH_EUR": Decimal("200.2"),
         "DOT_USD": Decimal("3.3"),
     }
     assert send_request.call_args_list == [
-        mocker.call("GET", KRAKEN_ASSET_PAIRS_URL),
-        mocker.call("GET", KRAKEN_TICKER_URL),
+        mocker.call("GET", KRAKEN_ASSET_PAIRS_URL, timeout=REQUEST_TIMEOUT),
+        mocker.call("GET", KRAKEN_TICKER_URL, timeout=REQUEST_TIMEOUT),
     ]
 
 
@@ -102,7 +101,7 @@ def test_get_kraken_result_raises_on_error() -> None:
 
 
 @pytest.mark.anyio
-async def test_kraken_refresh_raises_on_kraken_error(mocker: pytest_mock.MockerFixture) -> None:
+async def test_kraken_fetch_quotes_raises_on_kraken_error(mocker: pytest_mock.MockerFixture) -> None:
     mocker.patch(
         "api.ext.exchanges.kraken.utils.common.send_request",
         side_effect=[
@@ -113,4 +112,4 @@ async def test_kraken_refresh_raises_on_kraken_error(mocker: pytest_mock.MockerF
     exchange = kraken_exchange()
 
     with pytest.raises(ValueError, match="Kraken AssetPairs request failed: EGeneral:Invalid arguments"):
-        await exchange.refresh()
+        await exchange.fetch_quotes()

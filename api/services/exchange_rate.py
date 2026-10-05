@@ -6,32 +6,41 @@ import os
 from collections.abc import Callable
 from decimal import Decimal
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
+
+from taskiq.exceptions import TaskiqError
 
 from api import utils
 from api.db import AsyncSessionMaker
-from api.ext.exchanges.base import BaseExchange
-from api.ext.exchanges.coingecko import coingecko_based_exchange
+from api.exceptions import ExchangeRatesUnavailableError
+from api.ext.exchanges.base import LOOKUP_TIMEOUT, REFRESH_TIME, BaseExchange
+from api.ext.exchanges.coingecko import coingecko_based_exchange, fetch_delayed
 from api.logging import get_exception_message, get_logger
 from api.redis import Redis
 from api.schemas.tasks import RatesActionMessage
 from api.services.coins import CoinService
 from api.services.crud.repositories import WalletRepository
 from api.settings import Settings
-from api.types import TasksBroker
+from api.types import Quotes, TasksBroker
 
 logger = get_logger(__name__)
 
 # Make sure to update it if the file is moved
 EXCHANGES_PATH = Path(os.path.dirname(__file__)).parent / "ext" / "exchanges"
+STATE_KEY_PREFIX = "exchange_rates"
+CALL_TIMEOUT = LOOKUP_TIMEOUT + 10
 
 
 def worker_result(func: Callable[..., Any]) -> Callable[..., Any]:
     async def wrapper(self: "ExchangeRateService", *args: Any, **kwargs: Any) -> Any:
         if self.settings.IS_WORKER or self.settings.is_testing():
             return await func(self, *args, **kwargs)
-        task = await self.broker.publish("rates_action", RatesActionMessage(func=func.__name__, args=args))
-        task_result = await task.wait_result(check_interval=0.01)
+        try:
+            task = await self.broker.publish("rates_action", RatesActionMessage(func=func.__name__, args=args))
+            task_result = await task.wait_result(check_interval=0.01, timeout=CALL_TIMEOUT)
+        except TaskiqError as e:
+            raise ExchangeRatesUnavailableError("The worker did not answer the exchange rates request") from e
+        task_result.raise_for_error()
         return json.loads(task_result.return_value, object_hook=utils.common.decimal_aware_object_hook)
 
     return wrapper
@@ -85,7 +94,7 @@ class ExchangeRateService:
 
     async def init(self) -> None:
         self.lock = asyncio.Lock()
-        coins = list(self.coin_service.cryptos.values())
+        self.coins = list(self.coin_service.cryptos.values())
         async with self.async_sessionmaker() as session:
             wallet_repository = WalletRepository(session)
             contracts = await wallet_repository.get_wallet_contracts()
@@ -99,31 +108,65 @@ class ExchangeRateService:
                 final_contracts[currency] = []
         self.contracts = final_contracts
         if self.settings.is_testing():
-            self.exchanges["coingecko"] = self._exchange_classes["coingecko"](self.settings, self, coins, final_contracts)
+            self.exchanges["coingecko"] = self._exchange_classes["coingecko"](
+                "coingecko", self.settings, self, self.coins, final_contracts
+            )
             return
         for name, exchange_cls in self._exchange_classes.items():
-            self.exchanges[name] = exchange_cls(self.settings, self, coins, final_contracts)
-        try:
-            coingecko_exchanges = await utils.common.send_request(
-                "GET",
-                f"{self.settings.coingecko_api_url}/exchanges/list",
-                headers=self.settings.coingecko_headers,
-            )
-            for exchange in coingecko_exchanges:
-                if exchange["id"] not in self.exchanges:
-                    self.exchanges[exchange["id"]] = coingecko_based_exchange(exchange["id"])(
-                        self.settings, self, coins, final_contracts
-                    )
-        except Exception as e:
-            logger.error(f"Error while fetching coingecko exchanges:\n{get_exception_message(e)}")
+            self.exchanges[name] = exchange_cls(name, self.settings, self, self.coins, final_contracts)
 
     async def start(self) -> None:
         await self.init()
-        for exchange in self.exchanges.values():
+        await self.start_exchanges(list(self.exchanges.values()))
+        self.proxied_exchanges_task = utils.tasks.create_task(self.load_proxied_exchanges())
+
+    async def start_exchanges(self, exchanges: list[BaseExchange]) -> None:
+        await self.load_exchange_states(exchanges)
+        for exchange in exchanges:
             await exchange.start()
 
+    async def load_proxied_exchanges(self) -> None:
+        while True:
+            try:
+                response = cast(
+                    list[dict[str, Any]],
+                    await fetch_delayed(
+                        "GET", f"{self.settings.coingecko_api_url}/exchanges/list", headers=self.settings.coingecko_headers
+                    ),
+                )
+                exchanges = [
+                    coingecko_based_exchange(item["id"])(item["id"], self.settings, self, self.coins, self.contracts)
+                    for item in response
+                    if item["id"] not in self.exchanges
+                ]
+                break
+            except Exception as e:
+                logger.error(f"Error while fetching coingecko exchanges:\n{get_exception_message(e)}")
+                await asyncio.sleep(REFRESH_TIME)
+        self.exchanges.update({exchange.name: exchange for exchange in exchanges})
+        await self.start_exchanges(exchanges)
+
+    @staticmethod
+    def get_state_key(name: str) -> str:
+        return f"{STATE_KEY_PREFIX}:{name}"
+
+    async def load_exchange_states(self, exchanges: list[BaseExchange]) -> None:
+        if not exchanges:
+            return
+        states = await self.redis_pool.mget([self.get_state_key(exchange.name) for exchange in exchanges])
+        for exchange, state in zip(exchanges, states, strict=True):
+            if state is None:
+                continue
+            try:
+                exchange.load_state(json.loads(state))
+            except Exception as e:
+                logger.error(f"Failed loading saved {exchange.name} exchange rates:\n{get_exception_message(e)}")
+
+    async def save_exchange_state(self, exchange: BaseExchange, quotes: Quotes) -> None:
+        await self.redis_pool.set(self.get_state_key(exchange.name), json.dumps(exchange.dump_state(quotes)))
+
     @worker_result
-    async def get_rate(self, exchange: str, pair: str | None = None) -> Decimal | dict[str, Decimal]:
+    async def get_rate(self, exchange: str, pair: str | None = None) -> Decimal | Quotes:
         if exchange.lower() not in self.exchanges:
             if pair is None:
                 return {}
@@ -135,9 +178,21 @@ class ExchangeRateService:
         return await self.exchanges["coingecko"].get_fiat_currencies()
 
     @worker_result
+    async def get_ratesinfo(self) -> list[dict[str, Any]]:
+        return [exchange.get_info() for exchange in self.exchanges.values() if exchange.is_active()]
+
+    async def preload_contract(self, contract: str, currency: str) -> None:
+        await self.add_contract(contract, currency)
+        for exchange in self.get_contract_exchanges():
+            await exchange.get_quotes()
+
+    def get_contract_exchanges(self) -> list[BaseExchange]:
+        return [exchange for exchange in self.exchanges.values() if exchange.uses_contracts]
+
+    @worker_result
     async def add_contract(self, contract: str, currency: str) -> None:
         async with self.lock:
             if contract not in self.contracts[currency]:
                 self.contracts[currency].append(contract)
-                for key in self.exchanges.copy():
-                    self.exchanges[key].last_refresh = 0
+                for exchange in self.get_contract_exchanges():
+                    exchange.invalidated = True

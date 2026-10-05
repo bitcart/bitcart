@@ -5,6 +5,7 @@ import json as json_module
 import os
 import socket
 from collections import defaultdict
+from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any, cast
 
@@ -21,6 +22,7 @@ from httpx_ws import AsyncWebSocketSession, WebSocketDisconnect, aconnect_ws
 from redis.observability.attributes import DB_CLIENT_CONNECTION_STATE, ConnectionState
 from sqlalchemy import select
 from starlette.status import WS_1008_POLICY_VIOLATION
+from taskiq.exceptions import TaskiqResultTimeoutError
 
 from api import models, utils
 from api.constants import (
@@ -31,6 +33,7 @@ from api.constants import (
     SUPPORTED_CRYPTOS,
     PayoutStatus,
 )
+from api.exceptions import ExchangeRatesUnavailableError, RateUnavailableError
 from api.invoices import InvoiceStatus
 from api.redis import Redis
 from api.schemas.misc import CaptchaType, EmailSettings
@@ -48,10 +51,11 @@ from api.services.payment_processor import PaymentProcessor
 from api.services.payout_manager import PayoutManager
 from api.settings import Settings
 from api.templates import TemplateManager
-from api.types import TasksBroker
+from api.types import Quotes, TasksBroker
 from tests.fixtures import static_data
 from tests.helper import (
     create_invoice,
+    create_payout,
     create_product,
     create_store,
     create_token,
@@ -90,6 +94,12 @@ async def test_rate(client: TestClient) -> None:
     assert (await client.get("/cryptos/rate?fiat_currency=eur")).status_code == 200
     assert (await client.get("/cryptos/rate?fiat_currency=EUR")).status_code == 200
     assert (await client.get("/cryptos/rate?fiat_currency=test")).status_code == 422
+
+
+@pytest.mark.parametrize("value", ["0", "-1", "Infinity"])
+async def test_rate_invalid(client: TestClient, mocker: pytest_mock.MockerFixture, value: str) -> None:
+    mocker.patch("api.services.exchange_rate.ExchangeRateService.get_rate", return_value=Decimal(value))
+    assert (await client.get("/cryptos/rate")).status_code == 422
 
 
 async def test_wallet_rate(client: TestClient, token: str, wallet: dict[str, Any]) -> None:
@@ -150,11 +160,116 @@ async def test_users_me(client: TestClient, user: dict[str, Any], token: str) ->
     assert "created" in j
 
 
+def mock_missing_rate(exchange: str, pair: str | None = None) -> Decimal | Quotes:
+    return {} if pair is None else Decimal("NaN")
+
+
 async def test_wallets_balance(client: TestClient, token: str, wallet: dict[str, Any], mock_btc_balance: Any) -> None:
     assert (await client.get("/wallets/balance")).status_code == 401
     resp = await client.get("/wallets/balance", headers={"Authorization": f"Bearer {token}"})
     assert resp.status_code == 200
-    assert Decimal(resp.json()) > 1
+    assert resp.json() == {"balance": "75000.00", "currency": "USD", "missing_rates": []}
+
+
+async def test_wallets_balance_missing_rates(
+    client: TestClient, token: str, wallet: dict[str, Any], mock_btc_balance: Any, mocker: pytest_mock.MockerFixture
+) -> None:
+    mocker.patch("api.services.exchange_rate.ExchangeRateService.get_rate", side_effect=mock_missing_rate)
+    resp = await client.get("/wallets/balance", headers={"Authorization": f"Bearer {token}"})
+    assert resp.status_code == 200
+    assert resp.json() == {"balance": "0.00", "currency": "USD", "missing_rates": ["BTC"]}
+
+
+async def test_wallets_balance_skips_empty_wallets(
+    client: TestClient, token: str, wallet: dict[str, Any], mocker: pytest_mock.MockerFixture
+) -> None:
+    mocker.patch(
+        "bitcart.BTC.balance",
+        new=mocker.AsyncMock(return_value={"confirmed": Decimal(0), "unconfirmed": Decimal(0), "unmatured": Decimal(0)}),
+    )
+    get_rate = mocker.patch("api.services.exchange_rate.ExchangeRateService.get_rate", side_effect=mock_missing_rate)
+    resp = await client.get("/wallets/balance", headers={"Authorization": f"Bearer {token}"})
+    assert resp.json() == {"balance": "0.00", "currency": "USD", "missing_rates": []}
+    get_rate.assert_not_called()
+
+
+async def test_ratesinfo(client: TestClient, token: str, limited_token: str) -> None:
+    assert (await client.get("/manage/ratesinfo")).status_code == 401
+    assert (await client.get("/manage/ratesinfo", headers={"Authorization": f"Bearer {limited_token}"})).status_code == 403
+    resp = await client.get("/manage/ratesinfo", headers={"Authorization": f"Bearer {token}"})
+    assert resp.status_code == 200
+    assert resp.json() == []
+    assert (await client.get("/cryptos/rate")).status_code == 200
+    resp = await client.get("/manage/ratesinfo", headers={"Authorization": f"Bearer {token}"})
+    sources = resp.json()
+    assert len(sources) == 1
+    info = sources[0]
+    assert {"name": "coingecko", "last_error": None, "last_error_at": None}.items() <= info.items()
+    assert utils.time.now() - datetime.fromisoformat(info["fetched_at"]) < timedelta(minutes=1)
+    assert info["age"] >= 0
+
+
+async def test_rates_worker_unavailable(
+    client: TestClient,
+    token: str,
+    store: dict[str, Any],
+    wallet: dict[str, Any],
+    mock_btc_balance: Any,
+    mocker: pytest_mock.MockerFixture,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    mocker.patch(
+        "api.services.exchange_rate.ExchangeRateService.get_rate",
+        side_effect=ExchangeRatesUnavailableError("The worker did not answer the exchange rates request"),
+    )
+    headers = {"Authorization": f"Bearer {token}"}
+    for method, url, body in [
+        ("GET", "/cryptos/rate", None),
+        ("GET", f"/wallets/{wallet['id']}/rate", None),
+        ("GET", "/wallets/balance", None),
+        ("GET", f"/stores/{store['id']}/rates?currencies=BTC_USD,LTC_USD", None),
+        ("PATCH", f"/stores/{store['id']}/rate_rules", "X_X = coingecko(X_X)"),
+    ]:
+        resp = await client.request(method, url, json=body, headers=headers)
+        assert resp.status_code == 503, url
+        assert resp.json() == {"error": "Exchange rates unavailable", "detail": "Exchange rates are temporarily unavailable"}
+    assert "GET /cryptos/rate: The worker did not answer the exchange rates request" in caplog.text
+    resp = await client.post("/invoices", json={"store_id": store["id"], "price": 5}, headers=headers)
+    assert resp.status_code == 200
+    assert resp.json()["payments"] == []
+
+
+async def test_invoice_logs_rates_unavailable_cause(
+    client: TestClient,
+    token: str,
+    store: dict[str, Any],
+    mocker: pytest_mock.MockerFixture,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    def unavailable(*args: Any, **kwargs: Any) -> None:
+        raise ExchangeRatesUnavailableError("The worker did not answer") from TaskiqResultTimeoutError(timeout=20)
+
+    mocker.patch("api.services.exchange_rate.ExchangeRateService.get_rate", side_effect=unavailable)
+    resp = await client.post(
+        "/invoices", json={"store_id": store["id"], "price": 5}, headers={"Authorization": f"Bearer {token}"}
+    )
+    assert resp.json()["payments"] == []
+    assert "skipped payment method BTC: The worker did not answer (TaskiqResultTimeoutError" in caplog.text
+
+
+async def test_store_rates(client: TestClient, token: str, store: dict[str, Any]) -> None:
+    headers = {"Authorization": f"Bearer {token}"}
+    resp = await client.get(f"/stores/{store['id']}/rates?currencies=BTC_USD,BTCUSD")
+    assert resp.json() == {
+        "rates": [
+            {"rate": 50000.0, "message": "BTC_USD: 50000 (resolved by X_X)"},
+            {"rate": None, "message": "BTCUSD: invalid currency pair"},
+        ]
+    }
+    resp = await client.patch(f"/stores/{store['id']}/rate_rules", json="BTC_USD = 0", headers=headers)
+    assert resp.status_code == 200
+    resp = await client.get(f"/stores/{store['id']}/rates?currencies=BTC_USD")
+    assert resp.json() == {"rates": [{"rate": None, "message": "BTC_USD: no valid rate, rules gave 0 (resolved by BTC_USD)"}]}
 
 
 async def test_fiatlist(client: TestClient) -> None:
@@ -1010,23 +1125,149 @@ async def test_create_product_with_image(
 async def test_create_invoice_without_coin_rate(
     client: TestClient, token: str, mocker: pytest_mock.MockerFixture, store: dict[str, Any]
 ) -> None:
-    store_id = store["id"]
-    price = 9.9
-    # mock coin rate missing
-    mocker.patch(
-        "api.services.exchange_rate.ExchangeRateService.get_rate",
-        side_effect=lambda exchange, pair=None: {} if pair is None else Decimal("NaN"),
-    )
-    # create invoice
+    mocker.patch("api.services.exchange_rate.ExchangeRateService.get_rate", side_effect=mock_missing_rate)
     r = await client.post(
         "/invoices",
-        json={"store_id": store_id, "price": price, "currency": "DUMMY"},
+        json={"store_id": store["id"], "price": 9.9, "currency": "DUMMY"},
         headers={"Authorization": f"Bearer {token}"},
     )
     assert r.status_code == 200
     result = r.json()
-    assert float(result["price"]) == price
     assert result["price"] == "9.90"
+    assert result["payments"] == []
+
+
+@pytest.mark.parametrize(
+    ("rate", "price", "amount", "raw_rate", "rate_str"),
+    [
+        ("0.004", 1, "250.00000000", "0.004", "$0.004 (USD)"),
+        ("3", 10, "3.33333333", "3.000000003000000003", "$3.00 (USD)"),
+    ],
+)
+async def test_create_invoice_rate(
+    client: TestClient,
+    token: str,
+    mocker: pytest_mock.MockerFixture,
+    store: dict[str, Any],
+    rate: str,
+    price: int,
+    amount: str,
+    raw_rate: str,
+    rate_str: str,
+) -> None:
+    mocker.patch(
+        "api.services.exchange_rate.ExchangeRateService.get_rate",
+        side_effect=lambda exchange, pair=None: {"BTC_USD": Decimal(rate)} if pair is None else Decimal(rate),
+    )
+    resp = await client.post(
+        "/invoices", json={"store_id": store["id"], "price": price}, headers={"Authorization": f"Bearer {token}"}
+    )
+    assert resp.status_code == 200
+    payments = resp.json()["payments"]
+    assert len(payments) == 1
+    payment = payments[0]
+    assert payment["amount"] == amount
+    assert payment["rate"] == raw_rate
+    assert payment["rate_str"] == rate_str
+
+
+@pytest.mark.parametrize("error", [RateUnavailableError("ETH", "USD"), ExchangeRatesUnavailableError()])
+async def test_create_invoice_network_fee_without_rate(
+    client: TestClient, token: str, mocker: pytest_mock.MockerFixture, store: dict[str, Any], error: Exception
+) -> None:
+    resp = await client.patch(
+        f"/stores/{store['id']}/checkout_settings",
+        json={"include_network_fee": True},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 200
+    determine_network_fee = mocker.patch.object(InvoiceService, "determine_network_fee", side_effect=error)
+    resp = await client.post(
+        "/invoices", json={"store_id": store["id"], "price": 5000}, headers={"Authorization": f"Bearer {token}"}
+    )
+    assert resp.status_code == 200
+    payments = resp.json()["payments"]
+    assert len(payments) == 1
+    payment = payments[0]
+    assert payment["amount"] == "0.10000000"
+    determine_network_fee.assert_awaited_once()
+
+
+async def send_payouts(client: TestClient, token: str, ids: list[str], options: dict[str, Any] | None = None) -> None:
+    resp = await client.post(
+        "/payouts/batch",
+        json={"command": "send", "ids": ids, "options": options or {}},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 200
+
+
+async def create_store_payout(client: TestClient, token: str, store: dict[str, Any], **attrs: Any) -> str:
+    payout = await create_payout(client, token, {"store_id": store["id"], "wallet_id": store["wallets"][0], **attrs})
+    return payout["id"]
+
+
+async def mark_payout_sent(app: FastAPI, payout_id: str, tx_hash: str) -> None:
+    async with app.state.dishka_container(scope=Scope.SESSION) as container:
+        payout_service = await container.get(PayoutService)
+        payout_manager = await container.get(PayoutManager)
+        payout = await payout_service.get(payout_id)
+        payout.update(tx_hash=tx_hash)
+        await payout_manager.update_status(payout, PayoutStatus.SENT)
+
+
+async def get_payout_state(client: TestClient, token: str, payout_id: str) -> tuple[str, str | None]:
+    payout = (await client.get(f"/payouts/{payout_id}", headers={"Authorization": f"Bearer {token}"})).json()
+    return payout["status"], payout["tx_hash"]
+
+
+async def test_payout_fails_without_rate(client: TestClient, token: str, mocker: pytest_mock.MockerFixture) -> None:
+    payout = await create_payout(client, token)
+    mocker.patch("api.services.exchange_rate.ExchangeRateService.get_rate", side_effect=mock_missing_rate)
+    prepare_tx = mocker.patch.object(PayoutManager, "prepare_tx")
+    await send_payouts(client, token, [payout["id"]])
+    assert await get_payout_state(client, token, payout["id"]) == (PayoutStatus.FAILED, None)
+    prepare_tx.assert_not_called()
+
+
+async def test_batch_payout_max_fee_per_payout_rate(
+    client: TestClient, token: str, store: dict[str, Any], mocker: pytest_mock.MockerFixture
+) -> None:
+    mocker.patch("bitcart.BTC.pay_to_many", new=mocker.AsyncMock(return_value="raw_tx"))
+    broadcast = mocker.patch.object(PayoutManager, "broadcast_tx_flow", return_value=None)
+    payout_ids = [
+        await create_store_payout(client, token, store, currency=currency, max_fee=max_fee)
+        for currency, max_fee in [("USD", "10"), ("EUR", "9.5"), ("USD", None)]
+    ]
+    await send_payouts(client, token, payout_ids, {"batch": True})
+    broadcast.assert_awaited_once()
+    assert broadcast.call_args.args[-1] == Decimal("0.0002")
+
+
+async def test_batch_payout_skips_sent_payouts(
+    client: TestClient, token: str, store: dict[str, Any], app: FastAPI, mocker: pytest_mock.MockerFixture
+) -> None:
+    pay_to_many = mocker.patch("bitcart.BTC.pay_to_many", new=mocker.AsyncMock(return_value="raw_tx"))
+    mocker.patch.object(PayoutManager, "broadcast_tx_flow", return_value="new_tx")
+    sent_id = await create_store_payout(client, token, store)
+    pending_id = await create_store_payout(client, token, store)
+    await mark_payout_sent(app, sent_id, "old_tx")
+    await send_payouts(client, token, [sent_id, pending_id], {"batch": True})
+    assert len(pay_to_many.call_args.args[0]) == 1
+    assert await get_payout_state(client, token, sent_id) == (PayoutStatus.SENT, "old_tx")
+    assert await get_payout_state(client, token, pending_id) == (PayoutStatus.SENT, "new_tx")
+
+
+async def test_failed_batch_payout_keeps_sent_payouts(
+    client: TestClient, token: str, store: dict[str, Any], app: FastAPI, mocker: pytest_mock.MockerFixture
+) -> None:
+    sent_id = await create_store_payout(client, token, store)
+    pending_id = await create_store_payout(client, token, store)
+    await mark_payout_sent(app, sent_id, "old_tx")
+    mocker.patch("api.services.exchange_rate.ExchangeRateService.get_rate", side_effect=mock_missing_rate)
+    await send_payouts(client, token, [sent_id, pending_id], {"batch": True})
+    assert await get_payout_state(client, token, sent_id) == (PayoutStatus.SENT, "old_tx")
+    assert await get_payout_state(client, token, pending_id) == (PayoutStatus.FAILED, None)
 
 
 async def test_create_invoice_and_pay(client: TestClient, token: str, store: dict[str, Any], app: FastAPI) -> None:
@@ -1510,8 +1751,8 @@ async def test_unauthorized_m2m_access(
     ).status_code == 403  # Can't access other users' related objects
 
 
-async def get_wallet_balances(client: TestClient, token: str) -> Decimal:
-    return (await client.get("/wallets/balance", headers={"Authorization": f"Bearer {token}"})).json()
+async def get_wallet_balances(client: TestClient, token: str) -> str:
+    return (await client.get("/wallets/balance", headers={"Authorization": f"Bearer {token}"})).json()["balance"]
 
 
 async def test_users_display_balance(client: TestClient, token: str, wallet: dict[str, Any], mock_btc_balance: Any) -> None:
@@ -2099,13 +2340,9 @@ async def test_refund_functionality(client: TestClient, token: str, mocker: pyte
     assert resp2.json()["tx_hash"] is None
     assert resp2.json()["wallet_currency"] == "btc"
     async with app.state.dishka_container(scope=Scope.SESSION) as container:
-        payout_service = await container.get(PayoutService)
         refund_service = await container.get(RefundService)
-        payout_manager = await container.get(PayoutManager)
         refund = await refund_service.get(refund_id)
-        payout = await payout_service.get(refund.payout_id)
-        payout.update(tx_hash="test")
-        await payout_manager.update_status(payout, PayoutStatus.SENT)
+    await mark_payout_sent(app, refund.payout_id, "test")
     invoice = (await client.get(f"/invoices/{invoice_id}")).json()
     assert invoice["status"] == "refunded"
     resp2 = await client.get(f"/invoices/refunds/{refund_id}")

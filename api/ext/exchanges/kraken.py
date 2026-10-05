@@ -1,8 +1,8 @@
-from decimal import Decimal
 from typing import Any
 
 from api import utils
 from api.ext.exchanges.base import BaseExchange
+from api.types import Quotes
 
 KRAKEN_API_URL = "https://api.kraken.com/0/public"
 KRAKEN_ASSET_PAIRS_URL = f"{KRAKEN_API_URL}/AssetPairs"
@@ -41,7 +41,7 @@ def get_online_kraken_pairs(asset_pairs: dict[str, Any]) -> dict[str, str]:
     }
 
 
-def build_kraken_quotes(asset_pairs: dict[str, Any], ticker: dict[str, Any]) -> dict[str, Decimal]:
+def build_kraken_quotes(asset_pairs: dict[str, Any], ticker: dict[str, Any]) -> Quotes:
     pairs = get_online_kraken_pairs(asset_pairs)
     return {
         pairs[pair_id]: utils.common.precise_decimal(str(ticker_data["c"][0]))
@@ -51,9 +51,9 @@ def build_kraken_quotes(asset_pairs: dict[str, Any], ticker: dict[str, Any]) -> 
 
 
 class Kraken(BaseExchange):
-    async def refresh(self) -> None:
-        asset_pairs_response = await utils.common.send_request("GET", KRAKEN_ASSET_PAIRS_URL)
-        ticker_response = await utils.common.send_request("GET", KRAKEN_TICKER_URL)
+    async def fetch_quotes(self) -> Quotes:
+        asset_pairs_response = await self.request("GET", KRAKEN_ASSET_PAIRS_URL)
+        ticker_response = await self.request("GET", KRAKEN_TICKER_URL)
         asset_pairs = get_kraken_result(asset_pairs_response, "AssetPairs")
         ticker = get_kraken_result(ticker_response, "Ticker")
-        self.quotes = build_kraken_quotes(asset_pairs, ticker)
+        return build_kraken_quotes(asset_pairs, ticker)

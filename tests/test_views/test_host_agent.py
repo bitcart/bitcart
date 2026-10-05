@@ -5,18 +5,19 @@ import pathlib
 import time
 from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING, Any
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from dishka import Scope
 from fastapi import FastAPI
+from taskiq.exceptions import ResultGetError, ResultIsReadyError, SendTaskError, TaskiqResultTimeoutError
 
-from api.ext.agent import AgentClient
+from api.ext.agent import AgentClient, AgentError, AgentErrorCode
 from api.schemas.misc import HostAgentJob
 from api.schemas.policies import BackupsPolicy
 from api.services import backup_manager as backup_manager_module
 from api.services.backup_manager import BackupManager
-from api.services.host_agent import STALE_STATE_SECONDS, STATE_KEY, HostAgentService
+from api.services.host_agent import AGENT_UNAVAILABLE, STALE_STATE_SECONDS, STATE_KEY, HostAgentService
 from api.services.plugin_registry import PluginRegistry
 from api.services.settings import SettingService
 from api.settings import Settings
@@ -500,3 +501,24 @@ async def test_replaced_running_job_is_completed(
     await asyncio.gather(*background_tasks.spy_return_list)
     assert finished[-1] == (HostAgentJob(job_id=vanished_id, command="backup", state="unknown"),)
     assert post_backup[-1][1] == {"status": "error", "message": "The backup job was lost: no such job"}
+
+
+@pytest.mark.parametrize(
+    ("publish_error", "wait_error"),
+    [
+        (SendTaskError(), None),
+        (None, TaskiqResultTimeoutError(timeout=1)),
+        (None, ResultIsReadyError()),
+        (None, ResultGetError()),
+    ],
+)
+async def test_worker_errors_mean_agent_unavailable(
+    host_agent: HostAgentService,
+    monkeypatch: pytest.MonkeyPatch,
+    publish_error: Exception | None,
+    wait_error: Exception | None,
+) -> None:
+    task = MagicMock(wait_result=AsyncMock(side_effect=wait_error))
+    monkeypatch.setattr(host_agent, "broker", MagicMock(publish=AsyncMock(return_value=task, side_effect=publish_error)))
+    reply = await host_agent._call_worker("status", {})
+    assert reply == {"ok": False, "error": AgentError(AgentErrorCode.UNAVAILABLE, AGENT_UNAVAILABLE).to_dict()}

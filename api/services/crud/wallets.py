@@ -12,6 +12,7 @@ from fastapi import HTTPException
 
 from api import models
 from api.db import AsyncSession
+from api.exceptions import RateUnavailableError
 from api.ext.moneyformat import currency_table
 from api.logging import get_exception_message, get_logger
 from api.schemas.tasks import SyncWalletMessage
@@ -67,20 +68,31 @@ class WalletService(CRUDService[models.Wallet]):
         await super().batch_load(models)
         return models
 
-    async def get_wallet_balances(self, user: models.User) -> str:
+    async def get_wallet_balances(self, user: models.User) -> dict[str, Any]:
         show_currency = user.settings.balance_currency
         balances = Decimal()
-        rates: dict[tuple[str, str | None], Decimal] = {}
+        rates: dict[tuple[str, str | None], Decimal | None] = {}
+        missing_rates: set[str] = set()
         result = await self.repository.stream_user_wallets(user.id)
         async for wallet in result:
             _, _, crypto_balance = await self.wallet_data_service.get_confirmed_wallet_balance(wallet)
+            if not crypto_balance:
+                continue
             cache_key = (wallet.currency, wallet.contract)
-            if cache_key in rates:  # pragma: no cover
-                rate = rates[cache_key]
-            else:
-                rate = rates[cache_key] = await self.wallet_data_service.get_rate(wallet, show_currency)
-            balances += crypto_balance * rate
-        return currency_table.format_decimal(show_currency, currency_table.normalize(show_currency, balances))
+            if cache_key not in rates:
+                try:
+                    rates[cache_key] = await self.wallet_data_service.get_rate(wallet, show_currency)
+                except RateUnavailableError as e:
+                    logger.warning(f"Wallet {wallet.id} excluded from the balance total: {e}")
+                    rates[cache_key] = None
+                    missing_rates.add(e.left)
+            if (rate := rates[cache_key]) is not None:
+                balances += crypto_balance * rate
+        return {
+            "balance": currency_table.format_decimal(show_currency, currency_table.normalize(show_currency, balances)),
+            "currency": show_currency,
+            "missing_rates": sorted(missing_rates),
+        }
 
     async def get_wallet_balance(self, model_id: str, user: models.User) -> dict[str, str]:
         wallet = await self.get(model_id, user)

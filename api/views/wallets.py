@@ -1,4 +1,3 @@
-import math
 from typing import Any
 
 from bitcart.errors import BaseError as BitcartBaseError
@@ -8,18 +7,18 @@ from fastapi import APIRouter, HTTPException, Security
 
 from api import models, utils
 from api.constants import AuthScopes
+from api.exceptions import RateUnavailableError
 from api.schemas.base import DecimalAsFloat
-from api.schemas.misc import BalanceResponse, CloseChannelScheme, LNPayScheme, OpenChannelScheme
+from api.schemas.misc import BalanceResponse, CloseChannelScheme, LNPayScheme, OpenChannelScheme, WalletsBalance
 from api.schemas.wallets import CreateWallet, CreateWalletData, DisplayWallet, UpdateWallet
 from api.services.crud.wallets import WalletService
 from api.services.wallet_data import WalletDataService
-from api.types import Money
 from api.utils.routing import create_crud_router
 
 router = APIRouter(route_class=DishkaRoute)
 
 
-@router.get("/balance", response_model=Money)
+@router.get("/balance", response_model=WalletsBalance)
 async def get_balances(
     wallet_service: FromDishka[WalletService],
     user: models.User = Security(utils.authorization.auth_dependency, scopes=[AuthScopes.WALLET_MANAGEMENT]),
@@ -59,10 +58,10 @@ async def get_wallet_rate(
     currency: str = "USD",
 ) -> Any:
     wallet = await wallet_service.get(model_id)
-    rate = await wallet_data_service.get_rate(wallet, currency.upper(), extra_fallback=False)
-    if math.isnan(rate):
-        raise HTTPException(422, "Unsupported fiat currency")
-    return rate
+    try:
+        return await wallet_data_service.get_rate(wallet, currency.upper())
+    except RateUnavailableError:
+        raise HTTPException(422, "Unsupported fiat currency") from None
 
 
 @router.get("/{model_id}/balance", response_model=BalanceResponse)

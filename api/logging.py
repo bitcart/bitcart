@@ -321,6 +321,14 @@ def get_exception_message(exc: Exception) -> str:
     return "\n" + "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
 
 
+def get_exception_summary(exc: BaseException) -> str:
+    return f"{type(exc).__name__}: {exc}" if str(exc) else type(exc).__name__
+
+
+def get_exception_details(exc: BaseException) -> str:
+    return f"{exc} ({get_exception_summary(exc.__cause__)})" if exc.__cause__ else str(exc)
+
+
 @contextmanager
 def log_errors(logger: Logger) -> Iterator[None]:  # pragma: no cover
     try:
