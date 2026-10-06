@@ -257,6 +257,19 @@ async def test_invoice_logs_rates_unavailable_cause(
     assert "skipped payment method BTC: The worker did not answer (TaskiqResultTimeoutError" in caplog.text
 
 
+async def test_failed_rate_rules_not_saved(
+    client: TestClient, token: str, store: dict[str, Any], mocker: pytest_mock.MockerFixture
+) -> None:
+    headers = {"Authorization": f"Bearer {token}"}
+    resp = await client.patch(f"/stores/{store['id']}/rate_rules", json="X_X = coingecko(X_X", headers=headers)
+    assert resp.status_code == 422
+    mocker.patch("api.services.exchange_rate.ExchangeRateService.get_rate", side_effect=ExchangeRatesUnavailableError())
+    resp = await client.patch(f"/stores/{store['id']}/rate_rules", json="X_X = kraken(X_X)", headers=headers)
+    assert resp.status_code == 503
+    resp = await client.get(f"/stores/{store['id']}", headers=headers)
+    assert resp.json()["checkout_settings"]["rate_rules"] == ""
+
+
 async def test_store_rates(client: TestClient, token: str, store: dict[str, Any]) -> None:
     headers = {"Authorization": f"Bearer {token}"}
     resp = await client.get(f"/stores/{store['id']}/rates?currencies=BTC_USD,BTCUSD")

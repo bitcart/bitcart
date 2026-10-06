@@ -20,7 +20,7 @@ from starlette.datastructures import CommaSeparatedStrings
 
 from api import invoices, metrics, models, utils
 from api.db import AsyncSession
-from api.exceptions import ExchangeRatesUnavailableError, RateUnavailableError
+from api.exceptions import ExchangeRateError
 from api.ext import export as export_ext
 from api.ext.moneyformat import currency_table, truncate
 from api.invoices import InvoiceExceptionStatus, InvoiceStatus
@@ -277,7 +277,7 @@ class InvoiceService(CRUDService[models.Invoice]):
     ) -> list[dict[str, Any]] | None:
         try:
             return await self.create_payment_method(invoice, wallet, product, store, discounts, promocode)
-        except (RateUnavailableError, ExchangeRatesUnavailableError) as e:
+        except ExchangeRateError as e:
             logger.warning(
                 f"Invoice {invoice.id}: skipped payment method {wallet.currency.upper()}: {get_exception_details(e)}"
             )
@@ -347,7 +347,7 @@ class InvoiceService(CRUDService[models.Invoice]):
         if request_price and store.checkout_settings.include_network_fee:  # pragma: no cover
             try:
                 network_fee = await self.determine_network_fee(coin, wallet, invoice, store, divisibility)
-            except (RateUnavailableError, ExchangeRatesUnavailableError) as e:
+            except ExchangeRateError as e:
                 logger.warning(
                     f"Invoice {invoice.id}: network fee of {wallet.currency.upper()} set to 0: {get_exception_details(e)}"
                 )

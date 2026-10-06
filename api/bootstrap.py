@@ -8,11 +8,14 @@ from typing import Any
 from advanced_alchemy.exceptions import AdvancedAlchemyError, NotFoundError
 from dishka.integrations.taskiq import setup_dishka as taskiq_setup_dishka
 from fastapi import FastAPI, Request
+from fastapi.exception_handlers import http_exception_handler, request_validation_exception_handler
+from fastapi.exceptions import RequestValidationError
 from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTextResponse
 from scalar_fastapi import get_scalar_api_reference
 from sqlalchemy.exc import IntegrityError
 from starlette.applications import Starlette
+from starlette.exceptions import HTTPException
 from starlette.middleware.cors import CORSMiddleware
 from starlette.responses import Response
 from starlette.staticfiles import StaticFiles
@@ -86,16 +89,17 @@ def patch_call(instance: FastAPI) -> None:
 
 
 def with_db_rollback(
-    handler: Callable[[Request, Any], Awaitable[JSONResponse]],
-) -> Callable[[Request, Any], Awaitable[JSONResponse]]:
+    handler: Callable[[Request, Any], Awaitable[Response]],
+) -> Callable[[Request, Any], Awaitable[Response]]:
     """Decorator that ensures database session is rolled back before returning from exception handler.
 
     This is necessary because when an exception handler catches an exception and returns a response,
-    the exception doesn't propagate to dishka's context manager. Without rollback, dishka will try
-    to commit the session, which may be in a bad state, causing PendingRollbackError.
+    the exception doesn't propagate to dishka's context manager. Without rollback, dishka would commit
+    the session: writes made before the error would be saved, and a session in a bad state would fail
+    with PendingRollbackError.
     """
 
-    async def wrapper(request: Request, exc: Any) -> JSONResponse:
+    async def wrapper(request: Request, exc: Any) -> Response:
         session = await request.state.dishka_container.get(AsyncSession)
         await session.rollback()
         return await handler(request, exc)
@@ -103,7 +107,6 @@ def with_db_rollback(
     return wrapper
 
 
-@with_db_rollback
 async def db_exception_handler(request: Request, exc: AdvancedAlchemyError) -> JSONResponse:
     logger.error("Database error", exc_info=exc)
     return JSONResponse(
@@ -112,7 +115,6 @@ async def db_exception_handler(request: Request, exc: AdvancedAlchemyError) -> J
     )
 
 
-@with_db_rollback
 async def db_integrity_error_handler(request: Request, exc: IntegrityError) -> JSONResponse:
     return JSONResponse(
         status_code=422,
@@ -120,7 +122,6 @@ async def db_integrity_error_handler(request: Request, exc: IntegrityError) -> J
     )
 
 
-@with_db_rollback
 async def db_not_found_error_handler(request: Request, exc: NotFoundError) -> JSONResponse:
     return JSONResponse(
         status_code=404,
@@ -151,7 +152,9 @@ async def exchange_rates_error_handler(request: Request, exc: ExchangeRatesUnava
     )
 
 
-exception_handlers: dict[type[Exception], Callable[[Request, Any], Awaitable[JSONResponse]]] = {
+exception_handlers: dict[type[Exception], Callable[[Request, Any], Awaitable[Response]]] = {
+    HTTPException: http_exception_handler,
+    RequestValidationError: request_validation_exception_handler,
     IntegrityError: db_integrity_error_handler,
     NotFoundError: db_not_found_error_handler,
     AdvancedAlchemyError: db_exception_handler,
@@ -162,7 +165,7 @@ exception_handlers: dict[type[Exception], Callable[[Request, Any], Awaitable[JSO
 
 def add_exception_handlers(app: FastAPI) -> None:
     for exc_type, handler in exception_handlers.items():
-        app.add_exception_handler(exc_type, handler)
+        app.add_exception_handler(exc_type, with_db_rollback(handler))
 
     @app.exception_handler(500)
     async def exception_handler(request: Request, exc: Exception) -> Response:
