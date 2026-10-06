@@ -87,7 +87,7 @@ class PayoutManager:
 
     async def prepare_payout_details(
         self, payout: models.Payout, private_key: str | None = None
-    ) -> tuple[BTC, models.Wallet, str, PayoutAmount, Decimal, int] | None:
+    ) -> tuple[BTC, models.Wallet, str, PayoutAmount, Decimal | None, int] | None:
         wallet = payout.wallet
         store = payout.store
         if not wallet or not store or payout.status in SENT_PAYOUT_STATUSES:
@@ -104,7 +104,12 @@ class PayoutManager:
                 if payout.amount != SEND_ALL
                 else SEND_ALL
             )
-            return coin, wallet, payout.destination, request_amount, rate, divisibility
+            max_fee = (
+                currency_table.normalize(wallet.currency, payout.max_fee / rate, divisibility=divisibility)
+                if payout.max_fee is not None
+                else None
+            )
+            return coin, wallet, payout.destination, request_amount, max_fee, divisibility
         except Exception:
             await coin.server.close_wallet()
             raise
@@ -117,25 +122,21 @@ class PayoutManager:
         result = await self.prepare_payout_details(payout, private_key)
         if result is None:
             return
-        coin, wallet, destination, request_amount, rate, divisibility = result
+        coin, wallet, destination, request_amount, max_fee, divisibility = result
         try:
             raw_tx = await self.prepare_tx(coin, wallet, destination, request_amount, divisibility)
-            tx_hash = await self.broadcast_tx_flow(coin, wallet, raw_tx, payout.max_fee, divisibility, rate)
+            tx_hash = await self.broadcast_tx_flow(coin, wallet, raw_tx, max_fee)
             if tx_hash is not None:
                 await self.mark_payout_sent(payout, tx_hash)
         except Exception:
             await coin.server.close_wallet()
             raise
 
-    async def broadcast_tx_flow(
-        self, coin: BTC, wallet: models.Wallet, raw_tx: str, max_fee: Decimal | None, divisibility: int, rate: Decimal
-    ) -> str | None:
+    async def broadcast_tx_flow(self, coin: BTC, wallet: models.Wallet, raw_tx: str, max_fee: Decimal | None) -> str | None:
         try:
             predicted_fee = Decimal(await coin.server.get_default_fee(raw_tx))
-            if max_fee is not None:
-                max_fee_amount = currency_table.normalize(wallet.currency, max_fee / rate, divisibility=divisibility)
-                if predicted_fee > max_fee_amount:
-                    return None
+            if max_fee is not None and predicted_fee > max_fee:
+                return None
             if coin.is_eth_based or wallet.contract:
                 raw_tx = await coin.server.signtransaction(raw_tx)
             else:
@@ -152,20 +153,19 @@ class PayoutManager:
     async def send_batch_payouts(self, payouts: list[models.Payout], private_key: str | None = None) -> None:
         coros = [self.prepare_payout_details(payout, private_key) for payout in payouts]
         results = await asyncio.gather(*coros)
-        if results[0] is None:
+        prepared = [(payout, result) for payout, result in zip(payouts, results, strict=True) if result is not None]
+        if not prepared:
             return
-        coin, wallet, divisibility, rate = results[0][0], results[0][1], results[0][5], results[0][4]
-        outputs = [(result[2], result[3]) for result in results if result is not None]
-        if any(output[1] == SEND_ALL for output in outputs):
-            raise Exception("Cannot send batch payout with SEND_ALL")
+        coin, wallet = prepared[0][1][0], prepared[0][1][1]
+        outputs = [(result[2], result[3]) for _, result in prepared]
         try:
+            if any(output[1] == SEND_ALL for output in outputs):
+                raise Exception("Cannot send batch payout with SEND_ALL")
             raw_tx = await coin.pay_to_many(outputs, broadcast=False)
-            max_fee = None
-            if any(payout.max_fee is not None for payout in payouts):
-                max_fee = min(payout.max_fee for payout in payouts if payout.max_fee is not None)
-            tx_hash = await self.broadcast_tx_flow(coin, wallet, cast(str, raw_tx), max_fee, divisibility, rate)
+            max_fee = min((result[4] for _, result in prepared if result[4] is not None), default=None)
+            tx_hash = await self.broadcast_tx_flow(coin, wallet, cast(str, raw_tx), max_fee)
             if tx_hash is not None:
-                coros = [self.mark_payout_sent(payout, tx_hash) for payout in payouts]
+                coros = [self.mark_payout_sent(payout, tx_hash) for payout, _ in prepared]
                 await asyncio.gather(*coros)
         finally:
             await coin.server.close_wallet()

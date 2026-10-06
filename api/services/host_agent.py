@@ -3,12 +3,12 @@ import time
 from datetime import UTC, datetime
 from typing import Any
 
-from taskiq.exceptions import TaskiqResultTimeoutError
+from taskiq.exceptions import TaskiqError
 
 from api import utils
 from api.constants import DOCKER_REPO_URL
 from api.ext.agent import AgentClient, AgentError, AgentErrorCode
-from api.logging import get_logger, log_errors
+from api.logging import get_exception_summary, get_logger, log_errors
 from api.redis import Redis
 from api.schemas.misc import HostAgentJob, HostAgentOverview, HostAgentState
 from api.schemas.tasks import AgentCallMessage
@@ -27,6 +27,7 @@ JOB_POLL_INTERVAL = 5
 AGENT_JOB_SECONDS = 2 * 60 * 60
 JOB_WATCH_SECONDS = AGENT_JOB_SECONDS + 10 * 60
 AGENT_DOCS_URL = f"{DOCKER_REPO_URL}#host-agent"
+AGENT_UNAVAILABLE = "The host agent is temporarily unavailable"
 
 
 def error_response(error: AgentError) -> dict[str, Any]:
@@ -82,16 +83,15 @@ class HostAgentService:
         return reply["data"]
 
     async def _call_worker(self, command: str, args: dict[str, str]) -> dict[str, Any]:
-        task = await self.broker.publish("agent_call", AgentCallMessage(command=command, args=args))
         try:
+            task = await self.broker.publish("agent_call", AgentCallMessage(command=command, args=args))
             result = await task.wait_result(check_interval=0.01, timeout=CALL_TIMEOUT)
-        except TaskiqResultTimeoutError:
-            return {"ok": False, "error": AgentError(AgentErrorCode.UNAVAILABLE, "The worker did not respond").to_dict()}
+        except TaskiqError as e:
+            logger.warning(f"Host agent {command} call failed: {get_exception_summary(e)}")
+            return {"ok": False, "error": AgentError(AgentErrorCode.UNAVAILABLE, AGENT_UNAVAILABLE).to_dict()}
         if result.is_err:
-            return {
-                "ok": False,
-                "error": AgentError(AgentErrorCode.UNAVAILABLE, "The worker could not call the host agent").to_dict(),
-            }
+            logger.warning(f"Host agent {command} call failed in the worker: {result.error}")
+            return {"ok": False, "error": AgentError(AgentErrorCode.UNAVAILABLE, AGENT_UNAVAILABLE).to_dict()}
         return result.return_value
 
     async def handle_call(self, command: str, args: dict[str, str]) -> dict[str, Any]:

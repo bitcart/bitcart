@@ -51,6 +51,8 @@ def moneyfmt(value: Decimal, places: int = 2, curr: str = "", sep: str = ",", dp
 
 type CurrencyData = dict[str, Any]
 
+RATE_SIGNIFICANT_DIGITS = 3
+
 
 class MoneyfmtParams(TypedDict, total=False):
     places: int
@@ -90,6 +92,13 @@ class CurrencyTable:
                 "crypto": True,
             }
         return cast(CurrencyData, result)
+
+    def get_rate_divisibility(self, currency: str, rate: Decimal) -> int:
+        divisibility = self.get_currency_data(currency)["divisibility"]
+        places = RATE_SIGNIFICANT_DIGITS - 1 - rate.adjusted()
+        if places <= divisibility:
+            return divisibility
+        return max(divisibility, -cast(int, truncate(rate, places).normalize().as_tuple().exponent))
 
     def normalize(self, currency: str, value: Decimal, divisibility: int | None = None) -> Decimal:
         return truncate(value, divisibility or self.get_currency_data(currency)["divisibility"])

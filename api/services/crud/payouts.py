@@ -7,7 +7,7 @@ from fastapi import HTTPException
 from sqlalchemy import select, update
 
 from api import models
-from api.constants import PayoutStatus
+from api.constants import SENT_PAYOUT_STATUSES, PayoutStatus
 from api.db import AsyncSession
 from api.logging import get_exception_message, get_logger
 from api.schemas.misc import BatchAction
@@ -91,7 +91,7 @@ class PayoutService(CRUDService[models.Payout]):
     async def send_payouts(self, settings: BatchAction, user: models.User) -> None:
         wallets = cast(dict[str, Any], settings.options).get("wallets", {})
         if cast(dict[str, Any], settings.options).get("batch", False):
-            payouts, _ = await self.list_and_count(id=models.Payout.id.in_(settings.ids), user=user)
+            payouts, _ = await self.list_and_count(models.Payout.id.in_(settings.ids), user=user)
             wallet_to_payout = defaultdict(list)
             for cur_payout in payouts:
                 wallet_to_payout[cur_payout.wallet_id].append(cur_payout)
@@ -102,7 +102,8 @@ class PayoutService(CRUDService[models.Payout]):
                     logger.error(get_exception_message(e))
                     coros = []
                     for cur_payout in payouts:
-                        coros.append(self.payout_manager.update_status(cur_payout, PayoutStatus.FAILED))
+                        if cur_payout.status not in SENT_PAYOUT_STATUSES:
+                            coros.append(self.payout_manager.update_status(cur_payout, PayoutStatus.FAILED))
                     await asyncio.gather(*coros)
         else:
             for payout_id in settings.ids:

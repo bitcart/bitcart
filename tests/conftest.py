@@ -1,4 +1,3 @@
-import functools
 import os
 import tempfile
 from collections.abc import AsyncGenerator, AsyncIterator, Generator, Iterator
@@ -8,7 +7,6 @@ from unittest.mock import AsyncMock
 
 import pytest
 import pytest_mock
-from bitcart import BTC  # type: ignore[attr-defined]
 from dishka import Provider, Scope, decorate, from_context, provide
 from fastapi import FastAPI
 from filelock import FileLock
@@ -28,7 +26,7 @@ from api.services.exchange_rate import ExchangeRateService
 from api.settings import Settings
 from tests.helper import make_client
 
-pytest_plugins = ["tests.fixtures.pytest.data", "tests.fixtures.pytest.agent"]
+pytest_plugins = ["tests.fixtures.pytest.data", "tests.fixtures.pytest.agent", "tests.fixtures.pytest.coingecko"]
 
 ANYIO_BACKEND_OPTIONS = {"use_uvloop": True}
 
@@ -205,23 +203,22 @@ def pytest_configure(config: pytest.Config) -> None:
     )
 
 
-async def mock_fetch_delayed(*args: Any, all_cryptos: dict[str, BTC], **kwargs: Any) -> Any:
-    req_url = args[1]
-    if "simple/supported_vs_currencies" in req_url:
-        return ["btc", "usd", "eur"]
-    if "coins/list" in req_url:
-        coins = []
-        for crypto in all_cryptos:
-            coins.append({"id": crypto, "symbol": crypto, "name": crypto.upper()})
-        return coins
-    if "simple/price" in req_url:
-        return {crypto: {"usd": 50000, "eur": 45000} for crypto in all_cryptos}
-    return {}
-
-
 @pytest.fixture
 async def coin_service(app: FastAPI) -> CoinService:
     return await app.state.dishka_container.get(CoinService)
+
+
+@pytest.fixture(autouse=True)
+def exchange_rates_cryptos(
+    request: pytest.FixtureRequest,
+    mocker: pytest_mock.MockerFixture,
+    coin_service: CoinService,
+    anyio_backend: tuple[str, dict[str, Any]],
+) -> None:
+    marker = request.node.get_closest_marker("exchange_rates")
+    cryptos = marker.kwargs.get("cryptos") if marker else None
+    if cryptos is not None:
+        mocker.patch.object(coin_service, "_cryptos", cryptos)
 
 
 @pytest.fixture
@@ -236,22 +233,4 @@ def mock_btc_balance(mocker: pytest_mock.MockerFixture) -> AsyncMock:
                 "lightning": Decimal("0"),
             }
         ),
-    )
-
-
-@pytest.fixture(autouse=True)
-def mock_coingecko_api(
-    request: pytest.FixtureRequest,
-    mocker: pytest_mock.MockerFixture,
-    coin_service: CoinService,
-    anyio_backend: tuple[str, dict[str, Any]],
-) -> None:
-    all_cryptos = coin_service.cryptos
-    marker = request.node.get_closest_marker("exchange_rates")
-    cryptos = marker.kwargs.get("cryptos") if marker else None
-    if cryptos is not None:
-        all_cryptos = cryptos
-        mocker.patch.object(coin_service, "_cryptos", cryptos)
-    mocker.patch(
-        "api.ext.exchanges.coingecko.fetch_delayed", side_effect=functools.partial(mock_fetch_delayed, all_cryptos=all_cryptos)
     )

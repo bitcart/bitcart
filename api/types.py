@@ -17,6 +17,7 @@ if TYPE_CHECKING:
 
 
 type Money = str
+type Quotes = dict[str, Decimal]
 type PayoutAmount = Decimal | Literal["!"]
 
 

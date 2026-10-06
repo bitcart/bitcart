@@ -11,7 +11,7 @@ from opentelemetry.sdk._logs.export import InMemoryLogRecordExporter, SimpleLogR
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.util.types import AnyValue
 
-from api.logging import Logger, get_logger
+from api.logging import Logger, get_exception_details, get_exception_summary, get_logger
 from api.logging import configure as configure_logging
 from api.settings import Settings
 
@@ -128,3 +128,25 @@ def test_reconfiguring_keeps_app_loggers_enabled(settings: Settings) -> None:
     configure_logging(settings=settings)
     assert logging.getLogger("tests.reconfigured").disabled is False
     assert logging.getLogger("tests.unrelated").disabled is True
+
+
+@pytest.mark.parametrize(
+    ("exc", "expected"),
+    [
+        (TimeoutError(), "TimeoutError"),
+        (KeyError("usd"), "KeyError: 'usd'"),
+        (ValueError("Kraken Ticker request failed"), "ValueError: Kraken Ticker request failed"),
+    ],
+)
+def test_exception_summary(exc: Exception, expected: str) -> None:
+    assert get_exception_summary(exc) == expected
+
+
+def test_exception_details() -> None:
+    assert get_exception_details(ValueError("no rate")) == "no rate"
+    with pytest.raises(ValueError) as exc_info:
+        try:
+            raise TimeoutError
+        except TimeoutError as e:
+            raise ValueError("no rate") from e
+    assert get_exception_details(exc_info.value) == "no rate (TimeoutError)"

@@ -1,5 +1,6 @@
 from api import utils
 from api.ext.exchanges.base import BaseExchange
+from api.types import Quotes
 
 
 class BTC:
@@ -15,9 +16,9 @@ class LTC:
 
 
 class XRGExchange(BaseExchange):
-    async def refresh(self) -> None:
-        result = await utils.common.send_request("GET", "https://explorer.ergon.network/ext/summary")
-        self.quotes = {"XRG_USDT": utils.common.precise_decimal(result["data"][0]["lastPrice"])}
+    async def fetch_quotes(self) -> Quotes:
+        result = await self.request("GET", "https://explorer.ergon.network/ext/summary")
+        return {"XRG_USDT": utils.common.precise_decimal(result["data"][0]["lastPrice"])}
 
 
 class XRG:

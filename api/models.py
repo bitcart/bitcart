@@ -1,6 +1,6 @@
 import secrets
 from datetime import datetime, timedelta
-from decimal import Decimal
+from decimal import Context, Decimal
 from typing import Any
 
 import pyotp
@@ -387,8 +387,10 @@ class PaymentMethod(RecordModel):
         data = super().to_dict()
         data["metadata"] = data.pop("meta", {})
         data["amount"] = currency_table.format_decimal(self.symbol, self.amount, divisibility=self.divisibility)
-        data["rate"] = currency_table.format_decimal(currency, self.rate)
-        data["rate_str"] = currency_table.format_currency(currency, self.rate)
+        data["rate"] = f"{self.rate.normalize(Context(prec=36)):f}"
+        data["rate_str"] = currency_table.format_currency(
+            currency, self.rate, divisibility=currency_table.get_rate_divisibility(currency, self.rate)
+        )
         data["name"] = self.get_name(index)
         if data["payment_url"].startswith("ethereum:"):  # pragma: no cover
             data["chain_id"] = self.parse_chain_id(data["payment_url"])

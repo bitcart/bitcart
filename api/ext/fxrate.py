@@ -1,4 +1,5 @@
 import ast
+import math
 import operator
 import statistics
 from collections import defaultdict
@@ -7,6 +8,7 @@ from decimal import Decimal
 from typing import TYPE_CHECKING, Any, cast
 
 from api.ext.moneyformat import truncate
+from api.types import Quotes
 
 if TYPE_CHECKING:
     from api.services.exchange_rate import ExchangeRateService
@@ -45,7 +47,7 @@ class ExchangeTransformer(ast.NodeTransformer):
         left: str,
         right: str,
         depth: int = 0,
-        rates: dict[str, dict[str, Decimal]] | None = None,
+        rates: dict[str, Quotes] | None = None,
     ) -> None:
         self.expressions = expressions
         self.left = left
@@ -197,6 +199,10 @@ async def calculate_rules(
         transformer.rates[exchange] = await exchange_rate_service.get_rate(exchange)
     ret = transformer.visit(candidate["expression"])
     return ret, candidate["pair"]
+
+
+def is_valid_rate(rate: Decimal) -> bool:
+    return math.isfinite(rate) and rate > 0
 
 
 def get_default_rules() -> str:

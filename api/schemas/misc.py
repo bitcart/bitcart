@@ -1,8 +1,8 @@
-import math
+from datetime import datetime
 from typing import Any
 
 from fastapi import HTTPException
-from pydantic import Field, field_validator
+from pydantic import field_validator
 
 from api.schemas.base import DecimalAsFloat, Schema
 from api.types import Money, StrEnum
@@ -47,6 +47,12 @@ class BalanceResponse(Schema):
     unconfirmed: Money
     unmatured: Money
     lightning: Money
+
+
+class WalletsBalance(Schema):
+    balance: Money
+    currency: str
+    missing_rates: list[str]
 
 
 class OpenChannelScheme(Schema):
@@ -101,16 +107,17 @@ class HostAgentJobStatus(Schema):
     log_complete: bool
 
 
-class RateResult(Schema):
-    rate: DecimalAsFloat | None = Field(..., validate_default=True)
-    message: str
+class RateSourceInfo(Schema):
+    name: str
+    fetched_at: datetime | None
+    age: int | None
+    last_error: str | None
+    last_error_at: datetime | None
 
-    @field_validator("rate", mode="before")
-    @classmethod
-    def set_rate(cls, v: DecimalAsFloat) -> DecimalAsFloat | None:
-        if math.isnan(v):
-            return None
-        return v
+
+class RateResult(Schema):
+    rate: DecimalAsFloat | None
+    message: str
 
 
 class RatesResponse(Schema):

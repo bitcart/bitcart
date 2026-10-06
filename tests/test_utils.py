@@ -18,6 +18,7 @@ from fastapi import FastAPI, HTTPException
 from api import exceptions, models, utils
 from api.constants import TFA_RECOVERY_ALPHABET
 from api.schemas.misc import CaptchaType
+from api.schemas.stores import StoreCheckoutSettings
 from api.schemas.wallets import DisplayWallet
 from api.services.auth import AuthService
 from api.services.crud.stores import StoreService
@@ -254,16 +255,86 @@ async def test_custom_create_task(caplog: pytest.LogCaptureFixture) -> None:
 
 
 @pytest.mark.anyio
-async def test_no_exchange_rates_available(
+async def test_no_exchange_rates_available(mocker: pytest_mock.MockerFixture, wallet: dict[str, Any], app: FastAPI) -> None:
+    wallet_data_service = await app.state.dishka_container.get(WalletDataService)
+    error = BitcartBaseError("No exchange rates available")
+    mocker.patch("api.services.exchange_rate.ExchangeRateService.get_rate", side_effect=error)
+    with pytest.raises(exceptions.RateUnavailableError, match="BTC_USD") as exc_info:
+        await wallet_data_service.get_rate(DisplayWallet(**wallet), "USD")
+    assert exc_info.value.__cause__ is error
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    ("rules", "cause"),
+    [
+        ("X_X = coingecko(X_X", SyntaxError),
+        ("BTCUSD = coingecko(BTC_USD)\nX_X = BTCUSD", Exception),
+        ("X_X = coingecko(X_X) ** 2", KeyError),
+        ("X_X = 1 / 0", ArithmeticError),
+    ],
+)
+async def test_broken_rate_rules(
+    caplog: pytest.LogCaptureFixture, wallet: dict[str, Any], app: FastAPI, rules: str, cause: type[Exception]
+) -> None:
+    wallet_data_service = await app.state.dishka_container.get(WalletDataService)
+    store = models.Store(checkout_settings=StoreCheckoutSettings(rate_rules=rules))
+    with pytest.raises(exceptions.RateUnavailableError, match="BTC_USD") as exc_info:
+        await wallet_data_service.get_rate(DisplayWallet(**wallet), "USD", store=store)
+    assert isinstance(exc_info.value.__cause__, cause)
+    assert "Error fetching rate BTC_USD" in caplog.text
+
+
+@pytest.mark.anyio
+async def test_exchange_rates_unavailable_passes_through(
     mocker: pytest_mock.MockerFixture, caplog: pytest.LogCaptureFixture, wallet: dict[str, Any], app: FastAPI
 ) -> None:
     wallet_data_service = await app.state.dishka_container.get(WalletDataService)
     mocker.patch(
-        "api.services.exchange_rate.ExchangeRateService.get_rate", side_effect=BitcartBaseError("No exchange rates available")
+        "api.services.exchange_rate.ExchangeRateService.get_rate", side_effect=exceptions.ExchangeRatesUnavailableError()
     )
-    rate = await wallet_data_service.get_rate(DisplayWallet(**wallet), "USD")
-    assert rate == Decimal(1)
-    assert "Error fetching rates" in caplog.text
+    with pytest.raises(exceptions.ExchangeRatesUnavailableError):
+        await wallet_data_service.get_rate(DisplayWallet(**wallet), "USD")
+    assert "Error fetching rate" not in caplog.text
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("value", ["NaN", "0", "-1", "Infinity"])
+async def test_invalid_exchange_rate(
+    mocker: pytest_mock.MockerFixture, wallet: dict[str, Any], app: FastAPI, value: str
+) -> None:
+    wallet_data_service = await app.state.dishka_container.get(WalletDataService)
+    mocker.patch("api.services.exchange_rate.ExchangeRateService.get_rate", return_value=Decimal(value))
+    with pytest.raises(exceptions.RateUnavailableError) as exc_info:
+        await wallet_data_service.get_rate(DisplayWallet(**wallet), "USD")
+    assert (exc_info.value.left, exc_info.value.right) == ("BTC", "USD")
+
+
+@pytest.mark.anyio
+async def test_plugin_supplies_missing_rate(mocker: pytest_mock.MockerFixture, wallet: dict[str, Any], app: FastAPI) -> None:
+    wallet_data_service = await app.state.dishka_container.get(WalletDataService)
+    mocker.patch("api.services.exchange_rate.ExchangeRateService.get_rate", return_value=Decimal("NaN"))
+    plugin_registry = wallet_data_service.plugin_registry
+    apply_filters = plugin_registry.apply_filters
+    filtered_rates = []
+
+    async def get_rate_filter(name: str, value: Any, *args: Any, **kwargs: Any) -> Any:
+        if name != "get_rate":
+            return await apply_filters(name, value, *args, **kwargs)
+        filtered_rates.append(value)
+        return Decimal(5)
+
+    mocker.patch.object(plugin_registry, "apply_filters", side_effect=get_rate_filter)
+    assert await wallet_data_service.get_rate(DisplayWallet(**wallet), "USD") == Decimal(5)
+    assert len(filtered_rates) == 1
+    assert filtered_rates[0].is_nan()
+
+
+@pytest.mark.anyio
+async def test_low_price_rate_not_rounded(mocker: pytest_mock.MockerFixture, wallet: dict[str, Any], app: FastAPI) -> None:
+    wallet_data_service = await app.state.dishka_container.get(WalletDataService)
+    mocker.patch("api.services.exchange_rate.ExchangeRateService.get_rate", return_value=Decimal("0.004123"))
+    assert await wallet_data_service.get_rate(DisplayWallet(**wallet), "USD") == Decimal("0.004123")
 
 
 @pytest.mark.anyio
@@ -502,3 +573,18 @@ async def test_captcha_flow(mocker: pytest_mock.MockerFixture, impl: CaptchaType
             auth_service = await container.get(AuthService)
             await auth_service.captcha_flow("invalid-code")
     fake_run_hook.assert_called_once_with("captcha_failed")
+
+
+@pytest.mark.parametrize(
+    ("rate", "expected"),
+    [
+        ("50000.000000000000000000", "50000"),
+        ("0.004000000000000000", "0.004"),
+        ("4123456789012.345678901234567891", "4123456789012.345678901234567891"),
+    ],
+)
+def test_payment_method_raw_rate(rate: str, expected: str) -> None:
+    method = models.PaymentMethod(
+        rate=Decimal(rate), amount=Decimal(1), symbol="btc", divisibility=8, payment_url="bitcoin:", lightning=False
+    )
+    assert method.to_payment_dict("USD")["rate"] == expected
