@@ -21,6 +21,7 @@ BAD_UNDERPAID_PERCENTAGE_MESSAGE = "Underpaid percentage must be in range from 0
 BAD_TARGET_FEE_BLOCKS_MESSAGE = (
     f"Recommended fee confirmation target blocks must be either of: {', '.join(map(str, FEE_ETA_TARGETS))}"
 )
+BAD_SUPPORT_URL_MESSAGE = "Support URL must be an absolute http or https URL"
 BAD_BACKUP_PROVIDER_MESSAGE = f"Backup provider must be either of: {', '.join(map(str, BACKUP_PROVIDERS))}"
 BAD_BACKUP_FREQUENCIES_MESSAGE = f"Backup frequency must be either of: {', '.join(map(str, BACKUP_FREQUENCIES))}"
 
@@ -85,6 +86,11 @@ async def test_wallet_transaction_speed_validation(client: TestClient, token: st
         pytest.param({"underpaid_percentage": 100}, BAD_UNDERPAID_PERCENTAGE_MESSAGE, id="Too high underpaid percentage"),
         pytest.param({"recommended_fee_target_blocks": 0}, BAD_TARGET_FEE_BLOCKS_MESSAGE, id="Too low target fee blocks"),
         pytest.param({"recommended_fee_target_blocks": 26}, BAD_TARGET_FEE_BLOCKS_MESSAGE, id="Too high target fee blocks"),
+        pytest.param({"support_url": "javascript:alert(1)"}, BAD_SUPPORT_URL_MESSAGE, id="Javascript support url"),
+        pytest.param({"support_url": "ftp://example.com"}, BAD_SUPPORT_URL_MESSAGE, id="Non-http support url"),
+        pytest.param({"support_url": "example.com/support"}, BAD_SUPPORT_URL_MESSAGE, id="Support url without scheme"),
+        pytest.param({"support_url": "/support"}, BAD_SUPPORT_URL_MESSAGE, id="Relative support url"),
+        pytest.param({"support_url": "https://"}, BAD_SUPPORT_URL_MESSAGE, id="Support url without host"),
     ],
 )
 async def test_store_checkout_settings_valid(
@@ -325,6 +331,18 @@ async def test_payouts_wallet_deleted(client: TestClient, token: str) -> None:
     assert (await client.delete(f"/wallets/{wallet_id}", headers={"Authorization": f"Bearer {token}"})).status_code == 200
     resp = await client.get(f"/payouts/{payout['id']}", headers={"Authorization": f"Bearer {token}"})
     assert resp.json()["wallet_currency"] is None
+
+
+@pytest.mark.parametrize("support_email", ["invalid", "support@", "@example.com"])
+async def test_store_support_email_validation(
+    client: TestClient, token: str, store: dict[str, Any], support_email: str
+) -> None:
+    resp = await client.patch(
+        f"/stores/{store['id']}/checkout_settings",
+        json={"support_email": support_email},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 422
 
 
 async def test_store_email_authmode_validation(client: TestClient, token: str, store: dict[str, Any]) -> None:

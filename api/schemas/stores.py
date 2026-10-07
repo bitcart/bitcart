@@ -1,13 +1,15 @@
-from typing import Any, cast
+from typing import Any, Literal, cast
 
 from fastapi import HTTPException
-from pydantic import Field, field_validator
+from pydantic import EmailStr, Field, HttpUrl, TypeAdapter, ValidationError, field_validator
 
 from api.constants import FEE_ETA_TARGETS, MAX_CONFIRMATION_WATCH
 from api.schemas.base import DecimalAsFloat, MetadataInput, MetadataOutput, Schema, TimestampedSchema
 from api.schemas.misc import EmailSettings
 from api.schemas.notifications import DisplayNotification
 from api.schemas.wallets import InfoWallet
+
+HTTP_URL_ADAPTER = TypeAdapter(HttpUrl)
 
 
 class StoreCheckoutSettings(Schema):
@@ -26,6 +28,8 @@ class StoreCheckoutSettings(Schema):
     include_network_fee: bool = False
     rate_rules: str = ""
     pos_screen_enabled: bool = True
+    support_email: EmailStr | Literal[""] = ""
+    support_url: str = ""
 
     @field_validator("recommended_fee_target_blocks")
     @classmethod
@@ -47,6 +51,16 @@ class StoreCheckoutSettings(Schema):
         if v < 0 or v >= 100:
             raise HTTPException(422, "Underpaid percentage must be in range from 0 to 99.99")
         return float(v)
+
+    @field_validator("support_url")
+    @classmethod
+    def validate_support_url(cls, v: str) -> str:
+        if not v:
+            return v
+        try:
+            return str(HTTP_URL_ADAPTER.validate_python(v))
+        except ValidationError:
+            raise HTTPException(422, "Support URL must be an absolute http or https URL") from None
 
 
 class StoreThemeSettings(Schema):

@@ -35,7 +35,9 @@
             "allow_anonymous_invoice_creation": true,
             "include_network_fee": false,
             "rate_rules": "",
-            "pos_screen_enabled": true
+            "pos_screen_enabled": true,
+            "support_email": "",
+            "support_url": ""
         },
         "notifications": [],
         "templates": {},

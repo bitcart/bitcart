@@ -1347,6 +1347,40 @@ async def test_get_public_store(client: TestClient, store: dict[str, Any], token
     assert set(store_resp.json().keys()) == PUBLIC_KEYS
 
 
+async def test_public_store_support_contact(client: TestClient, store: dict[str, Any], token: str) -> None:
+    store_id = store["id"]
+    headers = {"Authorization": f"Bearer {token}"}
+    assert (await client.get(f"/stores/{store_id}")).json()["checkout_settings"]["support_email"] == ""
+    resp = await client.patch(
+        f"/stores/{store_id}/email_settings",
+        json={"address": "noreply@sender.example", "user": "smtp-user", "password": "smtp-password"},
+        headers=headers,
+    )
+    assert resp.status_code == 200
+    resp = await client.patch(
+        f"/stores/{store_id}/checkout_settings",
+        json={"support_email": "support@example.com", "support_url": "https://example.com/help"},
+        headers=headers,
+    )
+    assert resp.status_code == 200
+    public_resp = await client.get(f"/stores/{store_id}")
+    assert public_resp.status_code == 200
+    data = public_resp.json()
+    assert "email_settings" not in data
+    assert data["checkout_settings"]["support_email"] == "support@example.com"
+    assert data["checkout_settings"]["support_url"] == "https://example.com/help"
+    for secret in ("noreply@sender.example", "smtp-user", "smtp-password"):
+        assert secret not in public_resp.text
+    resp = await client.patch(
+        f"/stores/{store_id}/checkout_settings",
+        json={"support_email": "", "support_url": "https:example.com"},
+        headers=headers,
+    )
+    assert resp.status_code == 200
+    assert resp.json()["checkout_settings"]["support_email"] == ""
+    assert resp.json()["checkout_settings"]["support_url"] == "https://example.com/"
+
+
 # TODO: why do we need ?store=X in this case?
 async def test_get_product_params(client: TestClient, token: str, product: dict[str, Any]) -> None:
     product_id = product["id"]
