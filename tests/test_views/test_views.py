@@ -1184,8 +1184,11 @@ async def test_create_invoice_rate(
     assert payment["rate_str"] == rate_str
 
 
-@pytest.mark.parametrize("error", [RateUnavailableError("ETH", "USD"), ExchangeRatesUnavailableError()])
-async def test_create_invoice_network_fee_without_rate(
+@pytest.mark.parametrize(
+    "error",
+    [RateUnavailableError("ETH", "USD"), ExchangeRatesUnavailableError(), Exception("Currently not supported")],
+)
+async def test_create_invoice_network_fee_failure(
     client: TestClient, token: str, mocker: pytest_mock.MockerFixture, store: dict[str, Any], error: Exception
 ) -> None:
     resp = await client.patch(

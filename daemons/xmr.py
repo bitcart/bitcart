@@ -143,7 +143,7 @@ class MoneroRPC(RPCProvider):
         resp = await self.request("jsonrpc", "get_fee_estimate")
         if resp["status"] != "OK":
             raise Exception(resp["status"])
-        return resp["fee"]
+        return resp
 
 
 class MoneroRPCProvider(AbstractRPCProvider, MoneroRPC):
@@ -188,7 +188,7 @@ class XMRFeatures(BlockchainFeatures):
         return True
 
     async def get_gas_price(self):
-        return await self.rpc.get_fee_estimate()
+        return (await self.rpc.get_fee_estimate())["fee"]
 
     async def get_transaction(self, tx):
         data = await self.rpc.get_transactions([tx])
@@ -514,7 +514,12 @@ class XMRDaemon(BlockProcessorDaemon):
 
     @rpc(requires_network=True)
     async def get_default_fee(self, tx, wallet=None):
-        raise NotImplementedError("Currently not supported")
+        if not isinstance(tx, int):
+            raise NotImplementedError("Only fee estimation by transaction size is supported")
+        estimate = await self.coin.rpc.get_fee_estimate()
+        mask = estimate["quantization_mask"]
+        fee = (tx * estimate["fee"] + mask - 1) // mask * mask
+        return self.coin.to_dict(from_atomic(fee))
 
     @rpc
     def get_tx_hash(self, tx_data, wallet=None):

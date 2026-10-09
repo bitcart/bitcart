@@ -347,7 +347,7 @@ class InvoiceService(CRUDService[models.Invoice]):
         if request_price and store.checkout_settings.include_network_fee:  # pragma: no cover
             try:
                 network_fee = await self.determine_network_fee(coin, wallet, invoice, store, divisibility)
-            except ExchangeRateError as e:
+            except Exception as e:
                 logger.warning(
                     f"Invoice {invoice.id}: network fee of {wallet.currency.upper()} set to 0: {get_exception_details(e)}"
                 )
@@ -456,6 +456,8 @@ class InvoiceService(CRUDService[models.Invoice]):
     ) -> Decimal:  # pragma: no cover
         if not coin.is_eth_based:
             return Decimal(await coin.server.get_default_fee(100))  # 100 bytes
+        if coin.coin_name == "XMR":
+            return Decimal(await coin.server.get_default_fee(1500))  # 1500 bytes
         address = await coin.server.getaddress()
         tx = await PayoutManager.prepare_tx(coin, wallet, address, Decimal(0), divisibility)
         fee = Decimal(await coin.server.get_default_fee(tx))
