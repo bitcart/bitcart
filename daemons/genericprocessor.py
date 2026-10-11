@@ -930,10 +930,14 @@ class BlockProcessorDaemon(BaseDaemon, metaclass=ABCMeta):
             if not self.addresses[address]:
                 self.addresses.pop(address, None)
             self.wallets.pop(key, None)
+            self._post_close_wallet(key)
             return True
         finally:
             if not locked:
                 self.wallet_locks[key].release()
+
+    def _post_close_wallet(self, key):
+        pass
 
     @rpc(requires_network=True)
     async def close_wallet(self, key=None, wallet=None):
