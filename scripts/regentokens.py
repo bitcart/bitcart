@@ -10,6 +10,7 @@ NAMES = {
     "erc20": {"main_filters": {"platform.slug": "ethereum"}},
     "bep20": {"main_filters": {}, "contract_filters": {"contractPlatform": "BNB Smart Chain (BEP20)"}},
     "erc20matic": {"main_filters": {}, "contract_filters": {"contractPlatform": "Polygon"}},
+    "erc20arbitrum": {"main_filters": {}, "contract_filters": {"contractPlatform": "Arbitrum"}},
     "trc20": {"main_filters": {}, "contract_filters": {"contractPlatform": "Tron20"}},
     "cashtokens": {},
 }

@@ -44,5 +44,9 @@
     "grs": {
         "mainnet": "https://esplora.groestlcoin.org/tx/{}",
         "testnet": "https://esplora-test.groestlcoin.org/tx/{}"
+    },
+    "arbeth": {
+        "mainnet": "https://arbiscan.io/tx/{}",
+        "testnet": "https://sepolia.arbiscan.io/tx/{}"
     }
 }

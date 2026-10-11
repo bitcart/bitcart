@@ -49,3 +49,7 @@ class GRS:
 
 class XMR:
     coingecko_id = "monero"
+
+
+class ARBETH:
+    coingecko_id = "ethereum"

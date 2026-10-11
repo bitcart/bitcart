@@ -26,6 +26,10 @@
         "dockerfile": "matic.Dockerfile",
         "bases": "eth"
     },
+    "bitcart-arbeth": {
+        "dockerfile": "arbeth.Dockerfile",
+        "bases": "eth"
+    },
     "bitcart-trx": {
         "dockerfile": "trx.Dockerfile",
         "bases": "eth"

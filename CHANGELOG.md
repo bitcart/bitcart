@@ -2,6 +2,8 @@
 
 ## Latest changes
 
+Add Arbitrum (ARBETH) support
+
 ## 0.10.3.0
 
 ### Properly track contract transfers of any complexity
