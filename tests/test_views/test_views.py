@@ -1402,7 +1402,11 @@ async def test_invoice_payment_due(client: TestClient, token: str, store: dict[s
     assert (payment["due"], payment["due_price"], payment["due_price_str"]) == ("0.04000000", "2000", "$2,000.00 (USD)")
 
 
-async def test_lightning_payment_method_amount(client: TestClient, token: str, mocker: pytest_mock.MockerFixture) -> None:
+async def test_lightning_payment_method_amount(
+    client: TestClient, token: str, mocker: pytest_mock.MockerFixture, app: FastAPI
+) -> None:
+    coin_service = await app.state.dishka_container.get(CoinService)
+    mocker.patch.dict(coin_service.crypto_settings["btc"], {"lightning": True})
     wallet = await create_wallet(client, token, lightning_enabled=True)
     store = await create_store(client, token, custom_store_attrs={"wallets": [wallet["id"]]})
     resp = await client.patch(
