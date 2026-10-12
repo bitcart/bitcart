@@ -7,14 +7,8 @@ from api.logging import get_exception_message, get_logger
 logger = get_logger(__name__)
 
 
-def create_task(
-    coroutine: Coroutine[Any, Any, Any],
-    *,
-    loop: asyncio.AbstractEventLoop | None = None,
-) -> asyncio.Task[Any]:
-    if loop is None:  # pragma: no cover
-        loop = asyncio.get_running_loop()
-    task = loop.create_task(coroutine)
+def create_task(coroutine: Coroutine[Any, Any, Any]) -> asyncio.Task[Any]:
+    task = asyncio.create_task(coroutine)
     task.add_done_callback(check_task_errors)
     return task
 

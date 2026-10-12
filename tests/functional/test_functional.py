@@ -285,6 +285,8 @@ async def test_exception_statuses(
         sent_amount=pay_details["amount"],
         allow_next=True,
     )
+    invoice = (await client.get(f"/invoices/{invoice_id}", headers={"Authorization": f"Bearer {token}"})).json()
+    assert sorted(Decimal(tx["amount"]) for tx in invoice["payments"][0]["transactions"]) == sorted([part1, part2])
 
 
 async def test_lightning_pay_flow(
@@ -399,7 +401,7 @@ async def test_payouts(
     await wait_for_local_tx(regtest_wallet, payout["tx_hash"])
     payout = (await client.get(f"/payouts/{payout['id']}", headers={"Authorization": f"Bearer {token}"})).json()
     assert payout["status"] == "complete"
-    assert payout["used_fee"] > 0
+    assert Decimal(payout["used_fee"]) > 0
     tx_data = await regtest_wallet.get_tx(payout["tx_hash"])
     assert tx_data["confirmations"] == 1
     # Now it's immutable

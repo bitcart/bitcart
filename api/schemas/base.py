@@ -4,9 +4,11 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Annotated, Any
 
-from pydantic import BaseModel, ConfigDict, Field, PlainSerializer, model_validator
+from pydantic import BaseModel, Field, PlainSerializer, model_validator
 
-DecimalAsFloat = Annotated[Decimal, PlainSerializer(lambda v: float(v), return_type=float, when_used="json")]
+from api.ext.moneyformat import format_raw
+
+DecimalAsString = Annotated[Decimal, PlainSerializer(format_raw, return_type=str, when_used="json")]
 
 
 def iter_attributes(
@@ -24,11 +26,11 @@ def iter_attributes(
 
 
 class Schema(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
     @model_validator(mode="wrap")
     @classmethod
     def ensure_dict(cls, values: Any, handler: Any) -> Any:
+        if isinstance(values, cls):
+            return handler(values)
         if not isinstance(values, dict):
             values = dict(iter_attributes(values))
         values = {k: cls._prepare_value(v) for k, v in values.items()}

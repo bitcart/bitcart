@@ -7,9 +7,9 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Secu
 
 from api import models, utils
 from api.constants import AuthScopes
-from api.schemas.base import DecimalAsFloat
 from api.schemas.products import CreateProduct, DisplayProduct, OptionalProductSchema, UpdateProduct
 from api.services.crud.products import ProductService
+from api.types import Money
 from api.utils.routing import (
     OffsetPagination,
     SearchPagination,
@@ -25,7 +25,7 @@ async def categories(product_service: FromDishka[ProductService], store: str) ->
     return await product_service.get_all_categories(store)
 
 
-@router.get("/maxprice", response_model=DecimalAsFloat)
+@router.get("/maxprice", response_model=Money)
 async def get_max_product_price(product_service: FromDishka[ProductService], store: str) -> Any:
     return await product_service.get_max_product_price(store)
 

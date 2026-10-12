@@ -401,7 +401,7 @@ class TestInvoices(ViewTestMixin):
         self.check_created(method)
         for key, check_type in (
             ("payment_url", str),
-            ("recommended_fee", float),
+            ("recommended_fee", str),
             ("amount", str),
             ("rate", str),
             ("payment_address", str),

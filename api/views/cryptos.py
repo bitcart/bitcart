@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException
 from api import constants
 from api.ext import fxrate
 from api.logging import get_logger
-from api.schemas.base import DecimalAsFloat
+from api.schemas.base import DecimalAsString
 from api.services.coins import CoinService
 from api.services.exchange_rate import ExchangeRateService
 from api.services.plugin_registry import PluginRegistry
@@ -28,7 +28,7 @@ async def get_supported_cryptos() -> Any:
     return constants.SUPPORTED_CRYPTOS
 
 
-@router.get("/rate", response_model=DecimalAsFloat)
+@router.get("/rate", response_model=DecimalAsString)
 async def rate(
     coin_service: FromDishka[CoinService],
     exchange_rate_service: FromDishka[ExchangeRateService],

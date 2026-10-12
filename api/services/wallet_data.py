@@ -35,7 +35,8 @@ class WalletDataService:
                 f"Error getting wallet balance for wallet {wallet.id} with currency {wallet.currency}:"
                 f"\n{get_exception_message(e)}"
             )
-            return False, 8, {attr: Decimal(0) for attr in BTC.BALANCE_ATTRS}
+            divisibility = currency_table.get_currency_data(wallet.currency)["divisibility"]
+            return False, divisibility, {attr: Decimal(0) for attr in BTC.BALANCE_ATTRS}
 
     async def get_confirmed_wallet_balance(self, wallet: models.Wallet) -> tuple[bool, int, Decimal]:
         success, divisibility, balance = await self.get_wallet_balance(wallet)

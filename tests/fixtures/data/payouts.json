@@ -4,7 +4,7 @@
         "amount": 5
     },
     "patch": {
-        "max_fee": 1,
+        "max_fee": "1.00",
         "metadata": {
             "test": "test"
         }

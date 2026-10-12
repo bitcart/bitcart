@@ -1,6 +1,6 @@
 import secrets
 from datetime import datetime, timedelta
-from decimal import Context, Decimal
+from decimal import Decimal
 from typing import Any
 
 import pyotp
@@ -21,7 +21,7 @@ from sqlalchemy.ext.associationproxy import AssociationProxy, association_proxy
 from sqlalchemy.ext.mutable import MutableDict, MutableList
 from sqlalchemy.orm import Mapped, declared_attr, mapped_column, relationship
 
-from api.ext.moneyformat import currency_table
+from api.ext.moneyformat import currency_table, format_raw, to_raw
 from api.schemas.base import Schema
 from api.schemas.misc import EmailSettings
 from api.schemas.stores import StoreCheckoutSettings, StorePluginSettings, StoreThemeSettings
@@ -77,7 +77,7 @@ class TimestampedModel(Model):
     __abstract__ = True
 
     created: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), default=utc_now)
-    updated: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), onupdate=utc_now, default=None)
+    updated: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), onupdate=utc_now)
 
 
 class IDModel(TimestampedModel):
@@ -358,8 +358,11 @@ class PaymentMethod(RecordModel):
     invoice_id: Mapped[str | None] = mapped_column(Text, ForeignKey("invoices.id", ondelete="SET NULL"))
     wallet_id: Mapped[str | None] = mapped_column(Text, ForeignKey("wallets.id", ondelete="SET NULL"))
     amount: Mapped[Decimal] = mapped_column(Numeric(36, 18))
+    network_fee: Mapped[Decimal] = mapped_column(Numeric(36, 18))
+    effective_price: Mapped[Decimal] = mapped_column(Numeric(36, 18))
     rate: Mapped[Decimal] = mapped_column(Numeric(36, 18))
     discount: Mapped[str | None] = mapped_column(Text)
+    applied_discount: Mapped[dict[str, Any] | None] = mapped_column(MutableDict.as_mutable(JSONB(none_as_null=True)))
     confirmations: Mapped[int] = mapped_column(Integer)
     recommended_fee: Mapped[Decimal] = mapped_column(Numeric(36, 18))
     currency: Mapped[str] = mapped_column(Text, index=True)
@@ -376,6 +379,7 @@ class PaymentMethod(RecordModel):
     label: Mapped[str] = mapped_column(Text)
     hint: Mapped[str | None] = mapped_column(Text)
     is_used: Mapped[bool] = mapped_column(Boolean(), default=False)
+    transactions: Mapped[list[dict[str, str]]] = mapped_column(MutableList.as_mutable(ARRAY(JSONB())), default=list)
 
     invoice = relationship("Invoice", lazy="raise", back_populates="payments", foreign_keys="[PaymentMethod.invoice_id]")
 
@@ -383,11 +387,31 @@ class PaymentMethod(RecordModel):
     def wallet(cls) -> Mapped["Wallet"]:
         return relationship("Wallet", lazy="raise", foreign_keys="[PaymentMethod.wallet_id]")
 
-    def to_payment_dict(self, currency: str, index: int | None = None) -> dict[str, Any]:
+    def get_sent_value(self, sent_amount: Decimal) -> Decimal:
+        return sent_amount * self.rate
+
+    def to_payment_dict(self, currency: str, index: int | None = None, due: Decimal | None = None) -> dict[str, Any]:
+        if due is None:
+            due = self.amount
         data = super().to_dict()
         data["metadata"] = data.pop("meta", {})
         data["amount"] = currency_table.format_decimal(self.symbol, self.amount, divisibility=self.divisibility)
-        data["rate"] = f"{self.rate.normalize(Context(prec=36)):f}"
+        data["network_fee"] = currency_table.format_decimal(self.symbol, self.network_fee, divisibility=self.divisibility)
+        data["effective_price"] = currency_table.format_decimal(currency, self.effective_price)
+        data["transactions"] = [
+            {
+                "tx_hash": transaction["tx_hash"],
+                "amount": currency_table.format_decimal(
+                    self.symbol, Decimal(transaction["amount"]), divisibility=self.divisibility
+                ),
+            }
+            for transaction in self.transactions or []
+        ]
+        data["due"] = currency_table.format_decimal(self.symbol, due, divisibility=self.divisibility)
+        due_price = to_raw(due * self.rate)
+        data["due_price"] = format_raw(due_price)
+        data["due_price_str"] = currency_table.format_currency(currency, due_price)
+        data["rate"] = format_raw(self.rate)
         data["rate_str"] = currency_table.format_currency(
             currency, self.rate, divisibility=currency_table.get_rate_divisibility(currency, self.rate)
         )
@@ -422,8 +446,8 @@ class Invoice(RecordModel):
     __tablename__ = "invoices"
 
     price: Mapped[Decimal] = mapped_column(Numeric(36, 18))
-    sent_amount: Mapped[Decimal | None] = mapped_column(Numeric(36, 18))
-    exception_status: Mapped[str | None] = mapped_column(Text)
+    sent_amount: Mapped[Decimal] = mapped_column(Numeric(36, 18))
+    exception_status: Mapped[str] = mapped_column(Text)
     currency: Mapped[str] = mapped_column(Text)
     paid_currency: Mapped[str | None] = mapped_column(Text)
     status: Mapped[str] = mapped_column(Text)

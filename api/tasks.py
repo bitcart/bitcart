@@ -1,4 +1,5 @@
 import json
+from decimal import Decimal
 from typing import Any
 
 from dishka import FromDishka
@@ -8,6 +9,7 @@ from taskiq.schedule_sources import LabelScheduleSource
 from taskiq_redis import ListRedisScheduleSource, RedisAsyncResultBackend
 
 from api import utils
+from api.ext.moneyformat import currency_table
 from api.logging import get_exception_message, get_logger, log_errors
 from api.redis import Redis
 from api.schemas.tasks import (
@@ -31,6 +33,7 @@ from api.services.ext.configurator import ConfiguratorService
 from api.services.host_agent import HostAgentService
 from api.services.notification_manager import NotificationManager
 from api.services.plugin_registry import PluginRegistry
+from api.services.wallet_data import WalletDataService
 from api.settings import Settings
 from api.types import TasksBroker
 
@@ -83,6 +86,7 @@ async def sync_wallet(
     redis_pool: FromDishka[Redis],
     plugin_registry: FromDishka[PluginRegistry],
     exchange_rate_service: FromDishka[ExchangeRateService],
+    wallet_data_service: FromDishka[WalletDataService],
 ) -> None:
     model = await wallet_service.get_or_none(params.wallet_id)
     if not model:
@@ -92,14 +96,24 @@ async def sync_wallet(
     )
     try:
         balance = await coin.balance()
+        divisibility = await wallet_data_service.get_divisibility(model, coin)
     except Exception as e:
         logger.error(f"Wallet {model.id} failed to sync:\n{get_exception_message(e)}")
-        await utils.redis.publish_message(redis_pool, f"wallet:{model.id}", {"status": "error", "balance": "0"})
+        await utils.redis.publish_message(
+            redis_pool,
+            f"wallet:{model.id}",
+            {"status": "error", "balance": currency_table.format_decimal(model.currency, Decimal(0))},
+        )
     else:
         await plugin_registry.run_hook("wallet_synced", model, balance)
         logger.info(f"Wallet {model.id} synced, balance: {balance['confirmed']}")
         await utils.redis.publish_message(
-            redis_pool, f"wallet:{model.id}", {"status": "success", "balance": str(balance["confirmed"])}
+            redis_pool,
+            f"wallet:{model.id}",
+            {
+                "status": "success",
+                "balance": currency_table.format_decimal(model.currency, balance["confirmed"], divisibility=divisibility),
+            },
         )
     if model.contract:
         with log_errors(logger):

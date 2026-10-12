@@ -98,22 +98,24 @@ class BCHDaemon(BTCDaemon):
         request = self._get_request(wallet, original_address)
         final_address = self._get_request_address(request)  # used in e.g. cashtokens
         tx_hashes = self.get_tx_hashes_for_invoice(wallet, request)
-        sent_amount = self.get_sent_amount(wallet, final_address, tx_hashes, request=request)
+        sent_amount, tx_amounts = self.get_payment_amounts(wallet, final_address, tx_hashes, request=request)
         return {
             "address": str(final_address),
             "status": status,
             "status_str": self.get_status_str(status),
             "tx_hashes": tx_hashes,
             "sent_amount": sent_amount,
+            "tx_amounts": tx_amounts,
         }
 
     def get_tx_hashes_for_invoice(self, wallet, invoice):
-        return wallet.get_payment_status(
+        tx_hashes = wallet.get_payment_status(
             invoice["address"],
             invoice["amount"],
             tokenreq=invoice.get("tokenreq", False),
             category_id=invoice.get("category_id"),
         )[2]
+        return list(dict.fromkeys(tx_hashes))
 
     def get_exception_message(self, e):
         return get_exception_message(e)
@@ -164,10 +166,10 @@ class BCHDaemon(BTCDaemon):
     async def modifypaymenturl(self, url, amount, divisibility=None, wallet=None):
         return modify_payment_url("amount", url, amount)
 
-    def get_sent_amount(self, wallet, address, tx_hashes, request):
+    def get_tx_amounts(self, wallet, address, tx_hashes, request):
         tokenreq = request.get("tokenreq")
         category_id = request.get("category_id")
-        sent_amount = 0
+        amounts = defaultdict(int)
         if tx_hashes:
             received, _ = wallet.get_addr_io(self.prepare_address(address))
             for txo, x in received.items():
@@ -175,10 +177,10 @@ class BCHDaemon(BTCDaemon):
                 txid, _ = txo.split(":")
                 if txid in tx_hashes:
                     if tokenreq and token_data and (category_id is None or token_data.id_hex == category_id):
-                        sent_amount += token_data.amount
+                        amounts[txid] += token_data.amount
                     elif not tokenreq:
-                        sent_amount += v
-        return self.format_satoshis(sent_amount, self._find_matching_wallet_key(wallet))
+                        amounts[txid] += v
+        return {tx: amounts[tx] for tx in tx_hashes}
 
     def format_request(self, request, wallet):
         if request.get("tokenreq"):
@@ -193,7 +195,8 @@ class BCHDaemon(BTCDaemon):
                     request["URI"] += f"?amount={amount_text}"
                 request.pop("amount (BCH)", None)
                 request[f"amount ({symbol})"] = amount_text
-        request["sent_amount"] = self.get_sent_amount(
+        request["tx_hashes"] = list(dict.fromkeys(request["tx_hashes"]))
+        request["sent_amount"], request["tx_amounts"] = self.get_payment_amounts(
             self.wallets[wallet]["wallet"],
             self.prepare_address(request["address"]),
             request["tx_hashes"],

@@ -19,6 +19,7 @@ from api.schemas.tasks import SyncWalletMessage
 from api.services.coins import CoinService
 from api.services.crud.wallets import WalletService
 from api.services.exchange_rate import ExchangeRateService
+from api.services.wallet_data import WalletDataService
 from api.settings import Settings
 from api.tasks import sync_wallet
 
@@ -70,9 +71,9 @@ async def test_preload_contract_refreshes_quotes(app: FastAPI) -> None:
 @pytest.mark.parametrize(
     ("contract", "balance", "preloaded"),
     [
-        ("0xcontract", AsyncMock(return_value={"confirmed": 0}), True),
+        ("0xcontract", AsyncMock(return_value={"confirmed": Decimal(0)}), True),
         ("0xcontract", AsyncMock(side_effect=Exception("daemon down")), True),
-        ("", AsyncMock(return_value={"confirmed": 0}), False),
+        ("", AsyncMock(return_value={"confirmed": Decimal(0)}), False),
     ],
 )
 async def test_sync_wallet_preloads_contract(
@@ -85,6 +86,42 @@ async def test_sync_wallet_preloads_contract(
     async with app.state.dishka_container(scope=Scope.REQUEST) as container:
         await sync_wallet.original_func(SyncWalletMessage(wallet_id="wallet"), dishka_container=container)  # type: ignore[call-arg]
     assert preload.await_args_list == ([mocker.call("0xcontract", "eth")] if preloaded else [])
+
+
+@pytest.mark.parametrize(("contract", "expected"), [("", "0.50000000"), ("0xcontract", "0.500000")])
+async def test_sync_wallet_publishes_formatted_balance(
+    app: FastAPI, mocker: pytest_mock.MockerFixture, contract: str, expected: str
+) -> None:
+    wallet = Mock(id="wallet", currency="eth", xpub="xpub", contract=contract, additional_xpub_data={})
+    coin = Mock(
+        balance=AsyncMock(return_value={"confirmed": Decimal("0.5")}), server=Mock(readcontract=AsyncMock(return_value=6))
+    )
+    mocker.patch.object(WalletService, "get_or_none", return_value=wallet)
+    mocker.patch.object(CoinService, "get_coin", return_value=coin)
+    mocker.patch.object(ExchangeRateService, "preload_contract")
+    publish = mocker.patch.object(utils.redis, "publish_message")
+    async with app.state.dishka_container(scope=Scope.REQUEST) as container:
+        await sync_wallet.original_func(SyncWalletMessage(wallet_id="wallet"), dishka_container=container)  # type: ignore[call-arg]
+    publish.assert_awaited_once_with(mocker.ANY, "wallet:wallet", {"status": "success", "balance": expected})
+
+
+async def test_sync_wallet_publishes_formatted_error_balance(app: FastAPI, mocker: pytest_mock.MockerFixture) -> None:
+    wallet = Mock(id="wallet", currency="trx", xpub="xpub", contract="", additional_xpub_data={})
+    mocker.patch.object(WalletService, "get_or_none", return_value=wallet)
+    mocker.patch.object(CoinService, "get_coin", return_value=Mock(balance=AsyncMock(side_effect=Exception("daemon down"))))
+    publish = mocker.patch.object(utils.redis, "publish_message")
+    async with app.state.dishka_container(scope=Scope.REQUEST) as container:
+        await sync_wallet.original_func(SyncWalletMessage(wallet_id="wallet"), dishka_container=container)  # type: ignore[call-arg]
+    publish.assert_awaited_once_with(mocker.ANY, "wallet:wallet", {"status": "error", "balance": "0.000000"})
+
+
+async def test_wallet_balance_error_uses_currency_divisibility(app: FastAPI, mocker: pytest_mock.MockerFixture) -> None:
+    wallet = Mock(id="wallet", currency="trx", xpub="xpub", contract="", additional_xpub_data={})
+    mocker.patch.object(CoinService, "get_coin", side_effect=Exception("daemon down"))
+    async with app.state.dishka_container(scope=Scope.REQUEST) as container:
+        wallet_data_service = await container.get(WalletDataService)
+        success, divisibility, balance = await wallet_data_service.get_wallet_balance(wallet)
+    assert (success, divisibility, balance["confirmed"]) == (False, 6, Decimal(0))
 
 
 async def test_add_contract_invalidates_contract_exchanges(app: FastAPI, mocker: pytest_mock.MockerFixture) -> None:

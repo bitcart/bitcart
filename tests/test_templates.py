@@ -14,6 +14,12 @@ class DummyPricedInvoice:
     price = Decimal("10.5")
 
 
+class DummyRefund:
+    id = "refund"
+    currency = "USD"
+    amount = Decimal("10.500000000000000000")
+
+
 def test_default_template_render(notification_template: str) -> None:
     template = templates.Template("notification")
     assert template.name == "notification"
@@ -58,3 +64,12 @@ def test_format_decimal_attribute_isolation() -> None:
         "{{ c }}"
     )
     assert templates.Template("test", chained).render() == ""
+
+
+@pytest.mark.parametrize(
+    ("name", "expected"),
+    [("customer_refund", "refund you the amount of 10.50 USD."), ("merchant_refund_notify", "Refund refund for 10.50 USD")],
+)
+def test_refund_templates_format_amount(name: str, expected: str) -> None:
+    rendered = templates.Template(name).render(invoice=DummyInvoice(), refund=DummyRefund(), refund_url="url")
+    assert expected in rendered

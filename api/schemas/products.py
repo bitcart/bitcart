@@ -1,10 +1,11 @@
-from typing import Any, cast
+from decimal import Decimal
+from typing import Any
 
 from pydantic import field_validator, model_validator
 
 from api import utils
 from api.ext.moneyformat import currency_table
-from api.schemas.base import DecimalAsFloat, MetadataInput, MetadataOutput, TimestampedSchema
+from api.schemas.base import MetadataInput, MetadataOutput, TimestampedSchema
 from api.schemas.discounts import DisplayDiscount
 from api.types import Money
 
@@ -22,7 +23,7 @@ class BaseProduct(MetadataInput):
 
 class CreateProduct(BaseProduct):
     store_id: str
-    price: DecimalAsFloat
+    price: Decimal
 
 
 class UpdateProduct(CreateProduct):
@@ -42,8 +43,7 @@ class DisplayProduct(MetadataOutput, BaseProduct, TimestampedSchema):
     @model_validator(mode="before")
     @classmethod
     def set_price(cls, values: dict[str, Any]) -> dict[str, Any]:
-        if "price" in values:
-            values["price"] = currency_table.format_decimal(cast(str, values.get("currency")), values["price"])
+        values["price"] = currency_table.format_decimal(values["currency"], values["price"])
         return values
 
     @field_validator("discounts", mode="before")

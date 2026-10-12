@@ -50,7 +50,10 @@ class RefundService(CRUDService[models.Refund]):
         payment = cast(models.PaymentMethod, self.invoice_service.match_payment(invoice.payments, invoice.payment_id))
         refund = await self.create(
             CreateRefund(
-                amount=data.amount, currency=data.currency, wallet_id=cast(str, payment.wallet_id), invoice_id=invoice.id
+                amount=currency_table.round_down(data.currency, data.amount),
+                currency=data.currency,
+                wallet_id=cast(str, payment.wallet_id),
+                invoice_id=invoice.id,
             ),
             user,
         )
@@ -58,7 +61,6 @@ class RefundService(CRUDService[models.Refund]):
             store = await self.store_service.get(invoice.store_id)
             if (email_obj := utils.email.StoreEmail.get_email(store)).is_enabled():
                 refund_url = urljoin(data.admin_host, f"/refunds/{refund.id}")
-                refund.amount = currency_table.normalize(refund.currency, refund.amount)
                 refund_template = await self.plugin_registry.apply_filters(
                     "refund_customer_text",
                     await self.template_service.get_customer_refund_template(store, invoice, refund, refund_url),
@@ -74,6 +76,8 @@ class RefundService(CRUDService[models.Refund]):
         refund = await self.get(refund_id, atomic_update=True)
         if refund.payout_id:
             raise HTTPException(422, "Refund already submitted")
+        if not refund.invoice_id:
+            raise HTTPException(422, "Refund invoice was deleted")
         invoice = await self.invoice_service.get(refund.invoice_id)
         payout_data = CreatePayout(
             amount=refund.amount,
@@ -84,9 +88,7 @@ class RefundService(CRUDService[models.Refund]):
         ).model_dump()
         payout_data["user_id"] = refund.user_id
         payout = await self.payout_service.create(payout_data)
-        refund.update(
-            payout=payout, destination=data.destination, amount=currency_table.normalize(refund.currency, refund.amount)
-        )
+        refund.update(payout=payout, destination=data.destination)
         await self.broker.publish(
             "send_notification",
             SendNotificationMessage(
@@ -99,7 +101,6 @@ class RefundService(CRUDService[models.Refund]):
     async def process_sent_payout(self, payout: models.Payout) -> None:
         refund = await self.get_or_none(None, payout_id=payout.id)
         # Refunds: mark invoice as refunded if there's a matching object
-        if refund:
+        if refund and refund.invoice_id:
             invoice = await self.invoice_service.get(refund.invoice_id)
-            if invoice:
-                await self.invoice_service.update_status(invoice, InvoiceStatus.REFUNDED)
+            await self.invoice_service.update_status(invoice, InvoiceStatus.REFUNDED)

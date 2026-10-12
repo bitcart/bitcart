@@ -1,5 +1,5 @@
 import json
-from decimal import ROUND_HALF_EVEN, Decimal
+from decimal import ROUND_CEILING, ROUND_FLOOR, ROUND_HALF_UP, Context, Decimal
 from typing import Any, TypedDict, cast
 
 
@@ -7,11 +7,29 @@ def set_v(data: dict[str, Any], key: str, default: Any) -> None:
     data[key] = data.get(key, default)
 
 
+RAW_PRECISION = 18  # max number of decimals any crypto we support has
+RAW_CONTEXT = Context(prec=60, rounding=ROUND_HALF_UP)
+
+
 def truncate(value: Decimal, precision: int) -> Decimal:
-    if precision == 0:
-        return value
     q = Decimal(10) ** -precision
-    return value.quantize(q, rounding=ROUND_HALF_EVEN)
+    return value.quantize(q, rounding=ROUND_HALF_UP)
+
+
+def round_up(value: Decimal, precision: int) -> Decimal:
+    return value.quantize(Decimal(10) ** -precision, rounding=ROUND_CEILING)
+
+
+def round_down(value: Decimal, precision: int) -> Decimal:
+    return value.quantize(Decimal(10) ** -precision, rounding=ROUND_FLOOR)
+
+
+def to_raw(value: Decimal) -> Decimal:
+    return RAW_CONTEXT.quantize(value, Decimal(10) ** -RAW_PRECISION)
+
+
+def format_raw(value: Decimal) -> str:
+    return f"{to_raw(value).normalize(RAW_CONTEXT):f}"
 
 
 # Thanks to example from python docs
@@ -25,7 +43,7 @@ def moneyfmt(value: Decimal, places: int = 2, curr: str = "", sep: str = ",", dp
              only specify as blank when places is zero
     """
     q = Decimal(10) ** -places  # 2 places --> '0.01'
-    sign, digits_repr, _ = value.quantize(q).as_tuple()
+    sign, digits_repr, _ = value.quantize(q, rounding=ROUND_HALF_UP).as_tuple()
     result: list[str] = []
     digits = list(map(str, digits_repr))
     build, next_digit = result.append, digits.pop
@@ -100,15 +118,24 @@ class CurrencyTable:
             return divisibility
         return max(divisibility, -cast(int, truncate(rate, places).normalize().as_tuple().exponent))
 
+    def get_divisibility(self, currency: str, divisibility: int | None) -> int:
+        return self.get_currency_data(currency)["divisibility"] if divisibility is None else divisibility
+
     def normalize(self, currency: str, value: Decimal, divisibility: int | None = None) -> Decimal:
-        return truncate(value, divisibility or self.get_currency_data(currency)["divisibility"])
+        return truncate(value, self.get_divisibility(currency, divisibility))
+
+    def round_up(self, currency: str, value: Decimal, divisibility: int | None = None) -> Decimal:
+        return round_up(value, self.get_divisibility(currency, divisibility))
+
+    def round_down(self, currency: str, value: Decimal, divisibility: int | None = None) -> Decimal:
+        return round_down(value, self.get_divisibility(currency, divisibility))
 
     def format_currency(self, currency: str, value: Decimal, fancy: bool = True, divisibility: int | None = None) -> str:
         if value is None or currency is None:
             return value
         currency_info = self.get_currency_data(currency)
         symbol = currency_info["symbol"]
-        kwargs = {"places": divisibility if divisibility else currency_info["divisibility"], "sep": ""}
+        kwargs = {"places": self.get_divisibility(currency, divisibility), "sep": ""}
         if fancy:
             kwargs.update({"curr": symbol, "sep": ","})
         formatted = moneyfmt(value, **cast(MoneyfmtParams, kwargs))

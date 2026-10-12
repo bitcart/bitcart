@@ -8,7 +8,7 @@ from fastapi import APIRouter, HTTPException, Security
 from api import models, utils
 from api.constants import AuthScopes
 from api.exceptions import RateUnavailableError
-from api.schemas.base import DecimalAsFloat
+from api.schemas.base import DecimalAsString
 from api.schemas.misc import BalanceResponse, CloseChannelScheme, LNPayScheme, OpenChannelScheme, WalletsBalance
 from api.schemas.wallets import CreateWallet, CreateWalletData, DisplayWallet, UpdateWallet
 from api.services.crud.wallets import WalletService
@@ -50,7 +50,7 @@ create_crud_router(
 )
 
 
-@router.get("/{model_id}/rate", response_model=DecimalAsFloat)
+@router.get("/{model_id}/rate", response_model=DecimalAsString)
 async def get_wallet_rate(
     wallet_service: FromDishka[WalletService],
     wallet_data_service: FromDishka[WalletDataService],

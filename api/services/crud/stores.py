@@ -7,6 +7,7 @@ from api import models
 from api.db import AsyncSession
 from api.exceptions import ExchangeRatesUnavailableError
 from api.ext import fxrate
+from api.ext.moneyformat import format_raw
 from api.schemas.policies import GlobalStorePolicy
 from api.schemas.stores import DisplayStore, PublicStore
 from api.services.crud import CRUDService
@@ -90,7 +91,7 @@ class StoreService(CRUDService[models.Store]):
                     message = f"{currency}: no valid rate, rules gave {result} (resolved by {resolved})"
                     results.append({"rate": None, "message": message})
                     continue
-                results.append({"rate": result, "message": f"{currency}: {result} (resolved by {resolved})"})
+                results.append({"rate": result, "message": f"{currency}: {format_raw(result)} (resolved by {resolved})"})
             except ExchangeRatesUnavailableError:
                 raise
             except Exception as e:
