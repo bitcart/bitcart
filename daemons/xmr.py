@@ -12,6 +12,7 @@ from datetime import datetime
 from decimal import Decimal
 
 from aiohttp import ClientError as AsyncClientError
+from aiohttp import ClientResponseError as AsyncClientResponseError
 from genericprocessor import (
     NOOP_PATH,
     PR_PAID,
@@ -128,10 +129,42 @@ class MoneroRPC(RPCProvider):
         }
 
     async def get_mempool(self):
-        resp = await self.request("raw", "get_transaction_pool")
+        # Restricted nodes (monerod >= 0.18.5.3, monero-project/monero#10973) no longer serve /get_transaction_pool
+        # and answer it with HTTP 404, so public nodes would fail every mempool poll. After the first 404, rebuild
+        # the pool from /get_transaction_pool_hashes + /get_transactions, which restricted nodes still serve.
+        if not getattr(self, "_pool_endpoint_refused", False):
+            try:
+                resp = await self.request("raw", "get_transaction_pool")
+            except AsyncClientResponseError as e:
+                if e.status != 404:
+                    raise
+                self._pool_endpoint_refused = True
+            else:
+                if resp["status"] != "OK":
+                    raise Exception(resp["status"])
+                return resp.get("transactions", [])
+        return await self._get_mempool_from_hashes()
+
+    async def _get_mempool_from_hashes(self):
+        resp = await self.request("raw", "get_transaction_pool_hashes")
         if resp["status"] != "OK":
             raise Exception(resp["status"])
-        return resp.get("transactions", [])
+        hashes = resp.get("tx_hashes", [])
+        self._validate_hashes(hashes)
+        mempool = []
+        for start_idx in range(0, len(hashes), MAX_FETCH_TXES):  # restricted nodes cap this call at 100 hashes
+            txs_resp = await self.request(
+                "raw",
+                "get_transactions",
+                txs_hashes=hashes[start_idx : start_idx + MAX_FETCH_TXES],
+                decode_as_json=True,
+            )
+            if txs_resp["status"] != "OK":
+                raise Exception(txs_resp["status"])
+            for tx in txs_resp.get("txs", []):
+                if tx.get("in_pool"):  # skip txs mined between the two calls
+                    mempool.append({"id_hash": tx["tx_hash"], "tx_json": tx["as_json"], "tx_blob": tx["as_hex"]})
+        return mempool
 
     async def broadcast(self, tx):
         resp = await self.request("raw", "send_raw_transaction", tx_as_hex=tx)
