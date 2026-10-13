@@ -5,17 +5,26 @@ import tempfile
 from typing import Any, cast
 
 import aiofiles
+from aiohttp import ClientSession, ClientTimeout
 from dishka import AsyncContainer, Scope
 from fastapi import HTTPException, UploadFile
 from jsonschema import validate
-from packaging.requirements import Requirement  # TODO: drop requirement on packaging
+from packaging.requirements import InvalidRequirement, Requirement  # TODO: drop requirement on packaging
+from packaging.version import InvalidVersion, Version
 
 from api import constants, utils
 from api.constants import VERSION
+from api.logging import get_exception_summary
 from api.schemas.policies import PluginsState
 from api.services.plugin_registry import PluginRegistry
 from api.services.settings import SettingService
 from api.settings import Settings
+
+MARKETPLACE_TIMEOUT = 120
+
+
+def is_bitcart_compatible(version_constraint: str, bitcart_version: str) -> bool:
+    return bitcart_version in Requirement(f"bitcart{version_constraint}").specifier
 
 
 class PluginManager:
@@ -50,11 +59,15 @@ class PluginManager:
                 if not os.path.exists(manifest_path):
                     continue
                 with open(manifest_path) as f:
-                    manifest = f.read()
+                    manifest_str = f.read()
                 try:
-                    plugins.append(self.parse_manifest(manifest))
+                    manifest = self.parse_manifest(manifest_str)
                 except ValueError:
                     continue
+                incompatible_reason = self.check_compatibility(manifest)
+                plugins.append(
+                    {**manifest, "compatible": incompatible_reason is None, "incompatible_reason": incompatible_reason}
+                )
         return plugins
 
     def parse_manifest(self, manifest_str: str) -> dict[str, Any]:
@@ -66,28 +79,35 @@ class PluginManager:
             validate(manifest, schema=self.plugins_schema)
         except Exception as e:
             raise ValueError(f"Invalid manifest.json: {e}") from e
-        # validate version constraints
-        version_constraint = manifest["constraints"]["bitcart"]
-        req = Requirement(f"bitcart{version_constraint}")
-        if VERSION not in req.specifier:
-            raise ValueError(
-                f"Invalid manifest.json: plugin requires Bitcart version{version_constraint}, but current version is {VERSION}"
-            )
+        try:
+            Requirement(f"bitcart{manifest['constraints']['bitcart']}")
+        except InvalidRequirement as e:
+            raise ValueError("Invalid manifest.json: invalid Bitcart version constraint") from e
         return manifest
 
-    def get_moved_name(self, manifest: dict[str, Any], install: dict[str, Any]) -> str:
-        variants = {
+    @staticmethod
+    def check_compatibility(manifest: dict[str, Any]) -> str | None:
+        version_constraint = manifest["constraints"]["bitcart"]
+        if is_bitcart_compatible(version_constraint, VERSION):
+            return None
+        return f"Plugin requires Bitcart version{version_constraint}, but current version is {VERSION}"
+
+    def get_install_dirs(self) -> dict[str, str]:
+        return {
             "backend": self.settings.BACKEND_PLUGINS_DIR,
             "admin": self.settings.ADMIN_PLUGINS_DIR,
             "store": self.settings.STORE_PLUGINS_DIR,
             "docker": self.settings.DOCKER_PLUGINS_DIR,
         }
+
+    def get_moved_name(self, manifest: dict[str, Any], install: dict[str, Any]) -> str:
+        install_dir = self.get_install_dirs()[install["type"]]
         org_name = manifest["author"].lower()
         if install["type"] in ("admin", "store"):
             org_name = "@" + org_name
         if install["type"] == "docker":
-            return os.path.join(variants[install["type"]], org_name + "_" + os.path.basename(install["path"]))
-        return os.path.join(variants[install["type"]], org_name, os.path.basename(install["path"]))
+            return os.path.join(install_dir, org_name + "_" + os.path.basename(install["path"]))
+        return os.path.join(install_dir, org_name, os.path.basename(install["path"]))
 
     def process_installation_hooks(self, path: str, manifest: dict[str, Any]) -> None:
         for install in manifest["installs"]:
@@ -136,38 +156,110 @@ class PluginManager:
     def get_installed_plugins(self) -> dict[str, Any]:
         failed_path = os.path.join(self.settings.DATADIR, ".plugins-failed")
         is_error = os.path.exists(failed_path)
-        return {"success": not is_error, "plugins": self.get_plugins()}
+        return {"success": not is_error, "bitcart_version": VERSION, "plugins": self.get_plugins()}
 
     async def install_plugin(self, plugin: UploadFile) -> dict[str, Any]:
         filename = cast(str, plugin.filename)
         if not filename.endswith(".bitcart"):
             return {"status": "error", "message": "Invalid file extension"}
-        temp_dir = tempfile.mkdtemp()
-        path = os.path.join(temp_dir, filename)
-        async with aiofiles.open(path, "wb") as f:
-            await f.write(await plugin.read())
-        plugin_path = os.path.join(temp_dir, "plugin")
-        shutil.unpack_archive(path, plugin_path, "zip")
-        manifest_path = os.path.join(plugin_path, "manifest.json")
-        if not os.path.exists(manifest_path):
-            return {"status": "error", "message": "Invalid plugin archive: missing manifest.json"}
-        async with aiofiles.open(manifest_path) as f:
-            manifest_str = await f.read()
-        try:
-            manifest = self.parse_manifest(manifest_str)
-        except ValueError as e:
-            return {"status": "error", "message": str(e)}
-        final_path = os.path.join(
-            self.settings.plugins_dir, os.path.join(manifest["author"].lower(), manifest["name"].lower())
-        )
-        if os.path.exists(final_path):
-            utils.files.remove_tree(final_path)
-        shutil.move(plugin_path, final_path)
-        self.process_installation_hooks(final_path, manifest)
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = os.path.join(temp_dir, "plugin.bitcart")
+            async with aiofiles.open(path, "wb") as f:
+                await f.write(await plugin.read())
+            return await self.install_from_archive(path)
+
+    async def install_from_archive(self, archive_path: str) -> dict[str, Any]:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            plugin_path = os.path.join(temp_dir, "plugin")
+            shutil.unpack_archive(archive_path, plugin_path, "zip")
+            manifest_path = os.path.join(plugin_path, "manifest.json")
+            if not os.path.exists(manifest_path):
+                return {"status": "error", "message": "Invalid plugin archive: missing manifest.json"}
+            async with aiofiles.open(manifest_path) as f:
+                manifest_str = await f.read()
+            try:
+                manifest = self.parse_manifest(manifest_str)
+            except ValueError as e:
+                return {"status": "error", "message": str(e)}
+            if incompatible_reason := self.check_compatibility(manifest):
+                return {"status": "error", "message": incompatible_reason}
+            final_path = os.path.join(
+                self.settings.plugins_dir, os.path.join(manifest["author"].lower(), manifest["name"].lower())
+            )
+            if os.path.exists(final_path):
+                utils.files.remove_tree(final_path)
+            shutil.move(plugin_path, final_path)
+            self.process_installation_hooks(final_path, manifest)
         return {
             "status": "success",
             "message": "Successfully installed plugin files. Restart your instance for plugin to load",
         }
+
+    def is_dev_plugin(self, manifest: dict[str, Any]) -> bool:
+        return any(os.path.islink(self.get_moved_name(manifest, install)) for install in manifest["installs"])
+
+    async def update_plugins(self) -> dict[str, str]:
+        installed = [plugin for plugin in self.get_plugins() if not self.is_dev_plugin(plugin)]
+        if not installed:
+            return {}
+        licenses = {
+            (info["plugin_author"], info["plugin_name"]): info
+            for info in sorted(await self.get_licenses(), key=lambda info: bool(info.get("active")))
+        }
+        results: dict[str, str] = {}
+        async with ClientSession(timeout=ClientTimeout(total=MARKETPLACE_TIMEOUT)) as session:
+            try:
+                async with session.get(
+                    f"{self.settings.LICENSE_SERVER_URL}/plugins", params={"bitcart_version": VERSION}
+                ) as resp:
+                    resp.raise_for_status()
+                    marketplace = await resp.json()
+            except Exception as e:
+                return {"marketplace": f"unavailable, plugins not updated: {get_exception_summary(e)}"}
+            by_id = {entry["id"]: entry for entry in marketplace}
+            by_name = {(entry["author"], entry["name"]): entry for entry in marketplace}
+            for plugin in installed:
+                key = (plugin["author"], plugin["name"])
+                license_info = licenses.get(key)
+                entry = (by_id.get(license_info["plugin_id"]) if license_info else None) or by_name.get(key)
+                if not entry:
+                    continue
+                name = f"{plugin['author']}/{plugin['name']}"
+                if not entry["plugin_version"]:
+                    results[name] = f"no version compatible with Bitcart {VERSION}, keeping {plugin['version']}"
+                    continue
+                try:
+                    is_newer = Version(entry["plugin_version"]) > Version(plugin["version"])
+                except InvalidVersion:
+                    continue
+                if not is_newer:
+                    continue
+                try:
+                    result = await self.install_marketplace_version(session, entry, license_info)
+                except Exception as e:
+                    result = {"status": "error", "message": get_exception_summary(e)}
+                if result["status"] == "success":
+                    results[name] = f"updated to {entry['plugin_version']}"
+                else:
+                    results[name] = f"update to {entry['plugin_version']} failed: {result['message']}"
+        return results
+
+    async def install_marketplace_version(
+        self, session: ClientSession, entry: dict[str, Any], license_info: dict[str, Any] | None
+    ) -> dict[str, Any]:
+        params = {"bitcart_version": VERSION, "version": entry["plugin_version"]}
+        if license_info:
+            params["license_key"] = license_info["license_key"]
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = os.path.join(temp_dir, "plugin.bitcart")
+            async with session.get(
+                f"{self.settings.LICENSE_SERVER_URL}/plugins/{entry['id']}/download", params=params
+            ) as resp:
+                if resp.status != 200:
+                    return {"status": "error", "message": f"download returned HTTP {resp.status}: {await resp.text()}"}
+                async with aiofiles.open(path, "wb") as f:
+                    await f.write(await resp.read())
+            return await self.install_from_archive(path)
 
     async def add_license(self, license_key: str) -> dict[str, Any]:
         async with self.container(scope=Scope.REQUEST) as container:

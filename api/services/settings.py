@@ -39,8 +39,8 @@ class SettingService:
 
     async def get_setting(self, scheme: type[T], name: str | None = None) -> T:
         name = name or scheme.__name__.lower()
-        item = await self.setting_repository.get_one_or_none(name=name)
-        data = scheme() if not item else scheme(**json.loads(item.value))
+        value = await self.setting_repository.get_value(name)
+        data = scheme() if value is None else scheme(**json.loads(value))
         await self._dispatch_async_init(data)
         return data
 
