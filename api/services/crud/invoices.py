@@ -152,14 +152,6 @@ class InvoiceService(CRUDService[models.Invoice]):
         logger.error(f"Could not find sent amount divisibility for invoice {obj_id}, payment_id={payment_id}")
         return None
 
-    @staticmethod
-    def get_payment_transactions(
-        tx_hashes: list[str], sent_amount: Decimal, tx_amounts: dict[str, str] | None
-    ) -> list[dict[str, str]]:
-        if tx_amounts is None:
-            return [{"tx_hash": tx_hashes[0], "amount": str(sent_amount)}] if len(tx_hashes) == 1 else []
-        return [{"tx_hash": tx_hash, "amount": tx_amounts[tx_hash]} for tx_hash in tx_hashes if tx_hash in tx_amounts]
-
     @classmethod
     def find_sent_price(
         cls, currency: str, sent_amount: Decimal, payments: list[models.PaymentMethod], payment_id: str | None
@@ -576,7 +568,9 @@ class InvoiceService(CRUDService[models.Invoice]):
         method = await self.session.merge(method) if method else None
         if tx_hashes is None:
             tx_hashes = []
-        transactions = self.get_payment_transactions(tx_hashes, sent_amount, tx_amounts)
+        if tx_amounts is None:
+            tx_amounts = {}
+        tx_amounts = {tx_hash: tx_amounts[tx_hash] for tx_hash in tx_hashes if tx_hash in tx_amounts}
         if (
             status == InvoiceStatus.PENDING
             and invoice.status == InvoiceStatus.PENDING
@@ -584,11 +578,12 @@ class InvoiceService(CRUDService[models.Invoice]):
             and sent_amount > 0
             and (not invoice.payment_id or invoice.payment_id == method.id)
         ):
-            method.update(is_used=True, transactions=transactions)
+            method.update(is_used=True)
             invoice.update(
                 paid_currency=method.get_name(),
                 discount=method.discount,
                 tx_hashes=tx_hashes,
+                tx_amounts=tx_amounts,
                 sent_amount=sent_amount,
                 exception_status=InvoiceExceptionStatus.PAID_PARTIAL,
                 payment_id=method.id,
@@ -617,12 +612,13 @@ class InvoiceService(CRUDService[models.Invoice]):
                         "paid_currency": full_method_name,
                         "discount": method.discount,
                         "tx_hashes": tx_hashes,
+                        "tx_amounts": tx_amounts,
                         "sent_amount": sent_amount,
                         "exception_status": exception_status,
                     }
                     if not invoice.paid_date:
                         kwargs["paid_date"] = utils.time.now()
-                    method.update(is_used=True, transactions=transactions)
+                    method.update(is_used=True)
                     invoice.update(**kwargs, payment_id=method.id)
                 log_text += f" with payment method {full_method_name}"
             logger.info(f"{log_text} to {status}")

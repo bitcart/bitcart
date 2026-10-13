@@ -160,7 +160,7 @@ class PaymentProcessor:
                                 confirmations,
                                 invoice.tx_hashes,
                                 invoice.sent_amount,
-                                {transaction["tx_hash"]: transaction["amount"] for transaction in method.transactions},
+                                invoice.tx_amounts,
                                 container=self.container,
                                 logger=logger,
                             )

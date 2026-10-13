@@ -286,7 +286,7 @@ async def test_exception_statuses(
         allow_next=True,
     )
     invoice = (await client.get(f"/invoices/{invoice_id}", headers={"Authorization": f"Bearer {token}"})).json()
-    assert sorted(Decimal(tx["amount"]) for tx in invoice["payments"][0]["transactions"]) == sorted([part1, part2])
+    assert sorted(Decimal(tx["amount"]) for tx in invoice["transactions"]) == sorted([part1, part2])
 
 
 async def test_lightning_pay_flow(

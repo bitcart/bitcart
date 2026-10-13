@@ -22,7 +22,7 @@ def db_to_json(data: list[models.Invoice], add_payments: bool = False) -> Genera
 
 
 def get_leaves(item: Any, key: str | None = None) -> dict[str, Any]:  # pragma: no cover
-    if isinstance(item, list) and key is not None and key != "payments":
+    if isinstance(item, list) and key is not None and not any(isinstance(i, dict) for i in item):
         return {key: "[" + ",".join(map(str, item)) + "]"}
     if isinstance(item, dict):
         leaves = {}

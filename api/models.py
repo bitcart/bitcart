@@ -379,7 +379,6 @@ class PaymentMethod(RecordModel):
     label: Mapped[str] = mapped_column(Text)
     hint: Mapped[str | None] = mapped_column(Text)
     is_used: Mapped[bool] = mapped_column(Boolean(), default=False)
-    transactions: Mapped[list[dict[str, str]]] = mapped_column(MutableList.as_mutable(ARRAY(JSONB())), default=list)
 
     invoice = relationship("Invoice", lazy="raise", back_populates="payments", foreign_keys="[PaymentMethod.invoice_id]")
 
@@ -398,15 +397,6 @@ class PaymentMethod(RecordModel):
         data["amount"] = currency_table.format_decimal(self.symbol, self.amount, divisibility=self.divisibility)
         data["network_fee"] = currency_table.format_decimal(self.symbol, self.network_fee, divisibility=self.divisibility)
         data["effective_price"] = currency_table.format_decimal(currency, self.effective_price)
-        data["transactions"] = [
-            {
-                "tx_hash": transaction["tx_hash"],
-                "amount": currency_table.format_decimal(
-                    self.symbol, Decimal(transaction["amount"]), divisibility=self.divisibility
-                ),
-            }
-            for transaction in self.transactions or []
-        ]
         data["due"] = currency_table.format_decimal(self.symbol, due, divisibility=self.divisibility)
         due_price = to_raw(due * self.rate)
         data["due_price"] = format_raw(due_price)
@@ -463,6 +453,7 @@ class Invoice(RecordModel):
         Text, ForeignKey(Store.id, deferrable=True, initially="DEFERRED", ondelete="SET NULL"), index=True
     )
     tx_hashes: Mapped[list[str]] = mapped_column(MutableList.as_mutable(ARRAY(Text)), default=list)
+    tx_amounts: Mapped[dict[str, str]] = mapped_column(MutableDict.as_mutable(JSONB()), default=dict)
     order_id: Mapped[str | None] = mapped_column(Text)
     user_id: Mapped[str | None] = mapped_column(Text, ForeignKey(User.id, ondelete="SET NULL"))
     creation_time: Mapped[Decimal | None] = mapped_column(Numeric(36, 18))

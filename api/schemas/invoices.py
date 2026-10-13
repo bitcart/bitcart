@@ -63,6 +63,11 @@ class UpdateInvoice(BaseInvoice):
     pass
 
 
+class InvoiceTransaction(Schema):
+    tx_hash: str
+    amount: Money
+
+
 class DisplayInvoice(MetadataOutput, BaseInvoice, TimestampedSchema):
     id: str
     user_id: str
@@ -83,6 +88,7 @@ class DisplayInvoice(MetadataOutput, BaseInvoice, TimestampedSchema):
     exception_status: str
     currency: str
     tx_hashes: list[str]
+    transactions: list[InvoiceTransaction]
     promocode: str | None
     products: list[str]
     sent_amount: Money
@@ -105,11 +111,17 @@ class DisplayInvoice(MetadataOutput, BaseInvoice, TimestampedSchema):
         )
         values["price"] = currency_table.format_decimal(values["currency"], values["price"])
         values.update(invoices.InvoiceService.find_sent_price(values["currency"], sent_amount, values["payments"], payment_id))
-        values["sent_amount"] = currency_table.format_decimal(
-            "",
-            sent_amount,
-            divisibility=invoices.InvoiceService.find_sent_amount_divisibility(values["id"], values["payments"], payment_id),
-        )
+        divisibility = invoices.InvoiceService.find_sent_amount_divisibility(values["id"], values["payments"], payment_id)
+        values["sent_amount"] = currency_table.format_decimal("", sent_amount, divisibility=divisibility)
+        tx_amounts = values["tx_amounts"]
+        values["transactions"] = [
+            {
+                "tx_hash": tx_hash,
+                "amount": currency_table.format_decimal("", Decimal(tx_amounts[tx_hash]), divisibility=divisibility),
+            }
+            for tx_hash in values["tx_hashes"]
+            if tx_hash in tx_amounts
+        ]
         values["payments"] = [
             method.to_payment_dict(
                 values["currency"],

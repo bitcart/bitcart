@@ -1286,16 +1286,15 @@ async def test_invoice_effective_price(
     ("tx_hashes", "tx_amounts", "expected"),
     [
         (
-            ["tx1", "tx2"],
+            ["tx2", "tx1"],
             {"tx1": "0.06", "tx2": "0.04"},
-            [{"tx_hash": "tx1", "amount": "0.06000000"}, {"tx_hash": "tx2", "amount": "0.04000000"}],
+            [{"tx_hash": "tx2", "amount": "0.04000000"}, {"tx_hash": "tx1", "amount": "0.06000000"}],
         ),
         (["tx1", "tx2"], {"tx2": "0.04"}, [{"tx_hash": "tx2", "amount": "0.04000000"}]),
-        (["tx1"], None, [{"tx_hash": "tx1", "amount": "0.10000000"}]),
-        (["tx1", "tx2"], None, []),
+        (["tx1"], None, []),
     ],
 )
-async def test_payment_transactions(
+async def test_invoice_transactions(
     client: TestClient,
     token: str,
     store: dict[str, Any],
@@ -1318,10 +1317,10 @@ async def test_payment_transactions(
     )
     invoice = (await client.get(f"/invoices/{invoice['id']}", headers={"Authorization": f"Bearer {token}"})).json()
     assert invoice["tx_hashes"] == tx_hashes
-    assert invoice["payments"][0]["transactions"] == expected
+    assert invoice["transactions"] == expected
 
 
-async def test_new_block_keeps_payment_transactions(
+async def test_new_block_keeps_transactions(
     client: TestClient, token: str, store: dict[str, Any], app: FastAPI, mocker: pytest_mock.MockerFixture
 ) -> None:
     headers = {"Authorization": f"Bearer {token}"}
@@ -1345,7 +1344,7 @@ async def test_new_block_keeps_payment_transactions(
     await payment_processor.new_block_handler(DummyInstance(), "new_block", 1)
     invoice = (await client.get(f"/invoices/{invoice['id']}", headers=headers)).json()
     assert invoice["status"] == "complete"
-    assert invoice["payments"][0]["transactions"] == [
+    assert invoice["transactions"] == [
         {"tx_hash": "tx1", "amount": "0.06000000"},
         {"tx_hash": "tx2", "amount": "0.04000000"},
     ]
@@ -2841,7 +2840,7 @@ async def test_mark_complete_transactions(
     assert resp.status_code == 200
     invoice = (await client.get(f"/invoices/{invoice['id']}", headers=headers)).json()
     assert (invoice["tx_hashes"], invoice["sent_amount"]) == (tx_hashes, sent_amount)
-    assert invoice["payments"][0]["transactions"] == transactions
+    assert invoice["transactions"] == transactions
 
 
 async def test_mark_complete_validation(client: TestClient, token: str, store: dict[str, Any]) -> None:
