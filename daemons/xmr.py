@@ -127,11 +127,11 @@ class MoneroRPC(RPCProvider):
             "transactions": await self.get_transactions([block["miner_tx_hash"]] + json_part["tx_hashes"]),
         }
 
-    async def get_mempool(self):
-        resp = await self.request("raw", "get_transaction_pool")
+    async def get_mempool_hashes(self):
+        resp = await self.request("raw", "get_transaction_pool_hashes")
         if resp["status"] != "OK":
             raise Exception(resp["status"])
-        return resp.get("transactions", [])
+        return resp.get("tx_hashes", [])
 
     async def broadcast(self, tx):
         resp = await self.request("raw", "send_raw_transaction", tx_as_hex=tx)
@@ -368,7 +368,7 @@ class XMRDaemon(BlockProcessorDaemon):
     def __init__(self):
         super().__init__()
         self.network_const = self.NETWORK_MAPPING.get(self.NET.lower())
-        self.mempool_cache = {}
+        self.mempool_cache = set()
         if not self.network_const:
             raise ValueError(
                 f"Invalid network passed: {self.NET}. Valid choices are {', '.join(self.NETWORK_MAPPING.keys())}."
@@ -378,36 +378,22 @@ class XMRDaemon(BlockProcessorDaemon):
         await super().on_startup(app)
         self.loop.create_task(self.process_mempool())
 
-    def create_mempool_tx(self, tx):
-        as_json = json.loads(tx["tx_json"])
-        fee = as_json.get("rct_signatures", {}).get("txnFee")
-        return MoneroTransaction(
-            hash=tx["id_hash"],
-            fee=from_atomic(fee) if fee else None,
-            height=None,
-            timestamp=None,
-            output_indices=None,
-            blob=binascii.unhexlify(tx["tx_blob"]) or None,
-            json=as_json,
-        )
-
     async def process_mempool(self):
         while self.running:
             try:
-                mempool = await self.coin.rpc.get_mempool()
-                new_cache = {}
-                for tx_data in mempool:
+                mempool_hashes = await self.coin.rpc.get_mempool_hashes()
+                new_hashes = [tx_hash for tx_hash in mempool_hashes if tx_hash not in self.mempool_cache]
+                fetched_txes = await self.coin.rpc.get_transactions(new_hashes)
+                for tx_data in fetched_txes:
+                    if tx_data.height is not None:
+                        continue
                     try:
-                        txes = await self.coin.parse_transactions(self.create_mempool_tx(tx_data))
-                        for tx in txes:
-                            new_cache[tx.hash] = True
-                            if tx.hash in self.mempool_cache:
-                                continue
+                        for tx in await self.coin.parse_transactions(tx_data):
                             await self.process_transaction(tx, unconfirmed=True)
                     except Exception:
                         logger.error(f"Error processing transaction {self.coin.get_tx_hash(tx_data)}:")
                         logger.error(traceback.format_exc())
-                self.mempool_cache = new_cache
+                self.mempool_cache = self.mempool_cache.intersection(mempool_hashes) | {tx.hash for tx in fetched_txes}
             except Exception:
                 logger.error("Error processing mempool:")
                 logger.error(traceback.format_exc())
