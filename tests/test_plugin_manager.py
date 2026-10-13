@@ -142,7 +142,7 @@ async def test_get_plugins_lists_incompatible_plugins(
     assert plugins["Compatible"]["compatible"] is True
     assert plugins["Compatible"]["incompatible_reason"] is None
     assert plugins["Outdated"]["compatible"] is False
-    assert f"<={VERSION}" in plugins["Outdated"]["incompatible_reason"]
+    assert f"<= {VERSION}" in plugins["Outdated"]["incompatible_reason"]
     assert FUTURE_VERSION in plugins["Outdated"]["incompatible_reason"]
 
 
@@ -159,7 +159,7 @@ async def test_uninstall_incompatible_plugin(
 async def test_install_rejects_incompatible_archive(plugin_manager: PluginManager, tmp_path: pathlib.Path) -> None:
     result = await install(plugin_manager, tmp_path, "Future", "1.0.0", f">={FUTURE_VERSION}")
     assert result["status"] == "error"
-    assert f">={FUTURE_VERSION}" in result["message"]
+    assert f">= {FUTURE_VERSION}" in result["message"]
     assert plugin_manager.get_plugins() == []
     assert os.listdir(plugin_manager.settings.BACKEND_PLUGINS_DIR) == []
 

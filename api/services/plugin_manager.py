@@ -10,6 +10,7 @@ from dishka import AsyncContainer, Scope
 from fastapi import HTTPException, UploadFile
 from jsonschema import validate
 from packaging.requirements import InvalidRequirement, Requirement  # TODO: drop requirement on packaging
+from packaging.specifiers import Specifier
 from packaging.version import InvalidVersion, Version
 
 from api import constants, utils
@@ -25,6 +26,11 @@ MARKETPLACE_TIMEOUT = 120
 
 def is_bitcart_compatible(version_constraint: str, bitcart_version: str) -> bool:
     return bitcart_version in Requirement(f"bitcart{version_constraint}").specifier
+
+
+def format_bitcart_constraint(version_constraint: str) -> str:
+    specifiers = [Specifier(part.strip()) for part in version_constraint.split(",") if part.strip()]
+    return ", ".join(f"{specifier.operator} {specifier.version}" for specifier in specifiers)
 
 
 class PluginManager:
@@ -90,7 +96,7 @@ class PluginManager:
         version_constraint = manifest["constraints"]["bitcart"]
         if is_bitcart_compatible(version_constraint, VERSION):
             return None
-        return f"Plugin requires Bitcart version{version_constraint}, but current version is {VERSION}"
+        return f"Plugin requires Bitcart {format_bitcart_constraint(version_constraint)}, but current version is {VERSION}"
 
     def get_install_dirs(self) -> dict[str, str]:
         return {
