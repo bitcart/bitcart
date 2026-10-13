@@ -386,9 +386,6 @@ class PaymentMethod(RecordModel):
     def wallet(cls) -> Mapped["Wallet"]:
         return relationship("Wallet", lazy="raise", foreign_keys="[PaymentMethod.wallet_id]")
 
-    def get_sent_value(self, sent_amount: Decimal) -> Decimal:
-        return sent_amount * self.rate
-
     def to_payment_dict(self, currency: str, index: int | None = None, due: Decimal | None = None) -> dict[str, Any]:
         if due is None:
             due = self.amount

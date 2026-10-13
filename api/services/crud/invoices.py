@@ -157,7 +157,7 @@ class InvoiceService(CRUDService[models.Invoice]):
         cls, currency: str, sent_amount: Decimal, payments: list[models.PaymentMethod], payment_id: str | None
     ) -> dict[str, str]:
         method = cls.match_payment(payments, payment_id) if payment_id else None
-        sent_price = to_raw(method.get_sent_value(sent_amount) if method else Decimal(0))
+        sent_price = to_raw(sent_amount * method.rate if method else Decimal(0))
         return {
             "sent_price": format_raw(sent_price),
             "sent_price_str": currency_table.format_currency(currency, currency_table.round_down(currency, sent_price)),
