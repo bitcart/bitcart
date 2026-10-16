@@ -12,6 +12,7 @@ from dishka import Provider
 from dishka import Scope as DIScope
 from dishka.integrations.fastapi import DishkaRoute as DIRoute
 from fastapi import FastAPI
+from packaging.requirements import Requirement
 from pydantic import TypeAdapter
 
 from api import models
@@ -60,6 +61,10 @@ def delete_metadata[T: models.RecordModel](obj: T, key: str) -> T:
 
 
 # Exposed public API
+def is_bitcart_compatible(version_constraint: str, bitcart_version: str) -> bool:
+    return bitcart_version in Requirement(f"bitcart{version_constraint}").specifier
+
+
 class PluginContext:
     def __init__(self, plugin_registry: "PluginRegistry", container: DIContainer):
         self.plugin_registry = plugin_registry
@@ -298,4 +303,5 @@ __all__ = [
     "CoinServer",
     "BaseCoin",
     "register_scope",
+    "is_bitcart_compatible",
 ]
