@@ -7,13 +7,16 @@ import httpx
 import pytest
 import pytest_mock
 from bitcart.errors import BaseError as BitcartBaseError
+from dishka import Scope
 
 from api.constants import BACKUP_FREQUENCIES, BACKUP_PROVIDERS, FEE_ETA_TARGETS, MAX_CONFIRMATION_WATCH
 from api.schemas.misc import CaptchaType
+from api.services.crud.payouts import PayoutService
 from tests.fixtures.static_data import PAYOUT_DESTINATION, TEST_XPUB
 from tests.helper import create_invoice, create_payout, create_product, create_store, create_token, create_user
 
 if TYPE_CHECKING:
+    from fastapi import FastAPI
     from httpx import AsyncClient as TestClient
 
 BAD_TX_SPEED_MESSAGE = f"Transaction speed must be in range from 0 to {MAX_CONFIRMATION_WATCH}"
@@ -330,7 +333,27 @@ async def test_payouts_wallet_deleted(client: TestClient, token: str) -> None:
     wallet_id = payout["wallet_id"]
     assert (await client.delete(f"/wallets/{wallet_id}", headers={"Authorization": f"Bearer {token}"})).status_code == 200
     resp = await client.get(f"/payouts/{payout['id']}", headers={"Authorization": f"Bearer {token}"})
-    assert resp.json()["wallet_currency"] is None
+    assert resp.json()["wallet_currency"] == "btc"
+
+
+async def test_payout_destination_without_wallet_currency(client: TestClient, token: str, app: FastAPI) -> None:
+    headers = {"Authorization": f"Bearer {token}"}
+    payout = await create_payout(client, token)
+    assert (await client.delete(f"/wallets/{payout['wallet_id']}", headers=headers)).status_code == 200
+    async with app.state.dishka_container(scope=Scope.SESSION) as container:
+        (await (await container.get(PayoutService)).get(payout["id"])).update(wallet_currency=None)
+    resp = await client.patch(f"/payouts/{payout['id']}", json={"destination": PAYOUT_DESTINATION}, headers=headers)
+    assert resp.status_code == 422
+    assert resp.json()["detail"] == "Payout has no wallet"
+
+
+async def test_payout_clear_wallet(client: TestClient, token: str) -> None:
+    payout = await create_payout(client, token)
+    resp = await client.patch(
+        f"/payouts/{payout['id']}", json={"wallet_id": None}, headers={"Authorization": f"Bearer {token}"}
+    )
+    assert resp.status_code == 422
+    assert resp.json()["detail"] == "Payout has no wallet"
 
 
 @pytest.mark.parametrize("support_email", ["invalid", "support@", "@example.com"])

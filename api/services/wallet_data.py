@@ -35,7 +35,8 @@ class WalletDataService:
                 f"Error getting wallet balance for wallet {wallet.id} with currency {wallet.currency}:"
                 f"\n{get_exception_message(e)}"
             )
-            return False, 8, {attr: Decimal(0) for attr in BTC.BALANCE_ATTRS}
+            divisibility = currency_table.get_divisibility(wallet.currency)
+            return False, divisibility, {attr: Decimal(0) for attr in BTC.BALANCE_ATTRS}
 
     async def get_confirmed_wallet_balance(self, wallet: models.Wallet) -> tuple[bool, int, Decimal]:
         success, divisibility, balance = await self.get_wallet_balance(wallet)
@@ -75,7 +76,7 @@ class WalletDataService:
         return rate
 
     async def get_divisibility(self, wallet: models.Wallet, coin: BTC) -> int:
-        divisibility = currency_table.get_currency_data(wallet.currency)["divisibility"]
+        divisibility = currency_table.get_divisibility(wallet.currency)
         if wallet.contract:  # pragma: no cover
             divisibility = min(MAX_CONTRACT_DIVISIBILITY, await coin.server.readcontract(wallet.contract, "decimals"))
         return await self.plugin_registry.apply_filters("get_divisibility", divisibility, wallet, coin)

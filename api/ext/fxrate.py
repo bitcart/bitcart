@@ -7,7 +7,7 @@ from collections.abc import Callable
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any, cast
 
-from api.ext.moneyformat import truncate
+from api.ext.moneyformat import round_half_up
 from api.types import Quotes
 
 if TYPE_CHECKING:
@@ -87,7 +87,7 @@ class ExchangeTransformer(ast.NodeTransformer):
         # TODO: return back if needed
         # if isinstance(arg, str):
         #     return arg
-        return truncate(arg, decimals)
+        return round_half_up(arg, decimals)
 
     def find_candidate(self, name: str) -> dict[str, Any] | Decimal:
         pair = ExchangePair(name)

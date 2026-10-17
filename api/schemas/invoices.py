@@ -1,19 +1,20 @@
 from datetime import datetime
+from decimal import Decimal
 from typing import Any, Literal
 
-from pydantic import ConfigDict, EmailStr, Field, field_validator, model_validator
+from pydantic import ConfigDict, EmailStr, field_validator, model_validator
 
 from api.ext.moneyformat import currency_table
-from api.schemas.base import DecimalAsFloat, MetadataInput, MetadataOutput, Schema, TimestampedSchema
+from api.schemas.base import DecimalAsString, MetadataInput, MetadataOutput, Schema, TimestampedSchema
 from api.types import Money
 
 
 # TODO: type all fields, plugin-extended ones will be allowed by allow
 class PaymentData(Schema):
     created: datetime
-    recommended_fee: DecimalAsFloat
+    recommended_fee: DecimalAsString
 
-    model_config = ConfigDict(extra="allow", from_attributes=True)
+    model_config = ConfigDict(extra="allow")
 
 
 class BaseInvoice(MetadataInput):
@@ -26,9 +27,9 @@ class BaseInvoice(MetadataInput):
 
 
 class CreateInvoice(BaseInvoice):
-    price: DecimalAsFloat
+    price: Decimal
     store_id: str
-    currency: str = Field("", validate_default=True)
+    currency: str = ""
     promocode: str | None = ""
     products: list[str] | dict[str, int] = {}
     expiration: int | None = None
@@ -53,12 +54,18 @@ class MethodUpdateData(Schema):
 
 class MarkCompleteOptions(Schema):
     payment_method_id: str | None = None
-    sent_amount: DecimalAsFloat | None = None
+    sent_amount: Decimal | None = None
     tx_hashes: list[str] | None = None
+    tx_amounts: dict[str, Decimal] | None = None
 
 
 class UpdateInvoice(BaseInvoice):
     pass
+
+
+class InvoiceTransaction(Schema):
+    tx_hash: str
+    amount: Money
 
 
 class DisplayInvoice(MetadataOutput, BaseInvoice, TimestampedSchema):
@@ -69,7 +76,7 @@ class DisplayInvoice(MetadataOutput, BaseInvoice, TimestampedSchema):
     expiration_seconds: int
     product_names: dict[str, Any]
     product_quantities: dict[str, int]
-    payments: list[PaymentData] = []
+    payments: list[PaymentData]
     paid_date: datetime | None
     payment_id: str | None
     refund_id: str | None
@@ -81,9 +88,12 @@ class DisplayInvoice(MetadataOutput, BaseInvoice, TimestampedSchema):
     exception_status: str
     currency: str
     tx_hashes: list[str]
-    promocode: str | None = ""  # TODO: fix this???
+    transactions: list[InvoiceTransaction]
+    promocode: str | None
     products: list[str]
-    sent_amount: DecimalAsFloat
+    sent_amount: Money
+    sent_price: Money
+    effective_price: Money
     expiration: int
     payment_methods: list[str]
 
@@ -92,20 +102,33 @@ class DisplayInvoice(MetadataOutput, BaseInvoice, TimestampedSchema):
     def set_price(cls, values: dict[str, Any]) -> dict[str, Any]:
         from api.services.crud import invoices
 
-        if "products" in values:
-            values["products"] = [v.id for v in values["products"]]
-        if "price" in values and "currency" in values:
-            values["price"] = currency_table.format_decimal(values["currency"], values["price"])
-        if "sent_amount" in values:
-            values["sent_amount"] = currency_table.format_decimal(
-                "",
-                values["sent_amount"],
-                divisibility=invoices.InvoiceService.find_sent_amount_divisibility(
-                    values["id"], values["payments"], values["payment_id"]
-                ),
-            )
+        values["products"] = [v.id for v in values["products"]]
+        sent_amount = values["sent_amount"]
+        payment_id = values["payment_id"]
+        values["effective_price"] = invoices.InvoiceService.find_effective_price(
+            values["currency"], values["price"], values["payments"], payment_id
+        )
+        values["price"] = currency_table.format_decimal(values["currency"], values["price"])
+        values["sent_price"] = invoices.InvoiceService.find_sent_price(
+            values["currency"], sent_amount, values["payments"], payment_id
+        )
+        divisibility = invoices.InvoiceService.find_sent_amount_divisibility(values["id"], values["payments"], payment_id)
+        values["sent_amount"] = currency_table.format_decimal("", sent_amount, divisibility=divisibility)
+        tx_amounts = values["tx_amounts"]
+        values["transactions"] = [
+            {
+                "tx_hash": tx_hash,
+                "amount": currency_table.format_decimal("", Decimal(tx_amounts[tx_hash]), divisibility=divisibility),
+            }
+            for tx_hash in values["tx_hashes"]
+            if tx_hash in tx_amounts
+        ]
         values["payments"] = [
-            method.to_payment_dict(values["currency"], index)
+            method.to_payment_dict(
+                values["currency"],
+                index,
+                due=invoices.InvoiceService.find_due(method, values["status"], payment_id, sent_amount),
+            )
             for index, method in invoices.InvoiceService.get_methods_inds(values["payments"])
         ]
         return values

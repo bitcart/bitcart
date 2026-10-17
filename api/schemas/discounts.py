@@ -1,11 +1,13 @@
 from datetime import datetime
 
+from pydantic import Field
+
 from api.schemas.base import MetadataInput, MetadataOutput, TimestampedSchema
 
 
 class CreateDiscount(MetadataInput):
     name: str
-    percent: int
+    percent: int = Field(ge=0, le=100)
     end_date: datetime
     description: str = ""
     promocode: str = ""

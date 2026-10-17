@@ -1,10 +1,10 @@
-from typing import Any, Literal, cast
+from typing import Literal
 
 from fastapi import HTTPException
-from pydantic import EmailStr, Field, HttpUrl, TypeAdapter, ValidationError, field_validator
+from pydantic import EmailStr, HttpUrl, TypeAdapter, ValidationError, field_validator
 
 from api.constants import FEE_ETA_TARGETS, MAX_CONFIRMATION_WATCH
-from api.schemas.base import DecimalAsFloat, MetadataInput, MetadataOutput, Schema, TimestampedSchema
+from api.schemas.base import MetadataInput, MetadataOutput, Schema, TimestampedSchema
 from api.schemas.misc import EmailSettings
 from api.schemas.notifications import DisplayNotification
 from api.schemas.wallets import InfoWallet
@@ -47,7 +47,7 @@ class StoreCheckoutSettings(Schema):
 
     @field_validator("underpaid_percentage")
     @classmethod
-    def validate_underpaid_percentage(cls, v: DecimalAsFloat) -> float:
+    def validate_underpaid_percentage(cls, v: float) -> float:
         if v < 0 or v >= 100:
             raise HTTPException(422, "Underpaid percentage must be in range from 0 to 99.99")
         return float(v)
@@ -80,7 +80,7 @@ class StorePluginSettings(Schema):
 
 class BaseStore(MetadataInput):
     name: str
-    default_currency: str = Field("USD", validate_default=True)
+    default_currency: str = "USD"
     checkout_settings: StoreCheckoutSettings = StoreCheckoutSettings()
     theme_settings: StoreThemeSettings = StoreThemeSettings()
 
@@ -105,25 +105,20 @@ class UpdateStore(CreateStore):
 class PublicStore(MetadataOutput, BaseStore, TimestampedSchema):
     id: str
     user_id: str
-    currency_data: dict[str, Any]
+    currency_data: dict[str, int]
 
 
 class DisplayStore(MetadataOutput, CreateStore, TimestampedSchema):
     id: str
     user_id: str
-    currency_data: dict[str, Any]
+    currency_data: dict[str, int]
 
     @field_validator("wallets", mode="before")
     @classmethod
-    def validate_wallets(cls, v: list[InfoWallet] | list[str]) -> list[str]:
-        # this logic is needed because fastapi decides to validate twice...
-        if isinstance(v, list) and all(isinstance(w, str) for w in v):
-            return cast(list[str], v)
-        return [cast(InfoWallet, w).id for w in v]
+    def validate_wallets(cls, v: list[InfoWallet]) -> list[str]:
+        return [w.id for w in v]
 
     @field_validator("notifications", mode="before")
     @classmethod
-    def validate_notifications(cls, v: list[DisplayNotification] | list[str]) -> list[str]:
-        if isinstance(v, list) and all(isinstance(n, str) for n in v):
-            return cast(list[str], v)
-        return [cast(DisplayNotification, n).id for n in v]
+    def validate_notifications(cls, v: list[DisplayNotification]) -> list[str]:
+        return [n.id for n in v]

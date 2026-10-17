@@ -1,10 +1,11 @@
 from datetime import datetime
+from decimal import Decimal
 from typing import Any
 
 from fastapi import HTTPException
 from pydantic import field_validator
 
-from api.schemas.base import DecimalAsFloat, Schema
+from api.schemas.base import DecimalAsString, Schema
 from api.types import Money, StrEnum
 
 
@@ -57,7 +58,7 @@ class WalletsBalance(Schema):
 
 class OpenChannelScheme(Schema):
     node_id: str
-    amount: DecimalAsFloat
+    amount: Decimal
 
 
 class CloseChannelScheme(Schema):
@@ -116,7 +117,7 @@ class RateSourceInfo(Schema):
 
 
 class RateResult(Schema):
-    rate: DecimalAsFloat | None
+    rate: DecimalAsString | None
     message: str
 
 

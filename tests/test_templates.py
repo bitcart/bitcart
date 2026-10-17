@@ -1,4 +1,5 @@
 from decimal import Decimal
+from types import SimpleNamespace
 
 import pytest
 
@@ -9,9 +10,10 @@ class DummyInvoice:
     buyer_email = "test@test.com"
 
 
-class DummyPricedInvoice:
+class DummyRefund:
+    id = "refund"
     currency = "USD"
-    price = Decimal("10.5")
+    amount = Decimal("10.500000000000000000")
 
 
 def test_default_template_render(notification_template: str) -> None:
@@ -42,9 +44,10 @@ def test_add_template() -> None:
     assert manager.templates["product"] == template
 
 
-def test_format_decimal_legitimate_field() -> None:
+@pytest.mark.parametrize(("currency", "price", "expected"), [("USD", "10.5", "10.50"), ("BTC", "0.00000001", "0.00000001")])
+def test_format_decimal_legitimate_field(currency: str, price: str, expected: str) -> None:
     template = templates.Template("test", '{{ invoice | format_decimal("price") }}')
-    assert template.render(invoice=DummyPricedInvoice()) == "10.50"
+    assert template.render(invoice=SimpleNamespace(currency=currency, price=Decimal(price))) == expected
 
 
 def test_format_decimal_attribute_isolation() -> None:
@@ -58,3 +61,12 @@ def test_format_decimal_attribute_isolation() -> None:
         "{{ c }}"
     )
     assert templates.Template("test", chained).render() == ""
+
+
+@pytest.mark.parametrize(
+    ("name", "expected"),
+    [("customer_refund", "refund you the amount of 10.50 USD."), ("merchant_refund_notify", "Refund refund for 10.50 USD")],
+)
+def test_refund_templates_format_amount(name: str, expected: str) -> None:
+    rendered = templates.Template(name).render(invoice=DummyInvoice(), refund=DummyRefund(), refund_url="url")
+    assert expected in rendered

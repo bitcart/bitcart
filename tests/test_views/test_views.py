@@ -54,6 +54,7 @@ from api.templates import TemplateManager
 from api.types import Quotes, TasksBroker
 from tests.fixtures import static_data
 from tests.helper import (
+    create_discount,
     create_invoice,
     create_payout,
     create_product,
@@ -87,10 +88,8 @@ async def test_docs_root(client: TestClient) -> None:
 
 async def test_rate(client: TestClient) -> None:
     resp = await client.get("/cryptos/rate")
-    data = resp.json()
     assert resp.status_code == 200
-    assert isinstance(data, int | float)
-    assert data == 50000
+    assert resp.json() == "50000"
     assert (await client.get("/cryptos/rate?fiat_currency=eur")).status_code == 200
     assert (await client.get("/cryptos/rate?fiat_currency=EUR")).status_code == 200
     assert (await client.get("/cryptos/rate?fiat_currency=test")).status_code == 422
@@ -104,10 +103,8 @@ async def test_rate_invalid(client: TestClient, mocker: pytest_mock.MockerFixtur
 
 async def test_wallet_rate(client: TestClient, token: str, wallet: dict[str, Any]) -> None:
     resp = await client.get(f"/wallets/{wallet['id']}/rate")
-    data = resp.json()
     assert resp.status_code == 200
-    assert isinstance(data, int | float)
-    assert data == 50000
+    assert resp.json() == "50000"
     assert (await client.get(f"/wallets/{wallet['id']}/rate?currency=eur")).status_code == 200
     assert (await client.get(f"/wallets/{wallet['id']}/rate?currency=EUR")).status_code == 200
     assert (await client.get(f"/wallets/{wallet['id']}/rate?currency=test")).status_code == 422
@@ -275,7 +272,7 @@ async def test_store_rates(client: TestClient, token: str, store: dict[str, Any]
     resp = await client.get(f"/stores/{store['id']}/rates?currencies=BTC_USD,BTCUSD")
     assert resp.json() == {
         "rates": [
-            {"rate": 50000.0, "message": "BTC_USD: 50000 (resolved by X_X)"},
+            {"rate": "50000", "message": "BTC_USD: 50000 (resolved by X_X)"},
             {"rate": None, "message": "BTCUSD: invalid currency pair"},
         ]
     }
@@ -283,6 +280,10 @@ async def test_store_rates(client: TestClient, token: str, store: dict[str, Any]
     assert resp.status_code == 200
     resp = await client.get(f"/stores/{store['id']}/rates?currencies=BTC_USD")
     assert resp.json() == {"rates": [{"rate": None, "message": "BTC_USD: no valid rate, rules gave 0 (resolved by BTC_USD)"}]}
+    resp = await client.patch(f"/stores/{store['id']}/rate_rules", json="BTC_USD = 0.00000001", headers=headers)
+    assert resp.status_code == 200
+    resp = await client.get(f"/stores/{store['id']}/rates?currencies=BTC_USD")
+    assert resp.json() == {"rates": [{"rate": "0.00000001", "message": "BTC_USD: 0.00000001 (resolved by BTC_USD)"}]}
 
 
 async def test_fiatlist(client: TestClient) -> None:
@@ -1082,6 +1083,8 @@ async def test_get_or_create_invoice_by_order_id(client: TestClient, token: str,
 
 
 async def test_get_max_product_price(client: TestClient, token: str, store: dict[str, Any]) -> None:
+    empty_resp = await client.get(f"/products/maxprice?store={store['id']}", headers={"Authorization": f"Bearer {token}"})
+    assert empty_resp.json() == "0.00"
     # create product
     price = 999999.0
     new_product = {"name": "apple", "price": price, "quantity": 1.0, "store_id": store["id"]}
@@ -1093,7 +1096,7 @@ async def test_get_max_product_price(client: TestClient, token: str, store: dict
         f"/products/maxprice?store={new_product['store_id']}", headers={"Authorization": f"Bearer {token}"}
     )
     assert maxprice_resp.status_code == 200
-    assert maxprice_resp.json() == price
+    assert maxprice_resp.json() == "999999.00"
 
 
 async def test_create_product_with_image(
@@ -1151,11 +1154,8 @@ async def test_create_invoice_without_coin_rate(
 
 
 @pytest.mark.parametrize(
-    ("rate", "price", "amount", "raw_rate", "rate_str"),
-    [
-        ("0.004", 1, "250.00000000", "0.004", "$0.004 (USD)"),
-        ("3", 10, "3.33333333", "3.000000003000000003", "$3.00 (USD)"),
-    ],
+    ("rate", "price", "amount", "raw_rate"),
+    [("0.004", 1, "250.00000000", "0.004"), ("3", 10, "3.33333334", "3")],
 )
 async def test_create_invoice_rate(
     client: TestClient,
@@ -1166,7 +1166,6 @@ async def test_create_invoice_rate(
     price: int,
     amount: str,
     raw_rate: str,
-    rate_str: str,
 ) -> None:
     mocker.patch(
         "api.services.exchange_rate.ExchangeRateService.get_rate",
@@ -1181,7 +1180,247 @@ async def test_create_invoice_rate(
     payment = payments[0]
     assert payment["amount"] == amount
     assert payment["rate"] == raw_rate
-    assert payment["rate_str"] == rate_str
+
+
+@pytest.mark.parametrize(
+    ("underpaid_percentage", "request_amount"),
+    [(0, Decimal("0.00001667")), (50, Decimal("0.00000834")), (99, Decimal("0.00000017"))],
+)
+async def test_create_invoice_underpaid_amount(
+    client: TestClient,
+    token: str,
+    mocker: pytest_mock.MockerFixture,
+    store: dict[str, Any],
+    underpaid_percentage: int,
+    request_amount: Decimal,
+) -> None:
+    mocker.patch(
+        "api.services.exchange_rate.ExchangeRateService.get_rate",
+        side_effect=lambda exchange, pair=None: {"BTC_USD": Decimal(60000)} if pair is None else Decimal(60000),
+    )
+    resp = await client.patch(
+        f"/stores/{store['id']}/checkout_settings",
+        json={"underpaid_percentage": underpaid_percentage},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 200
+    add_request = mocker.spy(BTC, "add_request")
+    payment = (await create_invoice(client, token, store_id=store["id"], price=1))["payments"][0]
+    assert payment["amount"] == "0.00001667"
+    assert payment["rate"] == "60000"
+    assert add_request.call_args.args[1] == request_amount
+
+
+async def enable_network_fee(client: TestClient, token: str, store: dict[str, Any]) -> None:
+    resp = await client.patch(
+        f"/stores/{store['id']}/checkout_settings",
+        json={"include_network_fee": True},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 200
+
+
+async def create_discounted_invoice(
+    client: TestClient, token: str, store: dict[str, Any], discount: dict[str, Any]
+) -> dict[str, Any]:
+    product = await create_product(client, token, store_id=store["id"], discounts=[discount["id"]])
+    return await create_invoice(
+        client, token, store_id=store["id"], price=5000, products=[product["id"]], promocode=discount["promocode"]
+    )
+
+
+async def test_create_invoice_network_fee(
+    client: TestClient, token: str, mocker: pytest_mock.MockerFixture, store: dict[str, Any]
+) -> None:
+    await enable_network_fee(client, token, store)
+    mocker.patch.object(InvoiceService, "determine_network_fee", return_value=Decimal("0.000012345678"))
+    invoice = await create_discounted_invoice(client, token, store, await create_discount(client, token, percent=50))
+    payment = invoice["payments"][0]
+    assert payment["amount"] == "0.05001235"
+    assert payment["subtotal"] == "0.05000000"
+    assert payment["network_fee"] == "0.00001235"
+    assert payment["effective_price"] == "2500.00"
+
+
+async def test_payment_discount_snapshot(client: TestClient, token: str, store: dict[str, Any]) -> None:
+    discount = await create_discount(client, token, percent=10)
+    invoice = await create_discounted_invoice(client, token, store, discount)
+    headers = {"Authorization": f"Bearer {token}"}
+    resp = await client.patch(f"/discounts/{discount['id']}", json={"name": "renamed", "percent": 20}, headers=headers)
+    assert resp.status_code == 200
+    assert (await client.delete(f"/discounts/{discount['id']}", headers=headers)).status_code == 200
+    payment = (await client.get(f"/invoices/{invoice['id']}", headers=headers)).json()["payments"][0]
+    assert payment["discount"] == discount["id"]
+    assert payment["applied_discount"] == {"name": discount["name"], "percent": 10}
+    assert payment["effective_price"] == "4500.00"
+
+
+@pytest.mark.parametrize(("percent", "effective_price"), [(None, "5000.00"), (10, "4500.00")])
+async def test_invoice_effective_price(
+    client: TestClient, token: str, store: dict[str, Any], percent: int | None, effective_price: str
+) -> None:
+    second_wallet = (await create_wallet(client, token))["id"]
+    headers = {"Authorization": f"Bearer {token}"}
+    resp = await client.patch(f"/stores/{store['id']}", json={"wallets": [*store["wallets"], second_wallet]}, headers=headers)
+    assert resp.status_code == 200
+    if percent is None:
+        invoice = await create_invoice(client, token, store_id=store["id"], price=5000)
+    else:
+        invoice = await create_discounted_invoice(client, token, store, await create_discount(client, token, percent=percent))
+    assert len(invoice["payments"]) == 2
+    assert invoice["price"] == "5000.00"
+    assert invoice["effective_price"] == effective_price
+    resp = await client.post("/invoices/batch", json={"ids": [invoice["id"]], "command": "mark_complete"}, headers=headers)
+    assert resp.status_code == 200
+    invoice = (await client.get(f"/invoices/{invoice['id']}", headers=headers)).json()
+    assert invoice["payment_id"] is not None
+    assert invoice["price"] == "5000.00"
+    assert invoice["effective_price"] == effective_price
+
+
+@pytest.mark.parametrize(
+    ("tx_hashes", "tx_amounts", "expected"),
+    [
+        (
+            ["tx2", "tx1"],
+            {"tx1": "0.06", "tx2": "0.04"},
+            [{"tx_hash": "tx2", "amount": "0.04000000"}, {"tx_hash": "tx1", "amount": "0.06000000"}],
+        ),
+        (["tx1", "tx2"], {"tx2": "0.04"}, [{"tx_hash": "tx2", "amount": "0.04000000"}]),
+        (["tx1"], None, []),
+    ],
+)
+async def test_invoice_transactions(
+    client: TestClient,
+    token: str,
+    store: dict[str, Any],
+    app: FastAPI,
+    tx_hashes: list[str],
+    tx_amounts: dict[str, str] | None,
+    expected: list[dict[str, str]],
+) -> None:
+    payment_processor = await app.state.dishka_container.get(PaymentProcessor)
+    invoice = await create_invoice(client, token, store_id=store["id"], price=5000)
+    await payment_processor.new_payment_handler(
+        DummyInstance(),
+        None,
+        invoice["payments"][0]["lookup_field"],
+        InvoiceStatus.UNCONFIRMED,
+        None,
+        tx_hashes,
+        invoice["payments"][0]["amount"],
+        tx_amounts=tx_amounts,
+    )
+    invoice = (await client.get(f"/invoices/{invoice['id']}", headers={"Authorization": f"Bearer {token}"})).json()
+    assert invoice["tx_hashes"] == tx_hashes
+    assert invoice["transactions"] == expected
+
+
+async def test_new_block_keeps_transactions(
+    client: TestClient, token: str, store: dict[str, Any], app: FastAPI, mocker: pytest_mock.MockerFixture
+) -> None:
+    headers = {"Authorization": f"Bearer {token}"}
+    payment_processor = await app.state.dishka_container.get(PaymentProcessor)
+    resp = await client.patch(f"/stores/{store['id']}/checkout_settings", json={"transaction_speed": 2}, headers=headers)
+    assert resp.status_code == 200
+    invoice = await create_invoice(client, token, store_id=store["id"], price=5000)
+    payment = invoice["payments"][0]
+    mocker.patch.object(PaymentProcessor, "get_confirmations", side_effect=[1, 2])
+    await payment_processor.new_payment_handler(
+        DummyInstance(),
+        None,
+        payment["lookup_field"],
+        InvoiceStatus.COMPLETE,
+        None,
+        ["tx1", "tx2"],
+        payment["amount"],
+        tx_amounts={"tx1": "0.06", "tx2": "0.04"},
+    )
+    assert (await client.get(f"/invoices/{invoice['id']}", headers=headers)).json()["status"] == "confirmed"
+    await payment_processor.new_block_handler(DummyInstance(), "new_block", 1)
+    invoice = (await client.get(f"/invoices/{invoice['id']}", headers=headers)).json()
+    assert invoice["status"] == "complete"
+    assert invoice["transactions"] == [
+        {"tx_hash": "tx1", "amount": "0.06000000"},
+        {"tx_hash": "tx2", "amount": "0.04000000"},
+    ]
+
+
+@pytest.mark.parametrize(("sent_amount", "exception_status"), [(0.09, "none"), (0.1, "none"), (0.11, "paid_over")])
+async def test_mark_complete_exception_status(
+    client: TestClient, token: str, store: dict[str, Any], sent_amount: float, exception_status: str
+) -> None:
+    invoice = await create_invoice(client, token, store_id=store["id"], price=5000)
+    resp = await client.post(
+        "/invoices/batch",
+        json={"ids": [invoice["id"]], "command": "mark_complete", "options": {"sent_amount": sent_amount}},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 200
+    invoice = (await client.get(f"/invoices/{invoice['id']}", headers={"Authorization": f"Bearer {token}"})).json()
+    assert invoice["exception_status"] == exception_status
+
+
+@pytest.mark.parametrize(("options", "sent_price"), [({}, "5000.00"), ({"sent_amount": 0.05}, "2500.00")])
+async def test_invoice_sent_price(
+    client: TestClient, token: str, store: dict[str, Any], options: dict[str, Any], sent_price: str
+) -> None:
+    invoice = await create_invoice(client, token, store_id=store["id"], price=5000)
+    assert invoice["sent_price"] == "0.00"
+    resp = await client.post(
+        "/invoices/batch",
+        json={"ids": [invoice["id"]], "command": "mark_complete", "options": options},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 200
+    invoice = (await client.get(f"/invoices/{invoice['id']}", headers={"Authorization": f"Bearer {token}"})).json()
+    assert invoice["sent_price"] == sent_price
+    assert invoice["payments"][0]["due"] == "0.00000000"
+
+
+async def test_invoice_payment_due(client: TestClient, token: str, store: dict[str, Any], app: FastAPI) -> None:
+    payment_processor = await app.state.dishka_container.get(PaymentProcessor)
+    invoice = await create_invoice(client, token, store_id=store["id"], price=5000)
+    payment = invoice["payments"][0]
+    assert (payment["due"], payment["due_price"]) == ("0.10000000", "5000.00")
+    await payment_processor.new_payment_handler(
+        DummyInstance(), None, payment["lookup_field"], InvoiceStatus.PENDING, None, ["tx1"], Decimal("0.06")
+    )
+    invoice = (await client.get(f"/invoices/{invoice['id']}", headers={"Authorization": f"Bearer {token}"})).json()
+    assert invoice["exception_status"] == "paid_partial"
+    payment = invoice["payments"][0]
+    assert (payment["due"], payment["due_price"]) == ("0.04000000", "2000.00")
+
+
+async def test_lightning_payment_method_amount(
+    client: TestClient, token: str, mocker: pytest_mock.MockerFixture, app: FastAPI
+) -> None:
+    coin_service = await app.state.dishka_container.get(CoinService)
+    mocker.patch.dict(coin_service.crypto_settings["btc"], {"lightning": True})
+    wallet = await create_wallet(client, token, lightning_enabled=True)
+    store = await create_store(client, token, custom_store_attrs={"wallets": [wallet["id"]]})
+    resp = await client.patch(
+        f"/stores/{store['id']}/checkout_settings",
+        json={"underpaid_percentage": 10, "include_network_fee": True},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 200
+    mocker.patch.object(InvoiceService, "determine_network_fee", return_value=Decimal("0.00001"))
+    mocker.patch.object(BTC, "node_id", new_callable=mocker.PropertyMock, side_effect=lambda: asyncio.sleep(0, "node"))
+    add_invoice = mocker.patch.object(
+        BTC, "add_invoice", new=mocker.AsyncMock(return_value={"lightning_invoice": "lnbc1test", "rhash": "rhash1"})
+    )
+    add_request = mocker.spy(BTC, "add_request")
+    payments = (await create_invoice(client, token, store_id=store["id"], price=5000))["payments"]
+    onchain, lightning = sorted(payments, key=lambda payment: payment["lightning"])
+    assert lightning["lightning"]
+    assert add_invoice.call_args.args[0] == Decimal("0.1")
+    assert lightning["amount"] == "0.10000000"
+    assert lightning["network_fee"] == "0.00000000"
+    assert lightning["payment_url"] == "lnbc1test"
+    assert add_request.call_args.args[1] == Decimal("0.09001")
+    assert onchain["amount"] == "0.10001000"
+    assert onchain["network_fee"] == "0.00001000"
 
 
 @pytest.mark.parametrize(
@@ -1191,12 +1430,7 @@ async def test_create_invoice_rate(
 async def test_create_invoice_network_fee_failure(
     client: TestClient, token: str, mocker: pytest_mock.MockerFixture, store: dict[str, Any], error: Exception
 ) -> None:
-    resp = await client.patch(
-        f"/stores/{store['id']}/checkout_settings",
-        json={"include_network_fee": True},
-        headers={"Authorization": f"Bearer {token}"},
-    )
-    assert resp.status_code == 200
+    await enable_network_fee(client, token, store)
     determine_network_fee = mocker.patch.object(InvoiceService, "determine_network_fee", side_effect=error)
     resp = await client.post(
         "/invoices", json={"store_id": store["id"], "price": 5000}, headers={"Authorization": f"Bearer {token}"}
@@ -1206,6 +1440,7 @@ async def test_create_invoice_network_fee_failure(
     assert len(payments) == 1
     payment = payments[0]
     assert payment["amount"] == "0.10000000"
+    assert payment["network_fee"] == "0.00000000"
     determine_network_fee.assert_awaited_once()
 
 
@@ -1235,6 +1470,21 @@ async def mark_payout_sent(app: FastAPI, payout_id: str, tx_hash: str) -> None:
 async def get_payout_state(client: TestClient, token: str, payout_id: str) -> tuple[str, str | None]:
     payout = (await client.get(f"/payouts/{payout_id}", headers={"Authorization": f"Bearer {token}"})).json()
     return payout["status"], payout["tx_hash"]
+
+
+async def test_payout_used_fee_in_wallet_currency(client: TestClient, token: str, app: FastAPI) -> None:
+    payout = await create_payout(client, token)
+    async with app.state.dishka_container(scope=Scope.SESSION) as container:
+        payout_service = await container.get(PayoutService)
+        (await payout_service.get(payout["id"])).update(used_fee=Decimal("0.0000123456789"))
+    headers = {"Authorization": f"Bearer {token}"}
+    assert (await client.get(f"/payouts/{payout['id']}", headers=headers)).json()["used_fee"] == "0.00001235"
+    assert (await client.delete(f"/wallets/{payout['wallet_id']}", headers=headers)).status_code == 200
+    assert (await client.get(f"/payouts/{payout['id']}", headers=headers)).json()["used_fee"] == "0.00001235"
+    async with app.state.dishka_container(scope=Scope.SESSION) as container:
+        payout_service = await container.get(PayoutService)
+        (await payout_service.get(payout["id"])).update(wallet_currency=None)
+    assert (await client.get(f"/payouts/{payout['id']}", headers=headers)).json()["used_fee"] == "0.0000123456789"
 
 
 async def test_payout_fails_without_rate(client: TestClient, token: str, mocker: pytest_mock.MockerFixture) -> None:
@@ -2400,6 +2650,51 @@ async def test_refund_functionality(client: TestClient, token: str, mocker: pyte
     assert resp2.json()["tx_hash"] == "test"
 
 
+async def test_refund_amount_rounded_down(client: TestClient, token: str, app: FastAPI) -> None:
+    payment_processor = await app.state.dishka_container.get(PaymentProcessor)
+    headers = {"Authorization": f"Bearer {token}"}
+    invoice = await create_invoice(client, token)
+    await payment_processor.new_payment_handler(
+        DummyInstance(), None, invoice["payments"][0]["lookup_field"], "complete", None
+    )
+    refund_data = {"amount": "9.999", "currency": "USD", "send_email": False, "admin_host": "http://admin"}
+    refund = (await client.post(f"/invoices/{invoice['id']}/refunds", json=refund_data, headers=headers)).json()
+    assert refund["amount"] == "9.99"
+    destination = {"destination": static_data.PAYOUT_DESTINATION}
+    refund = (await client.post(f"/invoices/refunds/{refund['id']}/submit", json=destination)).json()
+    assert refund["amount"] == "9.99"
+    async with app.state.dishka_container(scope=Scope.SESSION) as container:
+        payout = await (await container.get(PayoutService)).get(refund["payout_id"])
+    assert payout.amount == Decimal("9.99")
+
+
+async def test_refund_with_deleted_invoice(client: TestClient, token: str, app: FastAPI) -> None:
+    payment_processor = await app.state.dishka_container.get(PaymentProcessor)
+    headers = {"Authorization": f"Bearer {token}"}
+    destination = {"destination": static_data.PAYOUT_DESTINATION}
+    invoice = await create_invoice(client, token)
+    await payment_processor.new_payment_handler(
+        DummyInstance(), None, invoice["payments"][0]["lookup_field"], "complete", None
+    )
+    refund_data = {"amount": 1, "currency": "USD", "send_email": False, "admin_host": "http://admin"}
+    submitted = (await client.post(f"/invoices/{invoice['id']}/refunds", json=refund_data, headers=headers)).json()
+    unsubmitted = (await client.post(f"/invoices/{invoice['id']}/refunds", json=refund_data, headers=headers)).json()
+    assert (await client.post(f"/invoices/refunds/{submitted['id']}/submit", json=destination)).status_code == 200
+    assert (await client.delete(f"/invoices/{invoice['id']}", headers=headers)).status_code == 200
+    other_invoice = await create_invoice(client, token)
+    resp = await client.post(f"/invoices/refunds/{unsubmitted['id']}/submit", json=destination)
+    assert resp.status_code == 422
+    assert resp.json()["detail"] == "Refund invoice was deleted"
+    async with app.state.dishka_container(scope=Scope.SESSION) as container:
+        refund = await (await container.get(RefundService)).get(submitted["id"])
+    await mark_payout_sent(app, cast(str, refund.payout_id), "test")
+    other_invoice = (await client.get(f"/invoices/{other_invoice['id']}", headers=headers)).json()
+    assert other_invoice["status"] == "pending"
+    assert (await client.get(f"/invoices/refunds/{submitted['id']}")).json()["invoice_id"] is None
+    assert (await client.delete(f"/wallets/{submitted['wallet_id']}", headers=headers)).status_code == 200
+    assert (await client.get(f"/invoices/refunds/{submitted['id']}")).json()["wallet_id"] is None
+
+
 async def test_wallet_symbol(client: TestClient, token: str, wallet: dict[str, Any]) -> None:
     response = await client.get(f"/wallets/{wallet['id']}/symbol", headers={"Authorization": f"Bearer {token}"})
     assert response.status_code == 200
@@ -2504,9 +2799,43 @@ async def test_mark_complete_cases(
     )
     j = (await client.get(f"/invoices/{invoice['id']}", headers={"Authorization": f"Bearer {token}"})).json()
     assert j["payment_id"] == expected_method_id
-    assert j["sent_amount"] == expected_amount
+    assert Decimal(j["sent_amount"]) == Decimal(str(expected_amount))
     if tx_hashes is not None:
         assert j["tx_hashes"] == tx_hashes
+
+
+@pytest.mark.parametrize(
+    ("options", "tx_hashes", "sent_amount", "transactions"),
+    [
+        (
+            {"tx_amounts": {"tx1": "0.06", "tx2": "0.04"}},
+            ["tx1", "tx2"],
+            "0.10000000",
+            [{"tx_hash": "tx1", "amount": "0.06000000"}, {"tx_hash": "tx2", "amount": "0.04000000"}],
+        ),
+        ({"tx_hashes": ["tx1"], "sent_amount": "0.05"}, ["tx1"], "0.05000000", [{"tx_hash": "tx1", "amount": "0.05000000"}]),
+        ({"tx_hashes": ["tx1", "tx2"]}, ["tx1", "tx2"], "0.10000000", []),
+        ({}, [], "0.10000000", []),
+    ],
+)
+async def test_mark_complete_transactions(
+    client: TestClient,
+    token: str,
+    store: dict[str, Any],
+    options: dict[str, Any],
+    tx_hashes: list[str],
+    sent_amount: str,
+    transactions: list[dict[str, str]],
+) -> None:
+    headers = {"Authorization": f"Bearer {token}"}
+    invoice = await create_invoice(client, token, store_id=store["id"], price=5000)
+    resp = await client.post(
+        "/invoices/batch", json={"ids": [invoice["id"]], "command": "mark_complete", "options": options}, headers=headers
+    )
+    assert resp.status_code == 200
+    invoice = (await client.get(f"/invoices/{invoice['id']}", headers=headers)).json()
+    assert (invoice["tx_hashes"], invoice["sent_amount"]) == (tx_hashes, sent_amount)
+    assert invoice["transactions"] == transactions
 
 
 async def test_mark_complete_validation(client: TestClient, token: str, store: dict[str, Any]) -> None:

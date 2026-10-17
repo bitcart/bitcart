@@ -18,11 +18,11 @@ def process_invoice(invoice: dict[str, Any], add_payments: bool = False) -> dict
 
 
 def db_to_json(data: list[models.Invoice], add_payments: bool = False) -> Generator[dict[str, Any], None, None]:
-    return (process_invoice(DisplayInvoice.model_validate(x).model_dump(), add_payments) for x in data)
+    return (process_invoice(DisplayInvoice.model_validate(x).model_dump(mode="json"), add_payments) for x in data)
 
 
 def get_leaves(item: Any, key: str | None = None) -> dict[str, Any]:  # pragma: no cover
-    if isinstance(item, list) and key is not None and key != "payments":
+    if isinstance(item, list) and key is not None and not any(isinstance(i, dict) for i in item):
         return {key: "[" + ",".join(map(str, item)) + "]"}
     if isinstance(item, dict):
         leaves = {}

@@ -26,7 +26,7 @@ async def test_invoice_db_to_json(app: FastAPI, invoice: dict[str, Any]) -> None
 
 
 def test_json_to_csv() -> None:
-    converted = json_to_csv([{"test": 1, "list": [1, 2, 3], "obj": {"obj2": {"field": 4}}}])
+    converted = json_to_csv([{"test": 1, "list": [1, 2, 3], "obj": {"obj2": {"field": 4}}, "objs": [{"a": 5}, {"a": 6}]}])
     assert isinstance(converted, io.StringIO)
     value = converted.getvalue()
-    assert value.strip() == 'list,obj_obj2_field,test\r\n"[1,2,3]",4,1'
+    assert value.strip() == 'list,obj_obj2_field,objs_0_a,objs_1_a,test\r\n"[1,2,3]",4,5,6,1'

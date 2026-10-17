@@ -51,7 +51,6 @@ class InvoiceRepository(CRUDRepository[models.Invoice]):
             .where(models.Invoice.status.in_(PAID_STATUSES))
             .where(models.Invoice.id == models.PaymentMethod.invoice_id)
             .where(models.PaymentMethod.is_used.is_(True))
-            .where(models.Invoice.sent_amount.is_not(None))
             .where(func.cardinality(models.Invoice.tx_hashes) > 0)
             .where(models.PaymentMethod.rate != 0)
             .group_by(models.Invoice.currency)

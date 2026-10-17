@@ -14,7 +14,7 @@ from bitcart.utils import bitcoins
 from httpx_ws import AsyncWebSocketSession, aconnect_ws
 
 from api.constants import MAX_CONFIRMATION_WATCH
-from api.ext.moneyformat import truncate
+from api.ext.moneyformat import round_half_up
 from api.settings import Settings
 from tests.functional import utils
 from tests.helper import create_store, create_wallet
@@ -264,7 +264,7 @@ async def test_exception_statuses(
     pay_details = invoice["payments"][0]
     address = pay_details["payment_address"]
     amount = Decimal(pay_details["amount"])
-    part1 = truncate(amount / 2, 8)
+    part1 = round_half_up(amount / 2, 8)
     part2 = amount - part1
     await asyncio.sleep(3)  # wait for the worker startup (remove when electrum fixes pending tx_hashes returning)
     invoice_id = invoice["id"]
@@ -285,6 +285,8 @@ async def test_exception_statuses(
         sent_amount=pay_details["amount"],
         allow_next=True,
     )
+    invoice = (await client.get(f"/invoices/{invoice_id}", headers={"Authorization": f"Bearer {token}"})).json()
+    assert sorted(Decimal(tx["amount"]) for tx in invoice["transactions"]) == sorted([part1, part2])
 
 
 async def test_lightning_pay_flow(
@@ -399,7 +401,7 @@ async def test_payouts(
     await wait_for_local_tx(regtest_wallet, payout["tx_hash"])
     payout = (await client.get(f"/payouts/{payout['id']}", headers={"Authorization": f"Bearer {token}"})).json()
     assert payout["status"] == "complete"
-    assert payout["used_fee"] > 0
+    assert Decimal(payout["used_fee"]) > 0
     tx_data = await regtest_wallet.get_tx(payout["tx_hash"])
     assert tx_data["confirmations"] == 1
     # Now it's immutable

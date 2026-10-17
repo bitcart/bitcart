@@ -2,7 +2,7 @@ import asyncio
 from collections import defaultdict
 from collections.abc import AsyncIterator, Coroutine
 from decimal import Decimal
-from typing import Any, Protocol, cast
+from typing import Any, Protocol
 
 from bitcart import (  # type: ignore[attr-defined]
     BTC,
@@ -35,6 +35,7 @@ class ProcessPendingFunc(Protocol):
         status: str,
         tx_hashes: list[str],
         sent_amount: Decimal,
+        tx_amounts: dict[str, str] | None,
         *,
         di_context: AsyncContainer,
     ) -> bool: ...
@@ -71,6 +72,7 @@ class PaymentProcessor:
         tx_hashes: list[str] | None = None,
         sent_amount: Decimal = Decimal(0),
         contract: str | None = None,
+        tx_amounts: dict[str, str] | None = None,
     ) -> None:
         async with self.container(scope=Scope.REQUEST) as container:
             session = await container.get(AsyncSession)
@@ -99,6 +101,7 @@ class PaymentProcessor:
                     status,
                     tx_hashes,
                     sent_amount,
+                    tx_amounts,
                     di_context=container,
                 )
 
@@ -119,12 +122,19 @@ class PaymentProcessor:
         confirmations: int,
         tx_hashes: list[str],
         sent_amount: Decimal,
+        tx_amounts: dict[str, str],
         *,
         di_context: AsyncContainer,
     ) -> None:
         invoice_service = await di_context.get(InvoiceService)
         await invoice_service.update_confirmations(
-            invoice, method, wallet, confirmations=confirmations, tx_hashes=tx_hashes, sent_amount=sent_amount
+            invoice,
+            method,
+            wallet,
+            confirmations=confirmations,
+            tx_hashes=tx_hashes,
+            sent_amount=sent_amount,
+            tx_amounts=tx_amounts,
         )
 
     async def new_block_handler(self, instance: BTC, event: str, height: int) -> None:
@@ -149,7 +159,8 @@ class PaymentProcessor:
                                 wallet,
                                 confirmations,
                                 invoice.tx_hashes,
-                                cast(Decimal, invoice.sent_amount),
+                                invoice.sent_amount,
+                                invoice.tx_amounts,
                                 container=self.container,
                                 logger=logger,
                             )
@@ -166,6 +177,7 @@ class PaymentProcessor:
         status: str,
         tx_hashes: list[str],
         sent_amount: Decimal,
+        tx_amounts: dict[str, str] | None,
         *,
         di_context: AsyncContainer,
     ) -> bool:
@@ -174,15 +186,27 @@ class PaymentProcessor:
         if invoice.status not in DEFAULT_PENDING_STATUSES:  # double-check
             return False
         if electrum_status == InvoiceStatus.PENDING and sent_amount > 0:
-            await invoice_service.update_status(invoice, InvoiceStatus.PENDING, method, tx_hashes, sent_amount)
+            await invoice_service.update_status(
+                invoice, InvoiceStatus.PENDING, method, tx_hashes, sent_amount, tx_amounts=tx_amounts
+            )
         if electrum_status == InvoiceStatus.UNCONFIRMED:  # for on-chain invoices only
-            await invoice_service.update_status(invoice, InvoiceStatus.PAID, method, tx_hashes, sent_amount)
+            await invoice_service.update_status(
+                invoice, InvoiceStatus.PAID, method, tx_hashes, sent_amount, tx_amounts=tx_amounts
+            )
             await invoice_service.update_confirmations(
-                invoice, method, wallet, confirmations=0, tx_hashes=tx_hashes, sent_amount=sent_amount
+                invoice,
+                method,
+                wallet,
+                confirmations=0,
+                tx_hashes=tx_hashes,
+                sent_amount=sent_amount,
+                tx_amounts=tx_amounts,
             )  # to trigger complete for stores accepting 0-conf
         if electrum_status == InvoiceStatus.COMPLETE:  # for paid lightning invoices or confirmed on-chain invoices
             if method.lightning:
-                await invoice_service.update_status(invoice, InvoiceStatus.COMPLETE, method, tx_hashes, sent_amount)
+                await invoice_service.update_status(
+                    invoice, InvoiceStatus.COMPLETE, method, tx_hashes, sent_amount, tx_amounts=tx_amounts
+                )
             else:
                 await invoice_service.update_confirmations(
                     invoice,
@@ -191,6 +215,7 @@ class PaymentProcessor:
                     confirmations=await self.get_confirmations(method, wallet),
                     tx_hashes=tx_hashes,
                     sent_amount=sent_amount,
+                    tx_amounts=tx_amounts,
                 )
         return True
 
@@ -233,6 +258,7 @@ class PaymentProcessor:
                             invoice_data["status"],
                             invoice_data.get("tx_hashes", []),
                             Decimal(invoice_data.get("sent_amount", 0)),
+                            invoice_data.get("tx_amounts"),
                             container=self.container,
                             logger=logger,
                         )

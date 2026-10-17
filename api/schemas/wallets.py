@@ -1,7 +1,7 @@
-from typing import Any, cast
+from typing import Any
 
 from fastapi import HTTPException
-from pydantic import Field, ValidationInfo, field_validator, model_validator
+from pydantic import ValidationInfo, field_validator, model_validator
 
 from api.constants import get_max_confirmation_watch
 from api.ext.moneyformat import currency_table
@@ -13,7 +13,7 @@ from api.types import Money
 class CreateWallet(MetadataInput):
     name: str
     xpub: str
-    currency: str = Field("btc", validate_default=True)
+    currency: str = "btc"
     lightning_enabled: bool = False
     label: str = ""
     hint: str = ""
@@ -57,8 +57,7 @@ class DisplayWallet(InfoWallet, TimestampedSchema):
     @model_validator(mode="before")
     @classmethod
     def set_balance(cls, values: dict[str, Any]) -> dict[str, Any]:
-        if "balance" in values:
-            values["balance"] = currency_table.format_decimal(
-                cast(str, values.get("currency")), values["balance"], divisibility=values.get("divisibility")
-            )
+        values["balance"] = currency_table.format_decimal(
+            values["currency"], values["balance"], divisibility=values.get("divisibility")
+        )
         return values

@@ -401,11 +401,10 @@ class TestInvoices(ViewTestMixin):
         self.check_created(method)
         for key, check_type in (
             ("payment_url", str),
-            ("recommended_fee", float),
+            ("recommended_fee", str),
             ("amount", str),
             ("rate", str),
             ("payment_address", str),
-            ("rate_str", str),
         ):
             self._check_key(method, key, check_type)
 

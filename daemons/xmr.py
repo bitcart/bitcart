@@ -7,7 +7,7 @@ import time
 import traceback
 from collections import deque
 from contextvars import ContextVar
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
 
@@ -297,11 +297,17 @@ class KeyStore(BaseKeyStore):
 @dataclass
 class Invoice(BaseInvoice):
     confirmed_amount: Decimal = Decimal(0)
+    confirmed_tx_amounts: dict = field(default_factory=dict)
 
     def __post_init__(self):
         super().__post_init__()
         if isinstance(self.confirmed_amount, str):
             self.confirmed_amount = Decimal(self.confirmed_amount)
+        self.confirmed_tx_amounts = {tx_hash: Decimal(amount) for tx_hash, amount in self.confirmed_tx_amounts.items()}
+
+    def get_tx_amount(self, tx_hash):
+        amounts = [d[tx_hash] for d in (self.tx_amounts, self.confirmed_tx_amounts) if tx_hash in d]
+        return max(amounts, default=None)
 
 
 @dataclass
@@ -335,8 +341,10 @@ class Wallet(BaseWallet):
             return
         if unconfirmed:
             req.sent_amount += payment.amount
+            req.tx_amounts[tx.hash] = req.tx_amounts.get(tx.hash, Decimal(0)) + payment.amount
         else:
             req.confirmed_amount += payment.amount
+            req.confirmed_tx_amounts[tx.hash] = req.confirmed_tx_amounts.get(tx.hash, Decimal(0)) + payment.amount
         req.sent_amount = max(req.sent_amount, req.confirmed_amount)
         set_status = PR_UNPAID
         if unconfirmed and req.sent_amount >= req.amount:

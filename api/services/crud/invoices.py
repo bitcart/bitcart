@@ -22,8 +22,8 @@ from api import invoices, metrics, models, utils
 from api.db import AsyncSession
 from api.exceptions import ExchangeRateError
 from api.ext import export as export_ext
-from api.ext.moneyformat import currency_table, truncate
-from api.invoices import InvoiceExceptionStatus, InvoiceStatus
+from api.ext.moneyformat import currency_table, round_half_up, to_raw
+from api.invoices import PAID_STATUSES, InvoiceExceptionStatus, InvoiceStatus
 from api.logging import get_exception_details, get_exception_message, get_logger
 from api.plugins import SKIP_PAYMENT_METHOD
 from api.redis import Redis
@@ -151,6 +151,32 @@ class InvoiceService(CRUDService[models.Invoice]):
             return method.divisibility
         logger.error(f"Could not find sent amount divisibility for invoice {obj_id}, payment_id={payment_id}")
         return None
+
+    @classmethod
+    def find_sent_price(
+        cls, currency: str, sent_amount: Decimal, payments: list[models.PaymentMethod], payment_id: str | None
+    ) -> str:
+        method = cls.match_payment(payments, payment_id) if payment_id else None
+        sent_price = to_raw(sent_amount * method.rate if method else Decimal(0))
+        return currency_table.format_decimal(currency, currency_table.round_received(currency, sent_price))
+
+    @staticmethod
+    def find_due(method: models.PaymentMethod, status: str, payment_id: str | None, sent_amount: Decimal) -> Decimal:
+        if status in PAID_STATUSES or status == InvoiceStatus.REFUNDED:
+            return Decimal(0)
+        if method.id != payment_id:
+            return method.amount
+        return max(method.amount - sent_amount, Decimal(0))
+
+    @classmethod
+    def find_effective_price(
+        cls, currency: str, price: Decimal, payments: list[models.PaymentMethod], payment_id: str | None
+    ) -> str:
+        method_prices = {method.id: method.effective_price for method in payments}
+        if payment_id in method_prices:
+            return currency_table.format_decimal(currency, method_prices[payment_id])
+        unique_prices = set(method_prices.values())
+        return currency_table.format_decimal(currency, unique_prices.pop() if len(unique_prices) == 1 else price)
 
     async def validate(
         self, action: CRUDAction, data: dict[str, Any], model: models.Invoice, user: models.User | None = None
@@ -334,28 +360,26 @@ class InvoiceService(CRUDService[models.Invoice]):
         symbol = await self.wallet_data_service.get_wallet_symbol(wallet, coin)
         divisibility = await self.wallet_data_service.get_divisibility(wallet, coin)
         rate = await self.wallet_data_service.get_rate(wallet, invoice.currency, store=store)
-        price, discount_id = self.match_discount(invoice.price, wallet, invoice, discounts, promocode)
-        support_underpaid = getattr(coin, "support_underpaid", True)
-        request_price = (
-            price * (1 - (Decimal(store.checkout_settings.underpaid_percentage) / 100)) if support_underpaid else price
-        )
-        original_request_price = request_price
-        request_price = currency_table.normalize(wallet.currency, original_request_price / rate, divisibility=divisibility)
-        # adjust the rate to account for the normalization, otherwise clients won't be able to recover the actual sum
-        rate = original_request_price / request_price if request_price else rate
-        price = currency_table.normalize(wallet.currency, price / rate, divisibility=divisibility)
-        if request_price and store.checkout_settings.include_network_fee:  # pragma: no cover
+        effective_price, discount = self.match_discount(invoice.price, wallet, invoice, discounts, promocode)
+        price = currency_table.round_requested(wallet.currency, effective_price / rate, divisibility=divisibility)
+        request_price = price
+        if getattr(coin, "support_underpaid", True) and not lightning:
+            underpaid_ratio = 1 - Decimal(store.checkout_settings.underpaid_percentage) / 100
+            request_price = currency_table.round_requested(
+                wallet.currency, effective_price * underpaid_ratio / rate, divisibility=divisibility
+            )
+        network_fee = Decimal(0)
+        if request_price and store.checkout_settings.include_network_fee and not lightning:
             try:
-                network_fee = await self.determine_network_fee(coin, wallet, invoice, store, divisibility)
+                fee = await self.determine_network_fee(coin, wallet, invoice, store, divisibility)
             except Exception as e:
                 logger.warning(
                     f"Invoice {invoice.id}: network fee of {wallet.currency.upper()} set to 0: {get_exception_details(e)}"
                 )
-                network_fee = Decimal(0)
+                fee = Decimal(0)
+            network_fee = currency_table.round_requested(wallet.currency, fee, divisibility=divisibility)
             request_price += network_fee
             price += network_fee
-            request_price = currency_table.normalize(wallet.currency, request_price, divisibility=divisibility)
-            price = currency_table.normalize(wallet.currency, price, divisibility=divisibility)
         method = await self.plugin_registry.apply_filters(
             "create_payment_method", None, wallet, coin, request_price, invoice, product, store, lightning
         )
@@ -387,7 +411,9 @@ class InvoiceService(CRUDService[models.Invoice]):
                 else 0
             )
             recommended_fee = 0 if recommended_fee is None else recommended_fee  # if no rate available, disable it
-            data["recommended_fee"] = truncate(Decimal(recommended_fee) / 1024, 2)  # convert to sat/byte, two decimal places
+            data["recommended_fee"] = round_half_up(
+                Decimal(recommended_fee) / 1024, 2
+            )  # convert to sat/byte, two decimal places
             data_got = await method(request_price, description=product.name if product else "", expire=invoice.expiration)
             data["payment_address"] = data_got["address"] if not lightning else data_got["lightning_invoice"]
             data["payment_url"] = data_got["URI"] if not lightning else data_got["lightning_invoice"]
@@ -396,7 +422,7 @@ class InvoiceService(CRUDService[models.Invoice]):
             data["node_id"] = await coin.node_id if lightning else None
             data["rhash"] = data_got["rhash"] if lightning else None
             data["lookup_field"] = data_got["request_id"] if "request_id" in data_got else data["payment_address"]
-        if store.checkout_settings.underpaid_percentage > 0:  # pragma: no cover
+        if request_price != price:
             data["payment_url"] = await coin.server.modifypaymenturl(data["payment_url"], price, divisibility)
         return await self.plugin_registry.apply_filters(
             "post_create_payment_method",
@@ -405,8 +431,11 @@ class InvoiceService(CRUDService[models.Invoice]):
                 invoice_id=invoice.id,
                 wallet_id=wallet.id,
                 amount=price,
+                network_fee=network_fee,
+                effective_price=effective_price,
                 rate=rate,
-                discount=discount_id,
+                discount=discount.id if discount else None,
+                applied_discount={"name": discount.name, "percent": discount.percent} if discount else None,
                 confirmations=0,
                 label=wallet.label,
                 hint=wallet.hint,
@@ -430,8 +459,8 @@ class InvoiceService(CRUDService[models.Invoice]):
         invoice: models.Invoice,
         discounts: list[models.Discount],
         promocode: str | None,
-    ) -> tuple[Decimal, str | None]:
-        discount_id = None
+    ) -> tuple[Decimal, models.Discount | None]:
+        discount: models.Discount | None = None
         if discounts:
             try:
                 discount = max(
@@ -445,11 +474,10 @@ class InvoiceService(CRUDService[models.Invoice]):
                     key=attrgetter("percent"),
                 )
                 logger.info(f"Payment method {wallet.currency} of invoice {invoice.id}: matched discount {discount.id}")
-                discount_id = discount.id
                 price -= price * (Decimal(discount.percent) / Decimal(100))
             except ValueError:  # no matched discounts
                 pass
-        return price, discount_id
+        return price, discount
 
     async def determine_network_fee(
         self, coin: BTC, wallet: models.Wallet, invoice: models.Invoice, store: models.Store, divisibility: int
@@ -507,6 +535,7 @@ class InvoiceService(CRUDService[models.Invoice]):
         confirmations: int,
         tx_hashes: list[str] | None = None,
         sent_amount: Decimal = Decimal(0),
+        tx_amounts: dict[str, str] | None = None,
     ) -> None:
         if tx_hashes is None:
             tx_hashes = []
@@ -521,7 +550,7 @@ class InvoiceService(CRUDService[models.Invoice]):
         )
         if confirmations >= transaction_speed:
             status = InvoiceStatus.COMPLETE
-        await self.update_status(invoice, status, method, tx_hashes, sent_amount)
+        await self.update_status(invoice, status, method, tx_hashes, sent_amount, tx_amounts=tx_amounts)
 
     async def update_status(
         self,
@@ -531,12 +560,16 @@ class InvoiceService(CRUDService[models.Invoice]):
         tx_hashes: list[str] | None = None,
         sent_amount: Decimal = Decimal(0),
         set_exception_status: str | None = None,
+        tx_amounts: dict[str, str] | None = None,
     ) -> bool:
         # load it in current session to apply updates
         invoice = await self.merge_object(invoice)
         method = await self.session.merge(method) if method else None
         if tx_hashes is None:
             tx_hashes = []
+        if tx_amounts is None:
+            tx_amounts = {}
+        tx_amounts = {tx_hash: tx_amounts[tx_hash] for tx_hash in tx_hashes if tx_hash in tx_amounts}
         if (
             status == InvoiceStatus.PENDING
             and invoice.status == InvoiceStatus.PENDING
@@ -549,6 +582,7 @@ class InvoiceService(CRUDService[models.Invoice]):
                 paid_currency=method.get_name(),
                 discount=method.discount,
                 tx_hashes=tx_hashes,
+                tx_amounts=tx_amounts,
                 sent_amount=sent_amount,
                 exception_status=InvoiceExceptionStatus.PAID_PARTIAL,
                 payment_id=method.id,
@@ -569,14 +603,15 @@ class InvoiceService(CRUDService[models.Invoice]):
                     InvoiceStatus.COMPLETE,
                 ]:
                     exception_status = (
-                        InvoiceExceptionStatus.NONE
-                        if sent_amount == method.amount or method.lightning
-                        else InvoiceExceptionStatus.PAID_OVER
+                        InvoiceExceptionStatus.PAID_OVER
+                        if sent_amount > method.amount and not method.lightning
+                        else InvoiceExceptionStatus.NONE
                     )
                     kwargs: dict[str, Any] = {
                         "paid_currency": full_method_name,
                         "discount": method.discount,
                         "tx_hashes": tx_hashes,
+                        "tx_amounts": tx_amounts,
                         "sent_amount": sent_amount,
                         "exception_status": exception_status,
                     }
@@ -605,7 +640,7 @@ class InvoiceService(CRUDService[models.Invoice]):
             "exception_status": invoice.exception_status,
             "sent_amount": currency_table.format_decimal(
                 "",
-                cast(Decimal, invoice.sent_amount),
+                invoice.sent_amount,
                 divisibility=cls.find_sent_amount_divisibility(invoice.id, invoice.payments, cast(str, invoice.payment_id)),
             ),
             "paid_currency": invoice.paid_currency,
@@ -629,7 +664,7 @@ class InvoiceService(CRUDService[models.Invoice]):
                 products = invoice.products_associations
                 for product_relation in products:
                     product = cast(models.Product, product_relation.product)
-                    product.price = currency_table.normalize(
+                    product.price = currency_table.round_neutral(
                         invoice.currency, product.price
                     )  # to be formatted correctly in emails
                     quantity = product_relation.count
@@ -682,13 +717,21 @@ class InvoiceService(CRUDService[models.Invoice]):
                 method = invoice.payments[0] if invoice.payments else None
             if not method:
                 continue
-            sent_amount = (
-                Decimal(str(mark_complete_options.sent_amount))
-                if mark_complete_options.sent_amount is not None
-                else method.amount
+            tx_amounts = mark_complete_options.tx_amounts
+            tx_hashes = mark_complete_options.tx_hashes or list(tx_amounts or {})
+            sent_amount = mark_complete_options.sent_amount
+            if sent_amount is None:
+                sent_amount = sum(tx_amounts.values(), Decimal(0)) if tx_amounts else method.amount
+            if tx_amounts is None:
+                tx_amounts = {tx_hashes[0]: sent_amount} if len(tx_hashes) == 1 else {}
+            await self.update_status(
+                invoice,
+                invoices.InvoiceStatus.COMPLETE,
+                method,
+                tx_hashes,
+                sent_amount,
+                tx_amounts={tx_hash: str(amount) for tx_hash, amount in tx_amounts.items()},
             )
-            tx_hashes = mark_complete_options.tx_hashes or []
-            await self.update_status(invoice, invoices.InvoiceStatus.COMPLETE, method, tx_hashes, sent_amount)
 
     async def process_batch_action(self, settings: BatchAction, user: models.User, **kwargs: Any) -> bool:
         if settings.command == "mark_complete":

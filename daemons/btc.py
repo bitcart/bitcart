@@ -436,18 +436,22 @@ class BTCDaemon(BaseDaemon):
     def process_new_payment(self, wallet, request_id, status):
         request = self._get_request(wallet, request_id)
         paid_via_lightning = self.is_paid_via_lightning(wallet, request)
-        tx_hashes = self.get_tx_hashes_for_invoice(wallet, request) if not paid_via_lightning else [request.rhash]
-        sent_amount = (
-            self.get_sent_amount(wallet, self._get_request_address(request), tx_hashes, request=request)
-            if not paid_via_lightning
-            else self.format_satoshis(request.get_amount_sat(), self._find_matching_wallet_key(wallet))
-        )
+        if paid_via_lightning:
+            tx_hashes = [request.rhash]
+            sent_amount = self.format_satoshis(request.get_amount_sat(), self._find_matching_wallet_key(wallet))
+            tx_amounts = {request.rhash: sent_amount}
+        else:
+            tx_hashes = self.get_tx_hashes_for_invoice(wallet, request)
+            sent_amount, tx_amounts = self.get_payment_amounts(
+                wallet, self._get_request_address(request), tx_hashes, request=request
+            )
         return {
             "address": str(request_id),
             "status": status,
             "status_str": self.get_status_str(status),
             "tx_hashes": tx_hashes,
             "sent_amount": sent_amount,
+            "tx_amounts": tx_amounts,
         }
 
     def process_events(self, event, *args):
@@ -470,11 +474,14 @@ class BTCDaemon(BaseDaemon):
             return None, None
         return data, wallet
 
-    def get_sent_amount(self, wallet, address, tx_hashes, request):
-        sent_amount = 0
-        for tx in tx_hashes:
-            sent_amount += wallet.db.get_transaction(tx).output_value_for_address(address)
-        return self.format_satoshis(sent_amount, self._find_matching_wallet_key(wallet))
+    def get_tx_amounts(self, wallet, address, tx_hashes, request):
+        return {tx: wallet.db.get_transaction(tx).output_value_for_address(address) for tx in tx_hashes}
+
+    def get_payment_amounts(self, wallet, address, tx_hashes, request):
+        wallet_key = self._find_matching_wallet_key(wallet)
+        amounts = self.get_tx_amounts(wallet, address, tx_hashes, request)
+        tx_amounts = {tx: self.format_satoshis(amount, wallet_key) for tx, amount in amounts.items()}
+        return self.format_satoshis(sum(amounts.values()), wallet_key), tx_amounts
 
     @rpc(requires_wallet=True)
     async def get_request(self, *args, **kwargs):
@@ -484,14 +491,14 @@ class BTCDaemon(BaseDaemon):
         if not request:
             raise Exception("Request not found")
         result = wallet_obj.export_request(request)
-        paid_via_lightning = self.is_paid_via_lightning(wallet_obj, request)
-        if paid_via_lightning:
+        if self.is_paid_via_lightning(wallet_obj, request):
             result["tx_hashes"] = [request.rhash]
-        result["sent_amount"] = (
-            self.get_sent_amount(wallet_obj, result["address"], result["tx_hashes"], request=result)
-            if not paid_via_lightning
-            else self.format_satoshis(request.get_amount_sat(), wallet)
-        )
+            result["sent_amount"] = self.format_satoshis(request.get_amount_sat(), wallet)
+            result["tx_amounts"] = {request.rhash: result["sent_amount"]}
+        else:
+            result["sent_amount"], result["tx_amounts"] = self.get_payment_amounts(
+                wallet_obj, result["address"], result["tx_hashes"], request=result
+            )
         return result
 
     @rpc

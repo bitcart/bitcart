@@ -10,9 +10,10 @@ from sqlalchemy import ColumnElement, Select, func, select
 
 from api import models, utils
 from api.db import AsyncSession
+from api.ext.moneyformat import currency_table
 from api.schemas.products import CreateProduct, UpdateProduct
 from api.services.crud import CRUDService
-from api.services.crud.repositories import DiscountRepository, ProductRepository
+from api.services.crud.repositories import DiscountRepository, ProductRepository, StoreRepository
 from api.settings import Settings
 
 
@@ -25,11 +26,13 @@ class ProductService(CRUDService[models.Product]):
         session: AsyncSession,
         container: AsyncContainer,
         discount_repository: DiscountRepository,
+        store_repository: StoreRepository,
         settings: Settings,
     ) -> None:
         super().__init__(session, container)
         self.settings = settings
         self.discount_repository = discount_repository
+        self.store_repository = store_repository
 
     async def prepare_create(self, data: dict[str, Any], user: models.User | None = None) -> dict[str, Any]:
         data = await super().prepare_create(data, user)
@@ -75,13 +78,15 @@ class ProductService(CRUDService[models.Product]):
         dataset.discard("all")
         return ["all"] + sorted(dataset)
 
-    async def get_max_product_price(self, store_id: str) -> Decimal:
-        return cast(
-            Decimal,
-            await utils.database.get_scalar(
-                self.session, select(models.Product).where(models.Product.store_id == store_id), func.max, models.Product.price
-            ),
+    async def get_max_product_price(self, store_id: str) -> str:
+        max_price = await utils.database.get_scalar(
+            self.session, select(models.Product).where(models.Product.store_id == store_id), func.max, models.Product.price
         )
+        currency = cast(
+            str | None,
+            await self.store_repository.get_one_or_none(id=store_id, statement=select(models.Store.default_currency), load=[]),
+        )
+        return currency_table.format_decimal(currency or "USD", Decimal(cast(Decimal | int, max_price)))
 
     async def get(
         self,

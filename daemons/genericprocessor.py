@@ -154,7 +154,7 @@ STR_TO_BOOL_MAPPING = {
 
 
 class WalletDB(StorageWalletDB):
-    STORAGE_VERSION = 3
+    STORAGE_VERSION = 4
 
     def _convert_dict(self, path, key, v):
         if key == "payment_requests":
@@ -167,6 +167,7 @@ class WalletDB(StorageWalletDB):
     def run_upgrades(self):
         self._convert_version_2()
         self._convert_version_3()
+        self._convert_version_4()
 
     def _convert_version_2(self):
         if not self._is_upgrade_method_needed(1, 1):
@@ -190,6 +191,16 @@ class WalletDB(StorageWalletDB):
                     tx_hashes.append(tx_hash)
             invoices[key]["tx_hashes"] = tx_hashes
         self.put("version", 3)
+
+    def _convert_version_4(self):
+        if not self._is_upgrade_method_needed(3, 3):
+            return
+        invoices = self.data.get("payment_requests", {})
+        for key in invoices:
+            tx_hashes = invoices[key].get("tx_hashes", [])
+            if len(tx_hashes) == 1:
+                invoices[key]["tx_amounts"] = {tx_hashes[0]: invoices[key]["sent_amount"]}
+        self.put("version", 4)
 
 
 class ConfigDB(StorageConfigDB):
@@ -274,6 +285,21 @@ class Invoice(CastingDataclass, StoredObject):
     status: int = 0
     tx_hashes: list = field(default_factory=list)
     contract: str = None
+    tx_amounts: dict = field(default_factory=dict)
+
+    def __post_init__(self):
+        super().__post_init__()
+        self.tx_amounts = {tx_hash: Decimal(amount) for tx_hash, amount in self.tx_amounts.items()}
+
+    def get_tx_amount(self, tx_hash):
+        return self.tx_amounts.get(tx_hash)
+
+    def export_tx_amounts(self, divisibility):
+        return {
+            tx_hash: decimal_to_string(amount, divisibility)
+            for tx_hash in self.tx_hashes
+            if (amount := self.get_tx_amount(tx_hash)) is not None
+        }
 
     @property
     def status_str(self):
@@ -426,6 +452,7 @@ class Wallet:
         if req.tx_hashes:
             d["tx_hashes"] = req.tx_hashes
             d["confirmations"] = await self.coin.get_confirmations(req.tx_hashes[0])
+            d["tx_amounts"] = req.export_tx_amounts(self.divisibility)
         d[f"amount_{daemon_ctx.get().UNIT}"] = to_wei(req.amount, self.divisibility)
         d["address"] = req.address
         d["URI"] = await self.get_payment_uri(req.address, req.amount)
@@ -500,6 +527,7 @@ class Wallet:
         if req is None or req.status != PR_UNPAID or tx.hash in req.tx_hashes:
             return
         req.sent_amount += amount
+        req.tx_amounts[tx.hash] = amount
         await self.process_payment(
             wallet,
             req.id,
@@ -520,6 +548,7 @@ class Wallet:
                     "tx_hashes": req.tx_hashes,
                     "sent_amount": decimal_to_string(req.sent_amount, self.divisibility),
                     "contract": contract,
+                    "tx_amounts": req.export_tx_amounts(self.divisibility),
                 },
                 wallet,
             )

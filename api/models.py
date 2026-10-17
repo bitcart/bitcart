@@ -1,6 +1,6 @@
 import secrets
 from datetime import datetime, timedelta
-from decimal import Context, Decimal
+from decimal import Decimal
 from typing import Any
 
 import pyotp
@@ -21,7 +21,7 @@ from sqlalchemy.ext.associationproxy import AssociationProxy, association_proxy
 from sqlalchemy.ext.mutable import MutableDict, MutableList
 from sqlalchemy.orm import Mapped, declared_attr, mapped_column, relationship
 
-from api.ext.moneyformat import currency_table
+from api.ext.moneyformat import currency_table, format_raw, to_raw
 from api.schemas.base import Schema
 from api.schemas.misc import EmailSettings
 from api.schemas.stores import StoreCheckoutSettings, StorePluginSettings, StoreThemeSettings
@@ -77,7 +77,7 @@ class TimestampedModel(Model):
     __abstract__ = True
 
     created: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), default=utc_now)
-    updated: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), onupdate=utc_now, default=None)
+    updated: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), onupdate=utc_now)
 
 
 class IDModel(TimestampedModel):
@@ -268,10 +268,10 @@ class Store(RecordModel):
         return relationship("User", lazy="raise", foreign_keys="[Store.user_id]")
 
     @property
-    def currency_data(self) -> dict[str, Any]:
+    def currency_data(self) -> dict[str, int]:
         from api.ext.moneyformat import currency_table
 
-        return currency_table.get_currency_data(self.default_currency)
+        return {"divisibility": currency_table.get_divisibility(self.default_currency)}
 
 
 class DiscountxProduct(Model):
@@ -358,8 +358,11 @@ class PaymentMethod(RecordModel):
     invoice_id: Mapped[str | None] = mapped_column(Text, ForeignKey("invoices.id", ondelete="SET NULL"))
     wallet_id: Mapped[str | None] = mapped_column(Text, ForeignKey("wallets.id", ondelete="SET NULL"))
     amount: Mapped[Decimal] = mapped_column(Numeric(36, 18))
+    network_fee: Mapped[Decimal] = mapped_column(Numeric(36, 18))
+    effective_price: Mapped[Decimal] = mapped_column(Numeric(36, 18))
     rate: Mapped[Decimal] = mapped_column(Numeric(36, 18))
     discount: Mapped[str | None] = mapped_column(Text)
+    applied_discount: Mapped[dict[str, Any] | None] = mapped_column(MutableDict.as_mutable(JSONB(none_as_null=True)))
     confirmations: Mapped[int] = mapped_column(Integer)
     recommended_fee: Mapped[Decimal] = mapped_column(Numeric(36, 18))
     currency: Mapped[str] = mapped_column(Text, index=True)
@@ -383,14 +386,20 @@ class PaymentMethod(RecordModel):
     def wallet(cls) -> Mapped["Wallet"]:
         return relationship("Wallet", lazy="raise", foreign_keys="[PaymentMethod.wallet_id]")
 
-    def to_payment_dict(self, currency: str, index: int | None = None) -> dict[str, Any]:
+    def to_payment_dict(self, currency: str, index: int | None = None, due: Decimal | None = None) -> dict[str, Any]:
+        if due is None:
+            due = self.amount
         data = super().to_dict()
         data["metadata"] = data.pop("meta", {})
         data["amount"] = currency_table.format_decimal(self.symbol, self.amount, divisibility=self.divisibility)
-        data["rate"] = f"{self.rate.normalize(Context(prec=36)):f}"
-        data["rate_str"] = currency_table.format_currency(
-            currency, self.rate, divisibility=currency_table.get_rate_divisibility(currency, self.rate)
+        data["subtotal"] = currency_table.format_decimal(
+            self.symbol, self.amount - self.network_fee, divisibility=self.divisibility
         )
+        data["network_fee"] = currency_table.format_decimal(self.symbol, self.network_fee, divisibility=self.divisibility)
+        data["effective_price"] = currency_table.format_decimal(currency, self.effective_price)
+        data["due"] = currency_table.format_decimal(self.symbol, due, divisibility=self.divisibility)
+        data["due_price"] = currency_table.format_decimal(currency, to_raw(due * self.rate))
+        data["rate"] = format_raw(self.rate)
         data["name"] = self.get_name(index)
         if data["payment_url"].startswith("ethereum:"):  # pragma: no cover
             data["chain_id"] = self.parse_chain_id(data["payment_url"])
@@ -422,8 +431,8 @@ class Invoice(RecordModel):
     __tablename__ = "invoices"
 
     price: Mapped[Decimal] = mapped_column(Numeric(36, 18))
-    sent_amount: Mapped[Decimal | None] = mapped_column(Numeric(36, 18))
-    exception_status: Mapped[str | None] = mapped_column(Text)
+    sent_amount: Mapped[Decimal] = mapped_column(Numeric(36, 18))
+    exception_status: Mapped[str] = mapped_column(Text)
     currency: Mapped[str] = mapped_column(Text)
     paid_currency: Mapped[str | None] = mapped_column(Text)
     status: Mapped[str] = mapped_column(Text)
@@ -439,6 +448,7 @@ class Invoice(RecordModel):
         Text, ForeignKey(Store.id, deferrable=True, initially="DEFERRED", ondelete="SET NULL"), index=True
     )
     tx_hashes: Mapped[list[str]] = mapped_column(MutableList.as_mutable(ARRAY(Text)), default=list)
+    tx_amounts: Mapped[dict[str, str]] = mapped_column(MutableDict.as_mutable(JSONB()), default=dict)
     order_id: Mapped[str | None] = mapped_column(Text)
     user_id: Mapped[str | None] = mapped_column(Text, ForeignKey(User.id, ondelete="SET NULL"))
     creation_time: Mapped[Decimal | None] = mapped_column(Numeric(36, 18))
@@ -539,6 +549,7 @@ class Payout(RecordModel):
     wallet_id: Mapped[str | None] = mapped_column(
         Text, ForeignKey(Wallet.id, deferrable=True, initially="DEFERRED", ondelete="SET NULL"), index=True
     )
+    wallet_currency: Mapped[str | None] = mapped_column(Text)
     max_fee: Mapped[Decimal | None] = mapped_column(Numeric(36, 18))
     tx_hash: Mapped[str | None] = mapped_column(Text)
     used_fee: Mapped[Decimal | None] = mapped_column(Numeric(36, 18))
@@ -555,10 +566,6 @@ class Payout(RecordModel):
     @declared_attr
     def wallet(cls) -> Mapped["Wallet"]:
         return relationship("Wallet", lazy="raise", foreign_keys="[Payout.wallet_id]")
-
-    @property
-    def wallet_currency(self) -> str | None:
-        return self.wallet.currency if self.wallet else None
 
 
 class Refund(RecordModel):

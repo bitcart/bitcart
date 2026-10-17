@@ -21,6 +21,7 @@ from api.schemas.misc import CaptchaType
 from api.schemas.stores import StoreCheckoutSettings
 from api.schemas.wallets import DisplayWallet
 from api.services.auth import AuthService
+from api.services.crud.invoices import InvoiceService
 from api.services.crud.stores import StoreService
 from api.services.crud.templates import TemplateService
 from api.services.management import ManagementService
@@ -585,6 +586,78 @@ async def test_captcha_flow(mocker: pytest_mock.MockerFixture, impl: CaptchaType
 )
 def test_payment_method_raw_rate(rate: str, expected: str) -> None:
     method = models.PaymentMethod(
-        rate=Decimal(rate), amount=Decimal(1), symbol="btc", divisibility=8, payment_url="bitcoin:", lightning=False
+        rate=Decimal(rate),
+        amount=Decimal(1),
+        network_fee=Decimal(0),
+        effective_price=Decimal(1),
+        symbol="btc",
+        divisibility=8,
+        payment_url="bitcoin:",
+        lightning=False,
     )
     assert method.to_payment_dict("USD")["rate"] == expected
+
+
+@pytest.mark.parametrize(
+    ("effective_prices", "payment_id", "expected"),
+    [
+        ({"a": Decimal(2500), "b": Decimal(4000)}, "a", "2500.00"),
+        ({"a": Decimal(2500), "b": Decimal(4000)}, "b", "4000.00"),
+        ({"a": Decimal(2500), "b": Decimal(4000)}, None, "5000.00"),
+        ({"a": Decimal(4500), "b": Decimal("4500.000000000000000000")}, None, "4500.00"),
+        ({"a": Decimal(5000), "b": Decimal(5000)}, None, "5000.00"),
+        ({}, None, "5000.00"),
+    ],
+)
+def test_find_effective_price(effective_prices: dict[str, Decimal], payment_id: str | None, expected: str) -> None:
+    payments = [models.PaymentMethod(id=key, effective_price=value) for key, value in effective_prices.items()]
+    assert InvoiceService.find_effective_price("USD", Decimal(5000), payments, payment_id) == expected
+
+
+@pytest.mark.parametrize(
+    ("amount", "rate", "sent_amount", "sent_price"),
+    [
+        (Decimal("0.34"), Decimal(3), Decimal(0), "0.00"),
+        (Decimal("0.34"), Decimal(3), Decimal("0.33"), "0.99"),
+        (Decimal("0.34"), Decimal(3), Decimal("0.34"), "1.02"),
+        (Decimal("0.34"), Decimal(3), Decimal("0.35"), "1.05"),
+        (Decimal("0.00033334"), Decimal(30000), Decimal("0.00033333"), "9.99"),
+        (Decimal("0.00033334"), Decimal(30000), Decimal("0.00033334"), "10.00"),
+        (Decimal("0.33"), (1 / Decimal("0.33")).quantize(Decimal(10) ** -18), Decimal("0.33"), "1.00"),
+    ],
+)
+def test_find_sent_price(amount: Decimal, rate: Decimal, sent_amount: Decimal, sent_price: str) -> None:
+    method = models.PaymentMethod(id="a", amount=amount, rate=rate)
+    assert InvoiceService.find_sent_price("USD", sent_amount, [method], "a") == sent_price
+
+
+@pytest.mark.parametrize(("due", "due_price"), [(Decimal("10.004"), "10.00"), (Decimal("10.005"), "10.01")])
+def test_payment_method_due_price_rounds_half_up(due: Decimal, due_price: str) -> None:
+    method = models.PaymentMethod(
+        rate=Decimal(1),
+        amount=Decimal(11),
+        network_fee=Decimal(0),
+        effective_price=Decimal(11),
+        symbol="btc",
+        divisibility=8,
+        payment_url="bitcoin:",
+        lightning=False,
+    )
+    assert method.to_payment_dict("USD", due=due)["due_price"] == due_price
+
+
+@pytest.mark.parametrize(
+    ("status", "payment_id", "sent_amount", "due"),
+    [
+        ("pending", None, Decimal(0), Decimal("0.34")),
+        ("pending", "a", Decimal("0.33"), Decimal("0.01")),
+        ("pending", "b", Decimal("0.33"), Decimal("0.34")),
+        ("pending", "a", Decimal("0.35"), Decimal(0)),
+        ("expired", "a", Decimal("0.1"), Decimal("0.24")),
+        ("complete", "a", Decimal("0.3"), Decimal(0)),
+        ("refunded", "a", Decimal("0.34"), Decimal(0)),
+    ],
+)
+def test_find_due(status: str, payment_id: str | None, sent_amount: Decimal, due: Decimal) -> None:
+    method = models.PaymentMethod(id="a", amount=Decimal("0.34"))
+    assert InvoiceService.find_due(method, status, payment_id, sent_amount) == due

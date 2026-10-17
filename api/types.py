@@ -1,10 +1,11 @@
 from collections.abc import Iterator
 from datetime import datetime
 from decimal import Decimal
-from typing import TYPE_CHECKING, Any, Literal, NewType, Protocol
+from typing import TYPE_CHECKING, Annotated, Any, Literal, NewType, Protocol
 
 from fastapi import Request
 from fastapi.security import SecurityScopes
+from pydantic import Field
 from taskiq import AsyncTaskiqDecoratedTask, AsyncTaskiqTask
 from taskiq.scheduler.created_schedule import CreatedSchedule
 from taskiq.scheduler.scheduled_task import CronSpec
@@ -16,7 +17,14 @@ if TYPE_CHECKING:
     from api import models
 
 
-type Money = str
+type Money = Annotated[
+    str,
+    Field(
+        description="Amount in a currency: a decimal string already rounded and padded to the currency's decimal places."
+        " Display it without rounding it again.",
+        examples=["25.00", "0.00150000"],
+    ),
+]
 type Quotes = dict[str, Decimal]
 type PayoutAmount = Decimal | Literal["!"]
 
