@@ -37,6 +37,17 @@ class PayoutService(CRUDService[models.Payout]):
         self.coin_service = coin_service
         self.payout_manager = payout_manager
 
+    async def prepare_data(self, data: dict[str, Any]) -> dict[str, Any]:
+        data = await super().prepare_data(data)
+        if "wallet_id" in data:
+            data["wallet_currency"] = cast(
+                str | None,
+                await self.wallet_repository.get_one_or_none(
+                    id=data["wallet_id"], statement=select(models.Wallet.currency), load=[]
+                ),
+            )
+        return data
+
     async def prepare_create(self, data: dict[str, Any], user: models.User | None = None) -> dict[str, Any]:
         data = await super().prepare_create(data, user)
         store = await self.store_repository.get_one(id=data["store_id"])
@@ -50,12 +61,9 @@ class PayoutService(CRUDService[models.Payout]):
     ) -> None:
         await super().validate(action, data, model, user)
         if "destination" in data or "wallet_id" in data:
-            wallet_currency = cast(
-                str,
-                await self.wallet_repository.get(
-                    data.get("wallet_id", model.wallet_id), statement=select(models.Wallet.currency), load=[]
-                ),
-            )
+            wallet_currency = data.get("wallet_currency", model.wallet_currency)
+            if not wallet_currency:
+                raise HTTPException(422, "Payout has no wallet")
             coin = await self.coin_service.get_coin(wallet_currency)
             destination = data.get("destination", model.destination)
             if not await coin.server.validateaddress(destination):

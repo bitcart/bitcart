@@ -586,7 +586,14 @@ async def test_captcha_flow(mocker: pytest_mock.MockerFixture, impl: CaptchaType
 )
 def test_payment_method_raw_rate(rate: str, expected: str) -> None:
     method = models.PaymentMethod(
-        rate=Decimal(rate), amount=Decimal(1), symbol="btc", divisibility=8, payment_url="bitcoin:", lightning=False
+        rate=Decimal(rate),
+        amount=Decimal(1),
+        network_fee=Decimal(0),
+        effective_price=Decimal(1),
+        symbol="btc",
+        divisibility=8,
+        payment_url="bitcoin:",
+        lightning=False,
     )
     assert method.to_payment_dict("USD")["rate"] == expected
 
@@ -608,23 +615,35 @@ def test_find_effective_price(effective_prices: dict[str, Decimal], payment_id: 
 
 
 @pytest.mark.parametrize(
-    ("amount", "rate", "sent_amount", "sent_price", "sent_price_str"),
+    ("amount", "rate", "sent_amount", "sent_price"),
     [
-        (Decimal("0.34"), Decimal(3), Decimal(0), "0", "$0.00 (USD)"),
-        (Decimal("0.34"), Decimal(3), Decimal("0.33"), "0.99", "$0.99 (USD)"),
-        (Decimal("0.34"), Decimal(3), Decimal("0.34"), "1.02", "$1.02 (USD)"),
-        (Decimal("0.34"), Decimal(3), Decimal("0.35"), "1.05", "$1.05 (USD)"),
-        (Decimal("0.00033334"), Decimal(30000), Decimal("0.00033333"), "9.9999", "$9.99 (USD)"),
-        (Decimal("0.00033334"), Decimal(30000), Decimal("0.00033334"), "10.0002", "$10.00 (USD)"),
-        (Decimal("0.33"), (1 / Decimal("0.33")).quantize(Decimal(10) ** -18), Decimal("0.33"), "1", "$1.00 (USD)"),
+        (Decimal("0.34"), Decimal(3), Decimal(0), "0.00"),
+        (Decimal("0.34"), Decimal(3), Decimal("0.33"), "0.99"),
+        (Decimal("0.34"), Decimal(3), Decimal("0.34"), "1.02"),
+        (Decimal("0.34"), Decimal(3), Decimal("0.35"), "1.05"),
+        (Decimal("0.00033334"), Decimal(30000), Decimal("0.00033333"), "9.99"),
+        (Decimal("0.00033334"), Decimal(30000), Decimal("0.00033334"), "10.00"),
+        (Decimal("0.33"), (1 / Decimal("0.33")).quantize(Decimal(10) ** -18), Decimal("0.33"), "1.00"),
     ],
 )
-def test_find_sent_price(amount: Decimal, rate: Decimal, sent_amount: Decimal, sent_price: str, sent_price_str: str) -> None:
+def test_find_sent_price(amount: Decimal, rate: Decimal, sent_amount: Decimal, sent_price: str) -> None:
     method = models.PaymentMethod(id="a", amount=amount, rate=rate)
-    assert InvoiceService.find_sent_price("USD", sent_amount, [method], "a") == {
-        "sent_price": sent_price,
-        "sent_price_str": sent_price_str,
-    }
+    assert InvoiceService.find_sent_price("USD", sent_amount, [method], "a") == sent_price
+
+
+@pytest.mark.parametrize(("due", "due_price"), [(Decimal("10.004"), "10.00"), (Decimal("10.005"), "10.01")])
+def test_payment_method_due_price_rounds_half_up(due: Decimal, due_price: str) -> None:
+    method = models.PaymentMethod(
+        rate=Decimal(1),
+        amount=Decimal(11),
+        network_fee=Decimal(0),
+        effective_price=Decimal(11),
+        symbol="btc",
+        divisibility=8,
+        payment_url="bitcoin:",
+        lightning=False,
+    )
+    assert method.to_payment_dict("USD", due=due)["due_price"] == due_price
 
 
 @pytest.mark.parametrize(

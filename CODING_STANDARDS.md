@@ -51,6 +51,24 @@ from api import models
 
 Also we use `snake_case` style, which is following PEP8.
 
+## Money and decimal values in the Merchants API
+
+All decimal values in API responses are strings.
+
+Amounts in some currency use `Money` type on schema fields (or `format_decimal` when building a dict by hand), it rounds and pads the value to currency's decimals, e.g. `"25.00"` or `"0.00150000"`. Clients should show it as is, without rounding it again.
+
+Rates and other ratios, like exchange rate or `recommended_fee`, use `DecimalAsString` type (or `format_raw`). It is the exact value with up to 18 decimal places and no trailing zeros, and clients round it themselves for display.
+
+Rounding direction depends on the value and is done where the value is calculated:
+
+- round up amounts we ask customer to pay: payment `amount`, `subtotal`, `network_fee`
+- round down money received or sent out: `sent_price`, refunds when creating them, payouts
+- the rest is rounded half-up
+
+We don't send formatted display strings (like `_str` fields) in the API, as clients format values in buyer's locale. For texts backend renders itself, like emails, use `format_decimal` with currency code, e.g. `25.00 USD`.
+
+For input schemas use plain `Decimal`, as it accepts both numbers and strings. When storing values use `str(amount)`, and format them only on output.
+
 # Coding guidelines for vue/javascript code
 
 Those guidelines apply to all vue or javascript code across Bitcart repositories, and to all further opened pull requests.

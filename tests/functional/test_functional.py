@@ -14,7 +14,7 @@ from bitcart.utils import bitcoins
 from httpx_ws import AsyncWebSocketSession, aconnect_ws
 
 from api.constants import MAX_CONFIRMATION_WATCH
-from api.ext.moneyformat import truncate
+from api.ext.moneyformat import round_half_up
 from api.settings import Settings
 from tests.functional import utils
 from tests.helper import create_store, create_wallet
@@ -264,7 +264,7 @@ async def test_exception_statuses(
     pay_details = invoice["payments"][0]
     address = pay_details["payment_address"]
     amount = Decimal(pay_details["amount"])
-    part1 = truncate(amount / 2, 8)
+    part1 = round_half_up(amount / 2, 8)
     part2 = amount - part1
     await asyncio.sleep(3)  # wait for the worker startup (remove when electrum fixes pending tx_hashes returning)
     invoice_id = invoice["id"]

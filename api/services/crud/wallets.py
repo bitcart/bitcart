@@ -89,7 +89,7 @@ class WalletService(CRUDService[models.Wallet]):
             if (rate := rates[cache_key]) is not None:
                 balances += crypto_balance * rate
         return {
-            "balance": currency_table.format_decimal(show_currency, currency_table.normalize(show_currency, balances)),
+            "balance": currency_table.format_decimal(show_currency, balances),
             "currency": show_currency,
             "missing_rates": sorted(missing_rates),
         }

@@ -1,4 +1,4 @@
-from typing import Any, Literal
+from typing import Literal
 
 from fastapi import HTTPException
 from pydantic import EmailStr, HttpUrl, TypeAdapter, ValidationError, field_validator
@@ -105,13 +105,13 @@ class UpdateStore(CreateStore):
 class PublicStore(MetadataOutput, BaseStore, TimestampedSchema):
     id: str
     user_id: str
-    currency_data: dict[str, Any]
+    currency_data: dict[str, int]
 
 
 class DisplayStore(MetadataOutput, CreateStore, TimestampedSchema):
     id: str
     user_id: str
-    currency_data: dict[str, Any]
+    currency_data: dict[str, int]
 
     @field_validator("wallets", mode="before")
     @classmethod

@@ -92,8 +92,7 @@ class DisplayInvoice(MetadataOutput, BaseInvoice, TimestampedSchema):
     promocode: str | None
     products: list[str]
     sent_amount: Money
-    sent_price: DecimalAsString
-    sent_price_str: str
+    sent_price: Money
     effective_price: Money
     expiration: int
     payment_methods: list[str]
@@ -110,7 +109,9 @@ class DisplayInvoice(MetadataOutput, BaseInvoice, TimestampedSchema):
             values["currency"], values["price"], values["payments"], payment_id
         )
         values["price"] = currency_table.format_decimal(values["currency"], values["price"])
-        values.update(invoices.InvoiceService.find_sent_price(values["currency"], sent_amount, values["payments"], payment_id))
+        values["sent_price"] = invoices.InvoiceService.find_sent_price(
+            values["currency"], sent_amount, values["payments"], payment_id
+        )
         divisibility = invoices.InvoiceService.find_sent_amount_divisibility(values["id"], values["payments"], payment_id)
         values["sent_amount"] = currency_table.format_decimal("", sent_amount, divisibility=divisibility)
         tx_amounts = values["tx_amounts"]

@@ -405,7 +405,6 @@ class TestInvoices(ViewTestMixin):
             ("amount", str),
             ("rate", str),
             ("payment_address", str),
-            ("rate_str", str),
         ):
             self._check_key(method, key, check_type)
 

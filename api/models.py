@@ -268,10 +268,10 @@ class Store(RecordModel):
         return relationship("User", lazy="raise", foreign_keys="[Store.user_id]")
 
     @property
-    def currency_data(self) -> dict[str, Any]:
+    def currency_data(self) -> dict[str, int]:
         from api.ext.moneyformat import currency_table
 
-        return currency_table.get_currency_data(self.default_currency)
+        return {"divisibility": currency_table.get_divisibility(self.default_currency)}
 
 
 class DiscountxProduct(Model):
@@ -392,16 +392,14 @@ class PaymentMethod(RecordModel):
         data = super().to_dict()
         data["metadata"] = data.pop("meta", {})
         data["amount"] = currency_table.format_decimal(self.symbol, self.amount, divisibility=self.divisibility)
+        data["subtotal"] = currency_table.format_decimal(
+            self.symbol, self.amount - self.network_fee, divisibility=self.divisibility
+        )
         data["network_fee"] = currency_table.format_decimal(self.symbol, self.network_fee, divisibility=self.divisibility)
         data["effective_price"] = currency_table.format_decimal(currency, self.effective_price)
         data["due"] = currency_table.format_decimal(self.symbol, due, divisibility=self.divisibility)
-        due_price = to_raw(due * self.rate)
-        data["due_price"] = format_raw(due_price)
-        data["due_price_str"] = currency_table.format_currency(currency, due_price)
+        data["due_price"] = currency_table.format_decimal(currency, to_raw(due * self.rate))
         data["rate"] = format_raw(self.rate)
-        data["rate_str"] = currency_table.format_currency(
-            currency, self.rate, divisibility=currency_table.get_rate_divisibility(currency, self.rate)
-        )
         data["name"] = self.get_name(index)
         if data["payment_url"].startswith("ethereum:"):  # pragma: no cover
             data["chain_id"] = self.parse_chain_id(data["payment_url"])
@@ -551,6 +549,7 @@ class Payout(RecordModel):
     wallet_id: Mapped[str | None] = mapped_column(
         Text, ForeignKey(Wallet.id, deferrable=True, initially="DEFERRED", ondelete="SET NULL"), index=True
     )
+    wallet_currency: Mapped[str | None] = mapped_column(Text)
     max_fee: Mapped[Decimal | None] = mapped_column(Numeric(36, 18))
     tx_hash: Mapped[str | None] = mapped_column(Text)
     used_fee: Mapped[Decimal | None] = mapped_column(Numeric(36, 18))
@@ -567,10 +566,6 @@ class Payout(RecordModel):
     @declared_attr
     def wallet(cls) -> Mapped["Wallet"]:
         return relationship("Wallet", lazy="raise", foreign_keys="[Payout.wallet_id]")
-
-    @property
-    def wallet_currency(self) -> str | None:
-        return self.wallet.currency if self.wallet else None
 
 
 class Refund(RecordModel):

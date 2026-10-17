@@ -21,7 +21,7 @@ def format_decimal(obj: Any, key: str, **kwargs: Any) -> Any:
         return ""
     if not hasattr(obj, "currency"):
         return value
-    return currency_table.normalize(obj.currency, value)
+    return currency_table.format_decimal(obj.currency, value)
 
 
 def tg_escape(text: Any) -> str:

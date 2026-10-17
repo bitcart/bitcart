@@ -8,7 +8,15 @@ from pydantic import BaseModel, Field, PlainSerializer, model_validator
 
 from api.ext.moneyformat import format_raw
 
-DecimalAsString = Annotated[Decimal, PlainSerializer(format_raw, return_type=str, when_used="json")]
+type DecimalAsString = Annotated[
+    Decimal,
+    PlainSerializer(format_raw, return_type=str, when_used="json"),
+    Field(
+        description="Exact decimal value, such as an exchange rate: a decimal string with up to 18 decimal places and no"
+        " trailing zeros. Round it yourself for display.",
+        examples=["64218.37", "0.0004123"],
+    ),
+]
 
 
 def iter_attributes(

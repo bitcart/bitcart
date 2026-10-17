@@ -2,31 +2,7 @@ from decimal import Decimal
 
 import pytest
 
-from api.ext.moneyformat import currency_table, format_raw, truncate
-
-
-@pytest.mark.parametrize(
-    ("currency", "rate", "expected"),
-    [
-        ("USD", "50000.123", "50000.12"),
-        ("USD", "5.12", "5.12"),
-        ("USD", "0.5", "0.50"),
-        ("USD", "0.123456", "0.123"),
-        ("USD", "0.004", "0.004"),
-        ("USD", "0.004123", "0.00412"),
-        ("USD", "0.0099999", "0.01"),
-        ("USD", "0.0000123456", "0.0000123"),
-        ("USD", "0", "0.00"),
-        ("JPY", "5", "5"),
-        ("JPY", "5.123", "5.12"),
-        ("JPY", "99.5", "99.5"),
-        ("JPY", "5123.4", "5123"),
-    ],
-)
-def test_rate_divisibility(currency: str, rate: str, expected: str) -> None:
-    value = Decimal(rate)
-    divisibility = currency_table.get_rate_divisibility(currency, value)
-    assert currency_table.format_decimal(currency, value, divisibility=divisibility) == expected
+from api.ext.moneyformat import currency_table, format_raw, round_half_up
 
 
 @pytest.mark.parametrize(
@@ -46,20 +22,20 @@ def test_round_up(currency: str, value: str, divisibility: int | None, expected:
 @pytest.mark.parametrize(
     ("value", "precision", "expected"), [("1234.4", 0, "1234"), ("1234.5", 0, "1235"), ("1.005", 2, "1.01")]
 )
-def test_truncate(value: str, precision: int, expected: str) -> None:
-    assert str(truncate(Decimal(value), precision)) == expected
+def test_round_half_up(value: str, precision: int, expected: str) -> None:
+    assert str(round_half_up(Decimal(value), precision)) == expected
 
 
 @pytest.mark.parametrize(
-    ("currency", "value", "divisibility", "normalized", "formatted"),
+    ("currency", "value", "divisibility", "rounded", "formatted"),
     [
         ("JPY", "1234.6", None, "1235", "1235"),
         ("SATS", "1000.4", None, "1000", "1000"),
         ("BTC", "5.6", 0, "6", "6"),
     ],
 )
-def test_zero_divisibility(currency: str, value: str, divisibility: int | None, normalized: str, formatted: str) -> None:
-    assert str(currency_table.normalize(currency, Decimal(value), divisibility=divisibility)) == normalized
+def test_zero_divisibility(currency: str, value: str, divisibility: int | None, rounded: str, formatted: str) -> None:
+    assert str(currency_table.round_half_up(currency, Decimal(value), divisibility=divisibility)) == rounded
     assert currency_table.format_decimal(currency, Decimal(value), divisibility=divisibility) == formatted
 
 

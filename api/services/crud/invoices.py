@@ -22,7 +22,7 @@ from api import invoices, metrics, models, utils
 from api.db import AsyncSession
 from api.exceptions import ExchangeRateError
 from api.ext import export as export_ext
-from api.ext.moneyformat import currency_table, format_raw, to_raw, truncate
+from api.ext.moneyformat import currency_table, round_half_up, to_raw
 from api.invoices import PAID_STATUSES, InvoiceExceptionStatus, InvoiceStatus
 from api.logging import get_exception_details, get_exception_message, get_logger
 from api.plugins import SKIP_PAYMENT_METHOD
@@ -155,13 +155,10 @@ class InvoiceService(CRUDService[models.Invoice]):
     @classmethod
     def find_sent_price(
         cls, currency: str, sent_amount: Decimal, payments: list[models.PaymentMethod], payment_id: str | None
-    ) -> dict[str, str]:
+    ) -> str:
         method = cls.match_payment(payments, payment_id) if payment_id else None
         sent_price = to_raw(sent_amount * method.rate if method else Decimal(0))
-        return {
-            "sent_price": format_raw(sent_price),
-            "sent_price_str": currency_table.format_currency(currency, currency_table.round_down(currency, sent_price)),
-        }
+        return currency_table.format_decimal(currency, currency_table.round_down(currency, sent_price))
 
     @staticmethod
     def find_due(method: models.PaymentMethod, status: str, payment_id: str | None, sent_amount: Decimal) -> Decimal:
@@ -414,7 +411,9 @@ class InvoiceService(CRUDService[models.Invoice]):
                 else 0
             )
             recommended_fee = 0 if recommended_fee is None else recommended_fee  # if no rate available, disable it
-            data["recommended_fee"] = truncate(Decimal(recommended_fee) / 1024, 2)  # convert to sat/byte, two decimal places
+            data["recommended_fee"] = round_half_up(
+                Decimal(recommended_fee) / 1024, 2
+            )  # convert to sat/byte, two decimal places
             data_got = await method(request_price, description=product.name if product else "", expire=invoice.expiration)
             data["payment_address"] = data_got["address"] if not lightning else data_got["lightning_invoice"]
             data["payment_url"] = data_got["URI"] if not lightning else data_got["lightning_invoice"]
@@ -665,7 +664,7 @@ class InvoiceService(CRUDService[models.Invoice]):
                 products = invoice.products_associations
                 for product_relation in products:
                     product = cast(models.Product, product_relation.product)
-                    product.price = currency_table.normalize(
+                    product.price = currency_table.round_half_up(
                         invoice.currency, product.price
                     )  # to be formatted correctly in emails
                     quantity = product_relation.count

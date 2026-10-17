@@ -7,4 +7,4 @@ from api.services.crud.repository import CRUDRepository
 class RefundRepository(CRUDRepository[models.Refund]):
     model_type = models.Refund
 
-    LOAD_OPTIONS = [selectinload(models.Refund.payout).subqueryload(models.Payout.wallet)]
+    LOAD_OPTIONS = [selectinload(models.Refund.payout)]

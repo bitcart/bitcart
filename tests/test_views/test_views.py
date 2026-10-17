@@ -1154,11 +1154,8 @@ async def test_create_invoice_without_coin_rate(
 
 
 @pytest.mark.parametrize(
-    ("rate", "price", "amount", "raw_rate", "rate_str"),
-    [
-        ("0.004", 1, "250.00000000", "0.004", "$0.004 (USD)"),
-        ("3", 10, "3.33333334", "3", "$3.00 (USD)"),
-    ],
+    ("rate", "price", "amount", "raw_rate"),
+    [("0.004", 1, "250.00000000", "0.004"), ("3", 10, "3.33333334", "3")],
 )
 async def test_create_invoice_rate(
     client: TestClient,
@@ -1169,7 +1166,6 @@ async def test_create_invoice_rate(
     price: int,
     amount: str,
     raw_rate: str,
-    rate_str: str,
 ) -> None:
     mocker.patch(
         "api.services.exchange_rate.ExchangeRateService.get_rate",
@@ -1184,7 +1180,6 @@ async def test_create_invoice_rate(
     payment = payments[0]
     assert payment["amount"] == amount
     assert payment["rate"] == raw_rate
-    assert payment["rate_str"] == rate_str
 
 
 @pytest.mark.parametrize(
@@ -1242,6 +1237,7 @@ async def test_create_invoice_network_fee(
     invoice = await create_discounted_invoice(client, token, store, await create_discount(client, token, percent=50))
     payment = invoice["payments"][0]
     assert payment["amount"] == "0.05001235"
+    assert payment["subtotal"] == "0.05000000"
     assert payment["network_fee"] == "0.00001235"
     assert payment["effective_price"] == "2500.00"
 
@@ -1365,16 +1361,12 @@ async def test_mark_complete_exception_status(
     assert invoice["exception_status"] == exception_status
 
 
-@pytest.mark.parametrize(
-    ("options", "sent_price", "sent_price_str"),
-    [({}, "5000", "$5,000.00 (USD)"), ({"sent_amount": 0.05}, "2500", "$2,500.00 (USD)")],
-)
+@pytest.mark.parametrize(("options", "sent_price"), [({}, "5000.00"), ({"sent_amount": 0.05}, "2500.00")])
 async def test_invoice_sent_price(
-    client: TestClient, token: str, store: dict[str, Any], options: dict[str, Any], sent_price: str, sent_price_str: str
+    client: TestClient, token: str, store: dict[str, Any], options: dict[str, Any], sent_price: str
 ) -> None:
     invoice = await create_invoice(client, token, store_id=store["id"], price=5000)
-    assert invoice["sent_price"] == "0"
-    assert invoice["sent_price_str"] == "$0.00 (USD)"
+    assert invoice["sent_price"] == "0.00"
     resp = await client.post(
         "/invoices/batch",
         json={"ids": [invoice["id"]], "command": "mark_complete", "options": options},
@@ -1383,7 +1375,6 @@ async def test_invoice_sent_price(
     assert resp.status_code == 200
     invoice = (await client.get(f"/invoices/{invoice['id']}", headers={"Authorization": f"Bearer {token}"})).json()
     assert invoice["sent_price"] == sent_price
-    assert invoice["sent_price_str"] == sent_price_str
     assert invoice["payments"][0]["due"] == "0.00000000"
 
 
@@ -1391,14 +1382,14 @@ async def test_invoice_payment_due(client: TestClient, token: str, store: dict[s
     payment_processor = await app.state.dishka_container.get(PaymentProcessor)
     invoice = await create_invoice(client, token, store_id=store["id"], price=5000)
     payment = invoice["payments"][0]
-    assert (payment["due"], payment["due_price"], payment["due_price_str"]) == ("0.10000000", "5000", "$5,000.00 (USD)")
+    assert (payment["due"], payment["due_price"]) == ("0.10000000", "5000.00")
     await payment_processor.new_payment_handler(
         DummyInstance(), None, payment["lookup_field"], InvoiceStatus.PENDING, None, ["tx1"], Decimal("0.06")
     )
     invoice = (await client.get(f"/invoices/{invoice['id']}", headers={"Authorization": f"Bearer {token}"})).json()
     assert invoice["exception_status"] == "paid_partial"
     payment = invoice["payments"][0]
-    assert (payment["due"], payment["due_price"], payment["due_price_str"]) == ("0.04000000", "2000", "$2,000.00 (USD)")
+    assert (payment["due"], payment["due_price"]) == ("0.04000000", "2000.00")
 
 
 async def test_lightning_payment_method_amount(
@@ -1489,6 +1480,10 @@ async def test_payout_used_fee_in_wallet_currency(client: TestClient, token: str
     headers = {"Authorization": f"Bearer {token}"}
     assert (await client.get(f"/payouts/{payout['id']}", headers=headers)).json()["used_fee"] == "0.00001235"
     assert (await client.delete(f"/wallets/{payout['wallet_id']}", headers=headers)).status_code == 200
+    assert (await client.get(f"/payouts/{payout['id']}", headers=headers)).json()["used_fee"] == "0.00001235"
+    async with app.state.dishka_container(scope=Scope.SESSION) as container:
+        payout_service = await container.get(PayoutService)
+        (await payout_service.get(payout["id"])).update(wallet_currency=None)
     assert (await client.get(f"/payouts/{payout['id']}", headers=headers)).json()["used_fee"] == "0.0000123456789"
 
 

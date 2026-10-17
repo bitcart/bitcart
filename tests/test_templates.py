@@ -1,4 +1,5 @@
 from decimal import Decimal
+from types import SimpleNamespace
 
 import pytest
 
@@ -7,11 +8,6 @@ from api import exceptions, templates
 
 class DummyInvoice:
     buyer_email = "test@test.com"
-
-
-class DummyPricedInvoice:
-    currency = "USD"
-    price = Decimal("10.5")
 
 
 class DummyRefund:
@@ -48,9 +44,10 @@ def test_add_template() -> None:
     assert manager.templates["product"] == template
 
 
-def test_format_decimal_legitimate_field() -> None:
+@pytest.mark.parametrize(("currency", "price", "expected"), [("USD", "10.5", "10.50"), ("BTC", "0.00000001", "0.00000001")])
+def test_format_decimal_legitimate_field(currency: str, price: str, expected: str) -> None:
     template = templates.Template("test", '{{ invoice | format_decimal("price") }}')
-    assert template.render(invoice=DummyPricedInvoice()) == "10.50"
+    assert template.render(invoice=SimpleNamespace(currency=currency, price=Decimal(price))) == expected
 
 
 def test_format_decimal_attribute_isolation() -> None:
