@@ -100,12 +100,12 @@ class PayoutManager:
             divisibility = await self.wallet_data_service.get_divisibility(wallet, coin)
             rate = await self.wallet_data_service.get_rate(wallet, payout.currency)
             request_amount = (
-                currency_table.round_down(wallet.currency, payout.amount / rate, divisibility=divisibility)
+                currency_table.round_received(wallet.currency, payout.amount / rate, divisibility=divisibility)
                 if payout.amount != SEND_ALL
                 else SEND_ALL
             )
             max_fee = (
-                currency_table.round_down(wallet.currency, payout.max_fee / rate, divisibility=divisibility)
+                currency_table.round_received(wallet.currency, payout.max_fee / rate, divisibility=divisibility)
                 if payout.max_fee is not None
                 else None
             )

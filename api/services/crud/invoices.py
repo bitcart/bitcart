@@ -158,7 +158,7 @@ class InvoiceService(CRUDService[models.Invoice]):
     ) -> str:
         method = cls.match_payment(payments, payment_id) if payment_id else None
         sent_price = to_raw(sent_amount * method.rate if method else Decimal(0))
-        return currency_table.format_decimal(currency, currency_table.round_down(currency, sent_price))
+        return currency_table.format_decimal(currency, currency_table.round_received(currency, sent_price))
 
     @staticmethod
     def find_due(method: models.PaymentMethod, status: str, payment_id: str | None, sent_amount: Decimal) -> Decimal:
@@ -361,11 +361,11 @@ class InvoiceService(CRUDService[models.Invoice]):
         divisibility = await self.wallet_data_service.get_divisibility(wallet, coin)
         rate = await self.wallet_data_service.get_rate(wallet, invoice.currency, store=store)
         effective_price, discount = self.match_discount(invoice.price, wallet, invoice, discounts, promocode)
-        price = currency_table.round_up(wallet.currency, effective_price / rate, divisibility=divisibility)
+        price = currency_table.round_requested(wallet.currency, effective_price / rate, divisibility=divisibility)
         request_price = price
         if getattr(coin, "support_underpaid", True) and not lightning:
             underpaid_ratio = 1 - Decimal(store.checkout_settings.underpaid_percentage) / 100
-            request_price = currency_table.round_up(
+            request_price = currency_table.round_requested(
                 wallet.currency, effective_price * underpaid_ratio / rate, divisibility=divisibility
             )
         network_fee = Decimal(0)
@@ -377,7 +377,7 @@ class InvoiceService(CRUDService[models.Invoice]):
                     f"Invoice {invoice.id}: network fee of {wallet.currency.upper()} set to 0: {get_exception_details(e)}"
                 )
                 fee = Decimal(0)
-            network_fee = currency_table.round_up(wallet.currency, fee, divisibility=divisibility)
+            network_fee = currency_table.round_requested(wallet.currency, fee, divisibility=divisibility)
             request_price += network_fee
             price += network_fee
         method = await self.plugin_registry.apply_filters(
@@ -664,7 +664,7 @@ class InvoiceService(CRUDService[models.Invoice]):
                 products = invoice.products_associations
                 for product_relation in products:
                     product = cast(models.Product, product_relation.product)
-                    product.price = currency_table.round_half_up(
+                    product.price = currency_table.round_neutral(
                         invoice.currency, product.price
                     )  # to be formatted correctly in emails
                     quantity = product_relation.count

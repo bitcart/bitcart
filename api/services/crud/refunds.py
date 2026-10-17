@@ -50,7 +50,7 @@ class RefundService(CRUDService[models.Refund]):
         payment = cast(models.PaymentMethod, self.invoice_service.match_payment(invoice.payments, invoice.payment_id))
         refund = await self.create(
             CreateRefund(
-                amount=currency_table.round_down(data.currency, data.amount),
+                amount=currency_table.round_received(data.currency, data.amount),
                 currency=data.currency,
                 wallet_id=cast(str, payment.wallet_id),
                 invoice_id=invoice.id,

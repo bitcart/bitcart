@@ -15,8 +15,8 @@ from api.ext.moneyformat import currency_table, format_raw, round_half_up
         ("BTC", "5", 0, "5"),
     ],
 )
-def test_round_up(currency: str, value: str, divisibility: int | None, expected: str) -> None:
-    assert str(currency_table.round_up(currency, Decimal(value), divisibility=divisibility)) == expected
+def test_round_requested(currency: str, value: str, divisibility: int | None, expected: str) -> None:
+    assert str(currency_table.round_requested(currency, Decimal(value), divisibility=divisibility)) == expected
 
 
 @pytest.mark.parametrize(
@@ -35,7 +35,7 @@ def test_round_half_up(value: str, precision: int, expected: str) -> None:
     ],
 )
 def test_zero_divisibility(currency: str, value: str, divisibility: int | None, rounded: str, formatted: str) -> None:
-    assert str(currency_table.round_half_up(currency, Decimal(value), divisibility=divisibility)) == rounded
+    assert str(currency_table.round_neutral(currency, Decimal(value), divisibility=divisibility)) == rounded
     assert currency_table.format_decimal(currency, Decimal(value), divisibility=divisibility) == formatted
 
 
@@ -43,8 +43,8 @@ def test_zero_divisibility(currency: str, value: str, divisibility: int | None, 
     ("value", "divisibility", "expected"),
     [("9.9999", 2, "9.99"), ("10.0002", 2, "10.00"), ("0.00033333", 8, "0.00033333"), ("1000.9", 0, "1000")],
 )
-def test_round_down(value: str, divisibility: int, expected: str) -> None:
-    assert str(currency_table.round_down("USD", Decimal(value), divisibility=divisibility)) == expected
+def test_round_received(value: str, divisibility: int, expected: str) -> None:
+    assert str(currency_table.round_received("USD", Decimal(value), divisibility=divisibility)) == expected
 
 
 @pytest.mark.parametrize(

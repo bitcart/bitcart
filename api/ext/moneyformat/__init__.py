@@ -38,19 +38,19 @@ class CurrencyTable:
             return divisibility
         return self.divisibilities.get(currency.upper(), DEFAULT_DIVISIBILITY)
 
-    def round_half_up(self, currency: str, value: Decimal, divisibility: int | None = None) -> Decimal:
+    def round_neutral(self, currency: str, value: Decimal, divisibility: int | None = None) -> Decimal:
         return round_half_up(value, self.get_divisibility(currency, divisibility))
 
-    def round_up(self, currency: str, value: Decimal, divisibility: int | None = None) -> Decimal:
+    def round_requested(self, currency: str, value: Decimal, divisibility: int | None = None) -> Decimal:
         return round_up(value, self.get_divisibility(currency, divisibility))
 
-    def round_down(self, currency: str, value: Decimal, divisibility: int | None = None) -> Decimal:
+    def round_received(self, currency: str, value: Decimal, divisibility: int | None = None) -> Decimal:
         return round_down(value, self.get_divisibility(currency, divisibility))
 
     def format_decimal(self, currency: str, value: Decimal, divisibility: int | None = None) -> str:
         if isinstance(value, str):
             value = Decimal(value)
-        return f"{self.round_half_up(currency, value, divisibility=divisibility):f}"
+        return f"{self.round_neutral(currency, value, divisibility=divisibility):f}"
 
 
 currency_table = CurrencyTable()

@@ -61,9 +61,9 @@ Rates and other ratios, like exchange rate or `recommended_fee`, use `DecimalAsS
 
 Rounding direction depends on the value and is done where the value is calculated:
 
-- round up amounts we ask customer to pay: payment `amount`, `subtotal`, `network_fee`
-- round down money received or sent out: `sent_price`, refunds when creating them, payouts
-- the rest is rounded half-up
+- `round_requested` rounds up amounts we ask customer to pay: payment `amount`, `subtotal`, `network_fee`
+- `round_received` rounds down money received or sent out: `sent_price`, refunds when creating them, payouts
+- `round_neutral` rounds the rest half-up
 
 We don't send formatted display strings (like `_str` fields) in the API, as clients format values in buyer's locale. For texts backend renders itself, like emails, use `format_decimal` with currency code, e.g. `25.00 USD`.
 
