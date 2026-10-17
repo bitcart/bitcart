@@ -65,7 +65,7 @@ class UpdateInvoice(BaseInvoice):
 
 class InvoiceTransaction(Schema):
     tx_hash: str
-    amount: Money
+    amount: Money | None
 
 
 class DisplayInvoice(MetadataOutput, BaseInvoice, TimestampedSchema):
@@ -118,10 +118,11 @@ class DisplayInvoice(MetadataOutput, BaseInvoice, TimestampedSchema):
         values["transactions"] = [
             {
                 "tx_hash": tx_hash,
-                "amount": currency_table.format_decimal("", Decimal(tx_amounts[tx_hash]), divisibility=divisibility),
+                "amount": currency_table.format_decimal("", Decimal(tx_amounts[tx_hash]), divisibility=divisibility)
+                if tx_hash in tx_amounts
+                else None,
             }
             for tx_hash in values["tx_hashes"]
-            if tx_hash in tx_amounts
         ]
         values["payments"] = [
             method.to_payment_dict(

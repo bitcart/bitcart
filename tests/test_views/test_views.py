@@ -1286,8 +1286,12 @@ async def test_invoice_effective_price(
             {"tx1": "0.06", "tx2": "0.04"},
             [{"tx_hash": "tx2", "amount": "0.04000000"}, {"tx_hash": "tx1", "amount": "0.06000000"}],
         ),
-        (["tx1", "tx2"], {"tx2": "0.04"}, [{"tx_hash": "tx2", "amount": "0.04000000"}]),
-        (["tx1"], None, []),
+        (
+            ["tx1", "tx2"],
+            {"tx2": "0.04"},
+            [{"tx_hash": "tx1", "amount": None}, {"tx_hash": "tx2", "amount": "0.04000000"}],
+        ),
+        (["tx1"], None, [{"tx_hash": "tx1", "amount": None}]),
     ],
 )
 async def test_invoice_transactions(
@@ -1297,7 +1301,7 @@ async def test_invoice_transactions(
     app: FastAPI,
     tx_hashes: list[str],
     tx_amounts: dict[str, str] | None,
-    expected: list[dict[str, str]],
+    expected: list[dict[str, str | None]],
 ) -> None:
     payment_processor = await app.state.dishka_container.get(PaymentProcessor)
     invoice = await create_invoice(client, token, store_id=store["id"], price=5000)
@@ -2814,7 +2818,12 @@ async def test_mark_complete_cases(
             [{"tx_hash": "tx1", "amount": "0.06000000"}, {"tx_hash": "tx2", "amount": "0.04000000"}],
         ),
         ({"tx_hashes": ["tx1"], "sent_amount": "0.05"}, ["tx1"], "0.05000000", [{"tx_hash": "tx1", "amount": "0.05000000"}]),
-        ({"tx_hashes": ["tx1", "tx2"]}, ["tx1", "tx2"], "0.10000000", []),
+        (
+            {"tx_hashes": ["tx1", "tx2"]},
+            ["tx1", "tx2"],
+            "0.10000000",
+            [{"tx_hash": "tx1", "amount": None}, {"tx_hash": "tx2", "amount": None}],
+        ),
         ({}, [], "0.10000000", []),
     ],
 )
@@ -2825,7 +2834,7 @@ async def test_mark_complete_transactions(
     options: dict[str, Any],
     tx_hashes: list[str],
     sent_amount: str,
-    transactions: list[dict[str, str]],
+    transactions: list[dict[str, str | None]],
 ) -> None:
     headers = {"Authorization": f"Bearer {token}"}
     invoice = await create_invoice(client, token, store_id=store["id"], price=5000)
