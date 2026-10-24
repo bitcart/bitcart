@@ -1090,6 +1090,41 @@ async def test_get_or_create_invoice_by_order_id(client: TestClient, token: str,
     ]
 
 
+async def test_get_or_create_invoice_by_order_id_matches_currency(client: TestClient, store: dict[str, Any]) -> None:
+    data = {"price": 5, "store_id": store["id"]}
+    default = (await client.post("/invoices/order_id/currency", json=data)).json()
+    assert default["currency"] == store["default_currency"]
+    explicit = (await client.post("/invoices/order_id/currency", json={**data, "currency": "usd"})).json()
+    assert explicit["id"] == default["id"]
+    eur = (await client.post("/invoices/order_id/currency", json={**data, "currency": "EUR"})).json()
+    assert eur["id"] != default["id"]
+    assert eur["currency"] == "EUR"
+    assert (await client.post("/invoices/order_id/currency", json={**data, "currency": "EUR"})).json()["id"] == eur["id"]
+
+
+@pytest.mark.parametrize("status", [InvoiceStatus.EXPIRED, InvoiceStatus.INVALID, InvoiceStatus.REFUNDED])
+async def test_get_or_create_invoice_by_order_id_skips_unpayable(
+    client: TestClient, store: dict[str, Any], app: FastAPI, status: str
+) -> None:
+    data = {"price": 5, "store_id": store["id"]}
+    first = (await client.post("/invoices/order_id/unpayable", json=data)).json()
+    async with app.state.dishka_container(scope=Scope.SESSION) as container:
+        invoice_service = await container.get(InvoiceService)
+        await invoice_service.update_status(await invoice_service.get(first["id"]), status)
+    second = (await client.post("/invoices/order_id/unpayable", json=data)).json()
+    assert second["id"] != first["id"]
+    assert second["status"] == InvoiceStatus.PENDING
+
+
+async def test_get_or_create_invoice_by_order_id_returns_oldest_duplicate(client: TestClient, store: dict[str, Any]) -> None:
+    data = {"price": 5, "store_id": store["id"], "order_id": "duplicate"}
+    oldest = (await client.post("/invoices", json=data)).json()
+    await client.post("/invoices", json=data)
+    resp = await client.post("/invoices/order_id/duplicate", json=data)
+    assert resp.status_code == 200
+    assert resp.json()["id"] == oldest["id"]
+
+
 async def test_invoice_creation_rejects_malformed_input(client: TestClient, token: str, store: dict[str, Any]) -> None:
     product = await create_product(client, token, store_id=store["id"])
     data = {"price": 5, "store_id": store["id"]}
