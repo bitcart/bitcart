@@ -5,7 +5,7 @@
     },
     "ltc": {
         "mainnet": "https://live.blockcypher.com/ltc/tx/{}",
-        "testnet": "https://chain.so/tx/LTCTEST/{}"
+        "testnet": "https://sochain.com/ltctest/tx/{}"
     },
     "bch": {
         "mainnet": "https://blockexplorer.one/bitcoin-cash/mainnet/tx/{}",
