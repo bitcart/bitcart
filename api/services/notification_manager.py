@@ -1,6 +1,6 @@
 import contextlib
 import logging
-from collections.abc import Iterator
+from collections.abc import Generator
 from dataclasses import dataclass, field
 from io import StringIO
 from typing import Any, cast
@@ -18,7 +18,7 @@ logger = get_logger(__name__)
 
 # needed because we need to capture logs without sending them to logserver
 @contextlib.contextmanager
-def apprise_log_capture() -> Iterator[StringIO]:
+def apprise_log_capture() -> Generator[StringIO]:
     apprise_logger = logging.getLogger("apprise")
     old_disabled = apprise_logger.disabled
     old_propagate = apprise_logger.propagate

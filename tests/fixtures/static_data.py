@@ -11,7 +11,7 @@ LIMITED_USER_DATA = {
     "is_superuser": False,
 }
 POLICY_USER = {
-    "email": "test@test.com",
+    "email": "policy@bitcart.test",
     "password": "test",
 }
 SCRIPT_SETTINGS = {

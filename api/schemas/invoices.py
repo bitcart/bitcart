@@ -2,7 +2,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any, Literal
 
-from pydantic import ConfigDict, EmailStr, field_validator, model_validator
+from pydantic import ConfigDict, EmailStr, Field, PositiveInt, field_validator, model_validator
 
 from api.ext.moneyformat import currency_table
 from api.schemas.base import DecimalAsString, MetadataInput, MetadataOutput, Schema, TimestampedSchema
@@ -31,8 +31,8 @@ class CreateInvoice(BaseInvoice):
     store_id: str
     currency: str = ""
     promocode: str | None = ""
-    products: list[str] | dict[str, int] = {}
-    expiration: int | None = None
+    products: list[str] | dict[str, PositiveInt] = {}
+    expiration: int | None = Field(None, ge=1)
     payment_methods: list[str] | None = None
 
     @field_validator("currency")

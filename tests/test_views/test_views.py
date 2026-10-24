@@ -8,6 +8,7 @@ from collections import defaultdict
 from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any, cast
+from unittest import mock
 
 import paramiko
 import pyotp
@@ -21,6 +22,7 @@ from httpx import Request as HttpRequest
 from httpx_ws import AsyncWebSocketSession, WebSocketDisconnect, aconnect_ws
 from redis.observability.attributes import DB_CLIENT_CONNECTION_STATE, ConnectionState
 from sqlalchemy import select
+from sqlalchemy.exc import DBAPIError
 from starlette.status import WS_1008_POLICY_VIOLATION
 from taskiq.exceptions import TaskiqResultTimeoutError
 
@@ -33,7 +35,8 @@ from api.constants import (
     SUPPORTED_CRYPTOS,
     PayoutStatus,
 )
-from api.exceptions import ExchangeRatesUnavailableError, RateUnavailableError
+from api.db import AsyncSession
+from api.exceptions import EmailSendError, ExchangeRatesUnavailableError, RateUnavailableError
 from api.invoices import InvoiceStatus
 from api.redis import Redis
 from api.schemas.misc import CaptchaType, EmailSettings
@@ -44,6 +47,7 @@ from api.services.crud.invoices import InvoiceService
 from api.services.crud.payouts import PayoutService
 from api.services.crud.refunds import RefundService
 from api.services.crud.repositories import PaymentMethodRepository
+from api.services.crud.users import UserService
 from api.services.ext.configurator import SSH_RATE_KEY
 from api.services.ext.tor import TorService
 from api.services.notification_manager import NotificationManager
@@ -594,7 +598,7 @@ async def test_management_commands(
 async def test_first_user_registration_bypasses_disable_registration(client: TestClient) -> None:
     resp = await client.post("/users", json=static_data.POLICY_USER)
     assert resp.status_code == 200
-    resp = await client.post("/users", json={**static_data.POLICY_USER, "email": "other@test.com"})
+    resp = await client.post("/users", json={**static_data.POLICY_USER, "email": "other@bitcart.test"})
     assert resp.status_code == 422
     assert resp.json()["detail"] == "Registration disabled"
 
@@ -852,8 +856,9 @@ async def test_services(client: TestClient, token: str, app: FastAPI) -> None:
     assert resp2.json() == await tor_service.get_data("services_dict", {}, json_decode=True)
 
 
-async def test_export_invoices(client: TestClient, token: str, limited_user: dict[str, Any]) -> None:
+async def test_export_invoices(client: TestClient, token: str, user: dict[str, Any], limited_user: dict[str, Any]) -> None:
     limited_token = (await create_token(client, limited_user))["access_token"]
+    invoice_token = (await create_token(client, user, permissions=["invoice_management"]))["access_token"]
     invoice = await create_invoice(client, limited_token)
     await client.post(
         "/invoices/batch",
@@ -863,6 +868,9 @@ async def test_export_invoices(client: TestClient, token: str, limited_user: dic
     assert (await client.get("/invoices/export")).status_code == 401
     assert (
         await client.get("/invoices/export?all_users=true", headers={"Authorization": f"Bearer {limited_token}"})
+    ).status_code == 403
+    assert (
+        await client.get("/invoices/export?all_users=true", headers={"Authorization": f"Bearer {invoice_token}"})
     ).status_code == 403
     assert len((await client.get("/invoices/export", headers={"Authorization": f"Bearer {limited_token}"})).json()) > 0
     json_resp = await client.get("/invoices/export", headers={"Authorization": f"Bearer {token}"})
@@ -1080,6 +1088,20 @@ async def test_get_or_create_invoice_by_order_id(client: TestClient, token: str,
     assert (await client.post("/invoices/order_id/1", json={"price": 5, "store_id": store_id})).json()["id"] == resp.json()[
         "id"
     ]
+
+
+async def test_invoice_creation_rejects_malformed_input(client: TestClient, token: str, store: dict[str, Any]) -> None:
+    product = await create_product(client, token, store_id=store["id"])
+    data = {"price": 5, "store_id": store["id"]}
+    await client.post("/invoices", json=data)
+    for path, extra in (
+        ("/invoices/order_id/", {}),
+        ("/invoices", {"products": {product["id"]: -1}}),
+        ("/invoices", {"products": {product["id"]: 0}}),
+        ("/invoices", {"expiration": 0}),
+    ):
+        resp = await client.post(path, json={**data, **extra})
+        assert resp.status_code == 422, (path, extra)
 
 
 async def test_get_max_product_price(client: TestClient, token: str, store: dict[str, Any]) -> None:
@@ -2292,6 +2314,26 @@ async def test_invoices_authorized_access(client: TestClient, store: dict[str, A
     assert (await client.post("/invoices", json={"price": 1, "store_id": store["id"]})).status_code == 403
 
 
+async def test_invoice_restrictions_apply_to_non_owners(
+    client: TestClient, store: dict[str, Any], token: str, limited_user: dict[str, Any]
+) -> None:
+    owner = {"Authorization": f"Bearer {token}"}
+    outsider = {"Authorization": f"Bearer {(await create_token(client, limited_user))['access_token']}"}
+    store_expiration = store["checkout_settings"]["expiration"]
+    longer = {"price": 1, "store_id": store["id"], "expiration": store_expiration * 40}
+    shorter = {"price": 1, "store_id": store["id"], "expiration": store_expiration - 5}
+    for headers in (None, outsider):
+        assert (await client.post("/invoices", json=longer, headers=headers)).json()["expiration"] == store_expiration
+    assert (await client.post("/invoices", json=shorter)).json()["expiration"] == store_expiration - 5
+    assert (await client.post("/invoices", json=longer, headers=owner)).json()["expiration"] == store_expiration * 40
+    await client.patch(
+        f"/stores/{store['id']}/checkout_settings", json={"allow_anonymous_invoice_creation": False}, headers=owner
+    )
+    assert (await client.post("/invoices", json=longer, headers=outsider)).status_code == 403
+    assert (await client.post("/invoices/order_id/outsider", json=longer, headers=outsider)).status_code == 403
+    assert (await client.post("/invoices", json=longer, headers=owner)).status_code == 200
+
+
 async def test_wallet_schema(client: TestClient) -> None:
     resp = await client.get("/wallets/schema")
     assert resp.status_code == 200
@@ -2347,11 +2389,13 @@ async def test_password_reset(client: TestClient, user: dict[str, Any], token: s
         nonlocal auth_code
         auth_code = code
 
-    mocker.patch("api.utils.email.Email.is_enabled", return_value=True)
-    mocker.patch("api.utils.email.Email.send_mail", return_value=True)
+    mocker.patch("api.services.email.EmailService.is_enabled", return_value=True)
+    mocker.patch("api.services.email.EmailService.send")
     mocker.patch("api.utils.routing.get_redirect_url", side_effect=func)
     assert (
-        await client.post("/users/reset_password", json={"email": "notexisting@gmail.com", "next_url": "https://example.com"})
+        await client.post(
+            "/users/reset_password", json={"email": "notexisting@bitcart.test", "next_url": "https://example.com"}
+        )
     ).status_code == 200
     assert (
         await client.post("/users/reset_password", json={"email": user["email"], "next_url": "https://example.com"})
@@ -2465,11 +2509,11 @@ async def test_verify_email(client: TestClient, user: dict[str, Any], token: str
         nonlocal auth_code
         auth_code = code
 
-    mocker.patch("api.utils.email.Email.is_enabled", return_value=True)
-    mocker.patch("api.utils.email.Email.send_mail", return_value=True)
+    mocker.patch("api.services.email.EmailService.is_enabled", return_value=True)
+    mocker.patch("api.services.email.EmailService.send")
     mocker.patch("api.utils.routing.get_redirect_url", side_effect=func)
     assert (
-        await client.post("/users/verify", json={"email": "notexisting@gmail.com", "next_url": "https://example.com"})
+        await client.post("/users/verify", json={"email": "notexisting@bitcart.test", "next_url": "https://example.com"})
     ).status_code == 200
     assert (
         await client.post("/users/verify", json={"email": user["email"], "next_url": "https://example.com"})
@@ -2479,9 +2523,10 @@ async def test_verify_email(client: TestClient, user: dict[str, Any], token: str
     assert (await client.post("/users/verify/finalize", json={"code": auth_code})).status_code == 200
     assert (await client.post("/users/verify/finalize", json={"code": auth_code})).status_code == 422
     assert (await client.get("/users/me", headers={"Authorization": f"Bearer {token}"})).json()["is_verified"] is True
-    assert (await client.post("/users/verify", json={"email": user["email"], "next_url": "https://example.com"})).json()[
-        "detail"
-    ] == "User is already verified"
+    verify_data = {"email": user["email"], "next_url": "https://example.com"}
+    assert (await client.post("/users/verify", json=verify_data)).json() is True
+    resp = await client.post("/users/verify", json=verify_data, headers={"Authorization": f"Bearer {token}"})
+    assert resp.json()["detail"] == "User is already verified"
 
 
 async def test_token_verification(client: TestClient, user: dict[str, Any], token: str) -> None:
@@ -2618,8 +2663,8 @@ async def test_refund_functionality(client: TestClient, token: str, mocker: pyte
         nonlocal full_url
         full_url = refund_url
 
-    mocker.patch("api.utils.email.Email.is_enabled", return_value=True)
-    mocker.patch("api.utils.email.Email.send_mail", return_value=True)
+    mocker.patch("api.services.email.EmailService.is_enabled", return_value=True)
+    mocker.patch("api.services.email.EmailService.send")
     mocker.patch("api.services.crud.templates.TemplateService.get_customer_refund_template", side_effect=func)
     resp = await client.post(
         f"/invoices/{invoice_id}/refunds",
@@ -2864,3 +2909,251 @@ async def test_mark_complete_validation(client: TestClient, token: str, store: d
     )
     assert resp.status_code == 422
     assert "Payment method does-not-exist not found" in resp.json()["detail"]
+
+
+async def test_create_user_requires_server_management_token(client: TestClient, user: dict[str, Any], token: str) -> None:
+    narrow_token = (await create_token(client, user, permissions=["invoice_management"]))["access_token"]
+    data = {"email": "escalation@example.com", "password": "12345678", "is_superuser": True}
+    resp = await client.post("/users", json=data, headers={"Authorization": f"Bearer {narrow_token}"})
+    assert resp.json()["detail"] == "Registration disabled"
+    resp = await client.post("/users", json=data, headers={"Authorization": f"Bearer {token}"})
+    assert resp.status_code == 200
+    assert resp.json()["is_superuser"] is True
+
+
+async def test_totp_login_requires_totp_enabled(client: TestClient, user: dict[str, Any], token: str, app: FastAPI) -> None:
+    headers = {"Authorization": f"Bearer {token}"}
+    recovery_codes = (
+        await client.post("/users/2fa/totp/verify", json={"code": pyotp.TOTP(user["totp_key"]).now()}, headers=headers)
+    ).json()
+    assert (await client.post("/users/2fa/disable", headers=headers)).status_code == 200
+    new_totp_key = (await client.get("/users/me", headers=headers)).json()["totp_key"]
+    async with app.state.dishka_container(scope=Scope.SESSION) as container:
+        user_service = await container.get(UserService)
+        (await user_service.get(user["id"])).update(fido2_devices=[{"name": "key", "id": "device", "device_data": "00"}])
+    login = (await client.post("/token", json={"email": user["email"], "password": static_data.USER_PWD})).json()
+    assert login["tfa_types"] == ["fido2"]
+    tfa_code = login["tfa_code"]
+    for code in (pyotp.TOTP(new_totp_key).now(), recovery_codes[0]):
+        resp = await client.post("/token/2fa/totp", json={"token": tfa_code, "code": code})
+        assert resp.status_code == 422
+
+
+async def test_verify_email_add_token(
+    client: TestClient, user: dict[str, Any], token: str, mocker: pytest_mock.MockerFixture
+) -> None:
+    auth_codes: list[str] = []
+    mocker.patch("api.services.email.EmailService.is_enabled", return_value=True)
+    mocker.patch("api.services.email.EmailService.send")
+    mocker.patch("api.utils.routing.get_redirect_url", side_effect=lambda url, code: auth_codes.append(code))
+
+    async def verify() -> str | None:
+        await client.post("/users/verify", json={"email": user["email"]})
+        resp = await client.post("/users/verify/finalize?add_token=true", json={"code": auth_codes[-1]})
+        assert resp.status_code == 200
+        return resp.json()["token"]
+
+    new_token = await verify()
+    assert new_token is not None
+    assert (await client.get("/token/current", headers={"Authorization": f"Bearer {new_token}"})).json()["permissions"] == [
+        "full_control"
+    ]
+    headers = {"Authorization": f"Bearer {token}"}
+    await client.post("/users/2fa/totp/verify", json={"code": pyotp.TOTP(user["totp_key"]).now()}, headers=headers)
+    await client.patch(f"/users/{user['id']}", json={"is_verified": False}, headers=headers)
+    assert await verify() is None
+
+
+async def test_download_url_is_private(client: TestClient, token: str, store: dict[str, Any]) -> None:
+    download_url = "https://example.com/paid.zip"
+    product = await create_product(client, token, store_id=store["id"], download_url=download_url)
+    owner = {"Authorization": f"Bearer {token}"}
+    assert (await client.get(f"/products/{product['id']}", headers=owner)).json()["download_url"] == download_url
+    public_product = (await client.get(f"/products/{product['id']}")).json()
+    assert public_product["id"] == product["id"]
+    assert "download_url" not in public_product
+    public_list = (await client.get(f"/products?store={store['id']}")).json()["result"]
+    assert [item["id"] for item in public_list] == [product["id"]]
+    assert "download_url" not in public_list[0]
+
+    async def count(query: str, headers: dict[str, str] | None = None) -> int:
+        resp = await client.get("/products/count", params={"store": store["id"], "query": query}, headers=headers)
+        assert resp.status_code == 200
+        return resp.json()
+
+    assert await count("paid.zip", owner) == 1
+    assert await count("paid.zip") == 0
+    assert await count("download_url:nomatch", owner) == 0
+    assert await count("download_url:nomatch") == 1
+    resp = await client.get("/products", params={"store": store["id"], "sort": "download_url"})
+    assert resp.json()["result"] == []
+
+
+async def test_files_served_as_attachments(client: TestClient, token: str) -> None:
+    resp = await client.post(
+        "/files", files={"file": ("page.html", b"<script></script>")}, headers={"Authorization": f"Bearer {token}"}
+    )
+    file_resp = await client.get(f"/files/localstorage/{resp.json()['id']}-page.html")
+    assert file_resp.status_code == 200
+    assert file_resp.headers["content-disposition"] == 'attachment; filename="page.html"'
+    assert file_resp.headers["x-content-type-options"] == "nosniff"
+    assert file_resp.headers["content-security-policy"] == "sandbox"
+
+
+async def test_login_checks_captcha_before_password(
+    client: TestClient, user: dict[str, Any], token: str, mocker: pytest_mock.MockerFixture
+) -> None:
+    await client.post(
+        "/manage/policies",
+        json={"captcha_type": CaptchaType.HCAPTCHA, "captcha_secretkey": "secret"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    mocker.patch("api.services.auth.AuthService.verify_captcha", return_value=False)
+    for email, password in (("missing@example.com", "wrong"), (user["email"], "wrong"), (user["email"], static_data.USER_PWD)):
+        resp = await client.post("/token", json={"email": email, "password": password})
+        assert resp.json()["detail"]["status"] == 403
+
+
+async def test_wallet_rejects_unsupported_xpub_fields(
+    client: TestClient, token: str, wallet: dict[str, Any], mocker: pytest_mock.MockerFixture
+) -> None:
+    mocker.patch("api.services.crud.wallets.WalletService.validate_xpub")
+    headers = {"Authorization": f"Bearer {token}"}
+    resp = await client.post(
+        "/wallets",
+        json={"name": "injected", "xpub": static_data.TEST_XPUB, "additional_xpub_data": {"wallet": "x", "rpc_url": "x"}},
+        headers=headers,
+    )
+    assert resp.status_code == 422
+    assert resp.json()["detail"] == "Unsupported wallet fields: rpc_url, wallet"
+    resp = await client.patch(f"/wallets/{wallet['id']}", json={"additional_xpub_data": {"wallet": "x"}}, headers=headers)
+    assert resp.status_code == 422
+    resp = await client.patch(f"/wallets/{wallet['id']}", json={"additional_xpub_data": {}}, headers=headers)
+    assert resp.status_code == 200
+    with mock.patch.object(BTC, "additional_xpub_fields", ["min_withdraw_amount"]):
+        resp = await client.patch(
+            f"/wallets/{wallet['id']}", json={"additional_xpub_data": {"min_withdraw_amount": "1"}}, headers=headers
+        )
+        assert resp.status_code == 200
+    resp = await client.patch(
+        f"/wallets/{wallet['id']}",
+        json={"name": "renamed", "additional_xpub_data": {"min_withdraw_amount": "2"}},
+        headers=headers,
+    )
+    assert resp.json()["additional_xpub_data"] == {"min_withdraw_amount": "2"}
+    resp = await client.patch(
+        f"/wallets/{wallet['id']}",
+        json={"additional_xpub_data": {"min_withdraw_amount": "2", "wallet": "x"}},
+        headers=headers,
+    )
+    assert resp.json()["detail"] == "Unsupported wallet fields: wallet"
+
+
+async def test_daemon_rejects_wallet_param() -> None:
+    btc = BTC(xpub=static_data.TEST_XPUB, rpc_url=MAIN_URL)
+    assert await btc.server.validatekey(static_data.TEST_XPUB)
+    with pytest.raises(BitcartBaseError, match="wallet is reserved"):
+        await btc.server.validatekey(static_data.TEST_XPUB, wallet="other")
+
+
+async def test_wallet_ws_requires_ownership(client: TestClient, wallet: dict[str, Any], limited_user: dict[str, Any]) -> None:
+    outsider_token = (await create_token(client, limited_user, permissions=["wallet_management"]))["access_token"]
+    websocket: AsyncWebSocketSession
+    with pytest.raises(WebSocketDisconnect) as exc:
+        async with aconnect_ws(f"/ws/wallets/{wallet['id']}?token={outsider_token}", client) as websocket:
+            await websocket.receive_json(timeout=5)
+    assert exc.value.code == WS_1008_POLICY_VIOLATION
+
+
+async def test_narrow_token_cannot_reach_more_powerful_tokens(client: TestClient, user: dict[str, Any], token: str) -> None:
+    narrow_token = (await create_token(client, user, permissions=["token_management", "store_management"]))["access_token"]
+    peer_token = (await create_token(client, user, permissions=["token_management"]))["access_token"]
+    narrow = {"Authorization": f"Bearer {narrow_token}"}
+    selective_token = (await client.post("/token", json={"permissions": ["store_management:1"]}, headers=narrow)).json()[
+        "access_token"
+    ]
+    listed = (await client.get("/token", params={"limit": -1}, headers=narrow)).json()["result"]
+    assert {narrow_token, peer_token, selective_token} <= {item["id"] for item in listed}
+    assert token not in {item["id"] for item in listed}
+    assert (await client.get("/token/count", headers=narrow)).json() == len(listed)
+    assert (await client.delete(f"/token/{selective_token}", headers=narrow)).status_code == 200
+    full = (await client.get("/token", params={"limit": -1}, headers={"Authorization": f"Bearer {token}"})).json()["result"]
+    assert token in {item["id"] for item in full}
+    resp = await client.patch(f"/token/{token}", json={"redirect_url": "https://example.com"}, headers=narrow)
+    assert resp.status_code == 404
+    assert (await client.delete(f"/token/{token}", headers=narrow)).status_code == 404
+    resp = await client.post("/token/batch", json={"command": "delete", "ids": [token, peer_token]}, headers=narrow)
+    assert resp.status_code == 200
+    assert (await client.get("/users/me", headers={"Authorization": f"Bearer {token}"})).status_code == 200
+    assert (await client.get("/token/current", headers={"Authorization": f"Bearer {peer_token}"})).status_code == 401
+
+
+async def test_refund_succeeds_when_buyer_email_fails(
+    client: TestClient, token: str, mocker: pytest_mock.MockerFixture, app: FastAPI
+) -> None:
+    payment_processor = await app.state.dishka_container.get(PaymentProcessor)
+    invoice = await create_invoice(client, token, buyer_email="test@test.com")
+    await payment_processor.new_payment_handler(
+        DummyInstance(), None, invoice["payments"][0]["lookup_field"], "complete", None
+    )
+    mocker.patch("api.services.email.EmailService.is_enabled", return_value=True)
+    send = mocker.patch("api.services.email.EmailService.send", side_effect=EmailSendError("SMTP is down"))
+    resp = await client.post(
+        f"/invoices/{invoice['id']}/refunds",
+        json={"amount": 1, "currency": "USD", "send_email": True, "admin_host": "http://admin"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 200
+    assert send.called
+    assert (await client.get(f"/invoices/refunds/{resp.json()['id']}")).status_code == 200
+
+
+async def test_invoice_completes_when_buyer_email_fails(
+    client: TestClient, token: str, store: dict[str, Any], mocker: pytest_mock.MockerFixture, app: FastAPI
+) -> None:
+    payment_processor = await app.state.dishka_container.get(PaymentProcessor)
+    product = await create_product(client, token, store_id=store["id"])
+    invoice = await create_invoice(client, token, store_id=store["id"], products=[product["id"]], buyer_email="b@test.com")
+    mocker.patch("api.services.email.EmailService.is_enabled", return_value=True)
+    send = mocker.patch("api.services.email.EmailService.send", side_effect=EmailSendError("SMTP is down"))
+    await payment_processor.new_payment_handler(
+        DummyInstance(), None, invoice["payments"][0]["lookup_field"], "complete", None
+    )
+    assert send.called
+    assert (await client.get(f"/invoices/{invoice['id']}")).json()["status"] == "complete"
+
+
+async def test_commit_failure_reaches_exception_handlers(
+    client: TestClient, token: str, store: dict[str, Any], mocker: pytest_mock.MockerFixture
+) -> None:
+    commit_errors: list[DBAPIError] = []
+    commit = AsyncSession.commit
+
+    async def recording_commit(session: AsyncSession) -> None:
+        try:
+            await commit(session)
+        except DBAPIError as e:
+            commit_errors.append(e)
+            raise
+
+    mocker.patch.object(AsyncSession, "commit", recording_commit)
+    resp = await client.patch(
+        f"/stores/{store['id']}/checkout_settings",
+        json={"custom_logo_link": "a\x00b"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 422
+    assert resp.json()["error"] == "Invalid input"
+    assert commit_errors
+
+
+@pytest.mark.parametrize("path", ["/users/reset_password", "/users/verify"])
+async def test_email_flows_hide_email_failure(
+    client: TestClient, user: dict[str, Any], mocker: pytest_mock.MockerFixture, path: str
+) -> None:
+    mocker.patch("api.services.email.EmailService.is_enabled", return_value=True)
+    mocker.patch("api.services.email.EmailService.send", side_effect=EmailSendError("SMTP is down"))
+    for email in (user["email"], "missing@bitcart.test"):
+        resp = await client.post(path, json={"email": email, "next_url": "https://example.com"})
+        assert resp.status_code == 200
+        assert resp.json() is True

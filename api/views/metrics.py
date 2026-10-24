@@ -2,7 +2,7 @@ import os
 
 from dishka import FromDishka
 from dishka.integrations.fastapi import DishkaRoute
-from fastapi import APIRouter, Response, Security
+from fastapi import APIRouter, HTTPException, Response, Security
 from prometheus_client import REGISTRY, CollectorRegistry, multiprocess
 from prometheus_client.openmetrics.exposition import CONTENT_TYPE_LATEST, generate_latest
 
@@ -18,6 +18,8 @@ async def metrics(
     metrics_service: FromDishka[MetricsService],
     user: models.User = Security(utils.authorization.auth_dependency, scopes=[AuthScopes.METRICS_MANAGEMENT]),
 ) -> Response:
+    if not user.is_superuser:
+        raise HTTPException(403, "Not enough permissions")
     await metrics_service.calculate_metrics()
     registry: CollectorRegistry = REGISTRY
     if "PROMETHEUS_MULTIPROC_DIR" in os.environ:

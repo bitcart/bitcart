@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Secu
 
 from api import models, utils
 from api.constants import AuthScopes
-from api.schemas.products import CreateProduct, DisplayProduct, OptionalProductSchema, UpdateProduct
+from api.schemas.products import CreateProduct, DisplayProduct, OptionalProductSchema, PublicProduct, UpdateProduct
 from api.services.crud.products import ProductService
 from api.types import Money
 from api.utils.routing import (
@@ -64,7 +64,7 @@ async def update_product_multipart(
     return await product_service.update_with_image(parsed_data, item_id, user, image)
 
 
-@router.get("", response_model=OffsetPagination[DisplayProduct])
+@router.get("", response_model=OffsetPagination[PublicProduct | DisplayProduct])
 async def list_items(
     pagination: Annotated[SearchPagination, Depends(provide_pagination)],
     product_service: FromDishka[ProductService],
@@ -79,7 +79,11 @@ async def list_items(
     if not user and store is None:
         raise HTTPException(401, "Unauthorized")
     statement, filters = product_service._filter_in_product(store, category, min_price, max_price, sale)
-    return await product_service.paginate(request, pagination, user=user, statement=statement, filters=filters)
+    response = await product_service.paginate(request, pagination, user=user, statement=statement, filters=filters)
+    if isinstance(response, dict):
+        schema = DisplayProduct if user else PublicProduct
+        response["result"] = [schema.model_validate(item) for item in response["result"]]
+    return response
 
 
 @router.get("/count", response_model=int)
@@ -103,6 +107,11 @@ async def products_count(
     return count
 
 
-@router.get("/{model_id}", response_model=DisplayProduct)
-async def get_product(product_service: FromDishka[ProductService], model_id: str, store: str | None = None) -> Any:
-    return await product_service.get(model_id, store_id=store)
+@router.get("/{model_id}", response_model=PublicProduct | DisplayProduct)
+async def get_product(
+    product_service: FromDishka[ProductService],
+    model_id: str,
+    store: str | None = None,
+    user: models.User | None = Security(utils.authorization.optional_auth_dependency, scopes=[AuthScopes.PRODUCT_MANAGEMENT]),
+) -> Any:
+    return await product_service.get_public_product(model_id, user, store_id=store)

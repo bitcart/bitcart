@@ -1,9 +1,12 @@
+from typing import cast
+
 from fastapi import HTTPException, Request
 from fastapi.security import SecurityScopes
 from sqlalchemy.orm import joinedload
 from starlette.status import HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN
 
 from api import models, utils
+from api.constants import AuthScopes
 from api.db import AsyncSession
 from api.schemas.misc import CaptchaType
 from api.schemas.policies import Policy
@@ -40,7 +43,7 @@ class AuthService:
 
     async def find_by_token(self, token: str) -> tuple[models.User, models.Token] | None:
         result = await self.token_repository.get_one_or_none(id=token, load=[joinedload(models.Token.user)])
-        if not result:
+        if not result or not result.user:
             return None
         return result.user, result
 
@@ -50,7 +53,7 @@ class AuthService:
         security_scopes: SecurityScopes,
         request: Request | None = None,
     ) -> tuple[models.User, models.Token]:
-        authenticate_value = f'Bearer scope="{security_scopes.scope_str}"' if security_scopes.scopes else "Bearer"
+        authenticate_value = self.get_authenticate_value(security_scopes)
         exc = HTTPException(
             status_code=HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials",
@@ -64,6 +67,16 @@ class AuthService:
         user, token = data
         await self.check_permissions(user, token, security_scopes, request, authenticate_value)
         return user, token
+
+    @staticmethod
+    def get_authenticate_value(security_scopes: SecurityScopes) -> str:
+        return f'Bearer scope="{security_scopes.scope_str}"' if security_scopes.scopes else "Bearer"
+
+    async def require_scopes(
+        self, user: models.User, token: models.Token, scopes: list[AuthScopes], request: Request | None = None
+    ) -> None:
+        security_scopes = SecurityScopes(cast(list[str], scopes))
+        await self.check_permissions(user, token, security_scopes, request, self.get_authenticate_value(security_scopes))
 
     async def check_permissions(
         self,

@@ -5,6 +5,7 @@ from decimal import Decimal
 from typing import Any, NewType, cast
 from unittest.mock import AsyncMock
 
+import email_validator
 import pytest
 import pytest_mock
 from dishka import Provider, Scope, decorate, from_context, provide
@@ -29,6 +30,8 @@ from tests.helper import make_client
 pytest_plugins = ["tests.fixtures.pytest.data", "tests.fixtures.pytest.agent", "tests.fixtures.pytest.coingecko"]
 
 ANYIO_BACKEND_OPTIONS = {"use_uvloop": True}
+
+email_validator.TEST_ENVIRONMENT = True
 
 
 @pytest.fixture(scope="session")

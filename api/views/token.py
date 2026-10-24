@@ -66,9 +66,12 @@ async def create_token_fido2_complete(token_service: FromDishka[TokenService], r
 async def delete_token(
     token_service: FromDishka[TokenService],
     token_id: str,
-    user: models.User = Security(utils.authorization.auth_dependency, scopes=[AuthScopes.TOKEN_MANAGEMENT]),
+    auth_data: tuple[models.User, models.Token] = Security(
+        utils.authorization.AuthDependency(return_token=True), scopes=[AuthScopes.TOKEN_MANAGEMENT]
+    ),
 ) -> Any:
-    return await token_service.delete(token_id, user)
+    user, token = auth_data
+    return await token_service.delete(token_id, user, filters=token_service.filter_visible_to(token))
 
 
 @router.get("", response_model=OffsetPagination[Token])
@@ -76,12 +79,15 @@ async def get_tokens(
     pagination: Annotated[SearchPagination, Depends(provide_pagination)],
     token_service: FromDishka[TokenService],
     request: Request,
-    user: models.User = Security(utils.authorization.auth_dependency, scopes=[AuthScopes.TOKEN_MANAGEMENT]),
+    auth_data: tuple[models.User, models.Token] = Security(
+        utils.authorization.AuthDependency(return_token=True), scopes=[AuthScopes.TOKEN_MANAGEMENT]
+    ),
     app_id: str | None = None,
     redirect_url: str | None = None,
     permissions: list[str] = Query(None),
 ) -> Any:
-    statement, filters = token_service._filter_in_token(app_id, redirect_url, permissions)
+    user, token = auth_data
+    statement, filters = token_service._filter_in_token(token, app_id, redirect_url, permissions)
     return await token_service.paginate(request, pagination, user=user, statement=statement, filters=filters)
 
 
@@ -96,12 +102,15 @@ async def get_current_token(
 @router.get("/count", response_model=int)
 async def get_token_count(
     token_service: FromDishka[TokenService],
-    user: models.User = Security(utils.authorization.auth_dependency, scopes=[AuthScopes.TOKEN_MANAGEMENT]),
+    auth_data: tuple[models.User, models.Token] = Security(
+        utils.authorization.AuthDependency(return_token=True), scopes=[AuthScopes.TOKEN_MANAGEMENT]
+    ),
     app_id: str | None = None,
     redirect_url: str | None = None,
     permissions: list[str] = Query(None),
 ) -> Any:
-    statement, filters = token_service._filter_in_token(app_id, redirect_url, permissions)
+    user, token = auth_data
+    statement, filters = token_service._filter_in_token(token, app_id, redirect_url, permissions)
     return await token_service.count(*filters, statement=statement, user=user)
 
 
@@ -110,15 +119,21 @@ async def patch_token(
     token_service: FromDishka[TokenService],
     model_id: str,
     model: EditToken,
-    user: models.User = Security(utils.authorization.auth_dependency, scopes=[AuthScopes.TOKEN_MANAGEMENT]),
+    auth_data: tuple[models.User, models.Token] = Security(
+        utils.authorization.AuthDependency(return_token=True), scopes=[AuthScopes.TOKEN_MANAGEMENT]
+    ),
 ) -> Any:
-    return await token_service.update(model, model_id, user)
+    user, token = auth_data
+    return await token_service.update(model, model_id, user, filters=token_service.filter_visible_to(token))
 
 
 @router.post("/batch")
 async def batch_action(
     token_service: FromDishka[TokenService],
     data: BatchAction,
-    user: models.User = Security(utils.authorization.auth_dependency, scopes=[AuthScopes.TOKEN_MANAGEMENT]),
+    auth_data: tuple[models.User, models.Token] = Security(
+        utils.authorization.AuthDependency(return_token=True), scopes=[AuthScopes.TOKEN_MANAGEMENT]
+    ),
 ) -> bool:
-    return await token_service.process_batch_action(data, user)
+    user, token = auth_data
+    return await token_service.process_batch_action(data, user, filters=token_service.filter_visible_to(token))

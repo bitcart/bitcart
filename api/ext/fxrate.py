@@ -48,11 +48,13 @@ class ExchangeTransformer(ast.NodeTransformer):
         right: str,
         depth: int = 0,
         rates: dict[str, Quotes] | None = None,
+        cache: dict[tuple[str, int], Any] | None = None,
     ) -> None:
         self.expressions = expressions
         self.left = left
         self.right = right
         self.depth = depth
+        self.cache = {} if cache is None else cache
         self.functions: dict[str, Callable[..., Decimal]] = {
             "mean": self.calc_mean,
             "median": self.calc_median,
@@ -123,10 +125,16 @@ class ExchangeTransformer(ast.NodeTransformer):
             return NO_RATE
         if self.depth == MAX_DEPTH:
             return NO_RATE
+        cache_key = (str(replaced_pair), self.depth)
+        if cache_key in self.cache:
+            return self.cache[cache_key]
         candidate = cast(dict[str, Any], candidate)
-        transformer = ExchangeTransformer(self.expressions, left=left, right=right, depth=self.depth + 1, rates=self.rates)
+        transformer = ExchangeTransformer(
+            self.expressions, left=left, right=right, depth=self.depth + 1, rates=self.rates, cache=self.cache
+        )
         result = transformer.visit(candidate["expression"])
         self.exchanges.update(transformer.exchanges)
+        self.cache[cache_key] = result
         return result
 
     def visit_Call(self, node: ast.Call) -> Decimal:  # TODO: re-check
@@ -197,6 +205,7 @@ async def calculate_rules(
     transformer.visit(candidate["expression"])
     for exchange in transformer.exchanges:
         transformer.rates[exchange] = await exchange_rate_service.get_rate(exchange)
+    transformer = ExchangeTransformer(parser.expressions, left=left, right=right, rates=transformer.rates)
     ret = transformer.visit(candidate["expression"])
     return ret, candidate["pair"]
 

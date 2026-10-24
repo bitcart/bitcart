@@ -112,6 +112,8 @@ class BaseDaemon:
         method, req_id, params = data.get("method"), data.get("id", None), data.get("params", [])
         error = None if method else JsonResponse(code=-32601, error="Procedure not found", id=req_id)
         args, kwargs = parse_params(params)
+        if not error and "wallet" in kwargs:
+            error = JsonResponse(code=-32602, error="Invalid params: wallet is reserved", id=req_id)
         xpub, contract, extra_params = self.parse_xpub(kwargs.pop("xpub", None))
         return req_id, method, xpub, contract, extra_params, args, kwargs, error
 

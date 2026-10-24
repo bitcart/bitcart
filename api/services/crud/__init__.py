@@ -190,9 +190,15 @@ class CRUDService[ModelType: ModelProtocol]:
 
     @classmethod
     def apply_ordering(
-        cls, query: Select[tuple[ModelType]], pagination: SearchPagination, model: type[ModelProtocol]
+        cls,
+        query: Select[tuple[ModelType]],
+        pagination: SearchPagination,
+        model: type[ModelProtocol],
+        searchable_columns: set[str] | None = None,
     ) -> Select[tuple[ModelType]]:
         allowed_columns = {col.key for col in model.__mapper__.columns}
+        if searchable_columns is not None:
+            allowed_columns &= searchable_columns
         sort_col = pagination.sort
         if sort_col not in allowed_columns:
             return query.where(false())
@@ -202,12 +208,17 @@ class CRUDService[ModelType: ModelProtocol]:
 
     @classmethod
     def apply_pagination(
-        cls, pagination: SearchPagination, statement: StatementTypeT, model: type[ModelProtocol], count_only: bool = False
+        cls,
+        pagination: SearchPagination,
+        statement: StatementTypeT,
+        model: type[ModelProtocol],
+        count_only: bool = False,
+        searchable_columns: set[str] | None = None,
     ) -> StatementTypeT:
         if isinstance(statement, Select):
             query = statement
             query = cls.apply_pagination_joins(pagination, query, model)
-            queries = cls.pagination_search(pagination, model)
+            queries = cls.pagination_search(pagination, model, searchable_columns)
             # NOTE: for some reason mypy update caused it to complain here
             query = query.where(queries) if queries is not None else query  # type: ignore[assignment] # sqlalchemy core requires explicit checks
             if count_only:
@@ -215,7 +226,7 @@ class CRUDService[ModelType: ModelProtocol]:
             query = query.group_by(utils.common.get_sqla_attr(cast(ModelProtocol, model), "id"))  # type: ignore[assignment]
             if pagination.limit != -1:
                 query = query.limit(pagination.limit)  # type: ignore[assignment]
-            query = cls.apply_ordering(query, pagination, model)  # type: ignore[assignment]
+            query = cls.apply_ordering(query, pagination, model, searchable_columns)  # type: ignore[assignment]
             return query.offset(pagination.offset)  # type: ignore[return-value]
         return statement
 
@@ -224,29 +235,43 @@ class CRUDService[ModelType: ModelProtocol]:
         return [model]
 
     @classmethod
-    def pagination_search(cls, pagination: SearchPagination, model: type[ModelProtocol]) -> ColumnElement[bool] | None:
+    def pagination_search(
+        cls, pagination: SearchPagination, model: type[ModelProtocol], searchable_columns: set[str] | None = None
+    ) -> ColumnElement[bool] | None:
         if not pagination.query:
             return None
         queries = []
         queries.extend(pagination.query.get_created_filter(model))
+        columns = set(sqla_inspect(model).column_attrs.keys())  # type: ignore[union-attr]
+        if searchable_columns is not None:
+            columns &= searchable_columns
         for search_filter, value in pagination.query.filters.items():
-            column = getattr(model, search_filter, None)
-            if column is not None:
-                queries.append(column.in_(value))
+            if search_filter in columns:
+                queries.append(utils.common.get_sqla_attr(cast(ModelProtocol, model), search_filter).in_(value))
         if hasattr(model, "meta"):
             meta_column = utils.common.get_sqla_attr(cast(ModelProtocol, model), "meta")
             for field_name, value in pagination.query.metadata_filters.items():
                 queries.append(meta_column[field_name].astext.in_(value))
         full_filters = []
         for search_model in cls.get_pagination_search_models(cast(type[ModelType], model)):
-            full_filters.extend(cls.get_pagination_all_columns_filter(search_model, pagination.query.text))
+            model_columns = searchable_columns if search_model is model else None
+            full_filters.extend(cls.get_pagination_all_columns_filter(search_model, pagination.query.text, model_columns))
         queries.append(or_(*full_filters))
         return and_(*queries)
 
     @staticmethod
-    def get_pagination_all_columns_filter(model: type[ModelProtocol], text: str) -> list[ColumnElement[bool]]:
+    def get_pagination_all_columns_filter(
+        model: type[ModelProtocol], text: str, searchable_columns: set[str] | None = None
+    ) -> list[ColumnElement[bool]]:
         escaped_text = "|".join(re.escape(part) for part in text.split("|"))
-        return [column.cast(Text).op("~*")(escaped_text) for column in model.__mapper__.columns]
+        return [
+            column.cast(Text).op("~*")(escaped_text)
+            for column in model.__mapper__.columns
+            if searchable_columns is None or column.key in searchable_columns
+        ]
+
+    def get_searchable_columns(self, user: models.User | None) -> set[str] | None:
+        return None
 
     async def apply_pagination_filters(
         self, pagination: SearchPagination, statement: Select[tuple[ModelType]], request: Request
@@ -269,7 +294,13 @@ class CRUDService[ModelType: ModelProtocol]:
         count_only: bool = False,
     ) -> tuple[list[ModelType], int]:
         statement = select(self.model_type) if statement is None else statement
-        statement = self.apply_pagination(pagination, statement, self.model_type, count_only=count_only)
+        statement = self.apply_pagination(
+            pagination,
+            statement,
+            self.model_type,
+            count_only=count_only,
+            searchable_columns=self.get_searchable_columns(user),
+        )
         statement = await self.apply_pagination_filters(pagination, statement, request)
         if count_only:
             return [], await self.count(*(filters or []), statement=statement, user=user)

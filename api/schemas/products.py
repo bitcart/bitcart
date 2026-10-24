@@ -13,7 +13,6 @@ from api.types import Money
 class BaseProduct(MetadataInput):
     name: str
     quantity: int
-    download_url: str = ""
     description: str = ""
     category: str = ""
     image: str = ""
@@ -24,6 +23,7 @@ class BaseProduct(MetadataInput):
 class CreateProduct(BaseProduct):
     store_id: str
     price: Decimal
+    download_url: str = ""
 
 
 class UpdateProduct(CreateProduct):
@@ -33,7 +33,7 @@ class UpdateProduct(CreateProduct):
 OptionalProductSchema = utils.common.to_optional(UpdateProduct)
 
 
-class DisplayProduct(MetadataOutput, BaseProduct, TimestampedSchema):
+class PublicProduct(MetadataOutput, BaseProduct, TimestampedSchema):
     id: str
     status: str
     user_id: str
@@ -50,3 +50,7 @@ class DisplayProduct(MetadataOutput, BaseProduct, TimestampedSchema):
     @classmethod
     def validate_discounts(cls, v: list[DisplayDiscount]) -> list[str]:
         return [d.id for d in v]
+
+
+class DisplayProduct(PublicProduct):
+    download_url: str

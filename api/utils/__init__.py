@@ -1,6 +1,5 @@
-from api.utils import authorization, common, database, email, files, redis, routing, tasks, time
-from api.utils.email import Email
+from api.utils import authorization, common, database, files, redis, routing, tasks, time
 
-__all__ = ["authorization", "common", "database", "email", "files", "redis", "routing", "tasks", "time", "Email"]
+__all__ = ["authorization", "common", "database", "files", "redis", "routing", "tasks", "time"]
 
 # TODO: eliminate

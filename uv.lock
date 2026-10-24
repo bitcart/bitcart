@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.12"
 resolution-markers = [
     "python_full_version >= '3.15'",
@@ -201,6 +201,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/61/62/06741b579156360248d1ec624842ad0edf697050bbaf7c3e46394e106ad1/aiosignal-1.4.0.tar.gz", hash = "sha256:f47eecd9468083c2029cc99945502cb7708b082c232f9aca65da147157b251c7", size = 25007, upload-time = "2025-07-03T22:54:43.528Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/fb/76/641ae371508676492379f16e2fa48f4e2c11741bd63c48be4b12a6b09cba/aiosignal-1.4.0-py3-none-any.whl", hash = "sha256:053243f8b92b990551949e63930a839ff0cf0b0ebbe0597b0f3fb19e1a0fe82e", size = 7490, upload-time = "2025-07-03T22:54:42.156Z" },
+]
+
+[[package]]
+name = "aiosmtplib"
+version = "5.1.3"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/9b/5c/9cabc5db6d607616e81ba6d8f1f231cd5a75955807a308c1090a59072d6d/aiosmtplib-5.1.3.tar.gz", hash = "sha256:ac2b418d3260ba62d9cfd0fe7359726e9dc009a4e8e8d9909fdfae332f522a7c", size = 77010, upload-time = "2026-09-08T02:11:20.532Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/9c/0a/b56ab8163d54960337fdca475d3dfd56c8badf6172e79cf2ad00d5335dc1/aiosmtplib-5.1.3-py3-none-any.whl", hash = "sha256:f7d76ce3d4995a65a178c1f11e1bd1607706b921d00cb768e7a2c7f7ef5517a8", size = 30116, upload-time = "2026-09-08T02:11:19.352Z" },
 ]
 
 [[package]]
@@ -588,6 +597,7 @@ dev = [
     { name = "aiofiles" },
     { name = "aiohttp" },
     { name = "aiolimiter" },
+    { name = "aiosmtplib" },
     { name = "alembic" },
     { name = "apprise" },
     { name = "async-lru" },
@@ -600,6 +610,7 @@ dev = [
     { name = "electrum-ecc" },
     { name = "electrum-grs", extra = ["crypto"] },
     { name = "electrum-ltc", extra = ["crypto"] },
+    { name = "email-validator" },
     { name = "eth-account" },
     { name = "eth-keys" },
     { name = "fakeredis" },
@@ -741,11 +752,13 @@ types = [
 web = [
     { name = "advanced-alchemy" },
     { name = "aiofiles" },
+    { name = "aiosmtplib" },
     { name = "alembic" },
     { name = "apprise" },
     { name = "asyncpg" },
     { name = "bitcart" },
     { name = "dishka" },
+    { name = "email-validator" },
     { name = "fastapi" },
     { name = "fido2" },
     { name = "jinja2" },
@@ -839,6 +852,7 @@ dev = [
     { name = "aiofiles", specifier = ">=24.1.0" },
     { name = "aiohttp", specifier = "<4.0" },
     { name = "aiolimiter" },
+    { name = "aiosmtplib", specifier = ">=5.1.3" },
     { name = "alembic", specifier = ">=1.16.1" },
     { name = "apprise", specifier = ">=1.9.4" },
     { name = "async-lru" },
@@ -851,10 +865,11 @@ dev = [
     { name = "electrum-ecc", git = "https://github.com/bitcart/electrum-ecc?rev=d90e8c79fb7d83fdea9ad0de94dce07f836f69bb" },
     { name = "electrum-grs", extras = ["crypto"], git = "https://github.com/Groestlcoin/electrum-grs?rev=a10de858525b7045b835a840200cf9fcff3bfe9e" },
     { name = "electrum-ltc", extras = ["crypto"], git = "https://github.com/bitcart/electrum-ltc?rev=5fd99314de302d9ed3c90537643f2e0ba82c1f02" },
+    { name = "email-validator", specifier = ">=2.3.0" },
     { name = "eth-account" },
     { name = "eth-keys" },
     { name = "fakeredis", specifier = ">=2.31.1" },
-    { name = "fastapi", specifier = ">=0.115.6" },
+    { name = "fastapi", specifier = ">=0.121.0" },
     { name = "fido2", specifier = ">=2.0.0" },
     { name = "filelock", specifier = ">=3.19.1" },
     { name = "gunicorn", specifier = ">=23.0.0" },
@@ -991,12 +1006,14 @@ types = [
 web = [
     { name = "advanced-alchemy", specifier = ">=0.26.2" },
     { name = "aiofiles", specifier = ">=24.1.0" },
+    { name = "aiosmtplib", specifier = ">=5.1.3" },
     { name = "alembic", specifier = ">=1.16.1" },
     { name = "apprise", specifier = ">=1.9.4" },
     { name = "asyncpg", specifier = ">=0.30.0" },
     { name = "bitcart", specifier = ">=1.18.0.0" },
     { name = "dishka", specifier = ">=1.4.2" },
-    { name = "fastapi", specifier = ">=0.115.6" },
+    { name = "email-validator", specifier = ">=2.3.0" },
+    { name = "fastapi", specifier = ">=0.121.0" },
     { name = "fido2", specifier = ">=2.0.0" },
     { name = "jinja2", specifier = ">=3.1.6" },
     { name = "jsonschema", specifier = ">=4.25.1" },
