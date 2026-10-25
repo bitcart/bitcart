@@ -51,7 +51,7 @@ def to_optional[T: Schema](model: type[T]) -> type[T]:
             optional_fields[field_name] = (field_info.annotation, field_info)
         else:
             optional_fields[field_name] = (
-                Annotated[field_dict["annotation"] | None, *field_dict["metadata"], Field(**field_dict["attributes"])],  # noqa: F821
+                Annotated[field_dict["annotation"] | None, *field_dict["metadata"], Field(**field_dict["attributes"])],  # type: ignore[operator]  # noqa: F821
                 None,
             )
     return create_model(f"Optional{model.__name__}", __base__=model, **optional_fields)
