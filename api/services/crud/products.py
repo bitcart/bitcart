@@ -11,7 +11,7 @@ from sqlalchemy import ColumnElement, Select, func, select
 from api import models, utils
 from api.db import AsyncSession
 from api.ext.moneyformat import currency_table
-from api.schemas.products import CreateProduct, UpdateProduct
+from api.schemas.products import CreateProduct, DisplayProduct, PublicProduct, UpdateProduct
 from api.services.crud import CRUDService
 from api.services.crud.repositories import DiscountRepository, ProductRepository, StoreRepository
 from api.settings import Settings
@@ -43,6 +43,9 @@ class ProductService(CRUDService[models.Product]):
         data = await super().prepare_data(data)
         await self._process_many_to_many_field(data, "discounts", self.discount_repository)
         return data
+
+    def get_searchable_columns(self, user: models.User | None) -> set[str] | None:
+        return None if user else set(PublicProduct.model_fields)
 
     @staticmethod
     def _filter_in_product(
@@ -101,6 +104,14 @@ class ProductService(CRUDService[models.Product]):
         if store_id is not None:
             query = query.where(models.Product.store_id == store_id)
         return await super().get(item_id, user, *args, statement=query, **kwargs)
+
+    async def get_public_product(
+        self, item_id: str, user: models.User | None = None, store_id: str | None = None
+    ) -> PublicProduct | DisplayProduct:
+        product = await self.get(item_id, store_id=store_id)
+        if user and user.id == product.user_id:
+            return DisplayProduct.model_validate(product)
+        return PublicProduct.model_validate(product)
 
     async def update_stock_levels(self, invoice: models.Invoice) -> None:
         quantities = await self.repository.find_invoice_products(invoice.id)

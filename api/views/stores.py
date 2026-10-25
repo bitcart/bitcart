@@ -16,6 +16,7 @@ from api.schemas.stores import (
     UpdateStore,
 )
 from api.services.crud.stores import StoreService
+from api.services.email import EmailService
 from api.utils.routing import create_crud_router
 
 router = create_crud_router(
@@ -40,11 +41,12 @@ async def get_item(
 @router.get("/{model_id}/ping")
 async def ping_email(
     store_service: FromDishka[StoreService],
+    email_service: FromDishka[EmailService],
     model_id: str,
     user: models.User = Security(utils.authorization.auth_dependency, scopes=[AuthScopes.STORE_MANAGEMENT]),
 ) -> Any:
     model = await store_service.get(model_id, user)
-    return utils.email.StoreEmail.get_email(model).check_ping()
+    return await email_service.check_ping(model.email_settings)
 
 
 # NOTE: to_optional not required here because settings have default values set everywhere

@@ -6,6 +6,8 @@ from fastapi import APIRouter, HTTPException, Query, Request, Security
 
 from api import models, utils
 from api.constants import AuthScopes
+from api.exceptions import EmailSendError
+from api.logging import get_exception_message, get_logger
 from api.schemas.auth import (
     ChangePassword,
     EmailVerifyFinalize,
@@ -21,6 +23,8 @@ from api.services.auth import AuthService
 from api.services.crud.users import UserService
 from api.types import PasswordHasherProtocol
 from api.utils.routing import create_crud_router
+
+logger = get_logger(__name__)
 
 router = APIRouter(route_class=DishkaRoute)
 
@@ -70,11 +74,16 @@ async def send_verification_email(
     if not auth_user:
         await auth_service.captcha_flow(data.captcha_code)
     user = await user_service.get_or_none(None, email=data.email)
-    if not user:
-        return True
-    if user.is_verified:
+    if user and user.is_verified and auth_user:
         raise HTTPException(422, "User is already verified")
-    await user_service.send_verification_email(user)
+    if not user or user.is_verified:
+        return True
+    try:
+        await user_service.send_verification_email(user)
+    except EmailSendError as e:
+        if auth_user:
+            raise
+        logger.warning(f"User {user.id}: failed to email the verification link: {get_exception_message(e)}")
     return True
 
 
@@ -169,6 +178,8 @@ create_crud_router(
 async def create_user(
     data: CreateUser,
     service: FromDishka[UserService],
-    auth_user: models.User | None = Security(utils.authorization.optional_auth_dependency, scopes=[]),
+    auth_user: models.User | None = Security(
+        utils.authorization.optional_auth_dependency, scopes=[AuthScopes.SERVER_MANAGEMENT]
+    ),
 ) -> Any:
     return await service.create_with_token(data, auth_user)

@@ -2,7 +2,7 @@ import logging
 import re
 import traceback
 import uuid
-from collections.abc import Iterator
+from collections.abc import Generator
 from contextlib import contextmanager
 from datetime import datetime
 from decimal import Decimal
@@ -330,7 +330,7 @@ def get_exception_details(exc: BaseException) -> str:
 
 
 @contextmanager
-def log_errors(logger: Logger) -> Iterator[None]:  # pragma: no cover
+def log_errors(logger: Logger) -> Generator[None]:  # pragma: no cover
     try:
         yield
     except Exception as e:

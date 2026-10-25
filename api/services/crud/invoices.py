@@ -19,11 +19,12 @@ from sqlalchemy.orm import selectinload
 from starlette.datastructures import CommaSeparatedStrings
 
 from api import invoices, metrics, models, utils
+from api.constants import DEFAULT_SENDMAIL_SUBJECT
 from api.db import AsyncSession
-from api.exceptions import ExchangeRateError
+from api.exceptions import EmailSendError, ExchangeRateError
 from api.ext import export as export_ext
 from api.ext.moneyformat import currency_table, round_half_up, to_raw
-from api.invoices import PAID_STATUSES, InvoiceExceptionStatus, InvoiceStatus
+from api.invoices import FAILED_STATUSES, PAID_STATUSES, InvoiceExceptionStatus, InvoiceStatus
 from api.logging import get_exception_details, get_exception_message, get_logger
 from api.plugins import SKIP_PAYMENT_METHOD
 from api.redis import Redis
@@ -40,6 +41,7 @@ from api.services.crud.repositories import (
     WalletRepository,
 )
 from api.services.crud.templates import TemplateService
+from api.services.email import EmailService
 from api.services.ipn_sender import IPNSender
 from api.services.notification_manager import NotificationManager
 from api.services.payout_manager import PayoutManager
@@ -70,6 +72,7 @@ class InvoiceService(CRUDService[models.Invoice]):
         template_service: TemplateService,
         redis_pool: Redis,
         wallet_data_service: WalletDataService,
+        email_service: EmailService,
         plugin_registry: PluginRegistry,
     ) -> None:
         super().__init__(session, container)
@@ -85,6 +88,7 @@ class InvoiceService(CRUDService[models.Invoice]):
         self.template_service = template_service
         self.redis_pool = redis_pool
         self.wallet_data_service = wallet_data_service
+        self.email_service = email_service
         self.plugin_registry = plugin_registry
 
     @classmethod
@@ -194,6 +198,10 @@ class InvoiceService(CRUDService[models.Invoice]):
             if store_id:
                 await self._validate_payment_methods(payment_methods, store_id)
 
+    @staticmethod
+    def resolve_currency(currency: str, store: models.Store) -> str:
+        return currency or store.default_currency or "USD"
+
     async def create_invoice_flow(self, data: dict[str, Any], user: models.User | None = None) -> models.Invoice:
         start_time = time.time()
         products = data.pop("products", {})
@@ -201,14 +209,17 @@ class InvoiceService(CRUDService[models.Invoice]):
             products = dict.fromkeys(products, 1)
         payment_methods = data.pop("payment_methods", None)
         store = await self.store_repository.get_one(id=data["store_id"], load=[selectinload(models.Store.wallets)])
-        if not store.checkout_settings.allow_anonymous_invoice_creation and not user:
+        is_store_admin = user is not None and (user.id == store.user_id or user.is_superuser)
+        if not store.checkout_settings.allow_anonymous_invoice_creation and not is_store_admin:
             raise HTTPException(403, "Anonymous invoice creation is disabled")
         if not store.wallets:
             raise HTTPException(422, "No wallet linked")
         wallet_ids = payment_methods if payment_methods is not None else [x.id for x in store.wallets]
         data["payment_methods"] = wallet_ids
         data["expiration"] = data["expiration"] or store.checkout_settings.expiration
-        data["currency"] = data["currency"] or store.default_currency or "USD"
+        if not is_store_admin:
+            data["expiration"] = min(data["expiration"], store.checkout_settings.expiration)
+        data["currency"] = self.resolve_currency(data["currency"], store)
         promocode = data.get("promocode")
         if products:
             await self.validate_stock_levels(products)
@@ -659,7 +670,7 @@ class InvoiceService(CRUDService[models.Invoice]):
             await self.plugin_registry.run_hook("invoice_complete", invoice)
             store = invoice.store
             await self.notification_manager.notify(store, await self.template_service.get_notify_template(store, invoice))
-            if invoice.products and (email_obj := utils.email.StoreEmail.get_email(store)).is_enabled():
+            if invoice.products and invoice.buyer_email and self.email_service.is_enabled(store.email_settings):
                 messages = []
                 products = invoice.products_associations
                 for product_relation in products:
@@ -683,7 +694,16 @@ class InvoiceService(CRUDService[models.Invoice]):
                 )
                 logger.debug(f"Invoice {invoice.id} email notification: rendered final template:\n{store_template}")
                 await self.plugin_registry.run_hook("invoice_email", invoice, store_template)
-                email_obj.send_mail(cast(str, invoice.buyer_email), store_template)
+                try:
+                    await self.email_service.send(
+                        store.email_settings,
+                        invoice.buyer_email,
+                        DEFAULT_SENDMAIL_SUBJECT,
+                        store_template,
+                        html=store.checkout_settings.use_html_templates,
+                    )
+                except EmailSendError as e:
+                    logger.warning(f"Invoice {invoice.id}: failed to email the buyer: {get_exception_message(e)}")
 
     @property
     def supported_batch_actions(self) -> list[str]:
@@ -759,13 +779,19 @@ class InvoiceService(CRUDService[models.Invoice]):
     async def get_or_create_invoice_by_order_id(
         self, order_id: str, data: CreateInvoice, user: models.User | None = None
     ) -> models.Invoice:
+        if not data.currency:
+            store = await self.store_repository.get_one(id=data.store_id)
+            data.currency = self.resolve_currency(data.currency, store)
         item = await self.get_or_none(
             None,
             statement=select(models.Invoice)
             .where(models.Invoice.order_id == order_id)
             .where(models.Invoice.price == data.price)
+            .where(models.Invoice.currency == data.currency)
             .where(models.Invoice.store_id == data.store_id)
-            .where(models.Invoice.status != InvoiceStatus.EXPIRED),
+            .where(models.Invoice.status.not_in([*FAILED_STATUSES, InvoiceStatus.REFUNDED]))
+            .order_by(models.Invoice.created)
+            .limit(1),
         )
         if not item:
             data.order_id = order_id
@@ -782,8 +808,6 @@ class InvoiceService(CRUDService[models.Invoice]):
         all_users: bool,
         user: models.User,
     ) -> Any:
-        if all_users and not user.is_superuser:
-            raise HTTPException(403, "Not enough permissions")
         # always full list for export
         pagination.limit = -1
         pagination.offset = 0

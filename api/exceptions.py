@@ -18,6 +18,10 @@ class ExchangeRatesUnavailableError(ExchangeRateError):
     """The worker did not answer an exchange rates request"""
 
 
+class EmailSendError(BitcartError):
+    """Email is not configured or could not be delivered"""
+
+
 class RateUnavailableError(ExchangeRateError):
     """No valid exchange rate for a currency pair"""
 

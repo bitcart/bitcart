@@ -2,27 +2,29 @@ import asyncio
 import contextlib
 import sys
 import traceback
-from collections.abc import AsyncIterator, Awaitable, Callable
+from collections.abc import AsyncGenerator, Awaitable, Callable
 from typing import Any
 
+import asyncpg
 from advanced_alchemy.exceptions import AdvancedAlchemyError, NotFoundError
 from dishka.integrations.taskiq import setup_dishka as taskiq_setup_dishka
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.exception_handlers import http_exception_handler, request_validation_exception_handler
 from fastapi.exceptions import RequestValidationError
 from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTextResponse
 from scalar_fastapi import get_scalar_api_reference
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import DBAPIError, IntegrityError
 from starlette.applications import Starlette
 from starlette.exceptions import HTTPException
 from starlette.middleware.cors import CORSMiddleware
+from starlette.requests import HTTPConnection
 from starlette.responses import Response
 from starlette.staticfiles import StaticFiles
 from starlette.types import Receive, Scope, Send
 
 from api.db import AsyncSession
-from api.exceptions import ExchangeRatesUnavailableError
+from api.exceptions import EmailSendError, ExchangeRatesUnavailableError
 from api.ext.agent import AgentError, AgentErrorCode
 from api.ioc import build_container, setup_dishka
 from api.ioc.services import ServicesProvider
@@ -37,13 +39,14 @@ from api.settings import Settings
 from api.tasks import broker, client_tasks_broker
 from api.utils.common import excepthook_handler, handle_event_loop_exception
 from api.views import router
+from api.views.files import UserFilesStaticFiles
 from api.worker import start_broker_basic
 
 logger = get_logger("api")
 
 
 @contextlib.asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     sys.excepthook = excepthook_handler(logger, sys.excepthook)
     asyncio.get_running_loop().set_exception_handler(
         lambda *args, **kwargs: handle_event_loop_exception(logger, *args, **kwargs)
@@ -88,25 +91,6 @@ def patch_call(instance: FastAPI) -> None:
     instance.__class__ = _
 
 
-def with_db_rollback(
-    handler: Callable[[Request, Any], Awaitable[Response]],
-) -> Callable[[Request, Any], Awaitable[Response]]:
-    """Decorator that ensures database session is rolled back before returning from exception handler.
-
-    This is necessary because when an exception handler catches an exception and returns a response,
-    the exception doesn't propagate to dishka's context manager. Without rollback, dishka would commit
-    the session: writes made before the error would be saved, and a session in a bad state would fail
-    with PendingRollbackError.
-    """
-
-    async def wrapper(request: Request, exc: Any) -> Response:
-        session = await request.state.dishka_container.get(AsyncSession)
-        await session.rollback()
-        return await handler(request, exc)
-
-    return wrapper
-
-
 async def db_exception_handler(request: Request, exc: AdvancedAlchemyError) -> JSONResponse:
     logger.error("Database error", exc_info=exc)
     return JSONResponse(
@@ -119,6 +103,21 @@ async def db_integrity_error_handler(request: Request, exc: IntegrityError) -> J
     return JSONResponse(
         status_code=422,
         content={"error": "Database error", "detail": str(exc.orig)},
+    )
+
+
+def internal_error_response() -> Response:
+    logger.error(traceback.format_exc())
+    return PlainTextResponse("Internal Server Error", status_code=500)
+
+
+async def db_data_error_handler(request: Request, exc: DBAPIError) -> Response:
+    cause = getattr(exc.orig, "__cause__", None)
+    if not isinstance(cause, asyncpg.exceptions.DataError):
+        return internal_error_response()
+    return JSONResponse(
+        status_code=422,
+        content={"error": "Invalid input", "detail": "Request contains data the database cannot store"},
     )
 
 
@@ -152,29 +151,44 @@ async def exchange_rates_error_handler(request: Request, exc: ExchangeRatesUnava
     )
 
 
+async def email_send_error_handler(request: Request, exc: EmailSendError) -> JSONResponse:
+    logger.warning(f"{request.method} {request.url.path}: {get_exception_details(exc)}")
+    return JSONResponse(
+        status_code=502,
+        content={"error": "Email delivery failed", "detail": "The email could not be sent"},
+    )
+
+
 exception_handlers: dict[type[Exception], Callable[[Request, Any], Awaitable[Response]]] = {
     HTTPException: http_exception_handler,
     RequestValidationError: request_validation_exception_handler,
     IntegrityError: db_integrity_error_handler,
+    DBAPIError: db_data_error_handler,
     NotFoundError: db_not_found_error_handler,
     AdvancedAlchemyError: db_exception_handler,
     AgentError: agent_error_handler,
     ExchangeRatesUnavailableError: exchange_rates_error_handler,
+    EmailSendError: email_send_error_handler,
 }
 
 
 def add_exception_handlers(app: FastAPI) -> None:
     for exc_type, handler in exception_handlers.items():
-        app.add_exception_handler(exc_type, with_db_rollback(handler))
+        app.add_exception_handler(exc_type, handler)
 
     @app.exception_handler(500)
     async def exception_handler(request: Request, exc: Exception) -> Response:
-        # this happens when exception is during container finalization
-        # as it is rare enough, we must log it
-        if type(exc) in exception_handlers:
-            return await exception_handlers[type(exc)](request, exc)
-        logger.error(traceback.format_exc())
-        return PlainTextResponse("Internal Server Error", status_code=500)
+        return internal_error_response()
+
+
+async def transaction(connection: HTTPConnection) -> AsyncGenerator[None]:
+    session = await connection.state.dishka_container.get(AsyncSession)
+    try:
+        yield
+        await session.commit()
+    except Exception:
+        await session.rollback()
+        raise
 
 
 def get_app(settings: Settings) -> FastAPI:
@@ -184,6 +198,7 @@ def get_app(settings: Settings) -> FastAPI:
         root_path_in_servers=False,
         generate_unique_id_function=generate_operation_id,
         openapi_url=None,
+        dependencies=[Depends(transaction, scope="function")],
         **get_openapi_parameters(settings),
     )
     set_openapi_route(app)
@@ -238,7 +253,7 @@ def get_app(settings: Settings) -> FastAPI:
     patch_call(app)
     app.mount("/static", StaticFiles(directory=settings.STATIC_DIR), name="static")
     app.mount("/images", StaticFiles(directory=settings.images_dir), name="images")
-    app.mount("/files/localstorage", StaticFiles(directory=settings.files_dir), name="files")
+    app.mount("/files/localstorage", UserFilesStaticFiles(directory=settings.files_dir), name="files")
     add_exception_handlers(app)
     app.include_router(router)
     return app

@@ -67,7 +67,7 @@ class GenericWebsocketEndpoint(WebSocketEndpoint):
             except HTTPException:
                 await websocket.close(code=WS_1008_POLICY_VIOLATION)
                 return
-        self.object = await self.object_service.get_or_none(self.object_id)
+        self.object = await self.object_service.get_or_none(self.object_id, self.user)
         if not self.object:
             await websocket.close(code=WS_1008_POLICY_VIOLATION)
             return

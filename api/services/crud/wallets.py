@@ -147,6 +147,11 @@ class WalletService(CRUDService[models.Wallet]):
         if any(key in data for key in ("xpub", "contract", "additional_xpub_data")):
             currency = data.get("currency", model.currency)
             coin = await self.coin_service.get_coin(currency)
+            if "additional_xpub_data" in data:
+                stored_fields = set(model.additional_xpub_data) if action == CRUDAction.UPDATE else set()
+                unsupported = set(data["additional_xpub_data"]) - set(coin.additional_xpub_fields) - stored_fields
+                if unsupported:
+                    raise HTTPException(422, f"Unsupported wallet fields: {', '.join(sorted(unsupported))}")
             if "xpub" in data or "additional_xpub_data" in data:
                 await self.validate_xpub(
                     coin,

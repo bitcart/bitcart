@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json as json_module
 import random
-from collections.abc import Iterator
+from collections.abc import Generator
 from contextlib import contextmanager
 from datetime import timedelta
 from typing import TYPE_CHECKING, Any
@@ -25,7 +25,7 @@ def make_client(app: FastAPI) -> AsyncClient:
 
 async def create_user(client: TestClient, *, token: str | None = None, **custom_attrs: Any) -> dict[str, Any]:
     default_attrs = {
-        "email": f"user_{utils.common.unique_id()}@gmail.com",
+        "email": f"user_{utils.common.unique_id()}@bitcart.test",
         "password": static_data.USER_PWD,
         "is_superuser": True,
     }
@@ -152,7 +152,7 @@ async def create_model_obj(
 
 
 @contextmanager
-def enabled_logs(settings: Settings, datadir: str | None = None) -> Iterator[None]:
+def enabled_logs(settings: Settings, datadir: str | None = None) -> Generator[None]:
     old_datadir = settings.DATADIR
     settings.DATADIR = datadir or "tests/fixtures"
     settings.LOG_FILE_NAME = "bitcart.log"

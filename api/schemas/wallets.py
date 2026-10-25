@@ -6,7 +6,7 @@ from pydantic import ValidationInfo, field_validator, model_validator
 from api.constants import get_max_confirmation_watch
 from api.ext.moneyformat import currency_table
 from api.schemas.base import MetadataInput, MetadataOutput, Schema, TimestampedSchema
-from api.schemas.users import InfoUser
+from api.schemas.users import PublicUser
 from api.types import Money
 
 
@@ -50,7 +50,7 @@ class InfoWallet(MetadataOutput, CreateWallet):
 
 
 class DisplayWallet(InfoWallet, TimestampedSchema):
-    user: "InfoUser"
+    user: PublicUser
     balance: Money
     error: bool = False
 

@@ -1,8 +1,13 @@
+import threading
+
 import paramiko
 from paramiko.channel import ChannelFile, ChannelStderrFile, ChannelStdinFile
 
 from api import utils
 from api.schemas.configurator import ConfiguratorSSHSettings
+
+SSH_COMMAND_TIMEOUT = 10
+MAX_REMOTE_FILE_SIZE = 64 * 1024
 
 
 def resolve_ssh_host(host: str) -> str:
@@ -41,11 +46,23 @@ class ServerEnv:  # pragma: no cover: no valid SSH configuration in CI environme
     def __init__(self, client: paramiko.SSHClient) -> None:
         self.client = client
         self.env: dict[str, str] = {}
-        self.preload_env()
+        expired = threading.Event()
+        deadline = threading.Timer(SSH_COMMAND_TIMEOUT, self._expire, args=(expired,))
+        deadline.start()
+        try:
+            self.preload_env()
+        finally:
+            deadline.cancel()
+        if expired.is_set():
+            self.env = {}
+
+    def _expire(self, expired: threading.Event) -> None:
+        expired.set()
+        self.client.close()
 
     def _read_remote_file(self, file: str, require_export: bool = True) -> dict[str, str]:
         _, stdout, _ = execute_ssh_command(self.client, f"cat {file}")
-        output = stdout.read()
+        output = stdout.read(MAX_REMOTE_FILE_SIZE)
         result = {}
         if stdout.channel.recv_exit_status() == 0:
             valid_lines = output.decode().split("\n")

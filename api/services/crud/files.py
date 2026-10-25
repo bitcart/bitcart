@@ -13,6 +13,16 @@ from api.services.crud.repositories import FileRepository
 from api.services.settings import SettingService
 from api.settings import Settings
 
+MAX_FILENAME_BYTES = 200
+
+
+def get_stored_name(file_id: str, filename: str | None) -> str:
+    return f"{file_id}-{os.path.basename(filename or '')}"
+
+
+def get_original_name(stored_name: str) -> str:
+    return stored_name.partition("-")[2]
+
 
 class FileService(CRUDService[models.File]):
     repository_type = FileRepository
@@ -24,8 +34,15 @@ class FileService(CRUDService[models.File]):
         self.settings = settings
         self.setting_service = setting_service
 
+    @staticmethod
+    def clean_filename(filename: str | None) -> str:
+        name = os.path.basename(filename or "")
+        if not name or not name.isprintable() or len(name.encode()) > MAX_FILENAME_BYTES:
+            raise HTTPException(422, "Invalid file name")
+        return name
+
     def get_file_path(self, item: models.File) -> str:
-        return os.path.join(self.settings.files_dir, f"{item.id}-{item.filename}")
+        return os.path.join(self.settings.files_dir, get_stored_name(item.id, item.filename))
 
     async def save_file(self, item: models.File, file: UploadFile) -> None:
         path = self.get_file_path(item)
@@ -43,7 +60,7 @@ class FileService(CRUDService[models.File]):
         policy = await self.setting_service.get_setting(Policy)
         if not user.is_superuser and not policy.allow_file_uploads:
             raise HTTPException(403, "File uploads are not allowed")
-        file_obj = await self.create({"filename": file.filename}, user)
+        file_obj = await self.create({"filename": self.clean_filename(file.filename)}, user)
         await self.save_file(file_obj, file)
         return file_obj
 
@@ -51,9 +68,10 @@ class FileService(CRUDService[models.File]):
         policy = await self.setting_service.get_setting(Policy)
         if not user.is_superuser and not policy.allow_file_uploads:
             raise HTTPException(403, "File uploads are not allowed")
+        filename = self.clean_filename(file.filename)
         item = await self.get(model_id, user)
         self.remove_file(item)
-        item.update(filename=file.filename)
+        item.update(filename=filename)
         await self.save_file(item, file)
         return item
 
@@ -70,5 +88,4 @@ class FileService(CRUDService[models.File]):
 
     async def handle_file(self, model_id: str) -> str:
         item = await self.get(model_id)
-        final_name = os.path.basename(self.get_file_path(item))
-        return f"{self.settings.api_url}/files/localstorage/{final_name}"
+        return f"{self.settings.api_url}/files/localstorage/{get_stored_name(item.id, item.filename)}"

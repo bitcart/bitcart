@@ -1,6 +1,6 @@
 import contextlib
 import logging
-from collections.abc import Iterator
+from collections.abc import Generator
 from dataclasses import dataclass, field
 from io import StringIO
 from typing import Any, cast
@@ -18,7 +18,7 @@ logger = get_logger(__name__)
 
 # needed because we need to capture logs without sending them to logserver
 @contextlib.contextmanager
-def apprise_log_capture() -> Iterator[StringIO]:
+def apprise_log_capture() -> Generator[StringIO]:
     apprise_logger = logging.getLogger("apprise")
     old_disabled = apprise_logger.disabled
     old_propagate = apprise_logger.propagate
@@ -88,7 +88,12 @@ class NotificationManager:
             store = await store_service.get(store.id)
         for db_provider in store.notifications:
             provider_schema = get_notifier(db_provider.provider)
-            data = self.validate_data(cast(dict[str, Any], provider_schema), db_provider.data)
+            if provider_schema is None:
+                logger.error(f"Unknown notification provider {db_provider.provider} for store {store.id}")
+                result.failed += 1
+                result.errors.append(Exception(f"Unknown notification provider: {db_provider.provider}"))
+                continue
+            data = self.validate_data(provider_schema, db_provider.data)
             try:
                 provider = apprise.Apprise.instantiate(data, suppress_exceptions=False)
             except Exception as e:

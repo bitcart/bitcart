@@ -4,10 +4,12 @@ from urllib.parse import urljoin
 from dishka import AsyncContainer
 from fastapi import HTTPException
 
-from api import models, utils
+from api import models
 from api.db import AsyncSession
+from api.exceptions import EmailSendError
 from api.ext.moneyformat import currency_table
 from api.invoices import InvoiceStatus
+from api.logging import get_exception_message, get_logger
 from api.schemas.payouts import CreatePayout
 from api.schemas.refunds import CreateRefund, RefundData, SubmitRefundData
 from api.schemas.tasks import SendNotificationMessage
@@ -17,8 +19,11 @@ from api.services.crud.payouts import PayoutService
 from api.services.crud.repositories import RefundRepository
 from api.services.crud.stores import StoreService
 from api.services.crud.templates import TemplateService
+from api.services.email import EmailService
 from api.services.plugin_registry import PluginRegistry
 from api.types import TasksBroker
+
+logger = get_logger(__name__)
 
 
 class RefundService(CRUDService[models.Refund]):
@@ -32,6 +37,7 @@ class RefundService(CRUDService[models.Refund]):
         store_service: StoreService,
         template_service: TemplateService,
         payout_service: PayoutService,
+        email_service: EmailService,
         broker: TasksBroker,
         plugin_registry: PluginRegistry,
     ) -> None:
@@ -40,6 +46,7 @@ class RefundService(CRUDService[models.Refund]):
         self.store_service = store_service
         self.template_service = template_service
         self.payout_service = payout_service
+        self.email_service = email_service
         self.broker = broker
         self.plugin_registry = plugin_registry
 
@@ -59,7 +66,7 @@ class RefundService(CRUDService[models.Refund]):
         )
         if data.send_email and invoice.buyer_email:
             store = await self.store_service.get(invoice.store_id)
-            if (email_obj := utils.email.StoreEmail.get_email(store)).is_enabled():
+            if self.email_service.is_enabled(store.email_settings):
                 refund_url = urljoin(data.admin_host, f"/refunds/{refund.id}")
                 refund_template = await self.plugin_registry.apply_filters(
                     "refund_customer_text",
@@ -69,7 +76,16 @@ class RefundService(CRUDService[models.Refund]):
                     refund,
                     refund_url,
                 )
-                email_obj.send_mail(invoice.buyer_email, refund_template, f"Refund for invoice {invoice.id}")
+                try:
+                    await self.email_service.send(
+                        store.email_settings,
+                        invoice.buyer_email,
+                        f"Refund for invoice {invoice.id}",
+                        refund_template,
+                        html=store.checkout_settings.use_html_templates,
+                    )
+                except EmailSendError as e:
+                    logger.warning(f"Refund {refund.id}: failed to email the buyer: {get_exception_message(e)}")
         return refund
 
     async def submit_refund(self, refund_id: str, data: SubmitRefundData) -> models.Refund:

@@ -2,12 +2,13 @@ from typing import Annotated, Any
 
 from dishka import FromDishka
 from dishka.integrations.fastapi import DishkaRoute
-from fastapi import APIRouter, Depends, Request, Response, Security
+from fastapi import APIRouter, Depends, Path, Request, Response, Security
 
 from api import models, utils
 from api.constants import AuthScopes
 from api.schemas.invoices import CreateInvoice, CustomerUpdateData, DisplayInvoice, MethodUpdateData, UpdateInvoice
 from api.schemas.refunds import DisplayRefund, RefundData, SubmitRefundData
+from api.services.auth import AuthService
 from api.services.crud.invoices import InvoiceService
 from api.services.crud.refunds import RefundService
 from api.services.plugin_registry import PluginRegistry
@@ -20,13 +21,19 @@ router = APIRouter(route_class=DishkaRoute)
 async def export_invoices(
     pagination: Annotated[SearchPagination, Depends(provide_pagination)],
     invoice_service: FromDishka[InvoiceService],
+    auth_service: FromDishka[AuthService],
     request: Request,
     response: Response,
     export_format: str = "json",
     add_payments: bool = False,
     all_users: bool = False,
-    user: models.User = Security(utils.authorization.auth_dependency, scopes=[AuthScopes.INVOICE_MANAGEMENT]),
+    auth_data: tuple[models.User, models.Token] = Security(
+        utils.authorization.AuthDependency(return_token=True), scopes=[AuthScopes.INVOICE_MANAGEMENT]
+    ),
 ) -> Any:
+    user, token = auth_data
+    if all_users:
+        await auth_service.require_scopes(user, token, [AuthScopes.SERVER_MANAGEMENT], request)
     return await invoice_service.export_invoices(pagination, request, response, export_format, add_payments, all_users, user)
 
 
@@ -44,7 +51,7 @@ create_crud_router(
 @router.post("/order_id/{order_id:path}", response_model=DisplayInvoice)
 async def get_or_create_invoice_by_order_id(
     invoice_service: FromDishka[InvoiceService],
-    order_id: str,
+    order_id: Annotated[str, Path(min_length=1)],
     data: CreateInvoice,
     user: models.User | None = Security(utils.authorization.optional_auth_dependency, scopes=[AuthScopes.INVOICE_MANAGEMENT]),
 ) -> Any:

@@ -9,11 +9,11 @@ import aiofiles
 from bitcart.errors import BaseError as BitcartBaseError
 from fastapi import HTTPException
 
-from api import utils
 from api.ext.agent import AgentError
 from api.logging import get_logger
 from api.schemas.policies import Policy
 from api.services.coins import CoinService
+from api.services.email import EmailService
 from api.services.host_agent import HostAgentService, error_response
 from api.services.plugin_registry import PluginRegistry
 from api.services.settings import SettingService
@@ -30,12 +30,14 @@ class ManagementService:
         coin_service: CoinService,
         plugin_registry: PluginRegistry,
         host_agent: HostAgentService,
+        email_service: EmailService,
     ) -> None:
         self.settings = settings
         self.setting_service = setting_service
         self.coin_service = coin_service
         self.plugin_registry = plugin_registry
         self.host_agent = host_agent
+        self.email_service = email_service
 
     async def run_job(
         self, command: str, hook_name: str, ok_output: str, args: dict[str, str] | None = None
@@ -76,7 +78,7 @@ class ManagementService:
 
     async def test_server_email(self) -> bool:
         policy = await self.setting_service.get_setting(Policy)
-        return utils.Email.get_email(policy).check_ping()
+        return await self.email_service.check_ping(policy.email_settings)
 
     async def get_log_contents(self, log: str) -> str:
         if not self.settings.log_file:

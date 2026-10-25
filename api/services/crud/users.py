@@ -17,6 +17,8 @@ from sqlalchemy import Row, distinct, func, select
 
 from api import constants, models, utils
 from api.db import AsyncSession
+from api.exceptions import EmailSendError
+from api.logging import get_exception_message, get_logger
 from api.redis import Redis
 from api.schemas.auth import LoginFIDOData, ResetPasswordFinalize
 from api.schemas.policies import Policy
@@ -28,10 +30,13 @@ from api.services.crud import CRUDService, ModelDictT
 from api.services.crud.repositories import UserRepository
 from api.services.crud.templates import TemplateService
 from api.services.crud.tokens import TokenService
+from api.services.email import EmailService
 from api.services.plugin_registry import PluginRegistry
 from api.services.settings import SettingService
 from api.settings import Settings
 from api.types import PasswordHasherProtocol, TasksBroker
+
+logger = get_logger(__name__)
 
 RESET_REDIS_KEY = "reset_password"
 VERIFY_REDIS_KEY = "verify_email"
@@ -52,6 +57,7 @@ class UserService(CRUDService[models.User]):
         auth_service: AuthService,
         password_hasher: PasswordHasherProtocol,
         template_service: TemplateService,
+        email_service: EmailService,
         plugin_registry: PluginRegistry,
     ) -> None:
         super().__init__(session, container)
@@ -63,6 +69,7 @@ class UserService(CRUDService[models.User]):
         self.auth_service = auth_service
         self.password_hasher = password_hasher
         self.template_service = template_service
+        self.email_service = email_service
         self.plugin_registry = plugin_registry
 
     async def prepare_create(self, data: dict[str, Any], user: models.User | None = None) -> dict[str, Any]:
@@ -94,8 +101,11 @@ class UserService(CRUDService[models.User]):
         elif auth_user and auth_user.is_superuser:
             is_superuser = data["is_superuser"]
         data["is_superuser"] = is_superuser
+        is_first_user = is_superuser and auth_user is None
+        if not is_first_user and not (auth_user and auth_user.is_superuser):
+            await self.email_service.ensure_deliverable(data["email"])
         user = await super().create(data, auth_user, call_hooks=call_hooks)
-        if is_superuser and auth_user is None:
+        if is_first_user:
             await self.plugin_registry.run_hook("first_user", user)
             await self.setting_service.set_setting(Policy(disable_registration=True))
         return user
@@ -158,8 +168,7 @@ class UserService(CRUDService[models.User]):
             "Too many requests. Please try again later.",
         )
         policy = await self.setting_service.get_setting(Policy)
-        email_obj = utils.Email.get_email(policy)
-        if not email_obj.is_enabled():  # pragma: no cover
+        if not self.email_service.is_enabled(policy.email_settings):  # pragma: no cover
             return
         token = token_generator()
         token_hash = utils.authorization.hash_reset_token(token)
@@ -167,18 +176,21 @@ class UserService(CRUDService[models.User]):
         reset_url = utils.routing.get_redirect_url(next_url, code=token)
         template = await self.template_service.get_global_template(template_name)
         text = template.render(email=user.email, link=reset_url, code=token)
-        email_obj.send_mail(user.email, text, email_title, use_html_templates=policy.use_html_templates)
+        await self.email_service.send(policy.email_settings, user.email, email_title, text, html=policy.use_html_templates)
         await self.plugin_registry.run_hook(f"{hook_name}_requested", user, token)
 
     async def reset_user_password(self, user: models.User) -> None:
-        await self.generic_email_code_flow(
-            RESET_REDIS_KEY,
-            "forgotpassword",
-            "Password reset",
-            "password_reset",
-            user,
-            self.prepare_next_url("/forgotpassword"),
-        )
+        try:
+            await self.generic_email_code_flow(
+                RESET_REDIS_KEY,
+                "forgotpassword",
+                "Password reset",
+                "password_reset",
+                user,
+                self.prepare_next_url("/forgotpassword"),
+            )
+        except EmailSendError as e:
+            logger.warning(f"User {user.id}: failed to email the password reset link: {get_exception_message(e)}")
 
     async def send_verification_email(self, user: models.User, expire_time: int = constants.VERIFY_EMAIL_EXPIRATION) -> None:
         await self.generic_email_code_flow(
@@ -231,7 +243,7 @@ class UserService(CRUDService[models.User]):
             raise HTTPException(422, "Invalid code")
         user.is_verified = True
         response: dict[str, Any] = {"success": True, "token": None}
-        if add_token:  # pragma: no cover
+        if add_token and not user.tfa_enabled and not user.fido2_devices:
             token = await self.token_service.create(CreateDBToken(permissions=["full_control"], user_id=user.id))
             response["token"] = token.id
         return response
@@ -244,7 +256,7 @@ class UserService(CRUDService[models.User]):
         return recovery_codes
 
     async def disable_totp(self, user: models.User) -> bool:
-        user.update(tfa_enabled=False, totp_key=pyotp.random_base32())
+        user.update(tfa_enabled=False, totp_key=pyotp.random_base32(), recovery_codes=[])
         return True
 
     async def register_fido2_begin(self, user: models.User, auth_data: LoginFIDOData) -> dict[str, Any]:  # pragma: no cover

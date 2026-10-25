@@ -30,6 +30,11 @@ class UpdateUser(BaseUser):
 User = UpdateUser
 
 
+class PublicUser(Schema):
+    id: str
+    email: EmailStr
+
+
 class InfoUser(MetadataOutput, BaseUser):
     id: str
     is_verified: bool

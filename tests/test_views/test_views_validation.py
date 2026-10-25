@@ -184,6 +184,7 @@ class MockBTC:
     coin_name = "BTC"
     friendly_name = "Bitcoin"
     is_eth_based = False
+    additional_xpub_fields: list[str] = []
 
     async def list_fiat(self) -> list[str]:
         raise BitcartBaseError("Doesn't work")

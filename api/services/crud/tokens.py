@@ -7,7 +7,7 @@ from dishka import AsyncContainer
 from fastapi import HTTPException, Request
 from fido2.server import Fido2Server
 from fido2.webauthn import AttestedCredentialData, PublicKeyCredentialRpEntity, UserVerificationRequirement
-from sqlalchemy import ColumnElement, Select
+from sqlalchemy import ColumnElement, Select, exists, func
 
 from api import models, utils
 from api.constants import FIDO2_LOGIN_KEY, SHORT_EXPIRATION
@@ -95,6 +95,8 @@ class TokenService(CRUDService[models.Token]):
         user = await self.user_repository.get_one_or_none(id=token_data.user_id)
         if not user:  # pragma: no cover
             raise HTTPException(422, "Invalid token")
+        if not user.tfa_enabled:
+            raise HTTPException(422, "Invalid code")
         if auth_data.code not in user.recovery_codes and not pyotp.TOTP(user.totp_key).verify(auth_data.code.replace(" ", "")):
             raise HTTPException(422, "Invalid code")
         if auth_data.code in user.recovery_codes:
@@ -104,10 +106,10 @@ class TokenService(CRUDService[models.Token]):
 
     async def validate_credentials(self, user: models.User | None | bool, token_data: HTTPCreateLoginToken) -> models.User:
         if not user:
+            await self.auth_service.captcha_flow(token_data.captcha_code)
             user, status = await self.auth_service.authenticate_user(token_data.email, token_data.password)
             if not user:
                 raise HTTPException(401, {"message": "Unauthorized", "status": status})
-            await self.auth_service.captcha_flow(token_data.captcha_code)
         return cast(models.User, user)
 
     async def create_token_normal(self, token_data: "ModelDictT[models.Token]") -> dict[str, Any]:
@@ -141,12 +143,26 @@ class TokenService(CRUDService[models.Token]):
         }
 
     @staticmethod
+    def filter_visible_to(caller: models.Token) -> list[StatementFilter | ColumnElement[bool]]:
+        if "full_control" in caller.permissions:
+            return []
+        permission = func.unnest(models.Token.permissions).column_valued()
+        return [
+            ~exists().where(
+                permission.not_in(caller.permissions),
+                func.split_part(permission, ":", 1).not_in(caller.permissions),
+            )
+        ]
+
+    @classmethod
     def _filter_in_token(
+        cls,
+        caller: models.Token,
         app_id: str | None = None,
         redirect_url: str | None = None,
         permissions: list[str] | None = None,
     ) -> tuple[Select[tuple[models.Token]] | None, list[StatementFilter | ColumnElement[bool]]]:
-        filters: list[StatementFilter | ColumnElement[bool]] = []
+        filters = cls.filter_visible_to(caller)
         statement: Select[tuple[models.Token]] | None = None
         if app_id is not None:
             filters.append(models.Token.app_id == app_id)
