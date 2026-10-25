@@ -26,7 +26,7 @@ web = [
     "alembic>=1.16.1",
     "apprise>=1.9.4",
     "asyncpg>=0.30.0",
-    "bitcart>=1.18.0.0",
+    "bitcart>=1.19.2.0",
     "dishka>=1.4.2",
     "email-validator>=2.3.0",
     "fastapi>=0.121.0",
@@ -306,10 +306,6 @@ filterwarnings = [
     "error::PendingDeprecationWarning",
     # https://github.com/MagicStack/uvloop/issues/703
     "ignore:.*asyncio.iscoroutinefunction.*:DeprecationWarning",
-    # TODO: fix
-    # bitcart SDK still uses aiohttp.BasicAuth + auth=
-    "ignore:BasicAuth is deprecated:DeprecationWarning",
-    "ignore:The 'auth' parameter is deprecated:DeprecationWarning",
     # apprise checks `import imghdr`, will self-resolve on 3.13
     "ignore:'imghdr' is deprecated:DeprecationWarning",
 ]

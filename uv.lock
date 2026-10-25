@@ -641,16 +641,16 @@ wheels = [
 
 [[package]]
 name = "bitcart"
-version = "1.19.1.2"
+version = "1.19.2.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp" },
     { name = "jsonrpcclient" },
     { name = "universalasync" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a0/48/1262cd7b64d548e29f6f921562dbe85b7997dbfa5b3c7789f10c7819ac04/bitcart-1.19.1.2.tar.gz", hash = "sha256:b6fcf6e6ab6ad02a43cda154aa39114e798451305c2d5e895f0336d124471dea", size = 159955, upload-time = "2026-02-16T21:21:32.763Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/dd/67/43c1c46b68e0918fa07e71374eea29f26a5d1a00471b5224ca441d2aaeaa/bitcart-1.19.2.0.tar.gz", hash = "sha256:564774fb90834d7ea7f39f65864320e6643a29799576b5a52dd7d100d464e91e", size = 200486, upload-time = "2026-10-25T21:57:16.279Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e8/2d/b61fc831520527578e3843e2fd8a89d7cad3478ef1737d8fc45654316eda/bitcart-1.19.1.2-py3-none-any.whl", hash = "sha256:a1980aaacbb92315eee3ffa9dc3818fd83fa130b628b469e6197c6cb5afacf5f", size = 21115, upload-time = "2026-02-16T21:21:31.01Z" },
+    { url = "https://files.pythonhosted.org/packages/72/1a/f9bfc8ad8caa3a315a7ffbdd287a8a2329011981b65c8bfc4f701c91e350/bitcart-1.19.2.0-py3-none-any.whl", hash = "sha256:5f508e4112195174699df6fb505c5a5f372d4035486f234eab5892d7d0580cd4", size = 21008, upload-time = "2026-10-25T21:57:15.035Z" },
 ]
 
 [[package]]
@@ -978,7 +978,7 @@ dev = [
     { name = "apprise", specifier = ">=1.9.4" },
     { name = "async-lru" },
     { name = "asyncpg", specifier = ">=0.30.0" },
-    { name = "bitcart", specifier = ">=1.18.0.0" },
+    { name = "bitcart", specifier = ">=1.19.2.0" },
     { name = "deptry", specifier = ">=0.25.1" },
     { name = "dishka", specifier = ">=1.4.2" },
     { name = "electron-cash", url = "https://github.com/Electron-Cash/Electron-Cash/archive/492f050ebe87d58faf57bee131912b6c0d049820.zip" },
@@ -1131,7 +1131,7 @@ web = [
     { name = "alembic", specifier = ">=1.16.1" },
     { name = "apprise", specifier = ">=1.9.4" },
     { name = "asyncpg", specifier = ">=0.30.0" },
-    { name = "bitcart", specifier = ">=1.18.0.0" },
+    { name = "bitcart", specifier = ">=1.19.2.0" },
     { name = "dishka", specifier = ">=1.4.2" },
     { name = "email-validator", specifier = ">=2.3.0" },
     { name = "fastapi", specifier = ">=0.121.0" },
@@ -5131,11 +5131,11 @@ wheels = [
 
 [[package]]
 name = "universalasync"
-version = "0.5.1.0"
+version = "0.5.2.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/a7/5e/6714ec7dff29969dae6095bd291f004cc6605701a8274bd658e3069d5da4/universalasync-0.5.1.0.tar.gz", hash = "sha256:6f84e602709df1f22484593a3a334b428b8d8ad15fc25d4a70a1dfab68a86d4d", size = 77676, upload-time = "2026-02-17T21:44:28.9Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/e6/e8/e6196e37fb3f9c5cce46a8b662953bfbeb3f514bb65756d359cc4dc9d753/universalasync-0.5.2.0.tar.gz", hash = "sha256:d57aa361484f7c505580c69a47bb07abc40a06f73c2029960ec5f6d4c6a86eca", size = 124273, upload-time = "2026-10-25T20:13:46.258Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/2b/85/b6ede5d78b35281408ecf4db687659d6a4f9132d2e16f8e9e429a84bb0f2/universalasync-0.5.1.0-py3-none-any.whl", hash = "sha256:595f917012419a3b9f1131de168158b20d98fbb49b9ebfb7d6bbddf3c894a02b", size = 6017, upload-time = "2026-02-17T21:44:27.205Z" },
+    { url = "https://files.pythonhosted.org/packages/28/fa/61d28e583d0556e5efced307c8e5d6671dacc59d2a79fd725022be555ecf/universalasync-0.5.2.0-py3-none-any.whl", hash = "sha256:8e7e6afd3c4bbacbf5b3655fc76455f7686f9ffb25f721b579b74b8f10ca68af", size = 8020, upload-time = "2026-10-25T20:13:45.048Z" },
 ]
 
 [[package]]
