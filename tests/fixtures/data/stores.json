@@ -37,7 +37,8 @@
             "rate_rules": "",
             "pos_screen_enabled": true,
             "support_email": "",
-            "support_url": ""
+            "support_url": "",
+            "auto_redirect": true
         },
         "notifications": [],
         "templates": {},

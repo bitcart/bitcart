@@ -30,6 +30,7 @@ class StoreCheckoutSettings(Schema):
     pos_screen_enabled: bool = True
     support_email: EmailStr | Literal[""] = ""
     support_url: str = ""
+    auto_redirect: bool = True
 
     @field_validator("recommended_fee_target_blocks")
     @classmethod
