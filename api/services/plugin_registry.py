@@ -9,6 +9,7 @@ from alembic import command
 from alembic.config import Config
 from dishka import AsyncContainer, Scope
 from fastapi import FastAPI
+from starlette.routing import BaseRoute
 
 from api import templates
 from api.logging import get_exception_message, get_logger
@@ -44,6 +45,7 @@ class PluginRegistry:
         self._plugins: dict[str, BasePlugin] = plugin_objects
         self._callbacks: dict[str, list[Callable[..., Any]]] = defaultdict(list)
         self._events: dict[str, dict[str, Any]] = {}
+        self.plugin_routes: dict[str, list[BaseRoute]] = {}
         self.init_plugins()
 
     def init_plugins(self) -> None:
@@ -78,10 +80,12 @@ class PluginRegistry:
 
     def setup_app(self, app: FastAPI) -> None:
         for plugin in self._plugins.values():
+            existing_routes = {id(route) for route in app.routes}
             try:
                 plugin.setup_app(app)
             except Exception as e:
                 logger.error(f"Plugin {plugin} failed to configure app: {get_exception_message(e)}")
+            self.plugin_routes[plugin.name] = [route for route in app.routes if id(route) not in existing_routes]
 
     async def startup(self) -> None:
         self.register_hook("license_changed", self.handle_license_changed)

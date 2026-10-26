@@ -1,6 +1,7 @@
 from dishka.integrations.fastapi import DishkaRoute
 from fastapi import APIRouter
 
+from api.openapi import APITag
 from api.views.configurator import router as configurator_router
 from api.views.cryptos import router as cryptos_router
 from api.views.discounts import router as discounts_router
@@ -23,24 +24,24 @@ from api.views.websocket import router as websocket_router
 
 router = APIRouter(route_class=DishkaRoute)
 
-router.include_router(health_router, prefix="/health", tags=["health"])
-router.include_router(users_router, prefix="/users", tags=["users"])
-router.include_router(wallets_router, prefix="/wallets", tags=["wallets"])
-router.include_router(notifications_router, prefix="/notifications", tags=["notifications"])
-router.include_router(templates_router, prefix="/templates", tags=["templates"])
-router.include_router(stores_router, prefix="/stores", tags=["stores"])
-router.include_router(discounts_router, prefix="/discounts", tags=["discounts"])
-router.include_router(products_router, prefix="/products", tags=["products"])
-router.include_router(invoices_router, prefix="/invoices", tags=["invoices"])
-router.include_router(payouts_router, prefix="/payouts", tags=["payouts"])
+router.include_router(health_router, prefix="/health", tags=["health", APITag.public])
+router.include_router(users_router, prefix="/users", tags=["users", APITag.public])
+router.include_router(wallets_router, prefix="/wallets", tags=["wallets", APITag.public])
+router.include_router(notifications_router, prefix="/notifications", tags=["notifications", APITag.public])
+router.include_router(templates_router, prefix="/templates", tags=["templates", APITag.public])
+router.include_router(stores_router, prefix="/stores", tags=["stores", APITag.public])
+router.include_router(discounts_router, prefix="/discounts", tags=["discounts", APITag.public])
+router.include_router(products_router, prefix="/products", tags=["products", APITag.public])
+router.include_router(invoices_router, prefix="/invoices", tags=["invoices", APITag.public])
+router.include_router(payouts_router, prefix="/payouts", tags=["payouts", APITag.public])
 
-router.include_router(manage_router, prefix="/manage", tags=["manage"])
-router.include_router(tor_router, prefix="/tor", tags=["tor"])
-router.include_router(update_router, prefix="/update", tags=["update"])
-router.include_router(cryptos_router, prefix="/cryptos", tags=["cryptos"])
-router.include_router(files_router, prefix="/files", tags=["files"])
-router.include_router(configurator_router, prefix="/configurator", tags=["configurator"])
-router.include_router(plugins_router, prefix="/plugins", tags=["plugins"])
+router.include_router(manage_router, prefix="/manage", tags=["manage", APITag.public])
+router.include_router(tor_router, prefix="/tor", tags=["tor", APITag.public])
+router.include_router(update_router, prefix="/update", tags=["update", APITag.public])
+router.include_router(cryptos_router, prefix="/cryptos", tags=["cryptos", APITag.public])
+router.include_router(files_router, prefix="/files", tags=["files", APITag.public])
+router.include_router(configurator_router, prefix="/configurator", tags=["configurator", APITag.public])
+router.include_router(plugins_router, prefix="/plugins", tags=["plugins", APITag.public])
 
-router.include_router(token_router, prefix="/token", tags=["token"])
-router.include_router(websocket_router, prefix="/ws", tags=["websocket"])
+router.include_router(token_router, prefix="/token", tags=["token", APITag.public])
+router.include_router(websocket_router, prefix="/ws", tags=["websocket", APITag.public])
