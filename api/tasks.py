@@ -11,7 +11,7 @@ from taskiq_redis import ListRedisScheduleSource, RedisAsyncResultBackend
 from api import utils
 from api.ext.moneyformat import currency_table
 from api.logging import get_exception_message, get_logger, log_errors
-from api.redis import Redis
+from api.redis import REDIS_MAINT_NOTIFICATIONS, Redis
 from api.schemas.tasks import (
     AgentCallMessage,
     DeployTaskMessage,
@@ -40,13 +40,25 @@ from api.types import TasksBroker
 logger = get_logger(__name__)
 
 settings = Settings()
-broker = TasksBroker(url=settings.redis_url).with_result_backend(
-    RedisAsyncResultBackend(redis_url=settings.redis_url, keep_results=False, result_ex_time=60)
+broker = TasksBroker(url=settings.redis_url, maint_notifications_config=REDIS_MAINT_NOTIFICATIONS).with_result_backend(
+    RedisAsyncResultBackend(
+        redis_url=settings.redis_url,
+        keep_results=False,
+        result_ex_time=60,
+        maint_notifications_config=REDIS_MAINT_NOTIFICATIONS,
+    )
 )
-client_tasks_broker = TasksBroker(url=settings.redis_url, queue_name="taskiq_client_tasks").with_result_backend(
-    RedisAsyncResultBackend(redis_url=settings.redis_url, keep_results=False, result_ex_time=60)
+client_tasks_broker = TasksBroker(
+    url=settings.redis_url, queue_name="taskiq_client_tasks", maint_notifications_config=REDIS_MAINT_NOTIFICATIONS
+).with_result_backend(
+    RedisAsyncResultBackend(
+        redis_url=settings.redis_url,
+        keep_results=False,
+        result_ex_time=60,
+        maint_notifications_config=REDIS_MAINT_NOTIFICATIONS,
+    )
 )
-redis_scheduler_source = ListRedisScheduleSource(settings.redis_url)
+redis_scheduler_source = ListRedisScheduleSource(settings.redis_url, maint_notifications_config=REDIS_MAINT_NOTIFICATIONS)
 label_scheduler_resource = LabelScheduleSource(broker)
 scheduler = TaskiqScheduler(broker, sources=[label_scheduler_resource, redis_scheduler_source])
 del settings
