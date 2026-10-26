@@ -2,6 +2,86 @@
 
 ## Latest changes
 
+## 0.11.0.0
+
+### New Checkout app
+
+Bitcart has a brand new checkout, built from scratch in our new frontend stack. It replaces the invoice and refund pages of the admin panel, and the payment modal.
+
+- Redesigned payment flow: choose a payment method, then see exactly what to pay: subtotal, network fee and the amount still due on partial payments
+- Pay with browser wallets directly from the checkout: MetaMask and other injected wallets on ETH-based chains, TronLink on TRON. Links to open the payment in MetaMask, Trust Wallet and TronLink mobile apps are also provided
+- New receipt page after payment
+- New refund page, where customers enter their refund address and review it before submitting
+- New embed script `/embed/v1.js` with a `<bitcart-checkout>` element and events (`bitcart:status`, `bitcart:complete` and others). The old `/modal/bitcart.js` script keeps working as before
+- Internationalization support
+- Payment terminals support, including receipt printing
+- New store checkout settings: `auto_redirect` to return buyers to the redirect URL after payment (enabled by default), and `support_email` / `support_url` shown to buyers
+
+The new checkout is opt-in for now. To enable it in docker deployments, add `checkout` to `BITCART_ADDITIONAL_COMPONENTS` (comma-separated) and run `./setup.sh`:
+
+```bash
+export BITCART_ADDITIONAL_COMPONENTS="$BITCART_ADDITIONAL_COMPONENTS,checkout"
+./setup.sh
+```
+
+Invoice links and the modal script are then served by the checkout, no changes are required in your integrations.
+
+### IMPORTANT: Consistent amounts in the API
+
+If you use the Merchants API directly, check your integrations.
+
+All decimal values in API responses are now strings, some of them were floats before. Amounts are rounded and padded to currency decimals (e.g. `"25.00"`), rates (exchange rates, `recommended_fee`) are exact values with up to 18 decimal places.
+Formatted `rate_str` field was removed from payment methods: format values in your client.
+
+Amounts we ask customers to pay are now always rounded up, and received amounts are rounded down.
+
+New invoice fields: `sent_price`, `effective_price` (price after discounts) and `transactions` with amount of each transaction.
+New payment method fields: `subtotal`, `network_fee`, `due`, `due_price`, `effective_price` and `wallet` (network and links to wallet apps).
+
+`GET /wallets/balance` now returns an object: `balance`, `currency` and `missing_rates`.
+
+Mark as complete dialog allows setting amount of each transaction.
+
+### Host agent
+
+Bitcart containers no longer get root SSH access to the host. Server management (updates, restarts, backups, configurator) now goes through the new host agent, `bitcart-agent`.
+
+It runs only a fixed set of operations, one job at a time, outside of the containers, so jobs keep running while containers restart or update.
+
+It is installed automatically on update: systemd on Linux, launchd on macOS, and a restricted SSH key on Linux hosts without systemd that had SSH access enabled. The old SSH key is removed once the agent is reachable.
+To disable in-panel management, export `BITCART_AGENT_TRANSPORT=none` before updating.
+
+### Plugins versions
+
+Admin panel now shows plugins incompatible with your Bitcart version, and allows to install a compatible plugin version.
+
+`update.sh` and `install-master.sh` now auto-update installed marketplace plugins to the newest versions compatible with the new Bitcart version.
+Set `BITCART_PLUGINS_AUTO_UPDATE=false` to disable.
+
+### Better exchange rates failures handling
+
+If an exchange rate source fails, superusers now see a warning in admin panel with the source name, rates age and the last error.
+Wallets balance excludes currencies with no exchange rate and lists them.
+
+Expanded Kraken exchange rate pairs.
+
+### Other changes
+
+- Monero: network fee estimation support, fix mempool parsing on newer nodes
+- Fix ETH-based daemons memory leak when reading contracts
+- Improvements in internal transactions parsing
+- Security improvements: stricter file uploads validation and safer serving of uploaded files, tokens list shows only tokens within your permissions, email deliverability check on registration, 2FA fixes
+- New async email sending with timeouts
+- Massively improved opentelemetry configuration, our own prometheus middleware
+- Properly close redis connections on websocket close
+- New `tg_escape` filter for telegram templates, improved apprise notifications sending
+- Fix search with special characters
+- OpenAPI schema improvements
+- Refund fixes in admin panel
+- Docker: IPv6 support via `opt-add-ipv6` component, ability to disable nginx access log via `opt-no-access-log` component
+- Docker: upgrade cloudflared and tor
+- Dependency updates
+
 ## 0.10.3.0
 
 ### Properly track contract transfers of any complexity
