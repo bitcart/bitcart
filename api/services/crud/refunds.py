@@ -1,5 +1,4 @@
 from typing import cast
-from urllib.parse import urljoin
 
 from dishka import AsyncContainer
 from fastapi import HTTPException
@@ -21,6 +20,7 @@ from api.services.crud.stores import StoreService
 from api.services.crud.templates import TemplateService
 from api.services.email import EmailService
 from api.services.plugin_registry import PluginRegistry
+from api.settings import Settings
 from api.types import TasksBroker
 
 logger = get_logger(__name__)
@@ -40,6 +40,7 @@ class RefundService(CRUDService[models.Refund]):
         email_service: EmailService,
         broker: TasksBroker,
         plugin_registry: PluginRegistry,
+        settings: Settings,
     ) -> None:
         super().__init__(session, container)
         self.invoice_service = invoice_service
@@ -49,6 +50,7 @@ class RefundService(CRUDService[models.Refund]):
         self.email_service = email_service
         self.broker = broker
         self.plugin_registry = plugin_registry
+        self.settings = settings
 
     async def create_refund(self, data: RefundData, invoice_id: str, user: models.User) -> models.Refund:
         invoice = await self.invoice_service.get(invoice_id, user)
@@ -67,7 +69,7 @@ class RefundService(CRUDService[models.Refund]):
         if data.send_email and invoice.buyer_email:
             store = await self.store_service.get(invoice.store_id)
             if self.email_service.is_enabled(store.email_settings):
-                refund_url = urljoin(data.admin_host, f"/refunds/{refund.id}")
+                refund_url = f"{self.settings.checkout_url}/refunds/{refund.id}"
                 refund_template = await self.plugin_registry.apply_filters(
                     "refund_customer_text",
                     await self.template_service.get_customer_refund_template(store, invoice, refund, refund_url),

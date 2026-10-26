@@ -23,6 +23,7 @@ from api.constants import DEFAULT_SENDMAIL_SUBJECT
 from api.db import AsyncSession
 from api.exceptions import EmailSendError, ExchangeRateError
 from api.ext import export as export_ext
+from api.ext import walletpay
 from api.ext.moneyformat import currency_table, round_half_up, to_raw
 from api.invoices import FAILED_STATUSES, PAID_STATUSES, InvoiceExceptionStatus, InvoiceStatus
 from api.logging import get_exception_details, get_exception_message, get_logger
@@ -47,6 +48,7 @@ from api.services.notification_manager import NotificationManager
 from api.services.payout_manager import PayoutManager
 from api.services.plugin_registry import PluginRegistry
 from api.services.wallet_data import WalletDataService
+from api.settings import Settings
 from api.types import TasksBroker
 from api.utils.routing import SearchPagination
 
@@ -74,6 +76,7 @@ class InvoiceService(CRUDService[models.Invoice]):
         wallet_data_service: WalletDataService,
         email_service: EmailService,
         plugin_registry: PluginRegistry,
+        settings: Settings,
     ) -> None:
         super().__init__(session, container)
         self.payment_method_repository = payment_method_repository
@@ -90,6 +93,7 @@ class InvoiceService(CRUDService[models.Invoice]):
         self.wallet_data_service = wallet_data_service
         self.email_service = email_service
         self.plugin_registry = plugin_registry
+        self.settings = settings
 
     @classmethod
     def apply_pagination_joins(
@@ -346,6 +350,7 @@ class InvoiceService(CRUDService[models.Invoice]):
             ).dec()
         if isinstance(data, dict):
             data["meta"] = data.pop("metadata", {})
+            data["wallet_info"] = data.pop("wallet", None)
         return data
 
     async def _create_payment_method_core(
@@ -453,6 +458,7 @@ class InvoiceService(CRUDService[models.Invoice]):
                 contract=wallet.contract,
                 symbol=symbol,
                 divisibility=divisibility,
+                wallet=self.get_payment_wallet(coin, wallet, invoice, data["payment_url"], lightning),
                 **data,
             ),
             invoice,
@@ -462,6 +468,19 @@ class InvoiceService(CRUDService[models.Invoice]):
             discounts,
             promocode,
         )
+
+    def get_payment_wallet(
+        self, coin: BTC, wallet: models.Wallet, invoice: models.Invoice, payment_url: str, lightning: bool
+    ) -> dict[str, Any]:
+        network = None
+        if not lightning:
+            coin_settings = self.coin_service.get_coin_settings(wallet.currency) or {}
+            network = walletpay.get_network(coin.coin_name, coin_settings.get("network", ""), payment_url)
+        return {
+            "network": network,
+            "sender_address_required": not lightning and coin.is_eth_based and coin.coin_name != "XMR",
+            "links": walletpay.get_links(network, f"{self.settings.checkout_url}/i/{invoice.id}"),
+        }
 
     @staticmethod
     def match_discount(

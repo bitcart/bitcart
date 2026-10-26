@@ -5,6 +5,7 @@ import json as json_module
 import os
 import socket
 from collections import defaultdict
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any, cast
@@ -53,6 +54,7 @@ from api.services.ext.tor import TorService
 from api.services.notification_manager import NotificationManager
 from api.services.payment_processor import PaymentProcessor
 from api.services.payout_manager import PayoutManager
+from api.services.plugin_registry import PluginRegistry
 from api.settings import Settings
 from api.templates import TemplateManager
 from api.types import Quotes, TasksBroker
@@ -631,6 +633,8 @@ async def test_policies(client: TestClient, token: str) -> None:
         "health_check_store_id": "",
         "allow_eth_plugin_info": True,
         "log_retention_days": 90,
+        "admin_url": "http://localhost:3000",
+        "checkout_url": "http://localhost:3000",
     }
     assert (await client.post("/manage/policies")).status_code == 401
     resp = await client.post(
@@ -694,6 +698,8 @@ async def test_policies(client: TestClient, token: str) -> None:
         "health_check_store_id": "",
         "allow_eth_plugin_info": True,
         "log_retention_days": 90,
+        "admin_url": "http://localhost:3000",
+        "checkout_url": "http://localhost:3000",
     }
     resp = await client.post(
         "/manage/policies",
@@ -1546,6 +1552,21 @@ async def test_payout_used_fee_in_wallet_currency(client: TestClient, token: str
         payout_service = await container.get(PayoutService)
         (await payout_service.get(payout["id"])).update(wallet_currency=None)
     assert (await client.get(f"/payouts/{payout['id']}", headers=headers)).json()["used_fee"] == "0.0000123456789"
+
+
+@pytest.mark.parametrize("remove_fails", [False, True])
+async def test_failed_broadcast_removes_local_tx(app: FastAPI, mocker: pytest_mock.MockerFixture, remove_fails: bool) -> None:
+    coin = mocker.Mock(is_eth_based=False, server=mocker.AsyncMock())
+    coin.server.get_default_fee.return_value = "0.0001"
+    coin.server.addtransaction.return_value = "local_txid"
+    coin.server.broadcast.side_effect = BitcartBaseError("cannot establish a connection... gave up.")
+    if remove_fails:
+        coin.server.removelocaltx.side_effect = BitcartBaseError("Only local transactions can be removed")
+    payout_manager = await app.state.dishka_container.get(PayoutManager)
+    with pytest.raises(BitcartBaseError, match="gave up"):
+        await payout_manager.broadcast_tx_flow(coin, mocker.Mock(contract=None), "raw_tx", None)
+    coin.server.removelocaltx.assert_awaited_once_with("local_txid")
+    coin.server.close_wallet.assert_awaited_once()
 
 
 async def test_payout_fails_without_rate(client: TestClient, token: str, mocker: pytest_mock.MockerFixture) -> None:
@@ -2410,6 +2431,89 @@ async def test_invoices_payment_details(client: TestClient, token: str) -> None:
     ).status_code == 422
 
 
+async def test_invoice_payment_wallet(client: TestClient, token: str, app: FastAPI) -> None:
+    invoice = await create_invoice(client, token)
+    assert invoice["payments"][0]["wallet"] == {"network": None, "sender_address_required": False, "links": []}
+
+    async def require_sender(method: dict[str, Any]) -> dict[str, Any]:
+        method["wallet"]["sender_address_required"] = True
+        return method
+
+    (await app.state.dishka_container.get(PluginRegistry)).register_filter("post_create_payment_method", require_sender)
+    invoice = await create_invoice(client, token)
+    assert invoice["payments"][0]["wallet"]["sender_address_required"] is True
+    fetched = (await client.get(f"/invoices/{invoice['id']}")).json()
+    assert fetched["payments"][0]["wallet"] == {"network": None, "sender_address_required": True, "links": []}
+
+
+@dataclass
+class FakeCoin:
+    coin_name: str
+    is_eth_based: bool
+
+
+@pytest.mark.parametrize(
+    ("coin", "network_setting", "payment_url", "lightning", "expected_network", "sender_address_required", "wallets"),
+    [
+        (FakeCoin("ETH", True), "mainnet", "ethereum:0xabc@1?value=1", False, "eip155:1", True, ["metamask", "trust"]),
+        (FakeCoin("TRX", True), "nile", "tron:TAbc", False, "tron:3448148188", True, ["tronlink"]),
+        (FakeCoin("TRX", True), "private", "tron:TAbc", False, None, True, []),
+        (FakeCoin("XMR", True), "mainnet", "monero:4abc", False, None, False, []),
+        (FakeCoin("BTC", False), "mainnet", "bitcoin:bc1q", False, None, False, []),
+        (FakeCoin("BTC", False), "mainnet", "lnbc1", True, None, False, []),
+    ],
+)
+async def test_get_payment_wallet(
+    app: FastAPI,
+    mocker: pytest_mock.MockerFixture,
+    coin: FakeCoin,
+    network_setting: str,
+    payment_url: str,
+    lightning: bool,
+    expected_network: str | None,
+    sender_address_required: bool,
+    wallets: list[str],
+) -> None:
+    async with app.state.dishka_container(scope=Scope.SESSION) as container:
+        service = await container.get(InvoiceService)
+    mocker.patch.object(service.coin_service, "get_coin_settings", return_value={"network": network_setting})
+    wallet = service.get_payment_wallet(
+        cast(BTC, coin),
+        cast(models.Wallet, mock.Mock(currency=coin.coin_name.lower())),
+        cast(models.Invoice, mock.Mock(id="inv1")),
+        payment_url,
+        lightning,
+    )
+    assert wallet["network"] == expected_network
+    assert wallet["sender_address_required"] is sender_address_required
+    assert [link["id"] for link in wallet["links"]] == wallets
+    if coin.coin_name == "ETH":
+        assert wallet["links"][0]["url"] == "https://link.metamask.io/dapp/localhost:3000/i/inv1"
+
+
+async def test_policies_urls(
+    client: TestClient, token: str, app: FastAPI, settings: Settings, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    async def add_plugin_policy(data: dict[str, Any]) -> dict[str, Any]:
+        data["eth_plugin_active"] = False
+        return data
+
+    (await app.state.dishka_container.get(PluginRegistry)).register_filter("get_global_policies", add_plugin_policy)
+    monkeypatch.setattr(settings, "ADMIN_ROOTPATH", "/admin")
+    monkeypatch.setattr(settings, "CHECKOUT_URL", "https://pay.example.com/checkout/")
+    public = (await client.get("/manage/policies")).json()
+    assert public["admin_url"] == "http://localhost:3000/admin"
+    assert public["checkout_url"] == "https://pay.example.com/checkout"
+    assert public["eth_plugin_active"] is False
+    assert "captcha_secretkey" not in public
+    assert "email_settings" not in public
+    private = (await client.get("/manage/policies", headers={"Authorization": f"Bearer {token}"})).json()
+    assert private["captcha_secretkey"] == ""
+    assert private["email_settings"] == EmailSettings().model_dump()
+    monkeypatch.setattr(settings, "CHECKOUT_URL", "")
+    assert (await client.get("/manage/policies")).json()["checkout_url"] == "http://localhost:3000/admin"
+
+
 async def test_ping_server_mail(client: TestClient, token: str) -> None:
     assert (await client.get("/manage/testping")).status_code == 401
     resp = await client.get("/manage/testping", headers={"Authorization": f"Bearer {token}"})
@@ -2679,13 +2783,13 @@ async def test_refund_functionality(client: TestClient, token: str, mocker: pyte
     assert (
         await client.post(
             f"/invoices/{invoice_id}/refunds",
-            json={"amount": 1, "currency": "USD", "send_email": True, "admin_host": "http://admin"},
+            json={"amount": 1, "currency": "USD", "send_email": True},
         )
     ).status_code == 401
     assert (
         await client.post(
             f"/invoices/{invoice_id}/refunds",
-            json={"amount": 1, "currency": "USD", "send_email": True, "admin_host": "http://admin"},
+            json={"amount": 1, "currency": "USD", "send_email": True},
             headers={"Authorization": f"Bearer {token}"},
         )
     ).status_code == 422  # invoice unpaid
@@ -2703,12 +2807,12 @@ async def test_refund_functionality(client: TestClient, token: str, mocker: pyte
     mocker.patch("api.services.crud.templates.TemplateService.get_customer_refund_template", side_effect=func)
     resp = await client.post(
         f"/invoices/{invoice_id}/refunds",
-        json={"amount": 1, "currency": "USD", "send_email": True, "admin_host": "http://admin"},
+        json={"amount": 1, "currency": "USD", "send_email": True},
         headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 200
     refund_id = resp.json()["id"]
-    assert full_url == f"http://admin/refunds/{refund_id}"
+    assert full_url == f"http://localhost:3000/refunds/{refund_id}"
     assert (await client.get(f"/invoices/refunds/{refund_id}")).json() == resp.json()
     # submit refund address
     assert (
@@ -2741,7 +2845,7 @@ async def test_refund_amount_rounded_down(client: TestClient, token: str, app: F
     await payment_processor.new_payment_handler(
         DummyInstance(), None, invoice["payments"][0]["lookup_field"], "complete", None
     )
-    refund_data = {"amount": "9.999", "currency": "USD", "send_email": False, "admin_host": "http://admin"}
+    refund_data = {"amount": "9.999", "currency": "USD", "send_email": False}
     refund = (await client.post(f"/invoices/{invoice['id']}/refunds", json=refund_data, headers=headers)).json()
     assert refund["amount"] == "9.99"
     destination = {"destination": static_data.PAYOUT_DESTINATION}
@@ -2760,7 +2864,7 @@ async def test_refund_with_deleted_invoice(client: TestClient, token: str, app: 
     await payment_processor.new_payment_handler(
         DummyInstance(), None, invoice["payments"][0]["lookup_field"], "complete", None
     )
-    refund_data = {"amount": 1, "currency": "USD", "send_email": False, "admin_host": "http://admin"}
+    refund_data = {"amount": 1, "currency": "USD", "send_email": False}
     submitted = (await client.post(f"/invoices/{invoice['id']}/refunds", json=refund_data, headers=headers)).json()
     unsubmitted = (await client.post(f"/invoices/{invoice['id']}/refunds", json=refund_data, headers=headers)).json()
     assert (await client.post(f"/invoices/refunds/{submitted['id']}/submit", json=destination)).status_code == 200
@@ -3135,7 +3239,7 @@ async def test_refund_succeeds_when_buyer_email_fails(
     send = mocker.patch("api.services.email.EmailService.send", side_effect=EmailSendError("SMTP is down"))
     resp = await client.post(
         f"/invoices/{invoice['id']}/refunds",
-        json={"amount": 1, "currency": "USD", "send_email": True, "admin_host": "http://admin"},
+        json={"amount": 1, "currency": "USD", "send_email": True},
         headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 200

@@ -65,6 +65,7 @@ class Settings(BaseSettings):
     API_HOST: str = Field("localhost:8000", validation_alias="BITCART_HOST")
     ADMIN_HOST: str = Field("localhost:3000", validation_alias="BITCART_ADMIN_HOST")
     ADMIN_ROOTPATH: str = Field("/", validation_alias="BITCART_ADMIN_ROOTPATH")
+    CHECKOUT_URL: str = Field("", validation_alias="BITCART_CHECKOUT_URL")
     REVERSE_PROXY: str = Field("nginx-https", validation_alias="BITCART_REVERSEPROXY")
     HTTPS_ENABLED: bool = Field(False, validation_alias="BITCART_HTTPS_ENABLED")
 
@@ -252,6 +253,10 @@ class Settings(BaseSettings):
     def admin_url(self) -> str:
         rootpath = "" if self.ADMIN_ROOTPATH == "/" else self.ADMIN_ROOTPATH
         return f"{self.protocol}://{self.ADMIN_HOST}{rootpath}"
+
+    @property
+    def checkout_url(self) -> str:
+        return self.CHECKOUT_URL.rstrip("/") or self.admin_url
 
     @property
     def api_url(self) -> str:

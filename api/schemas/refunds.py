@@ -44,7 +44,6 @@ class DisplayRefund(MetadataOutput, BaseRefund, TimestampedSchema):
 class RefundData(Schema):
     amount: Decimal
     currency: str
-    admin_host: str  # TODO: remove
     send_email: bool = True
 
 

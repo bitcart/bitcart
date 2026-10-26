@@ -97,7 +97,7 @@ class CoinService:
         results: dict[str, str] = {}
         for coin_name, coin in self.cryptos.items():
             try:
-                await coin.help()
+                await coin.server.getinfo()
                 results[coin_name] = "ok"
             except Exception as e:
                 results[coin_name] = f"error: {str(e)}"
