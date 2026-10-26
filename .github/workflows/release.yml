@@ -59,9 +59,8 @@ jobs:
         type=raw,value=${{ github.event.release.tag_name }}
         type=raw,value=stable
       dockerhub-user: ${{ vars.DOCKERHUB_USER }}
+      dockerhub-oidc-connection-id: ${{ vars.DOCKERHUB_OIDC_CONNECTIONID }}
       pre-build-script: |
         git clone https://github.com/bitcart/bitcart-docker
         cd bitcart-docker
         ./dev-setup.sh ${{ github.event.release.tag_name }}
-    secrets:
-      dockerhub-token: ${{ secrets.DOCKERHUB_TOKEN }}
