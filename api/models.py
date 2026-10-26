@@ -21,6 +21,7 @@ from sqlalchemy.ext.associationproxy import AssociationProxy, association_proxy
 from sqlalchemy.ext.mutable import MutableDict, MutableList
 from sqlalchemy.orm import Mapped, declared_attr, mapped_column, relationship
 
+from api.ext import walletpay
 from api.ext.moneyformat import currency_table, format_raw, to_raw
 from api.schemas.base import Schema
 from api.schemas.misc import EmailSettings
@@ -379,6 +380,7 @@ class PaymentMethod(RecordModel):
     label: Mapped[str] = mapped_column(Text)
     hint: Mapped[str | None] = mapped_column(Text)
     is_used: Mapped[bool] = mapped_column(Boolean(), default=False)
+    wallet_info: Mapped[dict[str, Any] | None] = mapped_column("wallet", MutableDict.as_mutable(JSONB(none_as_null=True)))
 
     invoice = relationship("Invoice", lazy="raise", back_populates="payments", foreign_keys="[PaymentMethod.invoice_id]")
 
@@ -401,22 +403,10 @@ class PaymentMethod(RecordModel):
         data["due_price"] = currency_table.format_decimal(currency, to_raw(due * self.rate))
         data["rate"] = format_raw(self.rate)
         data["name"] = self.get_name(index)
-        if data["payment_url"].startswith("ethereum:"):  # pragma: no cover
-            data["chain_id"] = self.parse_chain_id(data["payment_url"])
+        data["wallet"] = data.pop("wallet_info", None)
+        if data["payment_url"].startswith("ethereum:"):
+            data["chain_id"] = walletpay.parse_eip681_chain_id(data["payment_url"])
         return data
-
-    @classmethod
-    def parse_chain_id(cls, url: str) -> int | None:  # pragma: no cover
-        k = url.find("@")
-        if k == -1:
-            return None
-        part = url[k + 1 :]
-        chain_id = ""
-        for i in range(len(part)):
-            if not part[i].isdigit():
-                break
-            chain_id += part[i]
-        return int(chain_id)
 
     def get_name(self, index: int | None = None) -> str:
         if self.label:

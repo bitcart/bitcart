@@ -139,9 +139,15 @@ class PayoutManager:
                 return None
             if coin.is_eth_based or wallet.contract:
                 raw_tx = await coin.server.signtransaction(raw_tx)
-            else:
-                await coin.server.addtransaction(raw_tx)
-            return await coin.server.broadcast(raw_tx)
+                return await coin.server.broadcast(raw_tx)
+            local_txid = await coin.server.addtransaction(raw_tx)
+            try:
+                return await coin.server.broadcast(raw_tx)
+            except Exception:
+                if local_txid:
+                    with log_errors(logger):
+                        await coin.server.removelocaltx(local_txid)
+                raise
         finally:
             await coin.server.close_wallet()
 

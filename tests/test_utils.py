@@ -598,6 +598,23 @@ def test_payment_method_raw_rate(rate: str, expected: str) -> None:
     assert method.to_payment_dict("USD")["rate"] == expected
 
 
+def test_payment_method_wallet_and_chain_id() -> None:
+    method = models.PaymentMethod(
+        rate=Decimal(1),
+        amount=Decimal(1),
+        network_fee=Decimal(0),
+        effective_price=Decimal(1),
+        symbol="eth",
+        divisibility=18,
+        payment_url="ethereum:0xabc@56?value=1",
+        lightning=False,
+    )
+    data = method.to_payment_dict("USD")
+    assert data["wallet"] is None
+    assert "wallet_info" not in data
+    assert data["chain_id"] == 56
+
+
 @pytest.mark.parametrize(
     ("effective_prices", "payment_id", "expected"),
     [

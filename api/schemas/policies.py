@@ -1,16 +1,14 @@
 from typing import Any
 
 from fastapi import HTTPException
-from pydantic import field_validator
+from pydantic import ConfigDict, field_validator
 
 from api.constants import BACKUP_FREQUENCIES, BACKUP_PROVIDERS
 from api.schemas.base import Schema
 from api.schemas.misc import CaptchaType, EmailSettings
 
 
-class Policy(Schema):
-    _SECRET_FIELDS = {"captcha_secretkey", "email_settings"}
-
+class PublicPolicy(Schema):
     allow_powered_by_bitcart: bool = False
     disable_registration: bool = False
     require_verified_email: bool = False
@@ -20,14 +18,12 @@ class Policy(Schema):
     staging_updates: bool = False
     allow_anonymous_configurator: bool = True
     captcha_sitekey: str = ""
-    captcha_secretkey: str = ""
     admin_theme_url: str = ""
     captcha_type: str = CaptchaType.NONE
     use_html_templates: bool = False
     global_templates: dict[str, str] = {}
     explorer_urls: dict[str, str] = {}
     rpc_urls: dict[str, str] = {}
-    email_settings: EmailSettings = EmailSettings()
     health_check_store_id: str = ""
     allow_eth_plugin_info: bool = True
     log_retention_days: int = 90
@@ -38,6 +34,25 @@ class Policy(Schema):
         if v not in CaptchaType:
             raise HTTPException(422, f"Invalid captcha_type. Expected either of {', '.join(CaptchaType)}.")
         return v
+
+
+class Policy(PublicPolicy):
+    captcha_secretkey: str = ""
+    email_settings: EmailSettings = EmailSettings()
+
+
+class PublicPolicyResponse(PublicPolicy):
+    admin_url: str
+    checkout_url: str
+
+    model_config = ConfigDict(extra="allow")
+
+
+class PolicyResponse(Policy):
+    admin_url: str
+    checkout_url: str
+
+    model_config = ConfigDict(extra="allow")
 
 
 class GlobalStorePolicy(Schema):

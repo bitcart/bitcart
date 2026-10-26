@@ -9,10 +9,23 @@ from api.schemas.base import DecimalAsString, MetadataInput, MetadataOutput, Sch
 from api.types import Money
 
 
+class WalletLink(Schema):
+    id: str
+    name: str
+    url: str
+
+
+class PaymentWallet(Schema):
+    network: str | None = Field(examples=["eip155:1", "tron:728126428"])
+    sender_address_required: bool
+    links: list[WalletLink]
+
+
 # TODO: type all fields, plugin-extended ones will be allowed by allow
 class PaymentData(Schema):
     created: datetime
     recommended_fee: DecimalAsString
+    wallet: PaymentWallet | None
 
     model_config = ConfigDict(extra="allow")
 

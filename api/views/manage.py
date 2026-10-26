@@ -7,7 +7,14 @@ from fastapi import APIRouter, File, Query, Security, UploadFile
 from api import constants, models, utils
 from api.constants import AuthScopes
 from api.schemas.misc import HostAgentJobStatus, HostAgentOverview, RateSourceInfo
-from api.schemas.policies import BackupsPolicy, GlobalStorePolicy, Policy
+from api.schemas.policies import (
+    BackupsPolicy,
+    GlobalStorePolicy,
+    Policy,
+    PolicyResponse,
+    PublicPolicy,
+    PublicPolicyResponse,
+)
 from api.services.backup_manager import BackupManager
 from api.services.coins import CoinService
 from api.services.exchange_rate import ExchangeRateService
@@ -15,21 +22,23 @@ from api.services.host_agent import HostAgentService
 from api.services.management import ManagementService
 from api.services.plugin_registry import PluginRegistry
 from api.services.settings import SettingService
+from api.settings import Settings
 
 router = APIRouter(route_class=DishkaRoute)
 
 
-@router.get("/policies")
+@router.get("/policies", response_model=PolicyResponse | PublicPolicyResponse)
 async def get_policies(
     setting_service: FromDishka[SettingService],
     plugin_registry: FromDishka[PluginRegistry],
+    settings: FromDishka[Settings],
     user: models.User | None = Security(utils.authorization.optional_auth_dependency, scopes=[AuthScopes.SERVER_MANAGEMENT]),
 ) -> Any:
     data = await setting_service.get_setting(Policy)
-    exclude = set()
-    if not user:
-        exclude = data._SECRET_FIELDS
-    return await plugin_registry.apply_filters("get_global_policies", data.model_dump(exclude=exclude))
+    policies = data.model_dump() if user else data.model_dump(include=set(PublicPolicy.model_fields))
+    policies.update(admin_url=settings.admin_url, checkout_url=settings.checkout_url)
+    policies = await plugin_registry.apply_filters("get_global_policies", policies)
+    return PolicyResponse.model_validate(policies) if user else PublicPolicyResponse.model_validate(policies)
 
 
 @router.post("/policies", response_model=Policy)
