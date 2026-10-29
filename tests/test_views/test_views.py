@@ -2481,6 +2481,7 @@ async def test_get_payment_wallet(
         cast(BTC, coin),
         cast(models.Wallet, mock.Mock(currency=coin.coin_name.lower())),
         cast(models.Invoice, mock.Mock(id="inv1")),
+        "pm1",
         payment_url,
         lightning,
     )
@@ -2488,7 +2489,7 @@ async def test_get_payment_wallet(
     assert wallet["sender_address_required"] is sender_address_required
     assert [link["id"] for link in wallet["links"]] == wallets
     if coin.coin_name == "ETH":
-        assert wallet["links"][0]["url"] == "https://link.metamask.io/dapp/localhost:3000/i/inv1"
+        assert wallet["links"][0]["url"] == "https://link.metamask.io/dapp/localhost:3000/i/inv1?method=pm1"
 
 
 async def test_policies_urls(

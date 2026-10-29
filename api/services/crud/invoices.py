@@ -440,10 +440,11 @@ class InvoiceService(CRUDService[models.Invoice]):
             data["lookup_field"] = data_got["request_id"] if "request_id" in data_got else data["payment_address"]
         if request_price != price:
             data["payment_url"] = await coin.server.modifypaymenturl(data["payment_url"], price, divisibility)
+        payment_id = utils.common.unique_id()
         return await self.plugin_registry.apply_filters(
             "post_create_payment_method",
             dict(
-                id=utils.common.unique_id(),
+                id=payment_id,
                 invoice_id=invoice.id,
                 wallet_id=wallet.id,
                 amount=price,
@@ -458,7 +459,7 @@ class InvoiceService(CRUDService[models.Invoice]):
                 contract=wallet.contract,
                 symbol=symbol,
                 divisibility=divisibility,
-                wallet=self.get_payment_wallet(coin, wallet, invoice, data["payment_url"], lightning),
+                wallet=self.get_payment_wallet(coin, wallet, invoice, payment_id, data["payment_url"], lightning),
                 **data,
             ),
             invoice,
@@ -470,7 +471,13 @@ class InvoiceService(CRUDService[models.Invoice]):
         )
 
     def get_payment_wallet(
-        self, coin: BTC, wallet: models.Wallet, invoice: models.Invoice, payment_url: str, lightning: bool
+        self,
+        coin: BTC,
+        wallet: models.Wallet,
+        invoice: models.Invoice,
+        payment_id: str,
+        payment_url: str,
+        lightning: bool,
     ) -> dict[str, Any]:
         network = None
         if not lightning:
@@ -479,7 +486,7 @@ class InvoiceService(CRUDService[models.Invoice]):
         return {
             "network": network,
             "sender_address_required": not lightning and coin.is_eth_based and coin.coin_name != "XMR",
-            "links": walletpay.get_links(network, f"{self.settings.checkout_url}/i/{invoice.id}"),
+            "links": walletpay.get_links(network, f"{self.settings.checkout_url}/i/{invoice.id}?method={payment_id}"),
         }
 
     @staticmethod
