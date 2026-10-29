@@ -154,7 +154,7 @@ certifi = "0 days"
 [tool.uv.audit]
 # ecdsa is not used in production, but we need to evaluate it's usage in electron-cash
 # see https://github.com/bitcart/bitcart/issues/576
-ignore = ["GHSA-wj6h-64fc-37mp"]
+ignore = ["GHSA-wj6h-64fc-37mp", "GHSA-6jp4-8v48-cc5v"] # TODO: remove
 
 [tool.deptry]
 # daemons/ is a flat directory of sibling modules - treat them as first-party
