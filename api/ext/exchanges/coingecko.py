@@ -1,5 +1,6 @@
 import asyncio
 import json
+from collections import defaultdict
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any, cast
 
@@ -67,7 +68,7 @@ class CoingeckoExchange(BaseExchange):
         super().__init__(name, settings, exchange_rate_service, coins, contracts)
         self.coins_cache: list[dict[str, Any]] = []
 
-    async def get_ids(self) -> dict[str, str]:
+    async def get_ids(self) -> dict[str, set[str]]:
         if not self.coins_cache:
             self.coins_cache = cast(
                 list[dict[str, Any]],
@@ -77,10 +78,16 @@ class CoingeckoExchange(BaseExchange):
                     headers=self.settings.coingecko_headers,
                 ),
             )
-        currencies = [find_by_coin(self.exchange_rate_service, self.coins_cache, coin) for coin in self.coins.copy()]
+        symbols: dict[str, set[str]] = defaultdict(set)
+        for coin in self.coins.copy():
+            if currency := find_by_coin(self.exchange_rate_service, self.coins_cache, coin):
+                coin_name = coin.coin_name.lower()
+                symbols[currency["id"]].add(self.exchange_rate_service.coingecko_symbols.get(coin_name, coin_name))
         for contracts in self.contracts.copy().values():
-            currencies.extend(find_by_contract(self.coins_cache, contract) for contract in contracts)
-        return {currency["id"]: currency["symbol"] for currency in currencies if currency}
+            for contract in contracts:
+                if currency := find_by_contract(self.coins_cache, contract):
+                    symbols[currency["id"]].add(currency["symbol"])
+        return dict(symbols)
 
     async def fetch_quotes(self) -> Quotes:
         vs_currencies = cast(
@@ -97,15 +104,19 @@ class CoingeckoExchange(BaseExchange):
             await fetch_delayed(
                 "GET",
                 f"{self.settings.coingecko_api_url}/simple/price?ids={','.join(ids)}"
-                f"&vs_currencies={','.join(vs_currencies)}&precision=full",
+                f"&vs_currencies={','.join(vs_currencies)}&include_market_cap=true&precision=full",
                 headers=self.settings.coingecko_headers,
             ),
         )
+        top_id_by_symbol: dict[str, str] = {}
+        for coin_id in sorted(data, key=lambda x: (data[x].get("usd_market_cap") or 0, x)):
+            for symbol in ids.get(coin_id, ()):
+                top_id_by_symbol[symbol] = coin_id
         return {
-            f"{ids[k].upper()}_{k2.upper()}": utils.common.precise_decimal(v2)
-            for k, v in data.items()
-            if k in ids
-            for k2, v2 in v.items()
+            f"{symbol.upper()}_{k.upper()}": utils.common.precise_decimal(v)
+            for symbol, coin_id in top_id_by_symbol.items()
+            for k, v in data[coin_id].items()
+            if not k.endswith("_market_cap")
         }
 
 

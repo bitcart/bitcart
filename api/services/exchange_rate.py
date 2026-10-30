@@ -76,8 +76,12 @@ class ExchangeRateService:
                             self._exchange_classes[module_name.lower()] = obj
                     except TypeError:
                         pass
+        self.load_coin_rules()
+
+    def load_coin_rules(self) -> None:
         self.default_rules = ""
         self.coingecko_ids = {}
+        self.coingecko_symbols = {}
         coin_rules = importlib.import_module("api.ext.exchanges.coinrules")
         for currency, coin in self.coin_service.cryptos.items():
             if hasattr(coin_rules, currency.upper()):
@@ -86,6 +90,8 @@ class ExchangeRateService:
                     self.default_rules += rules_obj.default_rule + "\n"
                 if hasattr(rules_obj, "coingecko_id"):
                     self.coingecko_ids[currency] = rules_obj.coingecko_id
+                if hasattr(rules_obj, "coingecko_symbol"):
+                    self.coingecko_symbols[currency] = rules_obj.coingecko_symbol
                 if hasattr(rules_obj, "provides_exchange"):
                     result = rules_obj.provides_exchange
                     self._exchange_classes[result["name"]] = result["class"]

@@ -23,6 +23,7 @@ class XRGExchange(BaseExchange):
 
 class XRG:
     coingecko_id = "tether"
+    coingecko_symbol = "usdt"
     default_rule = "XRG_X = xrgexchange(XRG_USDT) * USDT_X"
     provides_exchange = {"name": "xrgexchange", "class": XRGExchange}
 
@@ -36,7 +37,7 @@ class BNB:
 
 
 class MATIC:
-    coingecko_id = "polygon"
+    coingecko_id = "polygon-ecosystem-token"
 
 
 class TRX:

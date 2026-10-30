@@ -1578,6 +1578,18 @@ async def test_payout_fails_without_rate(client: TestClient, token: str, mocker:
     prepare_tx.assert_not_called()
 
 
+async def test_payout_uses_store_rate_rules(client: TestClient, token: str, mocker: pytest_mock.MockerFixture) -> None:
+    payout = await create_payout(client, token)
+    resp = await client.patch(
+        f"/stores/{payout['store_id']}/rate_rules", json="BTC_X = 2", headers={"Authorization": f"Bearer {token}"}
+    )
+    assert resp.status_code == 200
+    prepare_tx = mocker.patch.object(PayoutManager, "prepare_tx", return_value="raw_tx")
+    mocker.patch.object(PayoutManager, "broadcast_tx_flow", return_value=None)
+    await send_payouts(client, token, [payout["id"]])
+    assert prepare_tx.call_args.args[3] == Decimal("2.5")
+
+
 async def test_batch_payout_max_fee_per_payout_rate(
     client: TestClient, token: str, store: dict[str, Any], mocker: pytest_mock.MockerFixture
 ) -> None:

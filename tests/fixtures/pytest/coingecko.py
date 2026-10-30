@@ -21,6 +21,7 @@ class FakeCoingecko:
         self.vs_currencies = ["btc", "usd", "eur"]
         self.coins = [{"id": coin, "symbol": coin, "name": coin.upper(), "platforms": {}} for coin in SUPPORTED_CRYPTOS]
         self.prices: dict[str, dict[str, Any]] = {}
+        self.market_caps: dict[str, float] = {}
         self.exchanges: list[dict[str, Any]] = []
         self.tickers: dict[str, list[list[dict[str, Any]]]] = {}
         self.requests: list[tuple[str, Any]] = []
@@ -42,6 +43,11 @@ class FakeCoingecko:
         elif parsed.path.endswith("/simple/price"):
             ids = filter(None, query["ids"][0].split(","))
             body = {coin_id: self.prices.get(coin_id, {"usd": 50000, "eur": 45000}) for coin_id in ids}
+            if query.get("include_market_cap") == ["true"]:
+                body = {
+                    coin_id: {**prices, **{f"{k}_market_cap": self.market_caps.get(coin_id, 0) for k in prices}}
+                    for coin_id, prices in body.items()
+                }
         elif parsed.path.endswith("/exchanges/list"):
             body = self.exchanges
         else:

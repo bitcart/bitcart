@@ -98,7 +98,7 @@ class PayoutManager:
         )
         try:
             divisibility = await self.wallet_data_service.get_divisibility(wallet, coin)
-            rate = await self.wallet_data_service.get_rate(wallet, payout.currency)
+            rate = await self.wallet_data_service.get_rate(wallet, payout.currency, store=store)
             request_amount = (
                 currency_table.round_received(wallet.currency, payout.amount / rate, divisibility=divisibility)
                 if payout.amount != SEND_ALL
