@@ -22,16 +22,17 @@ jobs:
         uv sync --frozen --compile-bytecode --no-dev --group web --group types --group lint --group test
       extra-checks: just ci-lint
 
-  zizmor:
-    name: zizmor
-    uses: bitcart/bitcart-actions/.github/workflows/zizmor-audit.yml@master
+  workflows:
+    name: workflows
+    uses: bitcart/bitcart-actions/.github/workflows/workflow-checks.yml@master
+
     permissions:
       contents: read
       security-events: write # needed for github advanced security
 
   openapi:
     name: openapi
-    needs: [lint, zizmor]
+    needs: [lint, workflows]
     runs-on: ubuntu-latest
 
     steps:
@@ -60,12 +61,7 @@ jobs:
   test:
     name: test
     uses: bitcart/bitcart-actions/.github/workflows/python-tests.yml@master
-    needs: [lint, zizmor]
-
-    permissions:
-      contents: read
-      id-token: write # OIDC token for codecov uploads
-
+    needs: [lint, workflows]
     with:
       python-versions: '["3.12", "3.13", "3.14"]'
       install-daemon: true
@@ -76,15 +72,14 @@ jobs:
       redis: true
       postgres: true
 
-  functional-tests:
-    name: functional-tests
-    uses: bitcart/bitcart-actions/.github/workflows/python-tests.yml@master
-    needs: test
-
     permissions:
       contents: read
       id-token: write # OIDC token for codecov uploads
 
+  functional-tests:
+    name: functional-tests
+    uses: bitcart/bitcart-actions/.github/workflows/python-tests.yml@master
+    needs: test
     with:
       install-daemon: true
       install-dependencies: |
@@ -95,6 +90,10 @@ jobs:
       coverage-flag: functional-tests
       redis: true
       postgres: true
+
+    permissions:
+      contents: read
+      id-token: write # OIDC token for codecov uploads
 
   combine-coverage:
     name: combine-coverage

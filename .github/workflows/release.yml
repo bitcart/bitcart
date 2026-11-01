@@ -13,10 +13,11 @@ permissions:
 
 jobs:
   generate-matrix:
-    runs-on: ubuntu-latest
     name: generate-matrix
+    runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.matrix.outputs.matrix }}
+
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -37,19 +38,9 @@ jobs:
           echo "matrix=$matrix" >> $GITHUB_OUTPUT
 
   build:
-    needs: generate-matrix
-    strategy:
-      fail-fast: false
-      matrix:
-        include: ${{ fromJson(needs.generate-matrix.outputs.matrix) }}
     name: build-${{ matrix.target }}
     uses: bitcart/bitcart-actions/.github/workflows/build-docker-image.yml@master
-    permissions:
-      contents: read
-      packages: write # publishing to GHCR
-      id-token: write # OIDC for provenance
-      attestations: write # github attestations
-      artifact-metadata: write # artifact storage metadata (recommended by actions/attest)
+    needs: generate-matrix
     with:
       dockerfile: bitcart-docker/compose/${{ matrix.dockerfile }}
       context: bitcart-docker/compose
@@ -64,3 +55,15 @@ jobs:
         git clone https://github.com/bitcart/bitcart-docker
         cd bitcart-docker
         ./dev-setup.sh ${{ github.event.release.tag_name }}
+
+    permissions:
+      contents: read
+      packages: write # publishing to GHCR
+      id-token: write # OIDC for provenance
+      attestations: write # github attestations
+      artifact-metadata: write # artifact storage metadata (recommended by actions/attest)
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJson(needs.generate-matrix.outputs.matrix) }}

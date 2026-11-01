@@ -11,5 +11,6 @@ jobs:
   update-diagram:
     name: update-diagram
     uses: bitcart/bitcart-actions/.github/workflows/issues-diagram.yml@master
+
     permissions:
       issues: write # to create issues diagram

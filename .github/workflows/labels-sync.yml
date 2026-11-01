@@ -11,5 +11,6 @@ jobs:
   sync-labels:
     name: sync-labels
     uses: bitcart/bitcart-actions/.github/workflows/labels-sync.yml@master
+
     permissions:
       issues: write # to synchronize issue labels
