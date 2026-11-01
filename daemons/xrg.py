@@ -14,6 +14,7 @@ class XRGDaemon(BCHDaemon):
         self.NETWORK_MAPPING = {
             "mainnet": self.electrum.networks.set_mainnet,
         }
+        self.reuse_expired_request_addresses()
 
     @rpc(requires_wallet=True)
     def addrequest(self, *args, **kwargs):

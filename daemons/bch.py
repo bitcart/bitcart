@@ -38,10 +38,35 @@ class BCHDaemon(BTCDaemon):
             "chipnet": self.electrum.networks.set_chipnet,
         }
         self.ignore_token_outputs_in_bch_requests()
+        self.reuse_expired_request_addresses()
+
+    def reuse_expired_request_addresses(self):
+        # electron cash keeps addresses of expired requests reserved forever, so every unpaid invoice widens the gap
+        # between used addresses and external wallets stop seeing funds. Electrum reuses them, do the same
+        PR_EXPIRED = self.electrum.paymentrequest.PR_EXPIRED
+
+        # fmt: off
+        def get_unused_addresses(self, *, for_change=False, frozen_ok=True, preferred=False):
+            with self.lock:
+                if preferred:
+                    domain = (self.get_preferred_receiving_addresses() if not for_change
+                              else (self.get_preferred_change_addresses() or self.get_preferred_receiving_addresses()))
+                else:
+                    domain = (self.get_receiving_addresses() if not for_change
+                              else (self.get_change_addresses() or self.get_receiving_addresses()))
+                return [addr for addr in domain
+                        if not self.get_address_history(addr)
+                        and (addr not in self.receive_requests or self.get_request_status(addr)[0] == PR_EXPIRED)
+                        and (frozen_ok or addr not in self.frozen_addresses)
+                        and (not for_change or not self.is_retired_change_addr(addr))]
+        # fmt: on
+
+        self.electrum.wallet.Abstract_Wallet.get_unused_addresses = get_unused_addresses  # TODO: submit upstream
 
     def ignore_token_outputs_in_bch_requests(self):
         # electron cash counts the dust BCH on token outputs towards plain requests, so a token payment to an address
         # shared with a BCH request (same seed) partially pays it, or fully pays a zero-amount one
+        # fmt: off
         def get_payment_status(self, address, amount, *, tokenreq=False, category_id=None):
             local_height = self.get_local_height()
             received, sent = self.get_addr_io(address)
@@ -55,7 +80,7 @@ class BCHDaemon(BTCDaemon):
                         continue
                 elif token_data:
                     continue
-                txid, n = txo.split(":")
+                txid, n = txo.split(':')
                 info = self.verified_tx.get(txid)
                 if info:
                     tx_height, timestamp, pos, _block_hash = info
@@ -75,6 +100,7 @@ class BCHDaemon(BTCDaemon):
                     is_paid = True
                     result_conf = conf
             return is_paid, result_conf, tx_hashes
+        # fmt: on
 
         self.electrum.wallet.Abstract_Wallet.get_payment_status = get_payment_status  # TODO: submit upstream
 
