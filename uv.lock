@@ -938,12 +938,12 @@ bnb = [
 btc = [
     { name = "aiohttp", specifier = "<4.0" },
     { name = "electrum", extras = ["crypto"], git = "https://github.com/spesmilo/electrum?rev=fc31115ef76b7a8969cf5292bfe3440e5e67a2c0" },
-    { name = "electrum-ecc", git = "https://github.com/bitcart/electrum-ecc?rev=d90e8c79fb7d83fdea9ad0de94dce07f836f69bb" },
+    { name = "electrum-ecc", specifier = ">=0.0.8" },
 ]
 btc-based = [{ name = "aiohttp", specifier = "<4.0" }]
 btc-derived = [
     { name = "aiohttp", specifier = "<4.0" },
-    { name = "electrum-ecc", git = "https://github.com/bitcart/electrum-ecc?rev=d90e8c79fb7d83fdea9ad0de94dce07f836f69bb" },
+    { name = "electrum-ecc", specifier = ">=0.0.8" },
 ]
 daemon-base = [{ name = "aiohttp", specifier = "<4.0" }]
 daemons = [
@@ -952,7 +952,7 @@ daemons = [
     { name = "async-lru" },
     { name = "electron-cash", url = "https://github.com/Electron-Cash/Electron-Cash/archive/c64404809d73a14afd9335651f5460c6e053573a.zip" },
     { name = "electrum", extras = ["crypto"], git = "https://github.com/spesmilo/electrum?rev=fc31115ef76b7a8969cf5292bfe3440e5e67a2c0" },
-    { name = "electrum-ecc", git = "https://github.com/bitcart/electrum-ecc?rev=d90e8c79fb7d83fdea9ad0de94dce07f836f69bb" },
+    { name = "electrum-ecc", specifier = ">=0.0.8" },
     { name = "electrum-grs", extras = ["crypto"], git = "https://github.com/Groestlcoin/electrum-grs?rev=b949d74b7b4d7366f56e3875a8eaf06c14973cdc" },
     { name = "electrum-ltc", extras = ["crypto"], git = "https://github.com/bitcart/electrum-ltc?rev=193c832d9024c784b15b5a853affe1e1a6b59040" },
     { name = "eth-account" },
@@ -983,7 +983,7 @@ dev = [
     { name = "dishka", specifier = ">=1.4.2" },
     { name = "electron-cash", url = "https://github.com/Electron-Cash/Electron-Cash/archive/c64404809d73a14afd9335651f5460c6e053573a.zip" },
     { name = "electrum", extras = ["crypto"], git = "https://github.com/spesmilo/electrum?rev=fc31115ef76b7a8969cf5292bfe3440e5e67a2c0" },
-    { name = "electrum-ecc", git = "https://github.com/bitcart/electrum-ecc?rev=d90e8c79fb7d83fdea9ad0de94dce07f836f69bb" },
+    { name = "electrum-ecc", specifier = ">=0.0.8" },
     { name = "electrum-grs", extras = ["crypto"], git = "https://github.com/Groestlcoin/electrum-grs?rev=b949d74b7b4d7366f56e3875a8eaf06c14973cdc" },
     { name = "electrum-ltc", extras = ["crypto"], git = "https://github.com/bitcart/electrum-ltc?rev=193c832d9024c784b15b5a853affe1e1a6b59040" },
     { name = "email-validator", specifier = ">=2.3.0" },
@@ -1064,7 +1064,7 @@ eth-based = [
 ]
 grs = [
     { name = "aiohttp", specifier = "<4.0" },
-    { name = "electrum-ecc", git = "https://github.com/bitcart/electrum-ecc?rev=d90e8c79fb7d83fdea9ad0de94dce07f836f69bb" },
+    { name = "electrum-ecc", specifier = ">=0.0.8" },
     { name = "electrum-grs", extras = ["crypto"], git = "https://github.com/Groestlcoin/electrum-grs?rev=b949d74b7b4d7366f56e3875a8eaf06c14973cdc" },
 ]
 lint = [
@@ -1075,7 +1075,7 @@ lint = [
 ]
 ltc = [
     { name = "aiohttp", specifier = "<4.0" },
-    { name = "electrum-ecc", git = "https://github.com/bitcart/electrum-ecc?rev=d90e8c79fb7d83fdea9ad0de94dce07f836f69bb" },
+    { name = "electrum-ecc", specifier = ">=0.0.8" },
     { name = "electrum-ltc", extras = ["crypto"], git = "https://github.com/bitcart/electrum-ltc?rev=193c832d9024c784b15b5a853affe1e1a6b59040" },
     { name = "scrypt", specifier = ">=0.6.0" },
 ]
@@ -1984,8 +1984,9 @@ sdist = { url = "https://files.pythonhosted.org/packages/61/bd/60a5af5dc7c3f94a0
 
 [[package]]
 name = "electrum-ecc"
-version = "0.0.6"
-source = { git = "https://github.com/bitcart/electrum-ecc?rev=d90e8c79fb7d83fdea9ad0de94dce07f836f69bb#d90e8c79fb7d83fdea9ad0de94dce07f836f69bb" }
+version = "0.0.8"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/f0/aa/3aab38ecdf6276141264c91c50758df6e59545c87f18247d99b22e62b76f/electrum_ecc-0.0.8.tar.gz", hash = "sha256:94869a77de28ee79b7f7e974af5c20b392b949905880a8b26504e28202644106", size = 2451647, upload-time = "2026-09-09T13:04:44.19Z" }
 
 [[package]]
 name = "electrum-grs"
