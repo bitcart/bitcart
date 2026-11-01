@@ -228,8 +228,8 @@ class BaseCoin(metaclass=ABCMeta):
     async def list_channels(self) -> list[dict[str, Any]]:
         return []
 
-    async def history(self) -> dict[str, Any]:
-        return {"transactions": []}
+    async def history(self) -> list[dict[str, Any]]:
+        return []
 
     async def open_channel(self, *args: Any, **kwargs: Any) -> bool:
         return False

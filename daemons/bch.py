@@ -215,7 +215,7 @@ class BCHDaemon(BTCDaemon):
     def addrequest(self, amount, *args, **kwargs):
         wallet = kwargs.pop("wallet", None)
         is_token = bool(self.wallets[wallet]["contract"])
-        if is_token:
+        if is_token and amount is not None:
             token_info = self.contracts[self.wallets[wallet]["contract"]]
             decimals = token_info["decimals"]
             amount = Decimal(amount) / (Decimal(10) ** Decimal(8 - decimals))  # adjust for satoshis() call in addrequest

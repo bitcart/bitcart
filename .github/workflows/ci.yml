@@ -129,6 +129,11 @@ jobs:
     name: functional-tests
     uses: bitcart/bitcart-actions/.github/workflows/functional-tests.yml@master
     needs: test
+
+    permissions:
+      contents: read
+      id-token: write # OIDC token for codecov uploads
+
     with:
       install-dependencies: |
         uv sync --frozen --compile-bytecode --no-dev --group web --group otel --group test --group btc
