@@ -37,6 +37,46 @@ class BCHDaemon(BTCDaemon):
             "regtest": self.electrum.networks.set_regtest,
             "chipnet": self.electrum.networks.set_chipnet,
         }
+        self.ignore_token_outputs_in_bch_requests()
+
+    def ignore_token_outputs_in_bch_requests(self):
+        # electron cash counts the dust BCH on token outputs towards plain requests, so a token payment to an address
+        # shared with a BCH request (same seed) partially pays it, or fully pays a zero-amount one
+        def get_payment_status(self, address, amount, *, tokenreq=False, category_id=None):
+            local_height = self.get_local_height()
+            received, sent = self.get_addr_io(address)
+            payments = []
+            for txo, x in received.items():
+                h, v, is_cb, token_data = x
+                if tokenreq:
+                    if token_data and (category_id is None or token_data.id_hex == category_id):
+                        v = token_data.amount
+                    else:
+                        continue
+                elif token_data:
+                    continue
+                txid, n = txo.split(":")
+                info = self.verified_tx.get(txid)
+                if info:
+                    tx_height, timestamp, pos, _block_hash = info
+                    conf = max(local_height - tx_height + 1, 0)
+                else:
+                    conf = 0
+                payments.append((conf, v, txid))
+            tx_hashes = []
+            vsum = 0
+            amount = amount or 0
+            is_paid = False
+            result_conf = None
+            for conf, v, tx_hash in sorted(payments, reverse=True):
+                vsum += v
+                tx_hashes.append(tx_hash)
+                if vsum >= amount:
+                    is_paid = True
+                    result_conf = conf
+            return is_paid, result_conf, tx_hashes
+
+        self.electrum.wallet.Abstract_Wallet.get_payment_status = get_payment_status  # TODO: submit upstream
 
     def add_wallet_to_command(self, wallet, req_method, exec_method, **kwargs):
         return exec_method
@@ -182,7 +222,7 @@ class BCHDaemon(BTCDaemon):
                 if txid in tx_hashes:
                     if tokenreq and token_data and (category_id is None or token_data.id_hex == category_id):
                         amounts[txid] += token_data.amount
-                    elif not tokenreq:
+                    elif not tokenreq and not token_data:
                         amounts[txid] += v
         return {tx: amounts[tx] for tx in tx_hashes}
 
