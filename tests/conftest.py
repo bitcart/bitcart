@@ -1,3 +1,4 @@
+import functools
 import os
 import tempfile
 from collections.abc import AsyncGenerator, AsyncIterator, Generator, Iterator
@@ -6,6 +7,7 @@ from typing import Any, NewType, cast
 from unittest.mock import AsyncMock
 
 import email_validator
+import pyotp
 import pytest
 import pytest_mock
 from dishka import Provider, Scope, decorate, from_context, provide
@@ -222,6 +224,12 @@ def exchange_rates_cryptos(
     cryptos = marker.kwargs.get("cryptos") if marker else None
     if cryptos is not None:
         mocker.patch.object(coin_service, "_cryptos", cryptos)
+
+
+# TODO: remove and port to app itself once we added rate limits to TOTP
+@pytest.fixture(autouse=True)
+def totp_valid_window(mocker: pytest_mock.MockerFixture) -> None:
+    mocker.patch.object(pyotp.TOTP, "verify", functools.partialmethod(pyotp.TOTP.verify, valid_window=1))
 
 
 @pytest.fixture
