@@ -4,7 +4,7 @@ from decimal import Decimal
 
 from btc import BTCDaemon
 from logger import configure_logging
-from utils import format_satoshis, get_exception_message, modify_payment_url, rpc
+from utils import format_satoshis, format_satoshis_plain, get_exception_message, modify_payment_url, rpc
 
 with open("daemons/tokens/cashtokens.json") as f:
     CASHTOKENS = json.loads(f.read())
@@ -15,6 +15,7 @@ class BCHDaemon(BTCDaemon):
     ASYNC_CLIENT = False
     LIGHTNING_SUPPORTED = False
     DEFAULT_PORT = 5004
+    DATA_PATH_OPTION = "electron_cash_path"
 
     EVENT_MAPPING = {
         "blockchain_updated": "new_block",
@@ -62,6 +63,9 @@ class BCHDaemon(BTCDaemon):
     def create_commands(self, config):
         return self.electrum.commands.Commands(config=config, network=self.network, wallet=None, daemon=self.daemon)
 
+    def create_storage(self, path, config):
+        return self.electrum.storage.WalletStorage(path)
+
     def create_wallet(self, storage, config):
         return self.electrum.wallet.Wallet(storage)
 
@@ -78,7 +82,7 @@ class BCHDaemon(BTCDaemon):
         return data, wallet
 
     def process_verified_tx(self, args):
-        wallet, tx_hash, height, _ = args
+        wallet, tx_hash, height, *_ = args
         data = {
             "tx": tx_hash,
             "height": height,
@@ -183,6 +187,7 @@ class BCHDaemon(BTCDaemon):
         return {tx: amounts[tx] for tx in tx_hashes}
 
     def format_request(self, request, wallet):
+        amount = request.get("amount")
         if request.get("tokenreq"):
             contract = request["category_id"]
             if contract in self.contracts:
@@ -190,11 +195,13 @@ class BCHDaemon(BTCDaemon):
                 symbol = token_info["symbol"]
                 decimals = token_info["decimals"]
                 request["URI"] = f"{self.electrum.networks.net.CASHADDR_PREFIX}:{request['address']}"
-                amount_text = self.electrum.util.format_satoshis(request.get("amount"), decimal_point=decimals)
-                if request["amount"]:
+                amount_text = "Unknown" if amount is None else format_satoshis_plain(amount, decimal_point=decimals)
+                if amount:
                     request["URI"] += f"?amount={amount_text}"
                 request.pop("amount (BCH)", None)
                 request[f"amount ({symbol})"] = amount_text
+        elif amount:
+            request["URI"] = modify_payment_url("amount", request["URI"], format_satoshis_plain(amount))
         request["tx_hashes"] = list(dict.fromkeys(request["tx_hashes"]))
         request["sent_amount"], request["tx_amounts"] = self.get_payment_amounts(
             self.wallets[wallet]["wallet"],

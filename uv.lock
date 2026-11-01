@@ -924,7 +924,7 @@ requires-dist = [
 [package.metadata.requires-dev]
 bch = [
     { name = "aiohttp", specifier = "<4.0" },
-    { name = "electron-cash", url = "https://github.com/Electron-Cash/Electron-Cash/archive/492f050ebe87d58faf57bee131912b6c0d049820.zip" },
+    { name = "electron-cash", url = "https://github.com/Electron-Cash/Electron-Cash/archive/c64404809d73a14afd9335651f5460c6e053573a.zip" },
 ]
 bnb = [
     { name = "aiohttp", specifier = "<4.0" },
@@ -937,7 +937,7 @@ bnb = [
 ]
 btc = [
     { name = "aiohttp", specifier = "<4.0" },
-    { name = "electrum", extras = ["crypto"], git = "https://github.com/spesmilo/electrum?rev=0f4d8d6d57bbff3428950cf531bc98eae473beec" },
+    { name = "electrum", extras = ["crypto"], git = "https://github.com/spesmilo/electrum?rev=fc31115ef76b7a8969cf5292bfe3440e5e67a2c0" },
     { name = "electrum-ecc", git = "https://github.com/bitcart/electrum-ecc?rev=d90e8c79fb7d83fdea9ad0de94dce07f836f69bb" },
 ]
 btc-based = [{ name = "aiohttp", specifier = "<4.0" }]
@@ -950,11 +950,11 @@ daemons = [
     { name = "aiohttp", specifier = "<4.0" },
     { name = "aiolimiter" },
     { name = "async-lru" },
-    { name = "electron-cash", url = "https://github.com/Electron-Cash/Electron-Cash/archive/492f050ebe87d58faf57bee131912b6c0d049820.zip" },
-    { name = "electrum", extras = ["crypto"], git = "https://github.com/spesmilo/electrum?rev=0f4d8d6d57bbff3428950cf531bc98eae473beec" },
+    { name = "electron-cash", url = "https://github.com/Electron-Cash/Electron-Cash/archive/c64404809d73a14afd9335651f5460c6e053573a.zip" },
+    { name = "electrum", extras = ["crypto"], git = "https://github.com/spesmilo/electrum?rev=fc31115ef76b7a8969cf5292bfe3440e5e67a2c0" },
     { name = "electrum-ecc", git = "https://github.com/bitcart/electrum-ecc?rev=d90e8c79fb7d83fdea9ad0de94dce07f836f69bb" },
-    { name = "electrum-grs", extras = ["crypto"], git = "https://github.com/Groestlcoin/electrum-grs?rev=a10de858525b7045b835a840200cf9fcff3bfe9e" },
-    { name = "electrum-ltc", extras = ["crypto"], git = "https://github.com/bitcart/electrum-ltc?rev=5fd99314de302d9ed3c90537643f2e0ba82c1f02" },
+    { name = "electrum-grs", extras = ["crypto"], git = "https://github.com/Groestlcoin/electrum-grs?rev=b949d74b7b4d7366f56e3875a8eaf06c14973cdc" },
+    { name = "electrum-ltc", extras = ["crypto"], git = "https://github.com/bitcart/electrum-ltc?rev=193c832d9024c784b15b5a853affe1e1a6b59040" },
     { name = "eth-account" },
     { name = "eth-keys" },
     { name = "hexbytes" },
@@ -981,11 +981,11 @@ dev = [
     { name = "bitcart", specifier = ">=1.19.2.0" },
     { name = "deptry", specifier = ">=0.25.1" },
     { name = "dishka", specifier = ">=1.4.2" },
-    { name = "electron-cash", url = "https://github.com/Electron-Cash/Electron-Cash/archive/492f050ebe87d58faf57bee131912b6c0d049820.zip" },
-    { name = "electrum", extras = ["crypto"], git = "https://github.com/spesmilo/electrum?rev=0f4d8d6d57bbff3428950cf531bc98eae473beec" },
+    { name = "electron-cash", url = "https://github.com/Electron-Cash/Electron-Cash/archive/c64404809d73a14afd9335651f5460c6e053573a.zip" },
+    { name = "electrum", extras = ["crypto"], git = "https://github.com/spesmilo/electrum?rev=fc31115ef76b7a8969cf5292bfe3440e5e67a2c0" },
     { name = "electrum-ecc", git = "https://github.com/bitcart/electrum-ecc?rev=d90e8c79fb7d83fdea9ad0de94dce07f836f69bb" },
-    { name = "electrum-grs", extras = ["crypto"], git = "https://github.com/Groestlcoin/electrum-grs?rev=a10de858525b7045b835a840200cf9fcff3bfe9e" },
-    { name = "electrum-ltc", extras = ["crypto"], git = "https://github.com/bitcart/electrum-ltc?rev=5fd99314de302d9ed3c90537643f2e0ba82c1f02" },
+    { name = "electrum-grs", extras = ["crypto"], git = "https://github.com/Groestlcoin/electrum-grs?rev=b949d74b7b4d7366f56e3875a8eaf06c14973cdc" },
+    { name = "electrum-ltc", extras = ["crypto"], git = "https://github.com/bitcart/electrum-ltc?rev=193c832d9024c784b15b5a853affe1e1a6b59040" },
     { name = "email-validator", specifier = ">=2.3.0" },
     { name = "eth-account" },
     { name = "eth-keys" },
@@ -1065,7 +1065,7 @@ eth-based = [
 grs = [
     { name = "aiohttp", specifier = "<4.0" },
     { name = "electrum-ecc", git = "https://github.com/bitcart/electrum-ecc?rev=d90e8c79fb7d83fdea9ad0de94dce07f836f69bb" },
-    { name = "electrum-grs", extras = ["crypto"], git = "https://github.com/Groestlcoin/electrum-grs?rev=a10de858525b7045b835a840200cf9fcff3bfe9e" },
+    { name = "electrum-grs", extras = ["crypto"], git = "https://github.com/Groestlcoin/electrum-grs?rev=b949d74b7b4d7366f56e3875a8eaf06c14973cdc" },
 ]
 lint = [
     { name = "deptry", specifier = ">=0.25.1" },
@@ -1076,7 +1076,7 @@ lint = [
 ltc = [
     { name = "aiohttp", specifier = "<4.0" },
     { name = "electrum-ecc", git = "https://github.com/bitcart/electrum-ecc?rev=d90e8c79fb7d83fdea9ad0de94dce07f836f69bb" },
-    { name = "electrum-ltc", extras = ["crypto"], git = "https://github.com/bitcart/electrum-ltc?rev=5fd99314de302d9ed3c90537643f2e0ba82c1f02" },
+    { name = "electrum-ltc", extras = ["crypto"], git = "https://github.com/bitcart/electrum-ltc?rev=193c832d9024c784b15b5a853affe1e1a6b59040" },
     { name = "scrypt", specifier = ">=0.6.0" },
 ]
 matic = [
@@ -1879,8 +1879,8 @@ wheels = [
 
 [[package]]
 name = "electron-cash"
-version = "4.4.2"
-source = { url = "https://github.com/Electron-Cash/Electron-Cash/archive/492f050ebe87d58faf57bee131912b6c0d049820.zip" }
+version = "4.4.6"
+source = { url = "https://github.com/Electron-Cash/Electron-Cash/archive/c64404809d73a14afd9335651f5460c6e053573a.zip" }
 dependencies = [
     { name = "certifi" },
     { name = "dnspython" },
@@ -1896,7 +1896,7 @@ dependencies = [
     { name = "requests" },
     { name = "stem" },
 ]
-sdist = { hash = "sha256:425129751af1cc0c73d9f6f17ed2472d7c7b1fcf058140177d4d38480adf380a" }
+sdist = { hash = "sha256:95d703e25e8ed7a7763e7e52a8548fdb13c52cf17595a98ec49ecc20e371a6e7" }
 
 [package.metadata]
 requires-dist = [
@@ -1930,10 +1930,10 @@ requires-dist = [
     { name = "pyqt5", marker = "extra == 'gui'", specifier = ">=5.12.3,<=5.15.9" },
     { name = "pyqt5-sip", marker = "extra == 'all'", specifier = "<=12.12.2" },
     { name = "pyqt5-sip", marker = "extra == 'gui'", specifier = "<=12.12.2" },
-    { name = "pysatochip", marker = "extra == 'all'", specifier = ">=0.12.4" },
-    { name = "pysatochip", marker = "extra == 'hardware'", specifier = ">=0.12.4" },
-    { name = "pyscard", marker = "extra == 'all'", specifier = ">=2.0.0" },
-    { name = "pyscard", marker = "extra == 'hardware'", specifier = ">=2.0.0" },
+    { name = "pysatochip", marker = "extra == 'all'", specifier = ">=0.18.6" },
+    { name = "pysatochip", marker = "extra == 'hardware'", specifier = ">=0.18.6" },
+    { name = "pyscard", marker = "extra == 'all'", specifier = ">=2.3.0" },
+    { name = "pyscard", marker = "extra == 'hardware'", specifier = ">=2.3.0" },
     { name = "pysocks", specifier = ">=1.6.6" },
     { name = "python-dateutil", specifier = "<2.9" },
     { name = "qdarkstyle", specifier = ">=2.8" },
@@ -1950,19 +1950,17 @@ provides-extras = ["hardware", "gui", "console2", "all"]
 
 [[package]]
 name = "electrum"
-version = "4.6.0b1"
-source = { git = "https://github.com/spesmilo/electrum?rev=0f4d8d6d57bbff3428950cf531bc98eae473beec#0f4d8d6d57bbff3428950cf531bc98eae473beec" }
+version = "4.8.3"
+source = { git = "https://github.com/spesmilo/electrum?rev=fc31115ef76b7a8969cf5292bfe3440e5e67a2c0#fc31115ef76b7a8969cf5292bfe3440e5e67a2c0" }
 dependencies = [
     { name = "aiohttp" },
     { name = "aiohttp-socks" },
     { name = "aiorpcx" },
-    { name = "attrs" },
     { name = "certifi" },
     { name = "dnspython" },
     { name = "electrum-aionostr" },
     { name = "electrum-ecc" },
     { name = "jsonpatch" },
-    { name = "protobuf" },
     { name = "qdarkstyle" },
     { name = "qrcode" },
 ]
@@ -1974,7 +1972,7 @@ crypto = [
 
 [[package]]
 name = "electrum-aionostr"
-version = "0.0.11"
+version = "0.1.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp" },
@@ -1982,7 +1980,7 @@ dependencies = [
     { name = "aiorpcx" },
     { name = "electrum-ecc" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/9b/54/1e6d5b3745a681b34b5256c332535f4c10749f34f49d526d8ae206acc6a6/electrum_aionostr-0.0.11.tar.gz", hash = "sha256:0eeb1d01e55d4bab2c116268965a0b2c11490659e969fd864c453104558bcf81", size = 22126, upload-time = "2025-06-10T18:19:11.381Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/61/bd/60a5af5dc7c3f94a0a2c2afa9b2ed133a6ffa57399908e8319cfd7d2e89d/electrum_aionostr-0.1.0.tar.gz", hash = "sha256:3774f8e8312388272e10851a869c9f4d3d4a54d8d564851c36e2dc40297bec84", size = 25995, upload-time = "2025-12-11T17:28:24.332Z" }
 
 [[package]]
 name = "electrum-ecc"
@@ -1991,20 +1989,18 @@ source = { git = "https://github.com/bitcart/electrum-ecc?rev=d90e8c79fb7d83fdea
 
 [[package]]
 name = "electrum-grs"
-version = "4.6.0b1"
-source = { git = "https://github.com/Groestlcoin/electrum-grs?rev=a10de858525b7045b835a840200cf9fcff3bfe9e#a10de858525b7045b835a840200cf9fcff3bfe9e" }
+version = "4.8.3"
+source = { git = "https://github.com/Groestlcoin/electrum-grs?rev=b949d74b7b4d7366f56e3875a8eaf06c14973cdc#b949d74b7b4d7366f56e3875a8eaf06c14973cdc" }
 dependencies = [
     { name = "aiohttp" },
     { name = "aiohttp-socks" },
     { name = "aiorpcx" },
-    { name = "attrs" },
     { name = "certifi" },
     { name = "dnspython" },
     { name = "electrum-aionostr" },
     { name = "electrum-ecc" },
     { name = "groestlcoin-hash" },
     { name = "jsonpatch" },
-    { name = "protobuf" },
     { name = "qdarkstyle" },
     { name = "qrcode" },
 ]
@@ -2016,19 +2012,17 @@ crypto = [
 
 [[package]]
 name = "electrum-ltc"
-version = "4.6.0b1"
-source = { git = "https://github.com/bitcart/electrum-ltc?rev=5fd99314de302d9ed3c90537643f2e0ba82c1f02#5fd99314de302d9ed3c90537643f2e0ba82c1f02" }
+version = "4.8.3"
+source = { git = "https://github.com/bitcart/electrum-ltc?rev=193c832d9024c784b15b5a853affe1e1a6b59040#193c832d9024c784b15b5a853affe1e1a6b59040" }
 dependencies = [
     { name = "aiohttp" },
     { name = "aiohttp-socks" },
     { name = "aiorpcx" },
-    { name = "attrs" },
     { name = "certifi" },
     { name = "dnspython" },
     { name = "electrum-aionostr" },
     { name = "electrum-ecc" },
     { name = "jsonpatch" },
-    { name = "protobuf" },
     { name = "qdarkstyle" },
     { name = "qrcode" },
 ]

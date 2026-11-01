@@ -51,6 +51,7 @@ class BTCDaemon(BaseDaemon):
     ALIASES = {"getrequest": "get_request"}
     # override if your daemon has different networks than default electrum provides
     NETWORK_MAPPING: dict = {}
+    DATA_PATH_OPTION = "electrum_path"
 
     def register_aliases(self):
         for alias, func in self.ALIASES.items():
@@ -61,7 +62,18 @@ class BTCDaemon(BaseDaemon):
         import electrum
 
         self.electrum = electrum
-        self.electrum.lnutil.MIN_FUNDING_SAT = 60_000  # TODO: submit upstream
+        self.electrum.lnutil.MIN_FUNDING_SAT = 60_000  # TODO: submit upstream as a config option
+        self.fix_electrum_log_caller()
+
+    def fix_electrum_log_caller(self):
+        original_log = self.electrum.logging._CustomLogger._log
+
+        def _log(logger, *args, **kwargs):
+            # skip this wrapper and electrum's _log override so records point at the real caller
+            kwargs["stacklevel"] = kwargs.get("stacklevel", 1) + 2
+            original_log(logger, *args, **kwargs)
+
+        self.electrum.logging._CustomLogger._log = _log  # TODO: submit upstream
 
     def __init__(self):
         self.load_electrum()
@@ -146,9 +158,10 @@ class BTCDaemon(BaseDaemon):
             "oneserver": self.ONESERVER,
             "use_exchange_rate": False,
             "forget_config": True,
-            "electrum_path": self.DATA_PATH,
+            self.DATA_PATH_OPTION: self.DATA_PATH,
             "lightning_forward_payments": self.LIGHTNING_PUBLIC_CHANNELS,
             "use_recoverable_channels": not self.LIGHTNING_ALLOW_INCOMING_CHANNELS,
+            "wallet_partial_writes": True,
             self.NET.lower(): True,
         }
         options.update(self.get_proxy_settings())
@@ -171,8 +184,9 @@ class BTCDaemon(BaseDaemon):
         return self.electrum.daemon.Daemon(self.electrum_config, listen_jsonrpc=False)
 
     def register_callbacks(self, callback_function):
-        for event in self.available_events:
-            self.electrum.util.register_callback(async_partial(callback_function, event), [event])
+        self.event_callbacks = {event: async_partial(callback_function, event) for event in self.available_events}
+        for event, callback in self.event_callbacks.items():
+            self.electrum.util.register_callback(callback, [event])
 
     async def on_startup(self, app):
         await super().on_startup(app)
@@ -203,6 +217,9 @@ class BTCDaemon(BaseDaemon):
     def load_cmd_wallet(self, cmd, wallet):
         if wallet.storage is not None:
             self.daemon.add_wallet(wallet)
+
+    def create_storage(self, path, config):
+        return self.electrum.storage.WalletStorage(path, allow_partial_writes=config.WALLET_PARTIAL_WRITES)
 
     def create_wallet(self, storage, config):
         db = self.electrum.wallet_db.WalletDB(storage.read(), storage=storage, upgrade=True)
@@ -258,7 +275,7 @@ class BTCDaemon(BaseDaemon):
             wallet_path = os.path.join(wallet_dir, os.path.basename(wallet_key))
             if not os.path.exists(wallet_path):
                 await self.restore_wallet(command_runner, xpub, config, wallet_path=wallet_path)
-            storage = self.electrum.storage.WalletStorage(wallet_path)
+            storage = self.create_storage(wallet_path, config)
             wallet = self.create_wallet(storage, config)
         self.init_wallet(wallet)
         self.load_cmd_wallet(command_runner, wallet)
@@ -403,10 +420,10 @@ class BTCDaemon(BaseDaemon):
         return data, wallet
 
     def process_verified_tx(self, args):
-        wallet, tx_hash, tx_mined_status = args
+        wallet, tx_hash, _ = args
         data = {
             "tx": tx_hash,
-            "height": tx_mined_status.height,
+            "height": wallet.adb.get_tx_height(tx_hash, force_local_if_missing_tx=False).height(),
         }
         return data, wallet
 
@@ -526,8 +543,11 @@ class BTCDaemon(BaseDaemon):
         pos = merkle.get("pos")
         merkle_branch = merkle.get("merkle")
         header = self.network.blockchain().read_header(tx_height)
-        if header is None and tx_height <= self.network.get_local_height():
-            await self.network.request_chunk(tx_height, can_return_early=True)
+        if header is None and tx_height <= self.electrum.constants.net.max_checkpoint():
+            interface = self.network.interface
+            if interface is None:
+                raise Exception("Not connected to a server")
+            await interface.request_chunk_below_max_checkpoint(height=tx_height)
             header = self.network.blockchain().read_header(tx_height)
         self.electrum.verifier.verify_tx_is_in_block(tx_hash, merkle_branch, pos, header, tx_height)
 
@@ -648,11 +668,13 @@ class BTCDaemon(BaseDaemon):
     @rpc
     async def modifypaymenturl(self, url, amount, divisibility=None, wallet=None):
         try:
-            lnaddr = self.electrum.lnaddr.lndecode(url)
+            lnaddr = self.electrum.bolt11.decode_bolt11_invoice(url)
             if wallet not in self.wallets:
                 raise Exception("Wallet not loaded")
             lnaddr.amount = Decimal(amount)
-            return self.electrum.lnaddr.lnencode(lnaddr, self.wallets[wallet]["wallet"].lnworker.node_keypair.privkey)
+            return self.electrum.bolt11.encode_bolt11_invoice(
+                lnaddr, self.wallets[wallet]["wallet"].lnworker.node_keypair.privkey
+            )
         except Exception as e:
             if str(e) == "Wallet not loaded":
                 raise

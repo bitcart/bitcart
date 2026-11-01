@@ -29,6 +29,10 @@ def format_satoshis(x, decimal_point=8):
     return f"{(Decimal(x) / convert_rate):.{decimal_point}f}" if x is not None else None
 
 
+def format_satoshis_plain(x, decimal_point=8):
+    return f"{(Decimal(x) / Decimal(10) ** decimal_point).normalize():f}"
+
+
 def load_spec(spec_file, exit_on_error=True):
     try:
         with open(spec_file) as f:

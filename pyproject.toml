@@ -85,21 +85,21 @@ eth-based = [
 # sort alphabetically
 bch = [
     { include-group = "btc-based" },
-    "electron-cash @ https://github.com/Electron-Cash/Electron-Cash/archive/492f050ebe87d58faf57bee131912b6c0d049820.zip",
+    "electron-cash @ https://github.com/Electron-Cash/Electron-Cash/archive/c64404809d73a14afd9335651f5460c6e053573a.zip",
 ]
 bnb = [{ include-group = "eth-based" }]
 btc = [
     { include-group = "btc-derived" },
-    "electrum[crypto] @ git+https://github.com/spesmilo/electrum@0f4d8d6d57bbff3428950cf531bc98eae473beec",
+    "electrum[crypto] @ git+https://github.com/spesmilo/electrum@fc31115ef76b7a8969cf5292bfe3440e5e67a2c0",
 ]
 eth = [{ include-group = "eth-based" }]
 grs = [
     { include-group = "btc-derived" },
-    "electrum-grs[crypto] @ git+https://github.com/Groestlcoin/electrum-grs@a10de858525b7045b835a840200cf9fcff3bfe9e",
+    "electrum-grs[crypto] @ git+https://github.com/Groestlcoin/electrum-grs@b949d74b7b4d7366f56e3875a8eaf06c14973cdc",
 ]
 ltc = [
     { include-group = "btc-derived" },
-    "electrum-ltc[crypto] @ git+https://github.com/bitcart/electrum-ltc@5fd99314de302d9ed3c90537643f2e0ba82c1f02",
+    "electrum-ltc[crypto] @ git+https://github.com/bitcart/electrum-ltc@193c832d9024c784b15b5a853affe1e1a6b59040",
     "scrypt>=0.6.0",
 ]
 matic = [{ include-group = "eth-based" }]
@@ -154,7 +154,7 @@ certifi = "0 days"
 [tool.uv.audit]
 # ecdsa is not used in production, but we need to evaluate it's usage in electron-cash
 # see https://github.com/bitcart/bitcart/issues/576
-ignore = ["GHSA-wj6h-64fc-37mp", "GHSA-6jp4-8v48-cc5v"] # TODO: remove
+ignore = ["GHSA-wj6h-64fc-37mp"]
 
 [tool.deptry]
 # daemons/ is a flat directory of sibling modules - treat them as first-party

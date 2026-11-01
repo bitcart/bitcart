@@ -5,6 +5,7 @@ from utils import rpc
 class XRGDaemon(BCHDaemon):
     name = "XRG"
     DEFAULT_PORT = 5005
+    DATA_PATH_OPTION = "oregano_path"
 
     def load_electrum(self):
         import oregano
