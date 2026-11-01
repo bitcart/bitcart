@@ -3,7 +3,3 @@ rules:
     config:
       policies:
         "bitcart/*": ref-pin
-  secrets-outside-env:
-    config:
-      allow:
-        - CODECOV_TOKEN # coverage uploads is safe
