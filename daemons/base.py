@@ -24,6 +24,9 @@ from decouple import AutoConfig
 from logger import configure_logging
 from utils import JsonResponse, authenticate, load_spec, maybe_update_key, noop_cast, parse_params
 
+# keeps everything the daemon creates readable by its own user only
+os.umask(0o077)
+
 
 class BaseDaemon:
     # Coin name (symbol), used for coin identification across Bitcart

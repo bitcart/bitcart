@@ -21,6 +21,7 @@ if TYPE_CHECKING:
 
 BAD_TX_SPEED_MESSAGE = f"Transaction speed must be in range from 0 to {MAX_CONFIRMATION_WATCH}"
 BAD_UNDERPAID_PERCENTAGE_MESSAGE = "Underpaid percentage must be in range from 0 to 99.99"
+BAD_CONFIRMATION_TIMEOUT_MESSAGE = "Confirmation timeout must not be negative"
 BAD_TARGET_FEE_BLOCKS_MESSAGE = (
     f"Recommended fee confirmation target blocks must be either of: {', '.join(map(str, FEE_ETA_TARGETS))}"
 )
@@ -85,6 +86,7 @@ async def test_wallet_transaction_speed_validation(client: TestClient, token: st
     [
         pytest.param({"transaction_speed": -1}, BAD_TX_SPEED_MESSAGE, id="Too low transaction speed"),
         pytest.param({"transaction_speed": 201}, BAD_TX_SPEED_MESSAGE, id="Too high transaction speed"),
+        pytest.param({"confirmation_timeout": -1}, BAD_CONFIRMATION_TIMEOUT_MESSAGE, id="Negative confirmation timeout"),
         pytest.param({"underpaid_percentage": -1}, BAD_UNDERPAID_PERCENTAGE_MESSAGE, id="Too low underpaid percentage"),
         pytest.param({"underpaid_percentage": 100}, BAD_UNDERPAID_PERCENTAGE_MESSAGE, id="Too high underpaid percentage"),
         pytest.param({"recommended_fee_target_blocks": 0}, BAD_TARGET_FEE_BLOCKS_MESSAGE, id="Too low target fee blocks"),

@@ -26,6 +26,7 @@
             "recommended_fee_target_blocks": 1,
             "show_recommended_fee": true,
             "transaction_speed": 0,
+            "confirmation_timeout": 1440,
             "underpaid_percentage": 0,
             "use_dark_mode": false,
             "use_html_templates": false,

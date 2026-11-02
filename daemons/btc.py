@@ -11,7 +11,7 @@ import traceback
 from collections import deque
 from decimal import Decimal
 from types import ModuleType
-from urllib.parse import urlparse
+from urllib.parse import unquote, urlparse
 
 from logger import configure_logging, get_logger
 from utils import (
@@ -51,6 +51,7 @@ class BTCDaemon(BaseDaemon):
     ALIASES = {"getrequest": "get_request"}
     # override if your daemon has different networks than default electrum provides
     NETWORK_MAPPING: dict = {}
+    UNSUPPORTED_NETWORKS: tuple = ()
     DATA_PATH_OPTION = "electrum_path"
 
     def register_aliases(self):
@@ -116,27 +117,36 @@ class BTCDaemon(BaseDaemon):
             "regtest": self.electrum.constants.BitcoinRegtest.set_as_network,
             "simnet": self.electrum.constants.BitcoinSimnet.set_as_network,
             "signet": self.electrum.constants.BitcoinSignet.set_as_network,
+            "testnet4": self.electrum.constants.BitcoinTestnet4.set_as_network,
+            "mutinynet": self.electrum.constants.BitcoinMutinynet.set_as_network,
+        }
+        for network in self.UNSUPPORTED_NETWORKS:
+            self.NETWORK_MAPPING.pop(network, None)
+
+    def get_proxy_options(self, proxy_dict):
+        return {
+            "proxy": self.electrum.network.ProxySettings.from_dict(proxy_dict).serialize_proxy_cfgstr(),
+            "proxy_user": proxy_dict["user"] or None,
+            "proxy_password": proxy_dict["password"] or None,
         }
 
-    def _serialize_proxy(self, proxy_dict):
-        return self.electrum.network.ProxySettings.from_dict(proxy_dict).serialize_proxy_cfgstr()
-
     def get_proxy_settings(self):
-        proxy = None
-        if self.PROXY_URL:
-            try:
-                parsed = urlparse(self.PROXY_URL)
-                proxy = {
-                    "mode": str(parsed.scheme),
-                    "host": str(parsed.hostname),
-                    "port": str(parsed.port),
-                    "user": str(parsed.username),
-                    "password": str(parsed.password),
-                }
-                proxy = self._serialize_proxy(proxy)
-            except Exception:
-                sys.exit(f"Invalid proxy URL. Original traceback:\n{traceback.format_exc()}")
-        return {"proxy": proxy}
+        if not self.PROXY_URL:
+            return {"proxy": None, "enable_proxy": False}
+        try:
+            parsed = urlparse(self.PROXY_URL)
+            if not parsed.hostname or parsed.port is None:
+                raise ValueError("Proxy URL must include a host and a port")
+            proxy = {
+                "mode": parsed.scheme,
+                "host": parsed.hostname,
+                "port": str(parsed.port),
+                "user": unquote(parsed.username or ""),
+                "password": unquote(parsed.password or ""),
+            }
+            return {**self.get_proxy_options(proxy), "enable_proxy": True}
+        except Exception:
+            sys.exit(f"Invalid proxy URL. Original traceback:\n{traceback.format_exc()}")
 
     def set_dynamic_spec(self):
         self.spec["capabilities"] = {"lightning": self.LIGHTNING}
@@ -221,6 +231,12 @@ class BTCDaemon(BaseDaemon):
     def create_storage(self, path, config):
         return self.electrum.storage.WalletStorage(path, allow_partial_writes=config.WALLET_PARTIAL_WRITES)
 
+    def get_storage_path(self, storage):
+        return storage.get_path()
+
+    def get_wallet_dir(self, config):
+        return config.get_datadir_wallet_path()
+
     def create_wallet(self, storage, config):
         db = self.electrum.wallet_db.WalletDB(storage.read(), storage=storage, upgrade=True)
         return self.electrum.wallet.Wallet(db=db, config=config)
@@ -271,8 +287,7 @@ class BTCDaemon(BaseDaemon):
         if diskless:
             wallet = (await self.restore_wallet(command_runner, xpub, config))["wallet"]
         else:
-            wallet_dir = os.path.dirname(config.get_wallet_path())
-            wallet_path = os.path.join(wallet_dir, os.path.basename(wallet_key))
+            wallet_path = os.path.join(self.get_wallet_dir(config), os.path.basename(wallet_key))
             if not os.path.exists(wallet_path):
                 await self.restore_wallet(command_runner, xpub, config, wallet_path=wallet_path)
             storage = self.create_storage(wallet_path, config)
@@ -560,8 +575,8 @@ class BTCDaemon(BaseDaemon):
         return result_formatted
 
     async def _get_transaction_spv(self, tx_hash):
-        # Temporarily used to remove frequent CI failures in get_tx until electrum protocol 1.5 is released
-        # Note that this is not efficient, that's why it's not default yet
+        # verifies the tx by SPV instead of trusting the server's verbose output, which some servers don't support.
+        # Needs extra round trips (address history, merkle proof), so it's opt-in
         result = await self.network.get_transaction(tx_hash)
         tx = self.electrum.transaction.Transaction(result)
         tx.deserialize()
@@ -685,7 +700,7 @@ class BTCDaemon(BaseDaemon):
         self.wallets[wallet]["wallet"].keystore.add_key_origin(derivation_prefix=derivation, root_fingerprint=fingerprint)
         tx = self.electrum.transaction.tx_from_any(tx)
         tx.add_info_from_wallet(self.wallets[wallet]["wallet"])
-        tx.prepare_for_export_for_hardware_device(self.wallets[wallet]["wallet"])
+        await tx.prepare_for_export_for_hardware_device(self.wallets[wallet]["wallet"])
         return str(tx)
 
     @rpc
@@ -749,7 +764,7 @@ class BTCDaemon(BaseDaemon):
         if key not in self.wallets:
             return False
         if self.wallets[key]["wallet"].storage:
-            path = self.wallets[key]["wallet"].storage.path
+            path = self.get_storage_path(self.wallets[key]["wallet"].storage)
             if self.ASYNC_CLIENT:
                 await self.wallets[key]["cmd"].close_wallet(wallet_path=path)
             else:  # NOTE: we assume that non-async clients are BCH-based coins there

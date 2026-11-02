@@ -1,10 +1,13 @@
 import json
+import os
 from collections import defaultdict
 from decimal import Decimal
 
 from btc import BTCDaemon
 from logger import configure_logging
 from utils import format_satoshis, format_satoshis_plain, get_exception_message, modify_payment_url, rpc
+
+NO_HW_SIGNING_MESSAGE = "PSBT and hardware wallet signing are not supported for this coin"
 
 with open("daemons/tokens/cashtokens.json") as f:
     CASHTOKENS = json.loads(f.read())
@@ -132,6 +135,14 @@ class BCHDaemon(BTCDaemon):
     def create_storage(self, path, config):
         return self.electrum.storage.WalletStorage(path)
 
+    def get_storage_path(self, storage):
+        return storage.path
+
+    def get_wallet_dir(self, config):
+        path = os.path.join(config.path, "wallets")
+        self.electrum.util.make_dir(path)
+        return path
+
     def create_wallet(self, storage, config):
         return self.electrum.wallet.Wallet(storage)
 
@@ -190,8 +201,8 @@ class BCHDaemon(BTCDaemon):
     def get_exception_message(self, e):
         return get_exception_message(e)
 
-    def _serialize_proxy(self, proxy_dict):
-        return self.electrum.network.serialize_proxy(proxy_dict)
+    def get_proxy_options(self, proxy_dict):
+        return {"proxy": self.electrum.network.serialize_proxy(proxy_dict)}
 
     @rpc
     async def get_transaction(self, tx, wallet=None):
@@ -325,6 +336,18 @@ class BCHDaemon(BTCDaemon):
     def removelocaltx(self, txid, wallet):
         self.wallets[wallet]["wallet"].remove_transaction(txid)
         self.wallets[wallet]["wallet"].save_transactions()
+
+    @rpc
+    def adjustforhwsign(self, *args, **kwargs):
+        raise NotImplementedError(NO_HW_SIGNING_MESSAGE)
+
+    @rpc
+    def getfingerprint(self, *args, **kwargs):
+        raise NotImplementedError(NO_HW_SIGNING_MESSAGE)
+
+    @rpc
+    def finalizepsbt(self, *args, **kwargs):
+        raise NotImplementedError(NO_HW_SIGNING_MESSAGE)
 
     @rpc
     async def getinfo(self, wallet=None):

@@ -4,6 +4,7 @@ import secrets
 import time
 from collections import defaultdict
 from collections.abc import Generator
+from datetime import datetime, timedelta
 from decimal import Decimal
 from operator import attrgetter
 from typing import Any, cast
@@ -31,6 +32,7 @@ from api.plugins import SKIP_PAYMENT_METHOD
 from api.redis import Redis
 from api.schemas.invoices import CreateInvoice, MarkCompleteOptions, MethodUpdateData
 from api.schemas.misc import BatchAction
+from api.schemas.stores import StoreCheckoutSettings
 from api.services.coins import CoinService
 from api.services.crud import CRUDAction, CRUDService, StatementTypeT
 from api.services.crud.products import ProductService
@@ -175,6 +177,12 @@ class InvoiceService(CRUDService[models.Invoice]):
         if method.id != payment_id:
             return method.amount
         return max(method.amount - sent_amount, Decimal(0))
+
+    @staticmethod
+    def is_confirmation_overdue(invoice: models.Invoice, now: datetime) -> bool:
+        checkout_settings = invoice.store.checkout_settings if invoice.store else StoreCheckoutSettings()
+        timeout = timedelta(minutes=invoice.expiration + checkout_settings.confirmation_timeout)
+        return now > invoice.created + timeout
 
     @classmethod
     def find_effective_price(
@@ -428,7 +436,7 @@ class InvoiceService(CRUDService[models.Invoice]):
             )
             recommended_fee = 0 if recommended_fee is None else recommended_fee  # if no rate available, disable it
             data["recommended_fee"] = round_half_up(
-                Decimal(recommended_fee) / 1024, 2
+                Decimal(recommended_fee) / 1000, 2
             )  # convert to sat/byte, two decimal places
             data_got = await method(request_price, description=product.name if product else "", expire=invoice.expiration)
             data["payment_address"] = data_got["address"] if not lightning else data_got["lightning_invoice"]

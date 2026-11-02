@@ -19,7 +19,7 @@ function send_to()
 }
 
 if [[ $# -eq 0 ]]; then
-    echo "syntax: startup|sendtoaddress|newblock|newblocks|generate|newaddress|newtx"
+    echo "syntax: startup|sendtoaddress|rbfout|newblock|newblocks|generate|newaddress|newtx"
     exit 1
 fi
 
@@ -30,6 +30,10 @@ fi
 
 if [[ $1 == "sendtoaddress" ]]; then
     send_to $2 $3
+fi
+
+if [[ $1 == "rbfout" ]]; then
+    $bitcoin_cli -named bumpfee txid=$2 outputs="[{\"$($bitcoin_cli getnewaddress)\": $3}]" | jq -r '.txid'
 fi
 
 if [[ $1 == "newblock" ]]; then

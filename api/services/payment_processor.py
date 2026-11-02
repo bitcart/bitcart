@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 from collections import defaultdict
 from collections.abc import AsyncIterator, Coroutine
 from decimal import Decimal
@@ -137,17 +138,47 @@ class PaymentProcessor:
             tx_amounts=tx_amounts,
         )
 
+    async def fail_unconfirmed_invoice(
+        self, invoice: models.Invoice, method: models.PaymentMethod, wallet: models.Wallet, *, di_context: AsyncContainer
+    ) -> None:
+        coin = await self.coin_service.get_coin(
+            method.currency, {"xpub": wallet.xpub, "contract": method.contract, **wallet.additional_xpub_data}
+        )
+        with contextlib.suppress(errors.RequestNotFoundError):
+            if convert_status((await self.get_request(coin, method))["status"]) == InvoiceStatus.COMPLETE:
+                return  # confirmed, the payment event just wasn't processed yet
+        invoice_service = await di_context.get(InvoiceService)
+        await invoice_service.update_status(
+            invoice, InvoiceStatus.INVALID, set_exception_status=InvoiceExceptionStatus.FAILED_CONFIRM
+        )
+
     async def new_block_handler(self, instance: BTC, event: str, height: int) -> None:
         async with self.locks["new_block"], self.container(scope=Scope.REQUEST) as container:
             session = await container.get(AsyncSession)
             invoice_service = await container.get(InvoiceService)
+            now = utils.time.now()
             coros = []
             coros.append(self.payout_manager.process_new_block(instance.coin_name.lower()))
             async for method, invoice, wallet in self.iterate_pending_invoices(
-                session, invoice_service, instance.coin_name.lower(), statuses=[InvoiceStatus.CONFIRMED]
+                session, invoice_service, instance.coin_name.lower(), statuses=[InvoiceStatus.PAID, InvoiceStatus.CONFIRMED]
             ):
                 with log_errors(logger):  # issues processing one item
-                    if invoice.status != InvoiceStatus.CONFIRMED or method.id != invoice.payment_id or method.lightning:
+                    if method.id != invoice.payment_id or method.lightning:
+                        continue
+                    if invoice.status == InvoiceStatus.PAID:
+                        if invoice_service.is_confirmation_overdue(invoice, now):
+                            coros.append(
+                                utils.common.concurrent_safe_run(
+                                    self.fail_unconfirmed_invoice,
+                                    invoice,
+                                    method,
+                                    wallet,
+                                    container=self.container,
+                                    logger=logger,
+                                )
+                            )
+                        continue
+                    if invoice.status != InvoiceStatus.CONFIRMED:
                         continue
                     confirmations = await self.get_confirmations(method, wallet)
                     if confirmations != method.confirmations:

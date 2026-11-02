@@ -59,6 +59,7 @@ class WalletsBalance(Schema):
 class OpenChannelScheme(Schema):
     node_id: str
     amount: Decimal
+    public: bool = False
 
 
 class CloseChannelScheme(Schema):

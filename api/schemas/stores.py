@@ -15,6 +15,7 @@ HTTP_URL_ADAPTER = TypeAdapter(HttpUrl)
 class StoreCheckoutSettings(Schema):
     expiration: int = 15
     transaction_speed: int = 0
+    confirmation_timeout: int = 24 * 60
     underpaid_percentage: float = 0
     custom_logo_link: str = ""
     recommended_fee_target_blocks: int = 1
@@ -44,6 +45,13 @@ class StoreCheckoutSettings(Schema):
     def validate_transaction_speed(cls, v: int) -> int:
         if v < 0 or v > MAX_CONFIRMATION_WATCH:
             raise HTTPException(422, f"Transaction speed must be in range from 0 to {MAX_CONFIRMATION_WATCH}")
+        return v
+
+    @field_validator("confirmation_timeout")
+    @classmethod
+    def validate_confirmation_timeout(cls, v: int) -> int:
+        if v < 0:
+            raise HTTPException(422, "Confirmation timeout must not be negative")
         return v
 
     @field_validator("underpaid_percentage")

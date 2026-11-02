@@ -4,6 +4,7 @@ from btc import BTCDaemon
 class GRSDaemon(BTCDaemon):
     name = "GRS"
     DEFAULT_PORT = 5010
+    UNSUPPORTED_NETWORKS = ("testnet4", "mutinynet")
 
     def load_electrum(self):
         import electrum_grs

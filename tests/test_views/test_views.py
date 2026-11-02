@@ -85,6 +85,7 @@ del settings
 
 class DummyInstance:
     coin_name = "BTC"
+    is_eth_based = False
 
 
 async def test_docs_root(client: TestClient) -> None:

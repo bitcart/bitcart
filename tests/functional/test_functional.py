@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import signal
 from collections.abc import AsyncIterator, Awaitable, Callable, Iterator
+from datetime import timedelta
 from decimal import Decimal
 from queue import Queue
 from typing import TYPE_CHECKING, Any, cast
@@ -11,9 +12,14 @@ import pytest
 from aiohttp import web
 from bitcart import BTC  # type: ignore
 from bitcart.utils import bitcoins
+from dishka import Scope
+from fastapi import FastAPI
 from httpx_ws import AsyncWebSocketSession, aconnect_ws
+from sqlalchemy import update
 
+from api import models
 from api.constants import MAX_CONFIRMATION_WATCH
+from api.db import AsyncSession
 from api.ext.moneyformat import round_half_up
 from api.settings import Settings
 from tests.functional import utils
@@ -266,7 +272,7 @@ async def test_exception_statuses(
     amount = Decimal(pay_details["amount"])
     part1 = round_half_up(amount / 2, 8)
     part2 = amount - part1
-    await asyncio.sleep(3)  # wait for the worker startup (remove when electrum fixes pending tx_hashes returning)
+    await asyncio.sleep(3)  # wait for the worker startup, see #497
     invoice_id = invoice["id"]
     await check_invoice_status(
         lambda: send_to_address(address, part1),
@@ -287,6 +293,55 @@ async def test_exception_statuses(
     )
     invoice = (await client.get(f"/invoices/{invoice_id}", headers={"Authorization": f"Bearer {token}"})).json()
     assert sorted(Decimal(tx["amount"]) for tx in invoice["transactions"]) == sorted([part1, part2])
+
+
+async def test_unconfirmed_payment_times_out(
+    app: FastAPI,
+    client: TestClient,
+    regtest_api_store: dict[str, Any],
+    token: str,
+    worker: None,
+) -> None:
+    store_id = regtest_api_store["id"]
+    resp = await client.patch(
+        f"/stores/{store_id}/checkout_settings",
+        json={"transaction_speed": 1, "confirmation_timeout": 0},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 200
+    await asyncio.sleep(5)  # the worker's startup check must not see this invoice, see #497
+    invoice = (
+        await client.post(
+            "/invoices", json={"price": INVOICE_AMOUNT, "currency": "BTC", "store_id": store_id, "expiration": 1}
+        )
+    ).json()
+    pay_details = invoice["payments"][0]
+    invoice_id = invoice["id"]
+    paid_tx = ""
+
+    async def pay() -> None:
+        nonlocal paid_tx
+        paid_tx = await send_to_address(pay_details["payment_address"], pay_details["amount"])
+
+    await check_invoice_status(pay, client, invoice_id, "paid")
+    redirected_amount = round_half_up(Decimal(pay_details["amount"]) / 2, 8)
+    utils.run_shell(["rbfout", paid_tx, str(redirected_amount)])  # the payment never confirms
+    utils.run_shell(["newblock"])
+    await asyncio.sleep(3)  # a block before the deadline must not fail it
+    assert (await client.get(f"/invoices/{invoice_id}")).json()["status"] == "paid"
+    async with app.state.dishka_container(scope=Scope.REQUEST) as container:  # skip waiting for the deadline
+        session = await container.get(AsyncSession)
+        await session.execute(
+            update(models.Invoice)
+            .where(models.Invoice.id == invoice_id)
+            .values(created=models.Invoice.created - timedelta(minutes=2))
+        )
+        await session.commit()
+
+    async def mine_block() -> None:  # the timeout is checked on new blocks
+        utils.run_shell(["newblock"])
+
+    await check_invoice_status(mine_block, client, invoice_id, "invalid", exception_status="failed_confirm")
 
 
 async def test_lightning_pay_flow(

@@ -123,7 +123,7 @@ async def open_wallet_channel(
 ) -> Any:
     try:
         coin = await wallet_service.get_wallet_coin_by_id(model_id, user)
-        return await coin.open_channel(params.node_id, params.amount)
+        return await coin.open_channel(params.node_id, params.amount, public=params.public)
     except (BitcartBaseError, HTTPException) as e:
         if isinstance(e, HTTPException) and e.status_code != 422:
             raise

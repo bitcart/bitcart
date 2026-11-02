@@ -7,6 +7,12 @@ import threading
 from decimal import Decimal
 from functools import singledispatch
 
+from logger import get_logger
+
+logger = get_logger(__name__)
+
+_MISSING = object()
+
 
 class DBFileException(Exception):
     pass
@@ -49,20 +55,19 @@ class Storage:
         if self._in_memory_only:
             return
         # write in temporary first to not corrupt the main file
-        s = data
         temp_path = f"{self.path}.tmp.{os.getpid()}"
+        mode = stat.S_IREAD | stat.S_IWRITE
         with open(temp_path, "w", encoding="utf-8") as f:
-            f.write(s)
+            try:
+                os.chmod(temp_path, mode)  # a leftover temp file keeps its old mode otherwise
+            except PermissionError as e:
+                logger.warning(f"cannot chmod temp wallet file: {e!r}")
+            f.write(data)
             f.flush()
             os.fsync(f.fileno())
-        try:
-            mode = os.stat(self.path).st_mode
-        except FileNotFoundError:
-            mode = stat.S_IREAD | stat.S_IWRITE
         if not self.file_exists() and os.path.exists(self.path):
             raise DBFileException(f"File {self.path} should not exist")
         os.replace(temp_path, self.path)
-        os.chmod(self.path, mode)
         self._file_exists = True
 
     def file_exists(self) -> bool:
@@ -159,7 +164,8 @@ class StoredObject:
     db = None
 
     def __setattr__(self, key, value):
-        if self.db:
+        is_stored = key != "db" and not key.startswith("_")
+        if self.db and is_stored and getattr(self, key, _MISSING) != value:
             self.db.set_modified(True)
         super().__setattr__(key, value)
 

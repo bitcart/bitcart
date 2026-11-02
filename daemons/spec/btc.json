@@ -25,7 +25,7 @@
         "No path found": -32010,
         "Lightning not supported in this wallet type": -32011,
         "Invoice not found": -32012,
-        "This version of Electrum is too old to open this wallet": -32013,
+        "is too old to open this wallet": -32013,
         "No ConfigVar with key": -32014,
         "Transaction has an invalid signature": -32015,
         "This wallet file was created for a different network/chain": -32016,
