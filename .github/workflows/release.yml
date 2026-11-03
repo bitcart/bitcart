@@ -5,11 +5,16 @@ on:
     types: [created]
 
 concurrency:
-  group: ${{ github.workflow_ref }}-${{ github.event.release.tag_name }}
+  group: ${{ github.workflow_ref }}
   cancel-in-progress: false
+  queue: max
 
 permissions:
   contents: read
+
+defaults:
+  run:
+    shell: bash
 
 jobs:
   generate-matrix:
@@ -32,10 +37,11 @@ jobs:
             exit 1
           fi
 
-      - id: matrix
+      - name: Generate matrix
+        id: matrix
         run: |
           matrix=$(jq -c '[to_entries[] | {target: .key, dockerfile: .value.dockerfile}]' .github/images.json)
-          echo "matrix=$matrix" >> $GITHUB_OUTPUT
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
 
   build:
     name: build-${{ matrix.target }}

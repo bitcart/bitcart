@@ -3,7 +3,7 @@ name = "bitcart-api"
 version = "1.0.0"
 description = "Bitcart Merchants API"
 requires-python = ">=3.12"
-dependencies = ["python-decouple", "rust-just>=1.46.0"]
+dependencies = ["python-decouple>=3.8", "rust-just>=1.46.0"]
 
 [dependency-groups]
 lint = ["deptry>=0.25.1", "mypy>=1.13.0", "prek>=0.3.1", "ruff>=0.9.5"]
@@ -46,7 +46,7 @@ web = [
     "python-ulid[pydantic]>=3.0.0",
     "redis[hiredis]>=5.2.1",
     "scalar-fastapi>=1.4.0",
-    "sentry-sdk[fastapi,sqlalchemy]",
+    "sentry-sdk[fastapi,sqlalchemy]>=2.72.0",
     # 2.1 is not yet supported by advanced-alchemy and opentelemetry-instrumentation-sqlalchemy
     "sqlalchemy[asyncio]>=2.0.36,<2.1",
     "starlette>=1.0.0",
@@ -71,11 +71,11 @@ btc-based = [{ include-group = "daemon-base" }]
 btc-derived = [{ include-group = "btc-based" }, "electrum-ecc>=0.0.8"]
 eth-based = [
     { include-group = "daemon-base" },
-    "aiolimiter",
-    "eth-account",
-    "eth-keys",
-    "hexbytes",
-    "mnemonic",
+    "aiolimiter>=1.3.0",
+    "eth-account>=0.14.0",
+    "eth-keys>=0.8.0",
+    "hexbytes>=2.0.0",
+    "mnemonic>=0.21",
     "web3>=7,<8",
 ]
 
@@ -100,8 +100,14 @@ ltc = [
     "scrypt>=0.6.0",
 ]
 matic = [{ include-group = "eth-based" }]
-trx = [{ include-group = "eth-based" }, "async-lru", "httpx", "tronpy", "trontxsize"]
-xmr = [{ include-group = "daemon-base" }, "monero", "universalasync"]
+trx = [
+    { include-group = "eth-based" },
+    "async-lru>=2.4.0",
+    "httpx>=0.28.1",
+    "tronpy>=0.6.2",
+    "trontxsize>=1.2.0",
+]
+xmr = [{ include-group = "daemon-base" }, "monero>=1.1.1", "universalasync>=0.6.2.0"]
 xrg = [
     { include-group = "btc-based" },
     "oregano @ https://github.com/Ergon-moe/Oregano/archive/6bf78d3be864c053c95ee332c6ab366e5695d8a4.zip",

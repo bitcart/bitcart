@@ -24,7 +24,7 @@ repos:
       - id: uv-lock
       - id: uv-audit
   - repo: https://github.com/zizmorcore/zizmor-pre-commit
-    rev: v1.29.0
+    rev: v1.31.1
     hooks:
       - id: zizmor
         args: [--no-progress, --offline, --persona=auditor]
@@ -42,4 +42,5 @@ repos:
         exclude: ^openapi\.json$
         language: node
         require_serial: true
-        entry: npx oxfmt --no-error-on-unmatched-pattern
+        entry: oxfmt --no-error-on-unmatched-pattern
+        additional_dependencies: [oxfmt@0.75.0]

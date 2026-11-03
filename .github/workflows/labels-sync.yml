@@ -1,9 +1,13 @@
-name: Sync labels
+name: Sync Labels
 
 on:
   schedule:
     - cron: "0 0 * * 1"
   workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow_ref }}
+  cancel-in-progress: false
 
 permissions: {}
 
