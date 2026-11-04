@@ -415,6 +415,7 @@ class CRUDService[ModelType: ModelProtocol]:
         for attr, value in data.items():
             setattr(model, attr, value)
         await self.session.flush()
+        await self.finalize_update(data, model)
         if call_hooks:
             plugin_registry = await self.container.get(PluginRegistry)
             await plugin_registry.run_hook(f"db_modify_{self.model_type.__name__.lower()}", model, old_model)
@@ -485,15 +486,20 @@ class CRUDService[ModelType: ModelProtocol]:
     async def prepare_update(self, data: dict[str, Any], model: ModelType) -> dict[str, Any]:
         return data
 
+    async def finalize_update(self, data: dict[str, Any], model: ModelType) -> None:
+        pass
+
     async def _process_many_to_many_field(self, data: dict[str, Any], field_key: str, repository: CRUDRepository[Any]) -> None:
         field_ids = data.pop(field_key, None)
         if field_ids is not None:
             filters = [repository.model_type.id.in_(field_ids)]
             if "user_id" in data:
                 filters.append(repository.model_type.user_id == data["user_id"])
-            data[field_key] = await repository.get_many(*filters)
-            if len(data[field_key]) != len(field_ids):
+            items = await repository.get_many(*filters)
+            if len(items) != len(field_ids):
                 raise unauthorized_access_exception()
+            items_by_id = {item.id: item for item in items}
+            data[field_key] = [items_by_id[item_id] for item_id in field_ids]
 
     async def prepare_data(self, data: dict[str, Any]) -> dict[str, Any]:
         if "metadata" in data:  # Map to sqlalchemy format

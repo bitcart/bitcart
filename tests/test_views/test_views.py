@@ -74,6 +74,7 @@ from tests.helper import (
 
 if TYPE_CHECKING:
     from httpx import AsyncClient as TestClient
+    from httpx import Response
 
 pytestmark = pytest.mark.anyio
 
@@ -1655,6 +1656,35 @@ async def test_create_invoice_and_pay(client: TestClient, token: str, store: dic
     assert final_invoice.paid_currency == payment_method.currency.upper()
     assert final_invoice.payment_id == payment_method.id
     await client.delete(f"/invoices/{invoice_id}", headers={"Authorization": f"Bearer {token}"})
+
+
+async def test_store_wallets_order(client: TestClient, token: str) -> None:
+    headers = {"Authorization": f"Bearer {token}"}
+    first, second, third = [(await create_wallet(client, token, label=label))["id"] for label in ("first", "second", "third")]
+
+    async def check_saved_order(resp: Response, expected: list[str]) -> None:
+        assert resp.status_code == 200
+        saved = resp.json()
+        assert saved["wallets"] == expected
+        assert (await client.get(f"/stores/{saved['id']}", headers=headers)).json()["wallets"] == expected
+        listed = (await client.get("/stores", headers=headers)).json()["result"]
+        assert next(store for store in listed if store["id"] == saved["id"])["wallets"] == expected
+
+    resp = await client.post("/stores", json={"name": "ordered", "wallets": [third, first, second]}, headers=headers)
+    await check_saved_order(resp, [third, first, second])
+    store_id = resp.json()["id"]
+
+    async def save_order(order: list[str]) -> Response:
+        return await client.patch(f"/stores/{store_id}", json={"wallets": order}, headers=headers)
+
+    await check_saved_order(await save_order([second, third, first]), [second, third, first])
+    await check_saved_order(await save_order([first]), [first])
+    await check_saved_order(await save_order([third, first]), [third, first])
+    await check_saved_order(await save_order([third, second, first]), [third, second, first])
+
+    invoice = await create_invoice(client, token, store_id=store_id)
+    assert invoice["payment_methods"] == [third, second, first]
+    assert [payment["label"] for payment in invoice["payments"]] == ["third", "second", "first"]
 
 
 async def test_get_public_store(client: TestClient, store: dict[str, Any], token: str) -> None:

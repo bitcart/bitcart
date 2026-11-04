@@ -165,6 +165,7 @@ class WalletxStore(Model):
 
     wallet_id: Mapped[str] = mapped_column(Text, ForeignKey("wallets.id", ondelete="CASCADE"), primary_key=True)
     store_id: Mapped[str] = mapped_column(Text, ForeignKey("stores.id", ondelete="CASCADE"), primary_key=True)
+    position: Mapped[int] = mapped_column(Integer, default=0)
 
 
 class Wallet(RecordModel):
@@ -254,7 +255,12 @@ class Store(RecordModel):
     user_id: Mapped[str | None] = mapped_column(Text, ForeignKey(User.id, ondelete="SET NULL"))
 
     wallets = relationship(
-        "Wallet", lazy="raise", secondary=WalletxStore.__table__, back_populates="stores", cascade="save-update, merge"
+        "Wallet",
+        lazy="raise",
+        secondary=WalletxStore.__table__,
+        back_populates="stores",
+        cascade="save-update, merge",
+        order_by=WalletxStore.position,
     )
     notifications = relationship(
         "Notification",

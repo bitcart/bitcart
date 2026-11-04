@@ -19,6 +19,7 @@ from api.services.settings import SettingService
 
 class StoreService(CRUDService[models.Store]):
     repository_type = StoreRepository
+    repository: StoreRepository
 
     def __init__(
         self,
@@ -45,6 +46,7 @@ class StoreService(CRUDService[models.Store]):
 
     async def finalize_create(self, data: dict[str, Any], user: models.User | None = None) -> models.Store:
         store = await super().finalize_create(data, user)
+        await self._save_wallet_order(data, store)
         if user and user.is_superuser:
             count = await self.repository.count()
             # First store created by superuser is the one shown on store POS
@@ -53,6 +55,15 @@ class StoreService(CRUDService[models.Store]):
                 await self.plugin_registry.run_hook("first_store", store)
                 await self.setting_service.set_setting(GlobalStorePolicy(pos_id=store.id))
         return store
+
+    async def finalize_update(self, data: dict[str, Any], model: models.Store) -> None:
+        await super().finalize_update(data, model)
+        await self._save_wallet_order(data, model)
+
+    async def _save_wallet_order(self, data: dict[str, Any], store: models.Store) -> None:
+        if "wallets" in data:
+            await self.repository.set_wallet_order(store.id, [wallet.id for wallet in data["wallets"]])
+            await self.session.refresh(store, attribute_names=["wallets"])
 
     async def get_public_store(
         self, item_id: Any, user: models.User | None = None, *args: Any, **kwargs: Any
