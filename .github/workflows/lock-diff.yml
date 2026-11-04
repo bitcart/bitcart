@@ -1,0 +1,22 @@
+name: Lock Diff
+
+on:
+  pull_request:
+    paths:
+      - uv.lock
+
+concurrency:
+  group: ${{ github.workflow_ref }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  lock-diff:
+    name: lock-diff
+    uses: bitcart/bitcart-actions/.github/workflows/lock-diff.yml@master
+
+    permissions:
+      contents: read
+      pull-requests: write # comment with the lock diff

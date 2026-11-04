@@ -34,15 +34,6 @@ jobs:
       contents: read
       security-events: write # needed for github advanced security
 
-  lock-diff:
-    name: lock-diff
-    uses: bitcart/bitcart-actions/.github/workflows/lock-diff.yml@master
-    if: ${{ github.event_name == 'pull_request' }}
-
-    permissions:
-      contents: read
-      pull-requests: write # comment with the lock diff
-
   openapi:
     name: openapi
     needs: [lint, workflows]
