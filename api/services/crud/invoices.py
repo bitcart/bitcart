@@ -359,6 +359,10 @@ class InvoiceService(CRUDService[models.Invoice]):
         if isinstance(data, dict):
             data["meta"] = data.pop("metadata", {})
             data["wallet_info"] = data.pop("wallet", None)
+            transaction_speed = (
+                wallet.transaction_speed if wallet.transaction_speed is not None else store.checkout_settings.transaction_speed
+            )
+            data["required_confirmations"] = 0 if lightning else transaction_speed
         return data
 
     async def _create_payment_method_core(
@@ -575,7 +579,6 @@ class InvoiceService(CRUDService[models.Invoice]):
         self,
         invoice: models.Invoice,
         method: models.PaymentMethod,
-        wallet: models.Wallet,
         *,
         confirmations: int,
         tx_hashes: list[str] | None = None,
@@ -588,12 +591,7 @@ class InvoiceService(CRUDService[models.Invoice]):
         status = invoice.status
         if confirmations >= 1:
             status = InvoiceStatus.CONFIRMED
-        transaction_speed = (
-            wallet.transaction_speed
-            if wallet.transaction_speed is not None
-            else invoice.store.checkout_settings.transaction_speed
-        )
-        if confirmations >= transaction_speed:
+        if confirmations >= method.required_confirmations:
             status = InvoiceStatus.COMPLETE
         await self.update_status(invoice, status, method, tx_hashes, sent_amount, tx_amounts=tx_amounts)
 

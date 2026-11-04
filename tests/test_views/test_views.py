@@ -1415,6 +1415,94 @@ async def test_new_block_keeps_transactions(
     ]
 
 
+@pytest.mark.parametrize(
+    ("wallet_speed", "expected"),
+    [
+        pytest.param(None, 6, id="store speed without a wallet override"),
+        pytest.param(10, 10, id="wallet override above store speed"),
+        pytest.param(2, 2, id="wallet override below store speed"),
+        pytest.param(0, 0, id="zero wallet override is not treated as unset"),
+    ],
+)
+async def test_invoice_required_confirmations(client: TestClient, token: str, wallet_speed: int | None, expected: int) -> None:
+    headers = {"Authorization": f"Bearer {token}"}
+    store = await create_store(client, token, custom_wallet_attrs={"transaction_speed": wallet_speed})
+    resp = await client.patch(f"/stores/{store['id']}/checkout_settings", json={"transaction_speed": 6}, headers=headers)
+    assert resp.status_code == 200
+    invoice = await create_invoice(client, token, store_id=store["id"], price=5000)
+    assert invoice["payments"][0]["required_confirmations"] == expected
+    fetched = (await client.get(f"/invoices/{invoice['id']}")).json()
+    assert fetched["payments"][0]["required_confirmations"] == expected
+    listed = (await client.get("/invoices", params={"query": invoice["id"]}, headers=headers)).json()["result"]
+    assert [item["payments"][0]["required_confirmations"] for item in listed] == [expected]
+
+
+async def test_invoice_required_confirmations_locked_after_creation(
+    client: TestClient, token: str, app: FastAPI, mocker: pytest_mock.MockerFixture
+) -> None:
+    headers = {"Authorization": f"Bearer {token}"}
+    payment_processor = await app.state.dishka_container.get(PaymentProcessor)
+    store = await create_store(client, token, custom_wallet_attrs={"transaction_speed": 3})
+    invoice = await create_invoice(client, token, store_id=store["id"], price=5000)
+    payment = invoice["payments"][0]
+    resp = await client.patch(f"/wallets/{store['wallets'][0]}", json={"transaction_speed": 1}, headers=headers)
+    assert resp.status_code == 200
+    resp = await client.patch(f"/stores/{store['id']}/checkout_settings", json={"transaction_speed": 1}, headers=headers)
+    assert resp.status_code == 200
+    mocker.patch.object(PaymentProcessor, "get_confirmations", side_effect=[2, 3])
+    await payment_processor.new_payment_handler(
+        DummyInstance(), None, payment["lookup_field"], InvoiceStatus.COMPLETE, None, ["tx1"], payment["amount"]
+    )
+    invoice = (await client.get(f"/invoices/{invoice['id']}")).json()
+    assert invoice["status"] == "confirmed"
+    assert invoice["payments"][0]["required_confirmations"] == 3
+    await payment_processor.new_block_handler(DummyInstance(), "new_block", 1)
+    assert (await client.get(f"/invoices/{invoice['id']}")).json()["status"] == "complete"
+
+
+async def test_invoice_required_confirmations_survive_store_and_wallet_deletion(
+    client: TestClient, token: str, app: FastAPI, mocker: pytest_mock.MockerFixture
+) -> None:
+    headers = {"Authorization": f"Bearer {token}"}
+    payment_processor = await app.state.dishka_container.get(PaymentProcessor)
+    store = await create_store(client, token, custom_wallet_attrs={"transaction_speed": 2})
+    invoice = await create_invoice(client, token, store_id=store["id"], price=5000)
+    payment = invoice["payments"][0]
+    assert (await client.delete(f"/stores/{store['id']}", headers=headers)).status_code == 200
+    mocker.patch.object(PaymentProcessor, "get_confirmations", return_value=1)
+    await payment_processor.new_payment_handler(
+        DummyInstance(), None, payment["lookup_field"], InvoiceStatus.COMPLETE, None, ["tx1"], payment["amount"]
+    )
+    assert (await client.get(f"/invoices/{invoice['id']}")).json()["status"] == "confirmed"
+    assert (await client.delete(f"/wallets/{store['wallets'][0]}", headers=headers)).status_code == 200
+    fetched = (await client.get(f"/invoices/{invoice['id']}")).json()
+    assert fetched["payments"][0]["required_confirmations"] == 2
+
+
+async def test_wallet_transaction_speed_overrides_store_during_confirmation(
+    client: TestClient, token: str, app: FastAPI, mocker: pytest_mock.MockerFixture
+) -> None:
+    headers = {"Authorization": f"Bearer {token}"}
+    payment_processor = await app.state.dishka_container.get(PaymentProcessor)
+    store = await create_store(client, token, custom_wallet_attrs={"transaction_speed": 10})
+    resp = await client.patch(f"/stores/{store['id']}/checkout_settings", json={"transaction_speed": 6}, headers=headers)
+    assert resp.status_code == 200
+    invoice = await create_invoice(client, token, store_id=store["id"], price=5000)
+    payment = invoice["payments"][0]
+    mocker.patch.object(PaymentProcessor, "get_confirmations", side_effect=[9, 10])
+    await payment_processor.new_payment_handler(
+        DummyInstance(), None, payment["lookup_field"], InvoiceStatus.COMPLETE, None, ["tx1"], payment["amount"]
+    )
+    invoice = (await client.get(f"/invoices/{invoice['id']}")).json()
+    assert invoice["status"] == "confirmed"
+    assert invoice["payments"][0]["confirmations"] == 9
+    assert invoice["payments"][0]["required_confirmations"] == 10
+    await payment_processor.new_block_handler(DummyInstance(), "new_block", 1)
+    invoice = (await client.get(f"/invoices/{invoice['id']}")).json()
+    assert invoice["status"] == "complete"
+    assert invoice["payments"][0]["confirmations"] == 10
+
+
 @pytest.mark.parametrize(("sent_amount", "exception_status"), [(0.09, "none"), (0.1, "none"), (0.11, "paid_over")])
 async def test_mark_complete_exception_status(
     client: TestClient, token: str, store: dict[str, Any], sent_amount: float, exception_status: str
@@ -1490,6 +1578,7 @@ async def test_lightning_payment_method_amount(
     assert add_request.call_args.args[1] == Decimal("0.09001")
     assert onchain["amount"] == "0.10001000"
     assert onchain["network_fee"] == "0.00001000"
+    assert lightning["required_confirmations"] == 0
 
 
 @pytest.mark.parametrize(

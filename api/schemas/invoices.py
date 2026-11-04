@@ -26,6 +26,7 @@ class PaymentData(Schema):
     created: datetime
     recommended_fee: DecimalAsString
     wallet: PaymentWallet | None
+    required_confirmations: int
 
     model_config = ConfigDict(extra="allow")
 

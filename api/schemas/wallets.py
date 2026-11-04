@@ -1,9 +1,7 @@
 from typing import Any
 
-from fastapi import HTTPException
-from pydantic import ValidationInfo, field_validator, model_validator
+from pydantic import field_validator, model_validator
 
-from api.constants import get_max_confirmation_watch
 from api.ext.moneyformat import currency_table
 from api.schemas.base import MetadataInput, MetadataOutput, Schema, TimestampedSchema
 from api.schemas.users import PublicUser
@@ -25,14 +23,6 @@ class CreateWallet(MetadataInput):
     @classmethod
     def validate_currency(cls, v: str) -> str:
         return v.lower()
-
-    @field_validator("transaction_speed")
-    @classmethod
-    def validate_transaction_speed(cls, v: int | None, info: ValidationInfo) -> int | None:
-        max_confirmation_watch = get_max_confirmation_watch(info.data["currency"])
-        if v is not None and (v < 0 or v > max_confirmation_watch):
-            raise HTTPException(422, f"Transaction speed must be in range from 0 to {max_confirmation_watch}")
-        return v
 
 
 class CreateWalletData(Schema):

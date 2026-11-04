@@ -371,6 +371,7 @@ class PaymentMethod(RecordModel):
     discount: Mapped[str | None] = mapped_column(Text)
     applied_discount: Mapped[dict[str, Any] | None] = mapped_column(MutableDict.as_mutable(JSONB(none_as_null=True)))
     confirmations: Mapped[int] = mapped_column(Integer)
+    required_confirmations: Mapped[int] = mapped_column(Integer)
     recommended_fee: Mapped[Decimal] = mapped_column(Numeric(36, 18))
     currency: Mapped[str] = mapped_column(Text, index=True)
     symbol: Mapped[str] = mapped_column(Text)

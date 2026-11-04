@@ -119,7 +119,6 @@ class PaymentProcessor:
         self,
         invoice: models.Invoice,
         method: models.PaymentMethod,
-        wallet: models.Wallet,
         confirmations: int,
         tx_hashes: list[str],
         sent_amount: Decimal,
@@ -131,7 +130,6 @@ class PaymentProcessor:
         await invoice_service.update_confirmations(
             invoice,
             method,
-            wallet,
             confirmations=confirmations,
             tx_hashes=tx_hashes,
             sent_amount=sent_amount,
@@ -187,7 +185,6 @@ class PaymentProcessor:
                                 self.update_invoice_confirmations,
                                 invoice,
                                 method,
-                                wallet,
                                 confirmations,
                                 invoice.tx_hashes,
                                 invoice.sent_amount,
@@ -227,7 +224,6 @@ class PaymentProcessor:
             await invoice_service.update_confirmations(
                 invoice,
                 method,
-                wallet,
                 confirmations=0,
                 tx_hashes=tx_hashes,
                 sent_amount=sent_amount,
@@ -242,7 +238,6 @@ class PaymentProcessor:
                 await invoice_service.update_confirmations(
                     invoice,
                     method,
-                    wallet,
                     confirmations=await self.get_confirmations(method, wallet),
                     tx_hashes=tx_hashes,
                     sent_amount=sent_amount,

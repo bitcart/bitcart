@@ -11,6 +11,7 @@ from dishka import AsyncContainer
 from fastapi import HTTPException
 
 from api import models
+from api.constants import get_max_confirmation_watch
 from api.db import AsyncSession
 from api.exceptions import RateUnavailableError
 from api.ext.moneyformat import currency_table
@@ -144,6 +145,10 @@ class WalletService(CRUDService[models.Wallet]):
         self, action: CRUDAction, data: dict[str, Any], model: models.Wallet, user: models.User | None = None
     ) -> None:
         await super().validate(action, data, model, user)
+        if "transaction_speed" in data or "currency" in data:
+            self.validate_transaction_speed(
+                data.get("currency", model.currency), data.get("transaction_speed", model.transaction_speed)
+            )
         if any(key in data for key in ("xpub", "contract", "additional_xpub_data")):
             currency = data.get("currency", model.currency)
             coin = await self.coin_service.get_coin(currency)
@@ -169,6 +174,12 @@ class WalletService(CRUDService[models.Wallet]):
                 except BitcartBaseError as e:
                     logger.error(f"Failed to validate contract for currency {currency}:\n{get_exception_message(e)}")
                     raise HTTPException(422, "Invalid contract") from None
+
+    @staticmethod
+    def validate_transaction_speed(currency: str, transaction_speed: int | None) -> None:
+        max_confirmation_watch = get_max_confirmation_watch(currency)
+        if transaction_speed is not None and not 0 <= transaction_speed <= max_confirmation_watch:
+            raise HTTPException(422, f"Transaction speed must be in range from 0 to {max_confirmation_watch}")
 
     async def validate_xpub(self, coin: BTC, currency: str, xpub: str, additional_xpub_data: dict[str, Any]) -> None:
         try:

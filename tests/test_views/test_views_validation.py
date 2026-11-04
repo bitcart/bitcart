@@ -12,8 +12,17 @@ from dishka import Scope
 from api.constants import BACKUP_FREQUENCIES, BACKUP_PROVIDERS, FEE_ETA_TARGETS, MAX_CONFIRMATION_WATCH
 from api.schemas.misc import CaptchaType
 from api.services.crud.payouts import PayoutService
+from api.services.crud.wallets import WalletService
 from tests.fixtures.static_data import PAYOUT_DESTINATION, TEST_XPUB
-from tests.helper import create_invoice, create_payout, create_product, create_store, create_token, create_user
+from tests.helper import (
+    create_invoice,
+    create_payout,
+    create_product,
+    create_store,
+    create_token,
+    create_user,
+    create_wallet,
+)
 
 if TYPE_CHECKING:
     from fastapi import FastAPI
@@ -79,6 +88,59 @@ async def test_wallet_transaction_speed_validation(client: TestClient, token: st
         ),
         BAD_TX_SPEED_MESSAGE,
     )
+
+
+async def create_xmr_wallet(client: TestClient, token: str, app: FastAPI, transaction_speed: int | None = None) -> str:
+    wallet_id = (await create_wallet(client, token))["id"]
+    async with app.state.dishka_container(scope=Scope.REQUEST) as container:
+        wallet_service = await container.get(WalletService)
+        await wallet_service.update({"currency": "xmr", "transaction_speed": transaction_speed}, wallet_id)
+    return wallet_id
+
+
+async def test_wallet_transaction_speed_limit_on_create_uses_requested_currency(client: TestClient, token: str) -> None:
+    check_validation_failed(
+        await client.post(
+            "/wallets",
+            json={"name": "test", "xpub": TEST_XPUB, "currency": "XMR", "transaction_speed": 33},
+            headers={"Authorization": f"Bearer {token}"},
+        ),
+        "Transaction speed must be in range from 0 to 32",
+    )
+
+
+async def test_wallet_transaction_speed_limit_on_update_uses_stored_currency(
+    client: TestClient, token: str, app: FastAPI
+) -> None:
+    headers = {"Authorization": f"Bearer {token}"}
+    btc_wallet_id = (await create_wallet(client, token))["id"]
+    check_validation_failed(
+        await client.patch(f"/wallets/{btc_wallet_id}", json={"transaction_speed": 11}, headers=headers),
+        BAD_TX_SPEED_MESSAGE,
+    )
+    xmr_wallet_id = await create_xmr_wallet(client, token, app)
+    resp = await client.patch(f"/wallets/{xmr_wallet_id}", json={"transaction_speed": 32}, headers=headers)
+    assert resp.status_code == 200
+    assert resp.json()["transaction_speed"] == 32
+    check_validation_failed(
+        await client.patch(f"/wallets/{xmr_wallet_id}", json={"transaction_speed": 33}, headers=headers),
+        "Transaction speed must be in range from 0 to 32",
+    )
+    resp = await client.patch(f"/wallets/{xmr_wallet_id}", json={"transaction_speed": None}, headers=headers)
+    assert resp.status_code == 200
+    assert resp.json()["transaction_speed"] is None
+
+
+async def test_wallet_currency_change_rechecks_transaction_speed(client: TestClient, token: str, app: FastAPI) -> None:
+    headers = {"Authorization": f"Bearer {token}"}
+    wallet_id = await create_xmr_wallet(client, token, app, transaction_speed=20)
+    check_validation_failed(
+        await client.patch(f"/wallets/{wallet_id}", json={"currency": "btc"}, headers=headers),
+        BAD_TX_SPEED_MESSAGE,
+    )
+    resp = await client.patch(f"/wallets/{wallet_id}", json={"currency": "btc", "transaction_speed": 10}, headers=headers)
+    assert resp.status_code == 200
+    assert (resp.json()["currency"], resp.json()["transaction_speed"]) == ("btc", 10)
 
 
 @pytest.mark.parametrize(
