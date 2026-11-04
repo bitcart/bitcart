@@ -1,5 +1,5 @@
 from aiohttp import ClientSession, ClientTimeout
-from universalasync import get_event_loop
+from universalasync import LoopLocal
 
 
 class JSONRPCError(Exception):
@@ -9,28 +9,11 @@ class JSONRPCError(Exception):
 class RPCProvider:
     def __init__(self, url):
         self.url = url
-        self._sessions = {}
+        self._sessions = LoopLocal(ClientSession.close)
 
     @property
     def session(self):
-        loop = get_event_loop()
-        session = self._sessions.get(loop)
-        if session is not None:
-            return session
-        self._sessions[loop] = ClientSession()
-        return self._sessions[loop]
-
-    async def _close(self) -> None:
-        for session in self._sessions.values():
-            if session is not None:
-                await session.close()
-
-    def __del__(self) -> None:
-        loop = get_event_loop()
-        if loop.is_running():
-            loop.create_task(self._close())
-        else:
-            loop.run_until_complete(self._close())
+        return self._sessions.get(ClientSession)
 
     async def raw_request(self, method, **kwargs):
         async with self.session.post(f"{self.url}/{method}", json=kwargs, timeout=ClientTimeout(total=5 * 60)) as response:

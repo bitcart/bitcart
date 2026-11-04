@@ -87,10 +87,10 @@ def downgrade() -> None:
     op.create_unique_constraint("templates_name_key", "templates", ["name"])
     op.drop_index(op.f("ix_templates_name"), table_name="templates")
     op.create_index("ix_templates_name", "templates", ["name"], unique=False)
-    op.drop_constraint(None, "stores", type_="foreignkey")  # type: ignore
+    op.drop_constraint("stores_user_id_users_fkey", "stores", type_="foreignkey")
     op.drop_column("stores", "user_id")
-    op.drop_constraint(None, "products", type_="foreignkey")  # type: ignore
+    op.drop_constraint("products_user_id_users_fkey", "products", type_="foreignkey")
     op.drop_column("products", "user_id")
-    op.drop_constraint(None, "invoices", type_="foreignkey")  # type: ignore
+    op.drop_constraint("invoices_user_id_users_fkey", "invoices", type_="foreignkey")
     op.drop_column("invoices", "user_id")
     # ### end Alembic commands ###
