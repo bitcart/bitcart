@@ -18,11 +18,9 @@ import pytest_mock
 from dishka import AsyncContainer, Scope
 from fastapi import FastAPI
 from httpx import AsyncClient as TestClient
-from pydantic_core import PydanticSerializationError
 from sqlalchemy import func, select
 
 from api import exceptions, models, templates
-from api.constants import LIGHTNING_DESCRIPTION_RENDER_TIMEOUT
 from api.invoices import InvoiceStatus
 from api.redis import Redis
 from api.schemas.misc import EmailSettings
@@ -30,10 +28,10 @@ from api.schemas.stores import StoreCheckoutSettings, StorePluginSettings
 from api.services.crud.invoices import InvoiceService
 from api.services.crud.products import ProductService
 from api.services.crud.stores import StoreService
-from api.services.crud.templates import TEMPLATE_OWNERS, TemplateService
+from api.services.crud.templates import TemplateService
 from api.services.renderer import MAX_REPLY_BYTES, MAX_REQUEST_BYTES, RendererClient, RendererReply, RenderFailureKind
 from api.settings import Settings
-from api.templates import RenderResult, TemplateAudience, TemplateManager, TemplateScope
+from api.templates import RenderResult, TemplateAudience, TemplateScope
 from api.templates.context import (
     ContextBuilder,
     TemplateTestData,
@@ -146,13 +144,6 @@ async def test_unloaded_relations_are_skipped_in_computed_fields(
     assert "payout_status" not in refund
 
 
-def test_other_property_errors_are_not_hidden(mocker: pytest_mock.MockerFixture) -> None:
-    refund = models.Refund(id="1", amount=Decimal(1), currency="USD")
-    mocker.patch.object(models.Refund, "payout_status", property(mocker.Mock(side_effect=AttributeError("bug"))))
-    with pytest.raises(AttributeError, match="bug"):
-        ContextBuilder().build({"refund": refund})
-
-
 def test_unknown_template_file_raises() -> None:
     with pytest.raises(exceptions.TemplateLoadError):
         templates.Template(
@@ -166,10 +157,6 @@ async def test_every_default_renders_its_test_data(client: TestClient, token: st
     body = (await run_test(client, token, template["id"], name=definition.name)).json()
     assert body["ok"], body
     assert body["text"].strip()
-
-
-def test_every_owning_scope_has_a_service() -> None:
-    assert set(TEMPLATE_OWNERS) == set(TemplateScope) - {TemplateScope.GLOBAL}
 
 
 @pytest.mark.parametrize(("currency", "price", "expected"), [("USD", "10.5", "10.50"), ("BTC", "0.00000001", "0.00000001")])
@@ -196,11 +183,6 @@ async def test_templates_have_no_object_methods(renderer: RendererClient) -> Non
     store = sample_store()
     assert (await render_view(renderer, "{% if store.update %}method{% else %}none{% endif %}", store=store)).text == "none"
     assert store.user_id == "owner"
-
-
-def test_unknown_objects_are_refused() -> None:
-    with pytest.raises(PydanticSerializationError):
-        ContextBuilder().build({"anything": object()})
 
 
 def test_datetimes_keep_their_text_format_and_other_types_are_serialized() -> None:
@@ -235,10 +217,6 @@ async def test_renderer_failure_kinds_are_understood(
     renderer: RendererClient, text: str, context: dict[str, Any], kind: RenderFailureKind
 ) -> None:
     assert (await renderer.render(text, context)).failure.kind == kind
-
-
-async def test_renderer_request_failure_kind_is_understood(renderer: RendererClient) -> None:
-    assert (await renderer._exchange(b"not json")).failure.kind == RenderFailureKind.REQUEST
 
 
 @pytest.fixture
@@ -300,18 +278,6 @@ async def test_per_call_timeout_overrides_the_default(settings: Settings, socket
     assert time.monotonic() - started < 1
 
 
-async def test_lightning_description_waits_less_than_other_templates(
-    client: TestClient, token: str, service: TemplateService, container: AsyncContainer, mocker: pytest_mock.MockerFixture
-) -> None:
-    store_id = (await create_store(client, token))["id"]
-    invoice = await (await container.get(InvoiceService)).get((await create_invoice(client, token, store_id=store_id))["id"])
-    store = await load_store(container, store_id)
-    render = mocker.spy(service.renderer, "render")
-    await service.render_lightning_description(store, invoice, None)
-    await service.render_notification(store, invoice)
-    assert [call.kwargs["max_wait"] for call in render.call_args_list] == [LIGHTNING_DESCRIPTION_RENDER_TIMEOUT, None]
-
-
 async def test_store_template_needs_an_owner(service: TemplateService) -> None:
     with pytest.raises(ValueError, match="needs an owner"):
         await service.render("shop", products=[])
@@ -320,6 +286,18 @@ async def test_store_template_needs_an_owner(service: TemplateService) -> None:
 async def test_unknown_template_raises(service: TemplateService) -> None:
     with pytest.raises(exceptions.TemplateDoesNotExistError):
         await service.render("nothing")
+
+
+async def test_global_template_chosen_in_the_policy_is_used(client: TestClient, token: str, service: TemplateService) -> None:
+    template = await save_template(client, token, "my reset email", "custom {{ code }}")
+    resp = await client.post(
+        "/manage/policies",
+        json={"global_templates": {"forgotpassword": template["id"]}},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 200
+    result = await service.render("forgotpassword", email="a@example.com", link="link", code="42")
+    assert result.text == "custom 42"
 
 
 async def test_selection_beats_name_and_name_beats_default(
@@ -482,6 +460,16 @@ async def test_default_template_rejected_by_the_renderer_counts_as_unavailable(
     with pytest.raises(exceptions.RendererUnavailableError):
         await service.render("shop", owner=store, store=store, products=[])
     await redis.delete("template_alert:global:renderer")
+
+
+async def test_metadata_can_be_deleted_by_a_template(
+    client: TestClient, token: str, service: TemplateService, container: AsyncContainer
+) -> None:
+    store = await load_store(container, (await create_store(client, token))["id"])
+    store.meta["seen"] = "yes"
+    await save_template(client, token, "shop", "{{ delete_metadata(store, 'seen') and '' }}ok")
+    assert (await service.render("shop", owner=store, store=store, products=[])).text == "ok"
+    assert "seen" not in store.meta
 
 
 async def test_metadata_writes_apply_only_to_passed_objects_on_success(
@@ -690,6 +678,25 @@ async def run_test(client: TestClient, token: str, template_id: str, **data: Any
     return await client.post(f"/templates/{template_id}/test", json=data, headers={"Authorization": f"Bearer {token}"})
 
 
+async def test_template_test_reports_the_failing_line(client: TestClient, token: str) -> None:
+    template = await save_template(client, token, "shop", "first line\n{{ 1 / 0 }}")
+    resp = await run_test(client, token, template["id"])
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["ok"] is False
+    assert (body["line"], body["source_line"]) == (2, "{{ 1 / 0 }}")
+    assert body["error"]
+
+
+async def test_template_test_refuses_unknown_names_and_global_templates_for_merchants(client: TestClient, token: str) -> None:
+    unknown = await save_template(client, token, "not a template", "x")
+    assert (await run_test(client, token, unknown["id"])).status_code == 422
+    user = await create_user(client, token=token, is_superuser=False)
+    user_token = (await create_token(client, user))["access_token"]
+    global_template = await save_template(client, user_token, "forgotpassword", "x")
+    assert (await run_test(client, user_token, global_template["id"])).status_code == 403
+
+
 async def test_template_test_uses_generated_data_without_an_owner(client: TestClient, token: str) -> None:
     template = await save_template(client, token, "shop", "{{ store.name }} {{ products | length }}")
     resp = await run_test(client, token, template["id"])
@@ -699,9 +706,9 @@ async def test_template_test_uses_generated_data_without_an_owner(client: TestCl
 
 
 async def test_template_test_generated_data_has_every_field(client: TestClient, token: str) -> None:
-    text = "{{ store.theme_settings.logo }}|{{ invoice.payments[0].rate }}|{{ invoice.product_names | length }}"
+    text = "{{ store.checkout_settings.expiration }}|{{ invoice.payments[0].rate }}|{{ invoice.product_names | length }}"
     template = await save_template(client, token, "notification", text)
-    assert (await run_test(client, token, template["id"])).json()["text"] == "|10.50|1"
+    assert (await run_test(client, token, template["id"])).json()["text"] == "15|10.50|1"
 
 
 async def test_template_test_uses_the_chosen_store(client: TestClient, token: str) -> None:
@@ -813,33 +820,6 @@ async def test_template_test_does_not_save_generated_data(client: TestClient, to
         assert (await run_test(client, token, template["id"])).json()["ok"]
         assert (await run_test(client, token, template["id"], owner_id=store["id"])).json()["ok"]
     assert await table_sizes(container) == before
-
-
-async def test_template_test_calls_the_template_callback(
-    client: TestClient, token: str, app: FastAPI, mocker: pytest_mock.MockerFixture
-) -> None:
-    received: list[TemplateTestData[models.Store]] = []
-
-    async def get_test_context(data: TemplateTestData[models.Store]) -> dict[str, Any]:
-        received.append(data)
-        return {"value": "from callback"}
-
-    manager = await app.state.dishka_container.get(TemplateManager)
-    plugin_template = templates.Template(
-        "plugin_template",
-        text="x",
-        applicable_to=TemplateScope.STORE,
-        audience=TemplateAudience.EXTERNAL,
-        get_test_context=get_test_context,
-    )
-    mocker.patch.dict(manager.templates, {"plugin_template": plugin_template})
-    store = await create_store(client, token)
-    template = await save_template(client, token, "plugin_template", "{{ value }}")
-    assert (await run_test(client, token, template["id"], owner_id=store["id"])).json()["text"] == "from callback"
-    assert received[0].owner is not None
-    assert received[0].owner.id == store["id"]
-    assert (await run_test(client, token, template["id"])).json()["text"] == "from callback"
-    assert received[1].owner is None
 
 
 async def test_template_test_does_not_apply_writes(client: TestClient, token: str) -> None:

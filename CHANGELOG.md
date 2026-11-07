@@ -2,6 +2,71 @@
 
 ## Latest changes
 
+## 0.11.1.0
+
+### New template renderer
+
+Templates are now rendered by a separate, isolated service written in Rust. In docker deployments it is added automatically as the `renderer` container, no action is required.
+This is the first addition of Rust to Bitcart, providing an ideal mix of languages: Python is used for our cryptocurrency daemons, Merchants APIs and more,
+golang is used for things which should run on any platform outside of docker: bitcart-cli, host agent.
+And now, Rust - used for services where performance and security is essential.
+It is the first one in our collection, but more Rust microservices/optimizations could be added in the future in hot paths.
+
+The template renderer docker image is only 2 MB on disk, and it uses only 2 MB of RAM, while being ~= 20 times faster than the python renderer.
+
+- Each template now has its own format: text or HTML. It replaces the "Use HTML templates" setting in store checkout settings and server policies, existing templates are migrated automatically. A template shared by an HTML and a text store becomes HTML
+- HTML templates escape values, use `| safe` to output trusted HTML
+- Test any template from the templates page, with generated data or with a real store or product
+- If a custom template fails, the default one is used instead. Store owners get an alert with the error, at most once an hour per template, and buyers get a short note in the email
+- Empty templates are now sent as written, instead of falling back to the default
+- New templates: `lightning_description` for Lightning invoice descriptions, and `fallback_note`, added to buyer emails when a template failed
+- Exact decimal math in templates. Numbers saved with `update_metadata` keep every digit and are read back as text, convert them before doing math: `{{ get_metadata(store, 'key') | float }}`
+
+### Payments
+
+- Invoices paid but not confirmed in time are now marked invalid with `failed_confirm` exception status. New store checkout setting `confirmation_timeout`: minutes after invoice expiration, 24 hours by default
+- Required confirmations are saved on each payment method at creation, changing transaction speed no longer affects existing invoices
+- Fix recommended fee rate conversion
+- Ability to open public Lightning channels
+- Wallets order in a store is now saved and used, reorder wallets by dragging them in admin panel
+- Wallet app links in the checkout now open the selected payment method
+- BCH: fix cashtokens affecting regular payment requests, fix gap limit issue
+- Monero: fix parsing of transactions with unusual extra data, better JSON-RPC connections handling
+- Exchange rates: fix rates of coins sharing a ticker on CoinGecko, fix POL rates, payouts now apply store rate rules
+
+### Checkout
+
+- Run the checkout on a separate domain with `BITCART_CHECKOUT_HOST`. Admin panel and store use the checkout URL
+- Confirmations needed are now taken from the payment method
+- `sent_price` and `currency` in embed events
+- Trust Wallet icon for TRON
+- Better link previews and font loading
+
+### New blog
+
+Bitcart blog has moved to [blog.bitcart.ai](https://blog.bitcart.ai), rebuilt in our new frontend stack. All previous posts are kept, old links redirect automatically, and new posts can be followed via [RSS](https://blog.bitcart.ai/rss.xml).
+
+### Plugin developers
+
+- `register_template` now requires `applicable_to`, `audience` and `get_test_context`, a callback returning test data
+- `get_template`, `get_global_template` and `get_*_template` methods are replaced by `TemplateService.render(name, owner=..., **context)`, which returns `RenderResult` with `text` and `is_html`
+- Templates receive plain data, models are converted automatically. Mark secret columns with `info=HIDDEN_FROM_TEMPLATES`, and relations templates may follow with `info=EXPOSED_TO_TEMPLATES`. `User`, `Wallet`, `Notification`, `Token` and `Setting` can't be passed, pass the values you need instead
+- `refund_customer_text` filter is renamed to `refund_customer_message`, new `order_email_message` filter. Both, and the `invoice_email` hook, now receive `RenderResult` instead of a string
+- `Invoice.payment_id`, `refund_id`, `product_names` and `product_quantities` are now computed properties and can't be assigned
+
+### Other changes
+
+- Upgrade Electrum, Electron Cash, electrum-ltc and electrum-grs
+- The `tronpy` python library is now maintained by Bitcart: [bitcart/tronpy](https://github.com/bitcart/tronpy)
+- Update LTC testnet explorer to sochain.com
+- Daemon data files are now readable only by the daemon user
+- Database schema consistency fixes
+- Docker: pin generator images to the current commit, fix nginx-gen hot reloads, fix plugin hash saving in `setup.sh`
+- Docker: `install-master.sh` can build the checkout and builds images not released yet
+- Docker: upgrade tor to 0.4.9.15 and cloudflared to 2026.10.7
+- Shared CI workflows and dependency pins, enforcing better consistency across repos
+- Dependency updates
+
 ## 0.11.0.0
 
 ### New Checkout app

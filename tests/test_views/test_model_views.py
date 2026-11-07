@@ -345,6 +345,7 @@ class TestInvoices(ViewTestMixin):
     tests = read_tests("tests/fixtures/data/invoices.json")
     create_auth = False
     get_one_auth = False
+    computed_fields = {"time_left"}.union(ViewTestMixin.computed_fields)
 
     @pytest.fixture(autouse=True)
     async def setup(
