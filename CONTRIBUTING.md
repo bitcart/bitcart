@@ -166,7 +166,13 @@ To test the changes you will need to run the server with applying changes to db 
 just db-migrate
 ```
 
-Then, open 3 terminals, and run one command in each of them:
+Templates are rendered by a separate service written in Rust, so you also need [Rust](https://rustup.rs) installed.
+
+Then, open 4 terminals, and run one command in each of them:
+
+```bash
+just renderer
+```
 
 ```bash
 BTC_NETWORK=testnet just daemon btc
@@ -179,6 +185,18 @@ just dev-api
 ```bash
 just worker
 ```
+
+### Numbers in templates
+
+The renderer's decimal code (`renderer/src/number.rs`) has to meet these rules:
+
+1. Prices stay exact, with no float errors.
+2. A calculation never gives a wrong amount.
+3. A template can't crash a worker or use unbounded memory.
+4. Any value a database column can store can be printed, compared and calculated with.
+5. Existing templates keep printing the same thing for normal values, so `10.50 * 2` stays `21.00`.
+
+The recorded cases in `renderer/tests/data` come from Python's `decimal`. They check values and everyday output, and matching Python beyond these rules isn't a goal.
 
 ### Updating dependencies
 

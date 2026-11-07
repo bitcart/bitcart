@@ -20,7 +20,6 @@ class PublicPolicy(Schema):
     captcha_sitekey: str = ""
     admin_theme_url: str = ""
     captcha_type: str = CaptchaType.NONE
-    use_html_templates: bool = False
     global_templates: dict[str, str] = {}
     explorer_urls: dict[str, str] = {}
     rpc_urls: dict[str, str] = {}

@@ -1,0 +1,819 @@
+{
+    "context": {
+        "price": {
+            "$decimal": "10.500000000000000000"
+        },
+        "price2": {
+            "$decimal": "10.50"
+        },
+        "other": {
+            "$decimal": "21.000000000000000000"
+        },
+        "neg": {
+            "$decimal": "-3.250000000000000000"
+        },
+        "zero": {
+            "$decimal": "0.00"
+        },
+        "tiny": {
+            "$decimal": "0.000000012345678900"
+        },
+        "sent": {
+            "$decimal": "0.123456789000000000"
+        },
+        "nine": {
+            "$decimal": "9.500000000000000000"
+        },
+        "a18": {
+            "$decimal": "0.100000000000000001"
+        },
+        "b18": {
+            "$decimal": "0.100000000000000002"
+        },
+        "big": {
+            "$decimal": "123456789012345678.123456789012345678"
+        },
+        "big2": {
+            "$decimal": "123456789012345678.123456789012345679"
+        },
+        "prices": [
+            {
+                "$decimal": "10.500000000000000000"
+            },
+            {
+                "$decimal": "9.500000000000000000"
+            },
+            {
+                "$decimal": "100.250000000000000000"
+            }
+        ],
+        "prices2": [
+            {
+                "$decimal": "21.00"
+            },
+            {
+                "$decimal": "9.50"
+            }
+        ],
+        "items": [
+            {
+                "id": "A",
+                "price": {
+                    "$decimal": "100.250000000000000000"
+                }
+            },
+            {
+                "id": "B",
+                "price": {
+                    "$decimal": "9.500000000000000000"
+                }
+            }
+        ],
+        "invoice": {
+            "price": {
+                "$decimal": "21.000000000000000000"
+            },
+            "currency": "USD"
+        },
+        "n": 3,
+        "s": "a",
+        "lst": [1, 3]
+    },
+    "cases": [
+        {
+            "id": "print",
+            "template": "{{ price }}",
+            "expected": "10.500000000000000000"
+        },
+        {
+            "id": "mul",
+            "template": "{{ price * 2 }}",
+            "expected": "21.000000000000000000"
+        },
+        {
+            "id": "rmul",
+            "template": "{{ 2 * price }}",
+            "expected": "21.000000000000000000"
+        },
+        {
+            "id": "add_dec",
+            "template": "{{ price + other }}",
+            "expected": "31.500000000000000000"
+        },
+        {
+            "id": "add_int",
+            "template": "{{ price + 1 }}",
+            "expected": "11.500000000000000000"
+        },
+        {
+            "id": "sub",
+            "template": "{{ price - 1 }}",
+            "expected": "9.500000000000000000"
+        },
+        {
+            "id": "rsub",
+            "template": "{{ 100 - price }}",
+            "expected": "89.500000000000000000"
+        },
+        {
+            "id": "div",
+            "template": "{{ price / 2 }}",
+            "expected": "5.250000000000000000"
+        },
+        {
+            "id": "fdiv",
+            "template": "{{ price // 2 }}",
+            "expected": "5"
+        },
+        {
+            "id": "fdiv_neg",
+            "template": "{{ neg // 2 }}",
+            "expected": "-1"
+        },
+        {
+            "id": "mod",
+            "template": "{{ price % 2 }}",
+            "expected": "0.500000000000000000"
+        },
+        {
+            "id": "neg",
+            "template": "{{ -price }}",
+            "expected": "-10.500000000000000000"
+        },
+        {
+            "id": "neg_zero",
+            "template": "{{ -zero }}",
+            "expected": "0.00"
+        },
+        {
+            "id": "zero_mul_keeps_places",
+            "template": "{{ zero * 2 }}",
+            "expected": "0.00"
+        },
+        {
+            "id": "mul_by_zero_keeps_places",
+            "template": "{{ price2 * 0 }}",
+            "expected": "0.00"
+        },
+        {
+            "id": "zero_div_keeps_places",
+            "template": "{{ zero / 2 }}",
+            "expected": "0.00"
+        },
+        {
+            "id": "zero_add_keeps_places",
+            "template": "{{ zero + 1 }}",
+            "expected": "1.00"
+        },
+        {
+            "id": "add_to_zero_keeps_places",
+            "template": "{{ zero + price2 }}",
+            "expected": "10.50"
+        },
+        {
+            "id": "zero_rem_keeps_places",
+            "template": "{{ price2 % price2 }}",
+            "expected": "0.00"
+        },
+        {
+            "id": "neg_negative",
+            "template": "{{ -neg }}",
+            "expected": "3.250000000000000000"
+        },
+        {
+            "id": "mul_float",
+            "template": "{{ price * 1.5 }}",
+            "error": true
+        },
+        {
+            "id": "gt5",
+            "template": "{{ 'big' if price > 5 else 'small' }}",
+            "expected": "big"
+        },
+        {
+            "id": "gt100",
+            "template": "{{ 'big' if price > 100 else 'small' }}",
+            "expected": "small"
+        },
+        {
+            "id": "lt5",
+            "template": "{{ price < 5 }}",
+            "expected": "False"
+        },
+        {
+            "id": "lt100",
+            "template": "{{ price < 100 }}",
+            "expected": "True"
+        },
+        {
+            "id": "rgt",
+            "template": "{{ 100 > price }}",
+            "expected": "True"
+        },
+        {
+            "id": "rlt",
+            "template": "{{ 100 < price }}",
+            "expected": "False"
+        },
+        {
+            "id": "gte",
+            "template": "{{ other >= 21 }}",
+            "expected": "True"
+        },
+        {
+            "id": "eq21",
+            "template": "{{ other == 21 }}",
+            "expected": "True"
+        },
+        {
+            "id": "eq21_issue",
+            "template": "{{ price == 21 }}",
+            "expected": "False"
+        },
+        {
+            "id": "req",
+            "template": "{{ 21 == other }}",
+            "expected": "True"
+        },
+        {
+            "id": "ne",
+            "template": "{{ other != 21 }}",
+            "expected": "False"
+        },
+        {
+            "id": "eq_float",
+            "template": "{{ price == 10.5 }}",
+            "expected": "True"
+        },
+        {
+            "id": "gt_float",
+            "template": "{{ price > 10.75 }}",
+            "expected": "False"
+        },
+        {
+            "id": "a_lt_b",
+            "template": "{{ price < other }}",
+            "expected": "True"
+        },
+        {
+            "id": "b_lt_a",
+            "template": "{{ other < price }}",
+            "expected": "False"
+        },
+        {
+            "id": "lexical_trap",
+            "template": "{{ nine < price }}",
+            "expected": "True"
+        },
+        {
+            "id": "eq_scale",
+            "template": "{{ price == price2 }}",
+            "expected": "True"
+        },
+        {
+            "id": "lt_18th",
+            "template": "{{ a18 < b18 }}",
+            "expected": "True"
+        },
+        {
+            "id": "eq_18th",
+            "template": "{{ a18 == b18 }}",
+            "expected": "False"
+        },
+        {
+            "id": "chain_t",
+            "template": "{{ 1 < price < 100 }}",
+            "expected": "True"
+        },
+        {
+            "id": "chain_f",
+            "template": "{{ 1 < price < 5 }}",
+            "expected": "False"
+        },
+        {
+            "id": "chain3",
+            "template": "{{ 1 < price < other < 5 }}",
+            "expected": "False"
+        },
+        {
+            "id": "in_list",
+            "template": "{{ other in [21, 5] }}",
+            "expected": "True"
+        },
+        {
+            "id": "in_decs",
+            "template": "{{ 21 in prices2 }}",
+            "expected": "True"
+        },
+        {
+            "id": "not_in",
+            "template": "{{ other not in [21, 5] }}",
+            "expected": "False"
+        },
+        {
+            "id": "true",
+            "template": "{{ 'yes' if price else 'no' }}",
+            "expected": "yes"
+        },
+        {
+            "id": "zero",
+            "template": "{{ 'yes' if zero else 'no' }}",
+            "expected": "no"
+        },
+        {
+            "id": "not_zero",
+            "template": "{{ not zero }}",
+            "expected": "True"
+        },
+        {
+            "id": "or_zero",
+            "template": "{{ zero or 'fallback' }}",
+            "expected": "fallback"
+        },
+        {
+            "id": "sum",
+            "template": "{{ prices | sum }}",
+            "expected": "120.250000000000000000"
+        },
+        {
+            "id": "sum_map",
+            "template": "{{ items | map(attribute='price') | sum }}",
+            "expected": "109.750000000000000000"
+        },
+        {
+            "id": "sum_attr",
+            "template": "{{ items | sum(attribute='price') }}",
+            "expected": "109.750000000000000000"
+        },
+        {
+            "id": "sum_mix",
+            "template": "{{ [price, 1] | sum }}",
+            "expected": "11.500000000000000000"
+        },
+        {
+            "id": "sort",
+            "template": "{{ prices | sort | join(',') }}",
+            "expected": "9.500000000000000000,10.500000000000000000,100.250000000000000000"
+        },
+        {
+            "id": "sort_mix",
+            "template": "{{ [price, 5, 100] | sort | join(',') }}",
+            "expected": "5,10.500000000000000000,100"
+        },
+        {
+            "id": "sort_attr",
+            "template": "{{ items | sort(attribute='price') | map(attribute='id') | join(',') }}",
+            "expected": "B,A"
+        },
+        {
+            "id": "sort_rev",
+            "template": "{{ prices | sort(reverse=true) | first }}",
+            "expected": "100.250000000000000000"
+        },
+        {
+            "id": "max",
+            "template": "{{ prices | max }}",
+            "expected": "100.250000000000000000"
+        },
+        {
+            "id": "min",
+            "template": "{{ prices | min }}",
+            "expected": "9.500000000000000000"
+        },
+        {
+            "id": "max_mix",
+            "template": "{{ [price, 100] | max }}",
+            "expected": "100"
+        },
+        {
+            "id": "selectattr",
+            "template": "{{ items | selectattr('price', 'gt', 50) | map(attribute='id') | join(',') }}",
+            "expected": "A"
+        },
+        {
+            "id": "rejectattr",
+            "template": "{{ items | rejectattr('price', 'lt', 50) | map(attribute='id') | join(',') }}",
+            "expected": "A"
+        },
+        {
+            "id": "unique",
+            "template": "{{ [price, price2] | unique | list | length }}",
+            "expected": "1"
+        },
+        {
+            "id": "round2",
+            "template": "{{ price | round(2) }}",
+            "expected": "10.50"
+        },
+        {
+            "id": "round0",
+            "template": "{{ price | round }}",
+            "expected": "10"
+        },
+        {
+            "id": "round6",
+            "template": "{{ sent | round(6) }}",
+            "expected": "0.123457"
+        },
+        {
+            "id": "round_after",
+            "template": "{{ (price * 2) | round(2) }}",
+            "expected": "21.00"
+        },
+        {
+            "id": "abs",
+            "template": "{{ price | abs }}",
+            "expected": "10.500000000000000000"
+        },
+        {
+            "id": "abs_neg",
+            "template": "{{ neg | abs }}",
+            "expected": "3.250000000000000000"
+        },
+        {
+            "id": "int",
+            "template": "{{ price | int }}",
+            "expected": "10"
+        },
+        {
+            "id": "int_neg",
+            "template": "{{ neg | int }}",
+            "expected": "-3"
+        },
+        {
+            "id": "float",
+            "template": "{{ price | float }}",
+            "expected": "10.5"
+        },
+        {
+            "id": "float_after",
+            "template": "{{ (price + other) | float }}",
+            "expected": "31.5"
+        },
+        {
+            "id": "fmt",
+            "template": "{{ '%8.2f' | format(price) }}",
+            "expected": "   10.50"
+        },
+        {
+            "id": "fmt_18",
+            "template": "{{ '%.18f' | format(tiny) }}",
+            "expected": "0.000000012345678900"
+        },
+        {
+            "id": "fmt_s",
+            "template": "{{ '%s' | format(price) }}",
+            "expected": "10.500000000000000000"
+        },
+        {
+            "id": "fmt_d",
+            "template": "{{ '%d' | format(price) }}",
+            "expected": "10"
+        },
+        {
+            "id": "docs_ex",
+            "template": "{{ '| %-14s| %8.2f | %3.0f | %6.2f |' | format('mug', price, 2, price * 2) }}",
+            "expected": "| mug           |    10.50 |   2 |  21.00 |"
+        },
+        {
+            "id": "is_number",
+            "template": "{{ price is number }}",
+            "expected": "True"
+        },
+        {
+            "id": "is_integer",
+            "template": "{{ price is integer }}",
+            "expected": "False"
+        },
+        {
+            "id": "is_float",
+            "template": "{{ price is float }}",
+            "expected": "False"
+        },
+        {
+            "id": "is_string",
+            "template": "{{ price is string }}",
+            "expected": "False"
+        },
+        {
+            "id": "is_even",
+            "template": "{{ other is odd }}",
+            "expected": "True"
+        },
+        {
+            "id": "fmt_decimal",
+            "template": "{{ invoice | format_decimal('price') }}",
+            "expected": "21.00"
+        },
+        {
+            "id": "tiny_add",
+            "template": "{{ tiny + 1 }}",
+            "expected": "1.000000012345678900"
+        },
+        {
+            "id": "tiny_gt0",
+            "template": "{{ tiny > 0 }}",
+            "expected": "True"
+        },
+        {
+            "id": "tiny_lt1",
+            "template": "{{ tiny < 1 }}",
+            "expected": "True"
+        },
+        {
+            "id": "big",
+            "template": "{{ big }}",
+            "expected": "123456789012345678.123456789012345678"
+        },
+        {
+            "id": "big_gt",
+            "template": "{{ big > price }}",
+            "expected": "True"
+        },
+        {
+            "id": "big_eq1",
+            "template": "{{ big == big2 }}",
+            "expected": "False"
+        },
+        {
+            "id": "concat",
+            "template": "{{ price ~ '!' }}",
+            "expected": "10.500000000000000000!"
+        },
+        {
+            "id": "string",
+            "template": "{{ price | string }}",
+            "expected": "10.500000000000000000"
+        },
+        {
+            "id": "default",
+            "template": "{{ price | default(0) }}",
+            "expected": "10.500000000000000000"
+        },
+        {
+            "id": "set_then",
+            "template": "{% set t = price * 2 %}{{ t + 1 }}",
+            "expected": "22.000000000000000000"
+        },
+        {
+            "id": "ns_total",
+            "template": "{% set ns = namespace(t=0) %}{% for p in prices %}{% set ns.t = ns.t + p %}{% endfor %}{{ ns.t }}",
+            "expected": "120.250000000000000000"
+        },
+        {
+            "id": "macro",
+            "template": "{% macro f(x) %}{{ x * 2 }}{% endmacro %}{{ f(price) }}",
+            "expected": "21.000000000000000000"
+        },
+        {
+            "id": "elif",
+            "template": "{% if price > 100 %}a{% elif price > 5 %}b{% else %}c{% endif %}",
+            "expected": "b"
+        },
+        {
+            "id": "filter_block",
+            "template": "{% filter upper %}{{ price * 2 }}{% endfilter %}",
+            "expected": "21.000000000000000000"
+        },
+        {
+            "id": "block",
+            "template": "{% block b %}{{ price * 2 }}{% endblock %}",
+            "expected": "21.000000000000000000"
+        },
+        {
+            "id": "for_if",
+            "template": "{% for p in prices if p > 50 %}{{ p }}{% endfor %}",
+            "expected": "100.250000000000000000"
+        },
+        {
+            "id": "and_or",
+            "template": "{{ price > 100 or price < 5 }}",
+            "expected": "False"
+        },
+        {
+            "id": "str_literal",
+            "template": "{{ 'total - tax * 2 > 1' }}",
+            "expected": "total - tax * 2 > 1"
+        },
+        {
+            "id": "prec",
+            "template": "{{ price + other * 2 }}",
+            "expected": "52.500000000000000000"
+        },
+        {
+            "id": "paren",
+            "template": "{{ (price + other) * 2 }}",
+            "expected": "63.000000000000000000"
+        },
+        {
+            "id": "minus_cmp",
+            "template": "{{ price - 20 > 0 }}",
+            "expected": "False"
+        },
+        {
+            "id": "attr_op",
+            "template": "{{ invoice.price * 2 }}",
+            "expected": "42.000000000000000000"
+        },
+        {
+            "id": "err_str",
+            "template": "{{ price + 'a' }}",
+            "error": true
+        },
+        {
+            "id": "err_none",
+            "template": "{{ price * none }}",
+            "error": true
+        },
+        {
+            "id": "err_div0",
+            "template": "{{ price / 0 }}",
+            "error": true
+        },
+        {
+            "id": "nd_add",
+            "template": "{{ n + 2 }}",
+            "expected": "5"
+        },
+        {
+            "id": "nd_mul",
+            "template": "{{ n * 2 }}",
+            "expected": "6"
+        },
+        {
+            "id": "nd_sconcat",
+            "template": "{{ s + 'b' }}",
+            "expected": "ab"
+        },
+        {
+            "id": "nd_srep",
+            "template": "{{ s * 3 }}",
+            "expected": "aaa"
+        },
+        {
+            "id": "nd_list",
+            "template": "{{ (lst + [3]) | join(',') }}",
+            "expected": "1,3,3"
+        },
+        {
+            "id": "nd_div",
+            "template": "{{ n / 2 }}",
+            "expected": "1.5"
+        },
+        {
+            "id": "nd_fdiv",
+            "template": "{{ n // 2 }}",
+            "expected": "1"
+        },
+        {
+            "id": "nd_mod",
+            "template": "{{ n % 2 }}",
+            "expected": "1"
+        },
+        {
+            "id": "nd_pow",
+            "template": "{{ n ** 2 }}",
+            "expected": "9"
+        },
+        {
+            "id": "nd_lt",
+            "template": "{{ n < 5 }}",
+            "expected": "True"
+        },
+        {
+            "id": "nd_slt",
+            "template": "{{ s < 't' }}",
+            "expected": "True"
+        },
+        {
+            "id": "nd_chain",
+            "template": "{{ 1 < n < 5 }}",
+            "expected": "True"
+        },
+        {
+            "id": "nd_in",
+            "template": "{{ n in lst }}",
+            "expected": "True"
+        },
+        {
+            "id": "nd_sin",
+            "template": "{{ s in 'abc' }}",
+            "expected": "True"
+        },
+        {
+            "id": "nd_neg",
+            "template": "{{ -n }}",
+            "expected": "-3"
+        },
+        {
+            "id": "nd_undef",
+            "template": "{{ nope + 1 }}",
+            "error": true
+        },
+        {
+            "id": "nd_undef_eq",
+            "template": "{{ nope == 1 }}",
+            "expected": "False"
+        },
+        {
+            "id": "nd_float",
+            "template": "{{ 1.5 * 2 }}",
+            "expected": "3.0"
+        },
+        {
+            "id": "nd_lit",
+            "template": "{{ 10.5 }}",
+            "expected": "10.5"
+        },
+        {
+            "id": "nested_eq",
+            "template": "{{ [other] == [21] }}",
+            "expected": "True"
+        },
+        {
+            "id": "nested_map",
+            "template": "{{ {'a': other} == {'a': 21} }}",
+            "expected": "True"
+        },
+        {
+            "id": "sort_attr_mix",
+            "template": "{{ [{'p': price}, {'p': 5}, {'p': 100}] | sort(attribute='p') | map(attribute='p') | join(',') }}",
+            "expected": "5,10.500000000000000000,100"
+        },
+        {
+            "id": "max_attr",
+            "template": "{{ (items | max(attribute='price')).id }}",
+            "expected": "A"
+        },
+        {
+            "id": "max_attr_mix",
+            "template": "{{ ([{'p': price}, {'p': 100}] | max(attribute='p')).p }}",
+            "expected": "100"
+        },
+        {
+            "id": "unique_mix",
+            "template": "{{ [other, 21] | unique | list | length }}",
+            "expected": "1"
+        },
+        {
+            "id": "groupby",
+            "template": "{% for g in items | groupby('price') %}{{ g.grouper }};{% endfor %}",
+            "expected": "9.500000000000000000;100.250000000000000000;"
+        },
+        {
+            "id": "dictsort_val",
+            "template": "{{ {'a': price, 'b': 5} | dictsort(by='value') | map('first') | join }}",
+            "expected": "ba"
+        },
+        {
+            "id": "loop_changed",
+            "template": "{% for p in [other, 21] %}{{ loop.changed(p) }}{% endfor %}",
+            "expected": "TrueFalse"
+        },
+        {
+            "id": "dict_key",
+            "template": "{{ {21: 'x'}[other] }}",
+            "expected": "x"
+        },
+        {
+            "id": "divisibleby",
+            "template": "{{ other is divisibleby(7) }}",
+            "expected": "True"
+        },
+        {
+            "id": "int_then",
+            "template": "{{ (price | int) + 1 }}",
+            "expected": "11"
+        },
+        {
+            "id": "float_then",
+            "template": "{{ (price | float) * 2 }}",
+            "expected": "21.0"
+        },
+        {
+            "id": "test_eq",
+            "template": "{{ other is eq(21) }}",
+            "expected": "True"
+        },
+        {
+            "id": "test_gt",
+            "template": "{{ price is gt(100) }}",
+            "expected": "False"
+        },
+        {
+            "id": "map_round",
+            "template": "{{ prices | map('round', 2) | join(',') }}",
+            "expected": "10.50,9.50,100.25"
+        },
+        {
+            "id": "select_gt",
+            "template": "{{ prices | select('gt', 50) | join(',') }}",
+            "expected": "100.250000000000000000"
+        },
+        {
+            "id": "price2",
+            "template": "{{ price2 }}",
+            "expected": "10.50"
+        }
+    ]
+}

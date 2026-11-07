@@ -10,6 +10,7 @@
     "response": {
         "name": "test",
         "text": "Test {{template}}",
+        "format": "text",
         "metadata": {}
     },
     "count": 1

@@ -49,8 +49,8 @@ class HealthCheckService:
             if not store:
                 logger.warning(f"Configured health_check_store_id {store_id} not found, skipping notification")
                 return
-            notification_text = await template_service.get_syncinfo_template(syncinfo_data, failed_daemons)
-            result = await notification_manager.notify(store, notification_text)
+            notification = await template_service.render_syncinfo(syncinfo_data, failed_daemons)
+            result = await notification_manager.notify(store, notification.text)
             if not result.has_providers:
                 logger.info("No notification providers configured for health check store, skipping notification")
             elif result.ok:

@@ -37,7 +37,7 @@ from api.constants import (
     PayoutStatus,
 )
 from api.db import AsyncSession
-from api.exceptions import EmailSendError, ExchangeRatesUnavailableError, RateUnavailableError
+from api.exceptions import EmailSendError, ExchangeRatesUnavailableError, RateUnavailableError, RendererUnavailableError
 from api.invoices import InvoiceStatus
 from api.redis import Redis
 from api.schemas.misc import CaptchaType, EmailSettings
@@ -48,6 +48,7 @@ from api.services.crud.invoices import InvoiceService
 from api.services.crud.payouts import PayoutService
 from api.services.crud.refunds import RefundService
 from api.services.crud.repositories import PaymentMethodRepository
+from api.services.crud.templates import TemplateService
 from api.services.crud.users import UserService
 from api.services.ext.configurator import SSH_RATE_KEY
 from api.services.ext.tor import TorService
@@ -56,7 +57,7 @@ from api.services.payment_processor import PaymentProcessor
 from api.services.payout_manager import PayoutManager
 from api.services.plugin_registry import PluginRegistry
 from api.settings import Settings
-from api.templates import TemplateManager
+from api.templates import RenderResult, TemplateManager
 from api.types import Quotes, TasksBroker
 from tests.fixtures import static_data
 from tests.helper import (
@@ -622,7 +623,6 @@ async def test_policies(client: TestClient, token: str) -> None:
         "captcha_sitekey": "",
         "admin_theme_url": "",
         "captcha_type": CaptchaType.NONE,
-        "use_html_templates": False,
         "global_templates": {
             "forgotpassword": "",
             "syncinfo": "",
@@ -658,7 +658,6 @@ async def test_policies(client: TestClient, token: str) -> None:
         "captcha_secretkey": "",
         "admin_theme_url": "",
         "captcha_type": CaptchaType.NONE,
-        "use_html_templates": False,
         "global_templates": {
             "forgotpassword": "",
             "syncinfo": "",
@@ -687,7 +686,6 @@ async def test_policies(client: TestClient, token: str) -> None:
         "captcha_sitekey": "",
         "admin_theme_url": "",
         "captcha_type": CaptchaType.NONE,
-        "use_html_templates": False,
         "global_templates": {
             "forgotpassword": "",
             "syncinfo": "",
@@ -722,7 +720,6 @@ async def test_policies(client: TestClient, token: str) -> None:
         "captcha_secretkey": "",
         "admin_theme_url": "",
         "captcha_type": CaptchaType.NONE,
-        "use_html_templates": False,
         "global_templates": {
             "forgotpassword": "",
             "syncinfo": "",
@@ -1549,13 +1546,24 @@ async def test_invoice_payment_due(client: TestClient, token: str, store: dict[s
     assert (payment["due"], payment["due_price"]) == ("0.04000000", "2000.00")
 
 
-async def test_lightning_payment_method_amount(
+async def create_lightning_store(
     client: TestClient, token: str, mocker: pytest_mock.MockerFixture, app: FastAPI
-) -> None:
+) -> tuple[dict[str, Any], mock.AsyncMock, mock.MagicMock]:
     coin_service = await app.state.dishka_container.get(CoinService)
     mocker.patch.dict(coin_service.crypto_settings["btc"], {"lightning": True})
     wallet = await create_wallet(client, token, lightning_enabled=True)
     store = await create_store(client, token, custom_store_attrs={"wallets": [wallet["id"]]})
+    mocker.patch.object(BTC, "node_id", new_callable=mocker.PropertyMock, side_effect=lambda: asyncio.sleep(0, "node"))
+    add_invoice = mocker.patch.object(
+        BTC, "add_invoice", new=mocker.AsyncMock(return_value={"lightning_invoice": "lnbc1test", "rhash": "rhash1"})
+    )
+    return store, add_invoice, mocker.spy(BTC, "add_request")
+
+
+async def test_lightning_payment_method_amount(
+    client: TestClient, token: str, mocker: pytest_mock.MockerFixture, app: FastAPI
+) -> None:
+    store, add_invoice, add_request = await create_lightning_store(client, token, mocker, app)
     resp = await client.patch(
         f"/stores/{store['id']}/checkout_settings",
         json={"underpaid_percentage": 10, "include_network_fee": True},
@@ -1563,11 +1571,6 @@ async def test_lightning_payment_method_amount(
     )
     assert resp.status_code == 200
     mocker.patch.object(InvoiceService, "determine_network_fee", return_value=Decimal("0.00001"))
-    mocker.patch.object(BTC, "node_id", new_callable=mocker.PropertyMock, side_effect=lambda: asyncio.sleep(0, "node"))
-    add_invoice = mocker.patch.object(
-        BTC, "add_invoice", new=mocker.AsyncMock(return_value={"lightning_invoice": "lnbc1test", "rhash": "rhash1"})
-    )
-    add_request = mocker.spy(BTC, "add_request")
     payments = (await create_invoice(client, token, store_id=store["id"], price=5000))["payments"]
     onchain, lightning = sorted(payments, key=lambda payment: payment["lightning"])
     assert lightning["lightning"]
@@ -1579,6 +1582,94 @@ async def test_lightning_payment_method_amount(
     assert onchain["amount"] == "0.10001000"
     assert onchain["network_fee"] == "0.00001000"
     assert lightning["required_confirmations"] == 0
+
+
+async def test_lightning_description_defaults(
+    client: TestClient, token: str, mocker: pytest_mock.MockerFixture, app: FastAPI
+) -> None:
+    store, add_invoice, add_request = await create_lightning_store(client, token, mocker, app)
+    await create_invoice(client, token, store_id=store["id"])
+    assert add_invoice.call_args.kwargs["description"] == f"Paid to {store['name']}"
+    assert add_request.call_args.kwargs["description"] == ""
+    await create_invoice(client, token, store_id=store["id"], order_id="A-42")
+    assert add_invoice.call_args.kwargs["description"] == f"Paid to {store['name']} (Order ID: A-42)"
+    assert add_request.call_args.kwargs["description"] == ""
+    product = await create_product(client, token, store_id=store["id"])
+    await create_invoice(client, token, store_id=store["id"], order_id="A-43", products=[product["id"]])
+    assert add_invoice.call_args.kwargs["description"] == product["name"]
+    assert add_request.call_args.kwargs["description"] == product["name"]
+
+
+async def test_lightning_description_custom_template(
+    client: TestClient, token: str, mocker: pytest_mock.MockerFixture, app: FastAPI
+) -> None:
+    store, add_invoice, add_request = await create_lightning_store(client, token, mocker, app)
+    headers = {"Authorization": f"Bearer {token}"}
+    template = (
+        await client.post("/templates", json={"name": "custom", "text": "Order {{ invoice.order_id }}"}, headers=headers)
+    ).json()
+    resp = await client.patch(
+        f"/stores/{store['id']}", json={"templates": {"lightning_description": template["id"]}}, headers=headers
+    )
+    assert resp.status_code == 200
+    await create_invoice(client, token, store_id=store["id"], order_id="A-42")
+    assert add_invoice.call_args.kwargs["description"] == "Order A-42"
+    assert add_request.call_args.kwargs["description"] == ""
+
+
+async def test_lightning_description_trimmed_on_char_boundary(
+    client: TestClient, token: str, mocker: pytest_mock.MockerFixture, app: FastAPI
+) -> None:
+    store, add_invoice, _ = await create_lightning_store(client, token, mocker, app)
+    product = await create_product(client, token, store_id=store["id"], name="é" * 400)
+    await create_invoice(client, token, store_id=store["id"], products=[product["id"]])
+    assert add_invoice.call_args.kwargs["description"] == "é" * 319
+
+
+async def test_lightning_description_broken_template_uses_default(
+    client: TestClient, token: str, mocker: pytest_mock.MockerFixture, app: FastAPI
+) -> None:
+    store, add_invoice, _ = await create_lightning_store(client, token, mocker, app)
+    resp = await client.post(
+        "/templates",
+        json={"name": "lightning_description", "text": "{{ 1 / 0 }}"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 200
+    payments = (await create_invoice(client, token, store_id=store["id"]))["payments"]
+    assert len(payments) == 2
+    assert add_invoice.call_args.kwargs["description"] == f"Paid to {store['name']}"
+
+
+async def test_lightning_description_not_rendered_without_lightning(
+    client: TestClient, token: str, mocker: pytest_mock.MockerFixture
+) -> None:
+    render = mocker.spy(TemplateService, "render_lightning_description")
+    store = await create_store(client, token)
+    await create_invoice(client, token, store_id=store["id"])
+    render.assert_not_called()
+
+
+async def test_lightning_description_blank_when_renderer_is_down(
+    client: TestClient, token: str, mocker: pytest_mock.MockerFixture, app: FastAPI
+) -> None:
+    store, add_invoice, _ = await create_lightning_store(client, token, mocker, app)
+    mocker.patch("api.services.renderer.RendererClient.render", side_effect=RendererUnavailableError("down"))
+    payments = (await create_invoice(client, token, store_id=store["id"]))["payments"]
+    assert len(payments) == 2
+    assert add_invoice.call_args.kwargs["description"] == ""
+
+
+async def test_lightning_description_empty_template_stays_empty(
+    client: TestClient, token: str, mocker: pytest_mock.MockerFixture, app: FastAPI
+) -> None:
+    store, add_invoice, _ = await create_lightning_store(client, token, mocker, app)
+    resp = await client.post(
+        "/templates", json={"name": "lightning_description", "text": ""}, headers={"Authorization": f"Bearer {token}"}
+    )
+    assert resp.status_code == 200
+    await create_invoice(client, token, store_id=store["id"])
+    assert add_invoice.call_args.kwargs["description"] == ""
 
 
 @pytest.mark.parametrize(
@@ -2029,11 +2120,11 @@ async def test_change_store_checkout_settings(client: TestClient, token: str, st
     assert data1 == data2
     resp = await client.patch(
         f"/stores/{store_id}/checkout_settings",
-        json={"use_html_templates": True},
+        json={"use_dark_mode": True},
         headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 200
-    assert resp.json()["checkout_settings"] == {**default_values, "expiration": 60, "use_html_templates": True}
+    assert resp.json()["checkout_settings"] == {**default_values, "expiration": 60, "use_dark_mode": True}
 
 
 async def test_change_store_theme_settings(client: TestClient, token: str, store: dict[str, Any]) -> None:
@@ -2931,13 +3022,14 @@ async def test_refund_functionality(client: TestClient, token: str, mocker: pyte
     )
     full_url = ""
 
-    async def func(store: models.Store, invoice: models.Invoice, refund: models.Refund, refund_url: str) -> None:
+    async def func(store: models.Store, invoice: models.Invoice, refund: models.Refund, refund_url: str) -> RenderResult:
         nonlocal full_url
         full_url = refund_url
+        return RenderResult("refund")
 
     mocker.patch("api.services.email.EmailService.is_enabled", return_value=True)
     mocker.patch("api.services.email.EmailService.send")
-    mocker.patch("api.services.crud.templates.TemplateService.get_customer_refund_template", side_effect=func)
+    mocker.patch("api.services.crud.templates.TemplateService.render_customer_refund", side_effect=func)
     resp = await client.post(
         f"/invoices/{invoice_id}/refunds",
         json={"amount": 1, "currency": "USD", "send_email": True},
@@ -2987,6 +3079,28 @@ async def test_refund_amount_rounded_down(client: TestClient, token: str, app: F
     async with app.state.dishka_container(scope=Scope.SESSION) as container:
         payout = await (await container.get(PayoutService)).get(refund["payout_id"])
     assert payout.amount == Decimal("9.99")
+
+
+async def test_refund_submit_rolls_back_when_the_notification_cannot_be_queued(
+    client: TestClient, token: str, app: FastAPI, mocker: pytest_mock.MockerFixture
+) -> None:
+    payment_processor = await app.state.dishka_container.get(PaymentProcessor)
+    invoice = await create_invoice(client, token)
+    await payment_processor.new_payment_handler(
+        DummyInstance(), None, invoice["payments"][0]["lookup_field"], "complete", None
+    )
+    refund_data = {"amount": "1", "currency": "USD", "send_email": False}
+    headers = {"Authorization": f"Bearer {token}"}
+    refund = (await client.post(f"/invoices/{invoice['id']}/refunds", json=refund_data, headers=headers)).json()
+    url = f"/invoices/refunds/{refund['id']}/submit"
+    destination = {"destination": static_data.PAYOUT_DESTINATION}
+    broker = await app.state.dishka_container.get(TasksBroker)
+    publish = mocker.patch.object(broker, "publish", side_effect=RuntimeError("broker is down"))
+    with pytest.raises(RuntimeError):
+        await client.post(url, json=destination)
+    mocker.stop(publish)
+    assert (await client.get(f"/invoices/refunds/{refund['id']}")).json()["payout_id"] is None
+    assert (await client.post(url, json=destination)).status_code == 200
 
 
 async def test_refund_with_deleted_invoice(client: TestClient, token: str, app: FastAPI) -> None:

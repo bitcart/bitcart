@@ -1,0 +1,1 @@
+{% if product %}{{ product.name }}{% else %}Paid to {{ store.name }}{% if invoice.order_id %} (Order ID: {{ invoice.order_id }}){% endif %}{% endif %}

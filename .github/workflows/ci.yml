@@ -34,6 +34,22 @@ jobs:
       contents: read
       security-events: write # needed for github advanced security
 
+  renderer:
+    name: renderer
+    needs: [lint, workflows]
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Just
+        uses: bitcart/bitcart-actions/actions/setup-just@master
+
+      - name: Run renderer tests and checks
+        run: just test-renderer
+
   openapi:
     name: openapi
     needs: [lint, workflows]

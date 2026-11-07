@@ -4,5 +4,7 @@ Your summary is below:
 {% for product in products %}
 {{product}}
 {% endfor %}
-If you've got any questions, email us at {{store.email}}.
+{% if store.checkout_settings.support_email %}
+If you've got any questions, email us at {{store.checkout_settings.support_email}}.
+{% endif %}
 Best wishes, your {{store.name}}.

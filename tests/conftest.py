@@ -1,6 +1,8 @@
 import functools
 import os
+import subprocess
 import tempfile
+import time
 from collections.abc import AsyncGenerator, AsyncIterator, Generator, Iterator
 from decimal import Decimal
 from typing import Any, NewType, cast
@@ -137,11 +139,37 @@ async def configure_dishka_test_session(app: FastAPI, worker_id: str, settings: 
 
 
 @pytest.fixture(scope="session")
-def settings(tmp_path_factory: pytest.TempPathFactory) -> Settings:
+def renderer_socket(tmp_path_factory: pytest.TempPathFactory) -> Iterator[str]:
+    root = tmp_path_factory.getbasetemp().parent
+    with FileLock(str(root / "renderer-build.lock")):
+        subprocess.run(["cargo", "build", "--quiet", "--manifest-path", "renderer/Cargo.toml"], check=True)
+    # unix socket paths are limited to about 100 characters, which pytest's nested temp directories can exceed
+    with tempfile.TemporaryDirectory(prefix="renderer-", dir="/tmp") as directory:
+        socket_path = f"{directory}/renderer.sock"
+        process = subprocess.Popen(
+            ["renderer/target/debug/bitcart-renderer"],
+            env={**os.environ, "RENDERER_SOCKET": socket_path, "RENDERER_WORKERS": "1"},
+            stderr=subprocess.DEVNULL,
+        )
+        deadline = time.monotonic() + 10
+        while not os.path.exists(socket_path):
+            if time.monotonic() > deadline or process.poll() is not None:
+                process.kill()
+                raise RuntimeError("Template renderer did not start")
+            time.sleep(0.01)
+        yield socket_path
+        process.terminate()
+        process.wait()
+
+
+@pytest.fixture(scope="session")
+def settings(tmp_path_factory: pytest.TempPathFactory, renderer_socket: str) -> Settings:
     os.environ["BITCART_ENV"] = "testing"
     os.environ["BITCART_CRYPTOS"] = "btc"
     os.environ["BTC_NETWORK"] = "testnet"
     os.environ["BITCART_DATADIR"] = str(tmp_path_factory.mktemp("data"))
+    os.environ["RENDERER_SOCKET"] = renderer_socket
+    os.environ["RENDERER_TIMEOUT"] = "5"
     return Settings()
 
 

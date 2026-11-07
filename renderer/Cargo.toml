@@ -1,0 +1,36 @@
+[package]
+name = "bitcart-renderer"
+edition = "2024"
+
+[dependencies]
+bigdecimal = "0.4.7"
+libc = "0.2.180"
+minijinja = { version = "=3.0.5", default-features = false, features = [
+    "adjacent_loop_items",
+    "builtins",
+    "debug",
+    "fuel",
+    "json",
+    "loop_controls",
+    "macros",
+    "multi_template",
+    "serde",
+    "std_collections",
+    "unicode",
+    "urlencode",
+] }
+minijinja-contrib = { version = "=3.0.5", features = ["pycompat"] }
+serde = { version = "1.0.220", features = ["derive"] }
+serde_json = "1.0.100"
+
+[lints.clippy]
+undocumented_unsafe_blocks = "warn"
+
+[profile.release]
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
+
+[patch.crates-io]
+minijinja = { git = "https://github.com/bitcart/minijinja", rev = "39eced6429a7f3cbc148417d3305d5c92cbfe556" }

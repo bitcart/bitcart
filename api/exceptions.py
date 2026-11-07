@@ -10,6 +10,14 @@ class TemplateLoadError(BitcartError):
     """Failed to load template file from disk"""
 
 
+class TemplateRenderError(BitcartError):
+    """A built-in default template failed to render"""
+
+
+class RendererUnavailableError(BitcartError):
+    """The template renderer could not produce a result"""
+
+
 class ExchangeRateError(BitcartError):
     """No exchange rate could be used"""
 

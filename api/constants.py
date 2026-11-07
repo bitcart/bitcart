@@ -18,10 +18,16 @@ HTTPS_REVERSE_PROXIES = [
 ]  # reverse proxies supporting https; NOTE: maybe this could be used by accessing generator package?
 ID_LENGTH = 26  # default length of IDs of all objects except for invoice
 PUBLIC_ID_LENGTH = 22  # The length of invoice and products ids; should be shorter than usual for better UX
+MAX_LIGHTNING_DESCRIPTION_BYTES = 639  # the most a BOLT11 description field can hold
+LIGHTNING_DESCRIPTION_RENDER_TIMEOUT = 1  # a customer is waiting for the invoice, a blank description is acceptable
 RESET_TOKEN_BYTES = 32  # 256-bit tokens for URL-based reset flows
 RESET_REQUEST_MAX_ATTEMPTS = 5  # max reset emails per IP per hour
 RESET_FINALIZE_MAX_ATTEMPTS = 10  # max finalize attempts per IP per hour
 RESET_RATE_WINDOW = 60 * 60  # fixed window in seconds
+TEMPLATE_TEST_MAX_ATTEMPTS = 30  # max template test renders per user per minute
+TEMPLATE_TEST_RATE_WINDOW = 60  # fixed window in seconds
+TEMPLATE_ALERT_WINDOW = 60 * 60  # seconds between alerts for the same template and store
+TEMPLATE_MAX_SOURCE_LINE_LENGTH = 200  # single-line templates would otherwise fill error reports
 CONFIGURATOR_SSH_MAX_ATTEMPTS = 10  # max configurator SSH attempts per IP per hour
 CONFIGURATOR_SSH_RATE_WINDOW = 60 * 60  # fixed window in seconds
 # as supported by backup.sh

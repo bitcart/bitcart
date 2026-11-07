@@ -2,10 +2,11 @@ from typing import Any, cast
 
 from dishka import FromDishka
 from dishka.integrations.fastapi import DishkaRoute
-from fastapi import APIRouter
+from fastapi import APIRouter, Security
 
+from api import models, utils
 from api.constants import AuthScopes
-from api.schemas.templates import CreateTemplate, DisplayTemplate, UpdateTemplate
+from api.schemas.templates import CreateTemplate, DisplayTemplate, TemplateTestRequest, TemplateTestResult, UpdateTemplate
 from api.services.crud.templates import TemplateService
 from api.templates import TemplateManager
 from api.utils.common import prepare_compliant_response
@@ -26,6 +27,16 @@ async def get_template_list(
     else:
         result_set = cast(list[str], templates_strings)
     return prepare_compliant_response(result_set)
+
+
+@router.post("/{model_id}/test", response_model=TemplateTestResult)
+async def test_template(
+    model_id: str,
+    data: TemplateTestRequest,
+    template_service: FromDishka[TemplateService],
+    user: models.User = Security(utils.authorization.auth_dependency, scopes=[AuthScopes.TEMPLATE_MANAGEMENT]),
+) -> Any:
+    return await template_service.test_template(model_id, data, user)
 
 
 create_crud_router(

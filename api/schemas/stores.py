@@ -21,7 +21,6 @@ class StoreCheckoutSettings(Schema):
     recommended_fee_target_blocks: int = 1
     show_recommended_fee: bool = True
     use_dark_mode: bool = False
-    use_html_templates: bool = False
     email_required: bool = True
     ask_address: bool = False
     randomize_wallet_selection: bool = False

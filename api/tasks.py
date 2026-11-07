@@ -20,6 +20,7 @@ from api.schemas.tasks import (
     ProcessNewBackupPolicyMessage,
     RatesActionMessage,
     SendNotificationMessage,
+    SendTemplateAlertMessage,
     SendVerificationEmailMessage,
     SyncWalletMessage,
 )
@@ -33,6 +34,7 @@ from api.services.ext.configurator import ConfiguratorService
 from api.services.host_agent import HostAgentService
 from api.services.notification_manager import NotificationManager
 from api.services.plugin_registry import PluginRegistry
+from api.services.template_alerts import TemplateAlertService
 from api.services.wallet_data import WalletDataService
 from api.settings import Settings
 from api.types import TasksBroker
@@ -143,6 +145,12 @@ async def send_notification(
     if not store:
         return
     await notification_manager.notify(store, params.text)
+
+
+@broker.task("send_template_alert")
+@inject(patch_module=True)
+async def send_template_alert(params: SendTemplateAlertMessage, template_alerts: FromDishka[TemplateAlertService]) -> None:
+    await template_alerts.send(params.store_id, params.text)
 
 
 @broker.task("process_new_backup_policy")

@@ -1,7 +1,7 @@
 import secrets
 from datetime import datetime, timedelta
 from decimal import Decimal
-from typing import Any
+from typing import Any, ClassVar
 
 import pyotp
 from advanced_alchemy.base import SQLQuery
@@ -28,6 +28,7 @@ from api.schemas.misc import EmailSettings
 from api.schemas.stores import StoreCheckoutSettings, StorePluginSettings, StoreThemeSettings
 from api.schemas.users import UserPreferences
 from api.sqltypes import MutableModel
+from api.templates import TemplateFormat
 
 my_metadata = MetaData(
     naming_convention={
@@ -41,10 +42,15 @@ my_metadata = MetaData(
 
 all_tables: dict[str, type["Model"]] = {}
 
+HIDDEN_FROM_TEMPLATES = {"template_hidden": True}
+EXPOSED_TO_TEMPLATES = {"template_exposed": True}
+
 
 class Model(SQLQuery):
     __abstract__ = True
     __allow_unmapped__ = True
+
+    template_blocked: ClassVar[bool] = False
 
     def __init_subclass__(cls, **kwargs: Any) -> None:  # pragma: no cover
         if hasattr(cls, "__tablename__"):
@@ -130,6 +136,7 @@ class RecordModel(IDModel, MetadataMixin):
 
 class User(RecordModel):
     __tablename__ = "users"
+    template_blocked: ClassVar[bool] = True
 
     email: Mapped[str] = mapped_column(Text, unique=True, index=True)
     hashed_password: Mapped[str] = mapped_column(Text)
@@ -170,6 +177,7 @@ class WalletxStore(Model):
 
 class Wallet(RecordModel):
     __tablename__ = "wallets"
+    template_blocked: ClassVar[bool] = True
 
     name: Mapped[str] = mapped_column(Text, index=True)
     xpub: Mapped[str] = mapped_column(Text, index=True)
@@ -203,6 +211,7 @@ class NotificationxStore(Model):
 
 class Notification(RecordModel):
     __tablename__ = "notifications"
+    template_blocked: ClassVar[bool] = True
 
     name: Mapped[str] = mapped_column(Text, index=True)
     provider: Mapped[str] = mapped_column(Text)
@@ -225,6 +234,7 @@ class Template(RecordModel):
 
     name: Mapped[str] = mapped_column(Text, index=True)
     text: Mapped[str] = mapped_column(Text)
+    format: Mapped[str] = mapped_column(Text, default=TemplateFormat.TEXT)
     user_id: Mapped[str | None] = mapped_column(Text, ForeignKey(User.id, ondelete="SET NULL"))
 
     __table_args__ = (UniqueConstraint("user_id", "name"),)
@@ -239,7 +249,9 @@ class Store(RecordModel):
 
     name: Mapped[str] = mapped_column(Text, index=True)
     default_currency: Mapped[str] = mapped_column(Text)
-    email_settings: Mapped[EmailSettings] = mapped_column("email_settings", MutableModel(EmailSettings), default=EmailSettings)
+    email_settings: Mapped[EmailSettings] = mapped_column(
+        "email_settings", MutableModel(EmailSettings), default=EmailSettings, info=HIDDEN_FROM_TEMPLATES
+    )
     checkout_settings: Mapped[StoreCheckoutSettings] = mapped_column(
         "checkout_settings",
         MutableModel(StoreCheckoutSettings),
@@ -249,7 +261,7 @@ class Store(RecordModel):
         "theme_settings", MutableModel(StoreThemeSettings), default=StoreThemeSettings
     )
     plugin_settings: Mapped[StorePluginSettings] = mapped_column(
-        "plugin_settings", MutableModel(StorePluginSettings), default=StorePluginSettings
+        "plugin_settings", MutableModel(StorePluginSettings), default=StorePluginSettings, info=HIDDEN_FROM_TEMPLATES
     )
     templates: Mapped[dict[str, Any]] = mapped_column("templates", MutableDict.as_mutable(JSONB()), default=dict)
     user_id: Mapped[str | None] = mapped_column(Text, ForeignKey(User.id, ondelete="SET NULL"))
@@ -316,7 +328,7 @@ class ProductxInvoice(Model):
     count: Mapped[int] = mapped_column(Integer)
 
     product = relationship(
-        "Product", lazy="joined", cascade="save-update, merge"
+        "Product", lazy="joined", cascade="save-update, merge", info=EXPOSED_TO_TEMPLATES
     )  # TODO: how can we enable lazy="raise" here?
     invoice = relationship("Invoice", lazy="raise", back_populates="products_associations", cascade="save-update, merge")
 
@@ -458,12 +470,14 @@ class Invoice(RecordModel):
         back_populates="invoice",
         cascade="save-update, merge",
         order_by="PaymentMethod.created",
+        info=EXPOSED_TO_TEMPLATES,
     )
     # delete needed here as it's related to the association table directly
     products_associations: Mapped[list["ProductxInvoice"]] = relationship(
         "ProductxInvoice",
         lazy="raise",
         cascade="save-update, merge, delete, delete-orphan",
+        info=EXPOSED_TO_TEMPLATES,
     )
     products: AssociationProxy[list[Product]] = association_proxy(
         "products_associations",
@@ -471,18 +485,15 @@ class Invoice(RecordModel):
         creator=lambda product_obj: ProductxInvoice(product=product_obj),
     )
 
-    payment_id: str | None
-    refund_id: str | None
-    product_names: dict[str, str]
-    product_quantities: dict[str, int]
-
     @declared_attr
     def store(cls) -> Mapped["Store"]:
         return relationship("Store", lazy="raise", foreign_keys="[Invoice.store_id]")
 
     @declared_attr
     def refunds(cls) -> Mapped[list["Refund"]]:
-        return relationship("Refund", lazy="raise", foreign_keys="[Refund.invoice_id]", viewonly=True)
+        return relationship(
+            "Refund", lazy="raise", foreign_keys="[Refund.invoice_id]", viewonly=True, info=EXPOSED_TO_TEMPLATES
+        )
 
     @property
     def expiration_seconds(self) -> int:
@@ -496,9 +507,26 @@ class Invoice(RecordModel):
 
         return utils.time.time_diff(date)
 
+    @property
+    def payment_id(self) -> str | None:
+        return next((payment.id for payment in self.payments if payment.is_used), None)
+
+    @property
+    def refund_id(self) -> str | None:
+        return self.refunds[0].id if self.refunds else None
+
+    @property
+    def product_names(self) -> dict[str, str]:
+        return {product.id: product.name for product in self.products}
+
+    @property
+    def product_quantities(self) -> dict[str, int]:
+        return {association.product_id: association.count for association in self.products_associations}
+
 
 class Setting(IDModel):
     __tablename__ = "settings"
+    template_blocked: ClassVar[bool] = True
 
     name: Mapped[str] = mapped_column(Text)
     value: Mapped[str] = mapped_column(Text)  # TODO: maybe jsonb?
@@ -506,6 +534,7 @@ class Setting(IDModel):
 
 class Token(RecordModel):
     __tablename__ = "tokens"
+    template_blocked: ClassVar[bool] = True
 
     @staticmethod
     def id_generator() -> str:

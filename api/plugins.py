@@ -17,8 +17,11 @@ from pydantic import TypeAdapter
 
 from api import models
 from api.logging import Logger, get_exception_message, get_logger
+from api.models import EXPOSED_TO_TEMPLATES, HIDDEN_FROM_TEMPLATES
 from api.schemas.base import Schema
 from api.settings import Settings
+from api.templates import RenderResult, TemplateAudience, TemplateScope
+from api.templates.context import TemplateContextGetter, TemplateOwner, TemplateTestData, sample_model
 from api.utils.authorization import register_scope
 
 if TYPE_CHECKING:
@@ -102,8 +105,19 @@ class PluginContext:
     async def get_plugin_key_by_lookup(self, lookup_name: str, lookup_org: str) -> str | None:
         return await self.plugin_registry.get_plugin_key_by_lookup(lookup_name, lookup_org)
 
-    def add_template(self, name: str, text: str | None = None, applicable_to: str = "", *, path: str) -> None:
-        self.plugin_registry.add_template(name, text, applicable_to, path=path)
+    def add_template(
+        self,
+        name: str,
+        text: str | None = None,
+        *,
+        applicable_to: TemplateScope,
+        audience: TemplateAudience,
+        get_test_context: TemplateContextGetter[Any],
+        path: str,
+    ) -> None:
+        self.plugin_registry.add_template(
+            name, text, applicable_to=applicable_to, audience=audience, get_test_context=get_test_context, path=path
+        )
 
     def get_plugin_data_dir(self, plugin_name: str) -> str:
         return self.plugin_registry.get_plugin_data_dir(plugin_name)
@@ -157,8 +171,18 @@ class BasePlugin(metaclass=ABCMeta):
     async def worker_setup(self) -> None:
         pass
 
-    def register_template(self, name: str, text: str | None = None, applicable_to: str = "") -> None:
-        self.context.add_template(name, text, applicable_to, path=self.path)
+    def register_template[OwnerT: TemplateOwner | None](
+        self,
+        name: str,
+        text: str | None = None,
+        *,
+        applicable_to: TemplateScope,
+        audience: TemplateAudience,
+        get_test_context: TemplateContextGetter[OwnerT],
+    ) -> None:
+        self.context.add_template(
+            name, text, applicable_to=applicable_to, audience=audience, get_test_context=get_test_context, path=self.path
+        )
 
     def register_settings(self, settings_class: type[Schema]) -> None:
         self.context.register_settings(self.name, settings_class)
@@ -293,7 +317,15 @@ def build_plugin_di_context(plugin_objects: PluginObjects) -> dict[type[BasePlug
 
 
 __all__ = [
+    "EXPOSED_TO_TEMPLATES",
+    "HIDDEN_FROM_TEMPLATES",
     "SKIP_PAYMENT_METHOD",
+    "RenderResult",
+    "TemplateAudience",
+    "TemplateOwner",
+    "TemplateScope",
+    "TemplateTestData",
+    "sample_model",
     "FromDI",
     "DIContainer",
     "DIScope",

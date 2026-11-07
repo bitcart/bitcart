@@ -33,8 +33,10 @@ from api.services.payment_processor import PaymentProcessor
 from api.services.payout_manager import PayoutManager
 from api.services.plugin_manager import PluginManager
 from api.services.plugin_registry import PluginRegistry
+from api.services.renderer import RendererClient
 from api.services.server_manager import ServerManager
 from api.services.settings import SettingService
+from api.services.template_alerts import TemplateAlertService
 from api.services.wallet_data import WalletDataService
 from api.settings import Settings
 from api.types import AuthServiceProtocol
@@ -56,6 +58,7 @@ class ServicesProvider(Provider):
         ManagementService,
         FileService,
         RefundService,
+        TemplateAlertService,
         scope=Scope.SESSION,
     )
     auth_service = provide(AuthService, scope=Scope.SESSION)
@@ -84,6 +87,7 @@ class ServicesProvider(Provider):
         ServerManager,
         HostAgentService,
         EmailService,
+        RendererClient,
         scope=Scope.APP,  # for tests isolation
     )
 

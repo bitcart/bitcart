@@ -2,6 +2,9 @@
     "bitcart": {
         "dockerfile": "backend.Dockerfile"
     },
+    "bitcart-renderer": {
+        "dockerfile": "renderer.Dockerfile"
+    },
     "bitcart-btc": {
         "dockerfile": "btc.Dockerfile"
     },

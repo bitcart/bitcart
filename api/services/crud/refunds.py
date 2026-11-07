@@ -5,10 +5,10 @@ from fastapi import HTTPException
 
 from api import models
 from api.db import AsyncSession
-from api.exceptions import EmailSendError
+from api.exceptions import EmailSendError, RendererUnavailableError
 from api.ext.moneyformat import currency_table
 from api.invoices import InvoiceStatus
-from api.logging import get_exception_message, get_logger
+from api.logging import get_exception_details, get_exception_message, get_logger
 from api.schemas.payouts import CreatePayout
 from api.schemas.refunds import CreateRefund, RefundData, SubmitRefundData
 from api.schemas.tasks import SendNotificationMessage
@@ -70,25 +70,30 @@ class RefundService(CRUDService[models.Refund]):
             store = await self.store_service.get(invoice.store_id)
             if self.email_service.is_enabled(store.email_settings):
                 refund_url = f"{self.settings.checkout_url}/refunds/{refund.id}"
-                refund_template = await self.plugin_registry.apply_filters(
-                    "refund_customer_text",
-                    await self.template_service.get_customer_refund_template(store, invoice, refund, refund_url),
-                    store,
-                    invoice,
-                    refund,
-                    refund_url,
-                )
-                try:
-                    await self.email_service.send(
-                        store.email_settings,
-                        invoice.buyer_email,
-                        f"Refund for invoice {invoice.id}",
-                        refund_template,
-                        html=store.checkout_settings.use_html_templates,
-                    )
-                except EmailSendError as e:
-                    logger.warning(f"Refund {refund.id}: failed to email the buyer: {get_exception_message(e)}")
+                await self._email_refund(store, invoice, refund, refund_url, invoice.buyer_email)
         return refund
+
+    async def _email_refund(
+        self, store: models.Store, invoice: models.Invoice, refund: models.Refund, refund_url: str, buyer_email: str
+    ) -> None:
+        try:
+            message = await self.template_service.render_customer_refund(store, invoice, refund, refund_url)
+        except RendererUnavailableError as e:
+            logger.error(f"Refund {refund.id}: failed to render the buyer email: {get_exception_details(e)}")
+            return
+        message = await self.plugin_registry.apply_filters(
+            "refund_customer_message", message, store, invoice, refund, refund_url
+        )
+        try:
+            await self.email_service.send(
+                store.email_settings,
+                buyer_email,
+                f"Refund for invoice {invoice.id}",
+                message.text,
+                html=message.is_html,
+            )
+        except EmailSendError as e:
+            logger.warning(f"Refund {refund.id}: failed to email the buyer: {get_exception_message(e)}")
 
     async def submit_refund(self, refund_id: str, data: SubmitRefundData) -> models.Refund:
         refund = await self.get(refund_id, atomic_update=True)
@@ -107,12 +112,14 @@ class RefundService(CRUDService[models.Refund]):
         payout_data["user_id"] = refund.user_id
         payout = await self.payout_service.create(payout_data)
         refund.update(payout=payout, destination=data.destination)
+        try:
+            notification = await self.template_service.render_merchant_refund_notify(invoice.store, invoice, refund)
+        except RendererUnavailableError as e:
+            logger.error(f"Refund {refund.id}: failed to render the store notification: {get_exception_details(e)}")
+            return refund
         await self.broker.publish(
             "send_notification",
-            SendNotificationMessage(
-                store_id=cast(str, invoice.store_id),
-                text=await self.template_service.get_merchant_refund_notify_template(invoice.store, invoice, refund),
-            ),
+            SendNotificationMessage(store_id=cast(str, invoice.store_id), text=notification.text),
         )
         return refund
 

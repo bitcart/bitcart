@@ -95,7 +95,7 @@ def setup_plugin(app: FastAPI, settings: Settings, fresh_app: FastAPI) -> Plugin
             settings,
             broker,
             ClientTasksBroker(client_tasks_broker),
-            TemplateManager(),
+            TemplateManager([]),
             PluginObjects({plugin.name: plugin}),
             app.state.dishka_container,
         )
