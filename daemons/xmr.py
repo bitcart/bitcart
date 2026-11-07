@@ -1,5 +1,6 @@
 import asyncio
 import binascii
+import io
 import json
 import os
 import secrets
@@ -11,6 +12,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
 
+import monero.transaction as monero_transaction
 from aiohttp import ClientError as AsyncClientError
 from genericprocessor import (
     NOOP_PATH,
@@ -49,6 +51,9 @@ logger = get_logger(__name__)
 
 MAX_FETCH_TXES = 100
 
+ENCRYPTED_PAYMENT_ID_NONCE_PREFIX = 0x01
+ENCRYPTED_PAYMENT_ID_NONCE_SIZE = 9
+
 daemon_ctx: ContextVar["XMRDaemon"]
 
 
@@ -58,6 +63,81 @@ def is_valid_hash(hexhash):
         return len(hexhash) == 64
     except ValueError:
         return
+
+
+class TxExtraParser(ExtraParser):
+    TX_EXTRA_TAG_MERGE_MINING = 0x03
+    TX_EXTRA_TAG_MYSTERIOUS_MINERGATE = 0xDE
+    TX_EXTRA_NONCE_MAX_SIZE = 255
+
+    def parse(self):
+        self.data = {}
+        stream = io.BytesIO(bytes(self.extra))
+        try:
+            while tag := stream.read(1):
+                self._parse_field(tag[0], stream)
+        except (EOFError, OverflowError):
+            logger.warning(f"Transaction extra has unsupported format: {bytes(self.extra).hex()}")
+        return self.data
+
+    def _parse_field(self, tag, stream):
+        if tag == self.TX_EXTRA_TAG_PADDING:
+            stream.read()
+        elif tag == self.TX_EXTRA_TAG_PUBKEY:
+            self._add("pubkeys", self._read(stream, 32))
+        elif tag == self.TX_EXTRA_TAG_ADDITIONAL_PUBKEYS:
+            keys = [self._read(stream, 32) for _ in range(self._read_varint(stream))]
+            self.data.setdefault("pubkeys", []).extend(keys)
+        elif tag == self.TX_EXTRA_TAG_EXTRA_NONCE:
+            nonce = self._read_blob(stream)
+            if len(nonce) > self.TX_EXTRA_NONCE_MAX_SIZE:
+                raise EOFError
+            self._add("nonces", bytearray(nonce))
+        elif tag == self.TX_EXTRA_TAG_MERGE_MINING:
+            self._add("merge_mining", self._read_merge_mining_field(stream))
+        elif tag == self.TX_EXTRA_TAG_MYSTERIOUS_MINERGATE:
+            self._add("mysterious_minergate", self._read_blob(stream))
+        else:
+            raise EOFError
+
+    def _add(self, name, value):
+        self.data.setdefault(name, []).append(value)
+
+    @classmethod
+    def _read_merge_mining_field(cls, stream):
+        blob = cls._read_blob(stream)
+        blob_stream = io.BytesIO(blob)
+        cls._read_varint(blob_stream)
+        cls._read(blob_stream, 32)
+        if blob_stream.read(1):
+            raise EOFError
+        return blob
+
+    @classmethod
+    def _read_blob(cls, stream):
+        return cls._read(stream, cls._read_varint(stream))
+
+    @staticmethod
+    def _read(stream, size):
+        data = stream.read(size)
+        if len(data) < size:
+            raise EOFError
+        return data
+
+    @classmethod
+    def _read_varint(cls, stream):
+        value = shift = 0
+        while True:
+            byte = cls._read(stream, 1)[0]
+            if (shift + 7 >= 64 and byte >= 1 << (64 - shift)) or (not byte and shift):
+                raise EOFError
+            value |= (byte & 0x7F) << shift
+            shift += 7
+            if not byte & 0x80:
+                return value
+
+
+monero_transaction.ExtraParser = TxExtraParser
 
 
 class JSONEncoder(StorageJSONEncoder):
@@ -448,10 +528,15 @@ class XMRDaemon(BlockProcessorDaemon):
         return wallet
 
     def get_final_tx_address(self, address, tx, wallet):
-        ep = ExtraParser(tx.monero_tx.json["extra"])
-        d = ep.parse()
+        nonces = TxExtraParser(tx.monero_tx.json["extra"]).parse().get("nonces")
+        if (
+            not nonces
+            or len(nonces[0]) != ENCRYPTED_PAYMENT_ID_NONCE_SIZE
+            or nonces[0][0] != ENCRYPTED_PAYMENT_ID_NONCE_PREFIX
+        ):
+            return None
+        encrypted_payment_id = nonces[0][1:]
         svk = binascii.unhexlify(wallet.view_key())
-        encrypted_payment_id = d["nonces"][0][1:]
         svk_2 = ed25519.scalar_add(svk, svk)
         svk_4 = ed25519.scalar_add(svk_2, svk_2)
         svk_8 = ed25519.scalar_add(svk_4, svk_4)
