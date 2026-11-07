@@ -40,6 +40,9 @@ class Settings(BaseSettings):
 
     SENTRY_DSN: str | None = None
 
+    RENDERER_SOCKET: str = "data/renderer.sock"
+    RENDERER_TIMEOUT: float = 10
+
     ENABLED_CRYPTOS: Annotated[CommaSeparatedStrings, NoDecode] = Field(
         CommaSeparatedStrings("btc"), validation_alias="BITCART_CRYPTOS"
     )

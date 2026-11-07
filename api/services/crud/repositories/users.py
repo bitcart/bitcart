@@ -10,6 +10,9 @@ class UserRepository(CRUDRepository[models.User]):
 
     LOAD_OPTIONS = [joinedload(models.User.tokens)]
 
+    async def get_enabled_superusers(self) -> list[models.User]:
+        return await self.get_many(is_superuser=True, is_enabled=True, load=[])
+
     async def get_first_superuser(self) -> models.User | None:
         return (
             await self.session.execute(

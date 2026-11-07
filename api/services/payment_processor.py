@@ -77,7 +77,6 @@ class PaymentProcessor:
     ) -> None:
         async with self.container(scope=Scope.REQUEST) as container:
             session = await container.get(AsyncSession)
-            invoice_service = await container.get(InvoiceService)
             if tx_hashes is None:
                 tx_hashes = []
             with log_errors(logger):
@@ -91,7 +90,6 @@ class PaymentProcessor:
                 if not data:  # received payment but no matching invoice
                     return
                 method, invoice, wallet = data
-                await invoice_service.load_one(invoice)
                 await self.plugin_registry.run_hook(
                     "new_payment", invoice, method, wallet, status, status_str, tx_hashes, sent_amount
                 )
@@ -107,12 +105,11 @@ class PaymentProcessor:
                 )
 
     async def iterate_pending_invoices(
-        self, session: AsyncSession, invoice_service: InvoiceService, currency: str, statuses: list[str] | None = None
+        self, session: AsyncSession, currency: str, statuses: list[str] | None = None
     ) -> AsyncIterator[tuple[models.PaymentMethod, models.Invoice, models.Wallet]]:
         with log_errors(logger):  # connection issues
             result = await session.stream(self.get_pending_invoices_query(currency, statuses=statuses))
             async for method, invoice, wallet in result:
-                await invoice_service.load_one(invoice)
                 yield method, invoice, wallet
 
     async def update_invoice_confirmations(
@@ -158,7 +155,7 @@ class PaymentProcessor:
             coros = []
             coros.append(self.payout_manager.process_new_block(instance.coin_name.lower()))
             async for method, invoice, wallet in self.iterate_pending_invoices(
-                session, invoice_service, instance.coin_name.lower(), statuses=[InvoiceStatus.PAID, InvoiceStatus.CONFIRMED]
+                session, instance.coin_name.lower(), statuses=[InvoiceStatus.PAID, InvoiceStatus.CONFIRMED]
             ):
                 with log_errors(logger):  # issues processing one item
                     if method.id != invoice.payment_id or method.lightning:
@@ -258,7 +255,7 @@ class PaymentProcessor:
             await self.plugin_registry.run_hook("check_pending", currency)
             coros: list[Coroutine[Any, Any, Any]] = []
             coros.append(self.payout_manager.process_new_block(currency.lower()))
-            async for method, invoice, wallet in self.iterate_pending_invoices(session, invoice_service, currency):
+            async for method, invoice, wallet in self.iterate_pending_invoices(session, currency):
                 with log_errors(logger):  # issues processing one item
                     if invoice.status == InvoiceStatus.EXPIRED:
                         continue

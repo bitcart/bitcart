@@ -19,7 +19,8 @@ from api.schemas.policies import PluginsState
 from api.schemas.tasks import LicenseChangedMessage, PluginTaskMessage
 from api.services.settings import SettingService
 from api.settings import Settings
-from api.templates import TemplateManager
+from api.templates import TemplateAudience, TemplateManager, TemplateScope
+from api.templates.context import TemplateContextGetter
 from api.types import ClientTasksBroker, TasksBroker
 from api.utils.common import run_universal
 
@@ -233,9 +234,25 @@ class PluginRegistry:
                 return plugin_info["license_key"]
         return None
 
-    def add_template(self, name: str, text: str | None = None, applicable_to: str = "", *, path: str) -> None:
+    def add_template(
+        self,
+        name: str,
+        text: str | None = None,
+        *,
+        applicable_to: TemplateScope,
+        audience: TemplateAudience,
+        get_test_context: TemplateContextGetter[Any],
+        path: str,
+    ) -> None:
         self.template_manager.add_template(
-            templates.Template(name, text, applicable_to, prefix=os.path.join(path, "templates"))
+            templates.Template(
+                name,
+                text=text,
+                applicable_to=applicable_to,
+                audience=audience,
+                get_test_context=get_test_context,
+                prefix=os.path.join(path, "templates"),
+            )
         )
 
     def get_plugin_data_dir(self, plugin_name: str) -> str:

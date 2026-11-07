@@ -31,7 +31,6 @@ web = [
     "email-validator>=2.3.0",
     "fastapi>=0.138.0",
     "fido2>=2.0.0",
-    "jinja2>=3.1.6",
     "jsonschema>=4.25.1",
     "msgpack>=1.1.1",
     "packaging>=26.0",

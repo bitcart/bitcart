@@ -4,7 +4,6 @@ import asyncio
 import os
 import pathlib
 from collections.abc import Callable
-from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any, cast
@@ -23,7 +22,6 @@ from api.schemas.wallets import DisplayWallet
 from api.services.auth import AuthService
 from api.services.crud.invoices import InvoiceService
 from api.services.crud.stores import StoreService
-from api.services.crud.templates import TemplateService
 from api.services.management import ManagementService
 from api.services.notification_manager import NotificationManager
 from api.services.wallet_data import WalletDataService
@@ -59,141 +57,6 @@ def test_verify_password(password_hasher: PasswordHasherProtocol) -> None:
     p_hash = password_hasher.get_password_hash("12345")
     assert isinstance(p_hash, str)
     assert password_hasher.verify_password("12345", p_hash)
-
-
-@dataclass
-class MockTemplateObj:
-    template_name: str
-    create_id: str = "1"
-    mock_name: str = "MockTemplateObj"
-    user_id: str = "1"
-    id: str = "1"
-
-    @property
-    def templates(self) -> dict[str, str]:
-        return {self.template_name: self.create_id}
-
-    def __str__(self) -> str:
-        return self.mock_name
-
-
-@dataclass
-class MockStore:
-    user_id: str = "1"
-
-    def __str__(self) -> str:
-        return "MockStore"
-
-
-@pytest.mark.anyio
-async def test_get_template(
-    notification_template: str, client: TestClient, token: str, user: dict[str, Any], app: FastAPI
-) -> None:
-    async with app.state.dishka_container(scope=Scope.REQUEST) as container:
-        template_service = await container.get(TemplateService)
-        template = await template_service.get_template("notification")
-    assert template.name == "notification"
-    assert template.template_text == notification_template
-    assert template.render() == ""
-    with pytest.raises(exceptions.TemplateDoesNotExistError):
-        async with app.state.dishka_container(scope=Scope.REQUEST) as container:
-            template_service = await container.get(TemplateService)
-            await template_service.get_template("templ")
-    resp = await client.post(
-        "/templates",
-        json={"name": "templ", "text": "Hello {{var1}}!"},
-        headers={"Authorization": f"Bearer {token}"},
-    )
-    assert resp.status_code == 200
-    template_id = resp.json()["id"]
-    async with app.state.dishka_container(scope=Scope.REQUEST) as container:
-        template_service = await container.get(TemplateService)
-        template2 = await template_service.get_template("templ", user_id=user["id"])
-    assert template2.name == "templ"
-    assert template2.template_text == "Hello {{var1}}!"
-    assert template2.render() == "Hello !"
-    assert template2.render(var1="world") == "Hello world!"
-    async with app.state.dishka_container(scope=Scope.REQUEST) as container:
-        template_service = await container.get(TemplateService)
-        template3 = await template_service.get_template(
-            "notification", obj=MockTemplateObj(template_name="notification", create_id=template_id)
-        )
-    assert template3.name == "notification"
-    assert template3.template_text == template2.template_text
-
-
-@pytest.mark.anyio
-async def test_product_template(client: TestClient, token: str, user: dict[str, Any], app: FastAPI) -> None:
-    qty = 10
-    product_template = MockTemplateObj(template_name="product", mock_name="MockProduct")
-    store = MockStore(user_id=user["id"])
-    # default product template
-    async with app.state.dishka_container(scope=Scope.REQUEST) as container:
-        template_service = await container.get(TemplateService)
-        template = await template_service.get_product_template(store, product_template, qty)
-    assert template == f"Thanks for buying  x {qty}!\nIt'll ship shortly!\n"
-    # custom template
-    resp = await client.post(
-        "/templates",
-        json={"name": "product", "text": "store={{store}}|product={{product}}|quantity={{quantity}}"},
-        headers={"Authorization": f"Bearer {token}"},
-    )
-    assert resp.status_code == 200
-    template_id = resp.json()["id"]
-    # Required for unique id
-    product_template.create_id = template_id
-    async with app.state.dishka_container(scope=Scope.REQUEST) as container:
-        template_service = await container.get(TemplateService)
-        template = await template_service.get_product_template(store, product_template, qty)
-    assert template == f"store={store}|product={product_template}|quantity={qty}"
-
-
-@pytest.mark.anyio
-async def test_store_template(client: TestClient, token: str, user: dict[str, Any], app: FastAPI) -> None:
-    shop = MockTemplateObj(template_name="shop", mock_name="MockShop", user_id=user["id"])
-    product = "my product"
-    # default store template
-    async with app.state.dishka_container(scope=Scope.REQUEST) as container:
-        template_service = await container.get(TemplateService)
-        template = await template_service.get_store_template(shop, [product])
-    assert template.startswith("Welcome to our shop")
-    # custom template
-    resp = await client.post(
-        "/templates",
-        json={"name": "shop", "text": "store={{store}}|products={{products}}"},
-        headers={"Authorization": f"Bearer {token}"},
-    )
-    assert resp.status_code == 200
-    template_id = resp.json()["id"]
-    shop.create_id = template_id
-    async with app.state.dishka_container(scope=Scope.REQUEST) as container:
-        template_service = await container.get(TemplateService)
-        template = await template_service.get_store_template(shop, product)
-    assert template == f"store={shop}|products={product}"
-
-
-@pytest.mark.anyio
-async def test_notification_template(client: TestClient, token: str, user: dict[str, Any], app: FastAPI) -> None:
-    invoice = "my invoice"
-    notification = MockTemplateObj(template_name="notification", mock_name="MockNotification", user_id=user["id"])
-    # default notification template
-    async with app.state.dishka_container(scope=Scope.REQUEST) as container:
-        template_service = await container.get(TemplateService)
-        template = await template_service.get_notify_template(notification, invoice)
-    assert template.strip() == "New order from  for  !"
-    # custom template
-    resp = await client.post(
-        "/templates",
-        json={"name": "notification", "text": "store={{store}}|invoice={{invoice}}"},
-        headers={"Authorization": f"Bearer {token}"},
-    )
-    assert resp.status_code == 200
-    template_id = resp.json()["id"]
-    notification.create_id = template_id
-    async with app.state.dishka_container(scope=Scope.REQUEST) as container:
-        template_service = await container.get(TemplateService)
-        template = await template_service.get_notify_template(notification, invoice)
-    assert template == f"store={notification}|invoice={invoice}"
 
 
 # NOTE: this only works because those methods don't call any session-based objects

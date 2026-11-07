@@ -4,7 +4,7 @@ from enum import StrEnum
 from typing import Any, cast, overload
 
 from advanced_alchemy.base import ModelProtocol
-from advanced_alchemy.filters import StatementFilter, StatementTypeT
+from advanced_alchemy.filters import LimitOffset, StatementFilter, StatementTypeT
 from advanced_alchemy.repository import LoadSpec
 from advanced_alchemy.utils.serialization import ModelDictT
 from dishka import AsyncContainer
@@ -139,6 +139,14 @@ class CRUDService[ModelType: ModelProtocol]:
             call_load=call_load,
             **kwargs,
         )
+
+    async def get_newest(
+        self, *filters: StatementFilter | ColumnElement[bool], user: models.User | None = None, **kwargs: Any
+    ) -> ModelType | None:
+        items, _ = await self.list_and_count(
+            *filters, LimitOffset(limit=1, offset=0), user=user, order_by=("created", True), **kwargs
+        )
+        return items[0] if items else None
 
     async def list_and_count(
         self,

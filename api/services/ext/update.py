@@ -37,7 +37,6 @@ SELECTED_POLICY_KEYS = {
     "staging_updates",
     "allow_anonymous_configurator",
     "captcha_type",
-    "use_html_templates",
     "allow_eth_plugin_info",
     "log_retention_days",
     "eth_plugin_active",

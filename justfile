@@ -27,6 +27,12 @@ prod-api:
 [group("Services")]
 prod-api-up: db-migrate prod-api
 
+# run the template renderer
+[group("Services")]
+renderer:
+    mkdir -p data
+    RENDERER_SOCKET=data/renderer.sock cargo run --release --manifest-path renderer/Cargo.toml
+
 # run coin daemons
 [group("Services")]
 daemon coin:
@@ -56,6 +62,13 @@ lint-deps:
 [group("Testing")]
 test *args:
     pytest {{ trim(test-args + " " + args) }}
+
+# run renderer tests and checks
+[group("Testing")]
+test-renderer:
+    cargo fmt --check --manifest-path renderer/Cargo.toml
+    cargo clippy --all-targets --manifest-path renderer/Cargo.toml -- -D warnings
+    cargo test --manifest-path renderer/Cargo.toml
 
 # run functional tests
 [group("Testing")]

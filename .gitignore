@@ -20,6 +20,7 @@ htmlcov/
 modules/*
 !modules/__init__.py
 openapi.json
+/renderer/target/
 venv
 .venv
 .DS_Store

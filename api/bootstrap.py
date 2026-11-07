@@ -24,7 +24,7 @@ from starlette.staticfiles import StaticFiles
 from starlette.types import Receive, Scope, Send
 
 from api.db import AsyncSession
-from api.exceptions import EmailSendError, ExchangeRatesUnavailableError
+from api.exceptions import EmailSendError, ExchangeRatesUnavailableError, RendererUnavailableError
 from api.ext.agent import AgentError, AgentErrorCode
 from api.ioc import build_container, setup_dishka
 from api.ioc.services import ServicesProvider
@@ -151,6 +151,14 @@ async def exchange_rates_error_handler(request: Request, exc: ExchangeRatesUnava
     )
 
 
+async def renderer_error_handler(request: Request, exc: RendererUnavailableError) -> JSONResponse:
+    logger.warning(f"{request.method} {request.url.path}: {get_exception_details(exc)}")
+    return JSONResponse(
+        status_code=503,
+        content={"error": "Templates unavailable", "detail": "Templates are temporarily unavailable"},
+    )
+
+
 async def email_send_error_handler(request: Request, exc: EmailSendError) -> JSONResponse:
     logger.warning(f"{request.method} {request.url.path}: {get_exception_details(exc)}")
     return JSONResponse(
@@ -168,6 +176,7 @@ exception_handlers: dict[type[Exception], Callable[[Request, Any], Awaitable[Res
     AdvancedAlchemyError: db_exception_handler,
     AgentError: agent_error_handler,
     ExchangeRatesUnavailableError: exchange_rates_error_handler,
+    RendererUnavailableError: renderer_error_handler,
     EmailSendError: email_send_error_handler,
 }
 

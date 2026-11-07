@@ -22,7 +22,7 @@ from starlette.datastructures import CommaSeparatedStrings
 from api import invoices, metrics, models, utils
 from api.constants import DEFAULT_SENDMAIL_SUBJECT
 from api.db import AsyncSession
-from api.exceptions import EmailSendError, ExchangeRateError
+from api.exceptions import EmailSendError, ExchangeRateError, RendererUnavailableError
 from api.ext import export as export_ext
 from api.ext import walletpay
 from api.ext.moneyformat import currency_table, round_half_up, to_raw
@@ -265,6 +265,9 @@ class InvoiceService(CRUDService[models.Invoice]):
     ) -> None:
         logger.info(f"Started adding invoice payments for invoice {invoice.id}")
         wallets = await self.wallet_repository.get_ordered_wallets(wallets_ids)
+        lightning_description = ""
+        if any(self._creates_lightning_method(wallet) for wallet in wallets):
+            lightning_description = await self.template_service.render_lightning_description(store, invoice, product)
         randomize_selection = store.checkout_settings.randomize_wallet_selection
         if randomize_selection:
             symbols = defaultdict(list)
@@ -273,12 +276,23 @@ class InvoiceService(CRUDService[models.Invoice]):
                     symbol = await self.wallet_data_service.get_wallet_symbol(wallet)
                     symbols[symbol].append(wallet)
             coros = [
-                self.create_method_for_wallet(invoice, secrets.choice(symbols[symbol]), discounts, store, product, promocode)
+                self.create_method_for_wallet(
+                    invoice,
+                    secrets.choice(symbols[symbol]),
+                    discounts,
+                    store,
+                    product,
+                    promocode,
+                    lightning_description=lightning_description,
+                )
                 for symbol in symbols
             ]
         else:
             coros = [
-                self.create_method_for_wallet(invoice, wallet, discounts, store, product, promocode) for wallet in wallets
+                self.create_method_for_wallet(
+                    invoice, wallet, discounts, store, product, promocode, lightning_description=lightning_description
+                )
+                for wallet in wallets
             ]
         db_data = []
         for result in await asyncio.gather(*coros):
@@ -303,17 +317,33 @@ class InvoiceService(CRUDService[models.Invoice]):
         store: models.Store,
         discounts: list[models.Discount],
         promocode: str | None,
+        *,
+        lightning_description: str,
     ) -> list[dict[str, Any]] | None:
         results = []
-        method = await self._create_payment_method(invoice, wallet, product, store, discounts, promocode)
+        method = await self._create_payment_method(
+            invoice, wallet, product, store, discounts, promocode, lightning_description=lightning_description
+        )
         if method is not None:
             results.append(method)
-        coin_settings = self.coin_service.get_coin_settings(wallet.currency)
-        if coin_settings and coin_settings["lightning"] and wallet.lightning_enabled:  # pragma: no cover
-            method = await self._create_payment_method(invoice, wallet, product, store, discounts, promocode, lightning=True)
+        if self._creates_lightning_method(wallet):  # pragma: no cover
+            method = await self._create_payment_method(
+                invoice,
+                wallet,
+                product,
+                store,
+                discounts,
+                promocode,
+                lightning=True,
+                lightning_description=lightning_description,
+            )
             if method is not None:
                 results.append(method)
         return results
+
+    def _creates_lightning_method(self, wallet: models.Wallet) -> bool:
+        coin_settings = self.coin_service.get_coin_settings(wallet.currency)
+        return bool(coin_settings and coin_settings["lightning"] and wallet.lightning_enabled)
 
     async def create_method_for_wallet(
         self,
@@ -323,9 +353,13 @@ class InvoiceService(CRUDService[models.Invoice]):
         store: models.Store,
         product: models.Product | None,
         promocode: str | None,
+        *,
+        lightning_description: str,
     ) -> list[dict[str, Any]] | None:
         try:
-            return await self.create_payment_method(invoice, wallet, product, store, discounts, promocode)
+            return await self.create_payment_method(
+                invoice, wallet, product, store, discounts, promocode, lightning_description=lightning_description
+            )
         except ExchangeRateError as e:
             logger.warning(
                 f"Invoice {invoice.id}: skipped payment method {wallet.currency.upper()}: {get_exception_details(e)}"
@@ -345,13 +379,24 @@ class InvoiceService(CRUDService[models.Invoice]):
         store: models.Store,
         discounts: list[models.Discount],
         promocode: str | None,
+        *,
         lightning: bool = False,
+        lightning_description: str,
     ) -> dict[str, Any] | None:
         metrics.pending_creation_payment_methods_count.labels(
             currency=wallet.currency, contract=wallet.contract, store=store.id, lightning=lightning
         ).inc()
         try:
-            data = await self._create_payment_method_core(invoice, wallet, product, store, discounts, promocode, lightning)
+            data = await self._create_payment_method_core(
+                invoice,
+                wallet,
+                product,
+                store,
+                discounts,
+                promocode,
+                lightning=lightning,
+                lightning_description=lightning_description,
+            )
         finally:
             metrics.pending_creation_payment_methods_count.labels(
                 currency=wallet.currency, contract=wallet.contract, store=store.id, lightning=lightning
@@ -373,7 +418,9 @@ class InvoiceService(CRUDService[models.Invoice]):
         store: models.Store,
         discounts: list[models.Discount],
         promocode: str | None,
+        *,
         lightning: bool = False,
+        lightning_description: str,
     ) -> dict[str, Any] | None:
         coin = await self.coin_service.get_coin(
             wallet.currency, {"xpub": wallet.xpub, "contract": wallet.contract, **wallet.additional_xpub_data}
@@ -409,7 +456,16 @@ class InvoiceService(CRUDService[models.Invoice]):
             request_price += network_fee
             price += network_fee
         method = await self.plugin_registry.apply_filters(
-            "create_payment_method", None, wallet, coin, request_price, invoice, product, store, lightning
+            "create_payment_method",
+            None,
+            wallet,
+            coin,
+            request_price,
+            invoice,
+            product,
+            store,
+            lightning,
+            lightning_description,
         )
         if method is SKIP_PAYMENT_METHOD:  # pragma: no cover
             return None
@@ -442,7 +498,8 @@ class InvoiceService(CRUDService[models.Invoice]):
             data["recommended_fee"] = round_half_up(
                 Decimal(recommended_fee) / 1000, 2
             )  # convert to sat/byte, two decimal places
-            data_got = await method(request_price, description=product.name if product else "", expire=invoice.expiration)
+            description = lightning_description if lightning else (product.name if product else "")
+            data_got = await method(request_price, description=description, expire=invoice.expiration)
             data["payment_address"] = data_got["address"] if not lightning else data_got["lightning_invoice"]
             data["payment_url"] = data_got["URI"] if not lightning else data_got["lightning_invoice"]
             if data["payment_url"] is None:
@@ -567,14 +624,6 @@ class InvoiceService(CRUDService[models.Invoice]):
             index = met[item.symbol] if currencies[item.symbol] > 1 else None
             yield index, item
 
-    async def load_one(self, item: models.Invoice) -> None:
-        await super().load_one(item)
-        used_payment = next((payment for payment in item.payments if payment.is_used), None)
-        item.payment_id = used_payment.id if used_payment else None
-        item.refund_id = item.refunds[0].id if item.refunds else None
-        item.product_names = {v.id: v.name for v in item.products}
-        item.product_quantities = {v.product_id: v.count for v in item.products_associations}
-
     async def update_confirmations(
         self,
         invoice: models.Invoice,
@@ -628,7 +677,6 @@ class InvoiceService(CRUDService[models.Invoice]):
                 tx_amounts=tx_amounts,
                 sent_amount=sent_amount,
                 exception_status=InvoiceExceptionStatus.PAID_PARTIAL,
-                payment_id=method.id,
             )
             await self.session.commit()
             await self.process_notifications(invoice)
@@ -661,7 +709,7 @@ class InvoiceService(CRUDService[models.Invoice]):
                     if not invoice.paid_date:
                         kwargs["paid_date"] = utils.time.now()
                     method.update(is_used=True)
-                    invoice.update(**kwargs, payment_id=method.id)
+                    invoice.update(**kwargs)
                 log_text += f" with payment method {full_method_name}"
             logger.info(f"{log_text} to {status}")
             kwargs = {"status": status}
@@ -701,41 +749,31 @@ class InvoiceService(CRUDService[models.Invoice]):
             logger.info(f"Invoice {invoice.id} complete, sending notifications...")
             await self.plugin_registry.run_hook("invoice_complete", invoice)
             store = invoice.store
-            await self.notification_manager.notify(store, await self.template_service.get_notify_template(store, invoice))
-            if invoice.products and invoice.buyer_email and self.email_service.is_enabled(store.email_settings):
-                messages = []
-                products = invoice.products_associations
-                for product_relation in products:
-                    product = cast(models.Product, product_relation.product)
-                    product.price = currency_table.round_neutral(
-                        invoice.currency, product.price
-                    )  # to be formatted correctly in emails
-                    quantity = product_relation.count
-                    product_template = await self.template_service.get_product_template(store, product, quantity)
-                    messages.append(product_template)
-                    logger.debug(
-                        f"Invoice {invoice.id} email notification: rendered product template for product {product.id}:\n"
-                        f"{product_template}"
-                    )
-                store_template = await self.plugin_registry.apply_filters(
-                    "email_notification_text",
-                    await self.template_service.get_store_template(store, messages),
-                    invoice,
-                    store,
-                    products,
-                )
-                logger.debug(f"Invoice {invoice.id} email notification: rendered final template:\n{store_template}")
-                await self.plugin_registry.run_hook("invoice_email", invoice, store_template)
-                try:
-                    await self.email_service.send(
-                        store.email_settings,
-                        invoice.buyer_email,
-                        DEFAULT_SENDMAIL_SUBJECT,
-                        store_template,
-                        html=store.checkout_settings.use_html_templates,
-                    )
-                except EmailSendError as e:
-                    logger.warning(f"Invoice {invoice.id}: failed to email the buyer: {get_exception_message(e)}")
+            try:
+                notification = await self.template_service.render_notification(store, invoice)
+                await self.notification_manager.notify(store, notification.text)
+                if invoice.products and invoice.buyer_email and self.email_service.is_enabled(store.email_settings):
+                    await self._email_buyer(invoice, store, invoice.buyer_email)
+            except RendererUnavailableError as e:
+                logger.error(f"Invoice {invoice.id}: failed to render the notifications: {get_exception_details(e)}")
+
+    async def _email_buyer(self, invoice: models.Invoice, store: models.Store, buyer_email: str) -> None:
+        message = await self.template_service.render_order_email(store, invoice)
+        message = await self.plugin_registry.apply_filters(
+            "order_email_message", message, invoice, store, invoice.products_associations
+        )
+        logger.debug(f"Invoice {invoice.id} email notification: rendered final template:\n{message.text}")
+        await self.plugin_registry.run_hook("invoice_email", invoice, message)
+        try:
+            await self.email_service.send(
+                store.email_settings,
+                buyer_email,
+                DEFAULT_SENDMAIL_SUBJECT,
+                message.text,
+                html=message.is_html,
+            )
+        except EmailSendError as e:
+            logger.warning(f"Invoice {invoice.id}: failed to email the buyer: {get_exception_message(e)}")
 
     @property
     def supported_batch_actions(self) -> list[str]:

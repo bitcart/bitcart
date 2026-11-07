@@ -124,6 +124,7 @@
         "templates_get_item",
         "templates_get_template_list",
         "templates_list_items",
+        "templates_test_template",
         "templates_update_item",
         "token_batch_action",
         "token_create_oauth2_token",

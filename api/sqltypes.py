@@ -13,7 +13,7 @@ class PydanticJSON(TypeDecorator[Schema]):
 
     def __init__(self, pydantic_model: type[Schema], **kwargs: Any) -> None:
         super().__init__(**kwargs)
-        self._model = pydantic_model
+        self.pydantic_model = pydantic_model
 
     def process_bind_param(self, value: Any, dialect: Any) -> dict[str, Any] | None:
         if isinstance(value, Schema):
@@ -24,7 +24,7 @@ class PydanticJSON(TypeDecorator[Schema]):
         if value is None:
             return None
         raw = value or {}
-        return self._model.model_validate(raw)
+        return self.pydantic_model.model_validate(raw)
 
 
 def MutableModel(pydantic_model: type[Schema]) -> TypeEngine[Schema]:

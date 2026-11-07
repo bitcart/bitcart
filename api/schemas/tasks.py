@@ -28,6 +28,11 @@ class SendNotificationMessage(Schema):
     text: str
 
 
+class SendTemplateAlertMessage(Schema):
+    store_id: str | None
+    text: str
+
+
 class ProcessNewBackupPolicyMessage(Schema):
     old_policy: BackupsPolicy
     new_policy: BackupsPolicy

@@ -10,6 +10,7 @@ from api.redis import Redis, create_redis
 from api.services.core.password_hasher import PasswordHasher
 from api.settings import Settings
 from api.templates import TemplateManager
+from api.templates.defaults import default_templates
 from api.types import ClientTasksBroker, PasswordHasherProtocol, TasksBroker
 
 
@@ -35,7 +36,7 @@ class AppProvider(Provider):
 
     @provide(scope=Scope.RUNTIME)
     def get_template_manager(self) -> TemplateManager:
-        return TemplateManager()
+        return TemplateManager(default_templates())
 
     password_hasher = provide(PasswordHasher, scope=Scope.RUNTIME, provides=PasswordHasherProtocol)
 

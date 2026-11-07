@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 
 @pytest.fixture(scope="session", autouse=True)
 def notification_template() -> str:
-    with open("api/templates/notification.j2") as f:
+    with open("api/templates/defaults/notification.j2") as f:
         return f.read().strip()
 
 

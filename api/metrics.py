@@ -2,6 +2,13 @@ from prometheus_client import Counter, Gauge, Histogram, Summary
 
 NAMESPACE = "bitcart"
 
+template_render_failures_total = Counter(
+    "template_render_failures_total",
+    "Number of failed template renders",
+    labelnames=["template", "kind"],
+    namespace=NAMESPACE,
+)
+
 pending_creation_payment_methods_count = Gauge(
     "pending_creation_payment_methods_count",
     "Number of payment methods pending creation",
