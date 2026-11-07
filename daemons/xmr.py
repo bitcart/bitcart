@@ -77,7 +77,7 @@ class TxExtraParser(ExtraParser):
             while tag := stream.read(1):
                 self._parse_field(tag[0], stream)
         except (EOFError, OverflowError):
-            pass
+            logger.warning(f"Transaction extra has unsupported format: {bytes(self.extra).hex()}")
         return self.data
 
     def _parse_field(self, tag, stream):
@@ -100,16 +100,16 @@ class TxExtraParser(ExtraParser):
         else:
             raise EOFError
 
-    def _add(self, field, value):
-        self.data.setdefault(field, []).append(value)
+    def _add(self, name, value):
+        self.data.setdefault(name, []).append(value)
 
     @classmethod
     def _read_merge_mining_field(cls, stream):
         blob = cls._read_blob(stream)
-        field = io.BytesIO(blob)
-        cls._read_varint(field)
-        cls._read(field, 32)
-        if field.read(1):
+        blob_stream = io.BytesIO(blob)
+        cls._read_varint(blob_stream)
+        cls._read(blob_stream, 32)
+        if blob_stream.read(1):
             raise EOFError
         return blob
 
