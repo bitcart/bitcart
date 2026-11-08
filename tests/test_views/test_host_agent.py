@@ -105,7 +105,7 @@ async def test_state_unreachable_and_recovered(host_agent: HostAgentService, fak
 
 
 async def test_management_jobs(
-    app: FastAPI,
+    plugin_registry: PluginRegistry,
     client: TestClient,
     token: str,
     settings: Settings,
@@ -113,9 +113,8 @@ async def test_management_jobs(
     host_agent: HostAgentService,
     fake_agent: FakeAgent,
 ) -> None:
-    registry = await get_service(app, PluginRegistry)
-    hooks = record_hook(registry, "server_restart")
-    finished = record_hook(registry, "host_agent_job_finished")
+    hooks = record_hook(plugin_registry, "server_restart")
+    finished = record_hook(plugin_registry, "host_agent_job_finished")
     resp = (await client.post("/manage/restart", headers=auth(token))).json()
     assert resp["status"] == "success"
     job_id = resp["job_id"]
@@ -187,11 +186,15 @@ async def test_job_status_errors(client: TestClient, token: str, host_agent: Hos
 
 
 async def test_manual_backup(
-    app: FastAPI, client: TestClient, token: str, host_agent: HostAgentService, fake_agent: FakeAgent
+    app: FastAPI,
+    plugin_registry: PluginRegistry,
+    client: TestClient,
+    token: str,
+    host_agent: HostAgentService,
+    fake_agent: FakeAgent,
 ) -> None:
-    registry = await get_service(app, PluginRegistry)
-    pre_backup = record_hook(registry, "pre_backup")
-    post_backup = record_hook(registry, "post_backup")
+    pre_backup = record_hook(plugin_registry, "pre_backup")
+    post_backup = record_hook(plugin_registry, "post_backup")
     variables = {"BACKUP_ENCRYPTION": "true", "BACKUP_PROVIDER": "LOCAL", "S3_BUCKET": "b"}
     async with app.state.dishka_container(scope=Scope.REQUEST) as container:
         setting_service = await container.get(SettingService)
@@ -260,11 +263,15 @@ async def test_download_backup(
 
 
 async def test_backup_start_failures(
-    app: FastAPI, client: TestClient, token: str, host_agent: HostAgentService, fake_agent: FakeAgent
+    app: FastAPI,
+    plugin_registry: PluginRegistry,
+    client: TestClient,
+    token: str,
+    host_agent: HostAgentService,
+    fake_agent: FakeAgent,
 ) -> None:
-    registry = await get_service(app, PluginRegistry)
-    pre_backup = record_hook(registry, "pre_backup")
-    post_backup = record_hook(registry, "post_backup")
+    pre_backup = record_hook(plugin_registry, "pre_backup")
+    post_backup = record_hook(plugin_registry, "post_backup")
     running = "20260101T000000Z-aaaaaa"
     busy = {"status": "error", "message": "Another server operation is running", "job_id": running}
     fake_agent.running = running
@@ -292,13 +299,16 @@ async def test_backup_start_failures(
 
 
 async def test_scheduled_backup_retries(
-    app: FastAPI, monkeypatch: pytest.MonkeyPatch, host_agent: HostAgentService, fake_agent: FakeAgent
+    app: FastAPI,
+    plugin_registry: PluginRegistry,
+    monkeypatch: pytest.MonkeyPatch,
+    host_agent: HostAgentService,
+    fake_agent: FakeAgent,
 ) -> None:
     monkeypatch.setattr(backup_manager_module, "START_RETRY_INTERVAL", 0.05)
     monkeypatch.setattr(backup_manager_module, "START_RETRY_SECONDS", 0.5)
-    registry = await get_service(app, PluginRegistry)
-    pre_backup = record_hook(registry, "pre_backup")
-    post_backup = record_hook(registry, "post_backup")
+    pre_backup = record_hook(plugin_registry, "pre_backup")
+    post_backup = record_hook(plugin_registry, "post_backup")
     backup_manager: BackupManager = await get_service(app, BackupManager)
 
     async def later(change: Callable[[], Awaitable[None]]) -> None:
@@ -344,8 +354,8 @@ async def test_scheduled_backup_retries(
     assert len(pre_backup) == 2
 
 
-async def test_check_jobs(app: FastAPI, host_agent: HostAgentService, fake_agent: FakeAgent) -> None:
-    post_backup = record_hook(await get_service(app, PluginRegistry), "post_backup")
+async def test_check_jobs(plugin_registry: PluginRegistry, host_agent: HostAgentService, fake_agent: FakeAgent) -> None:
+    post_backup = record_hook(plugin_registry, "post_backup")
     backup_id = (await host_agent.call("backup"))["job_id"]
     fake_agent.finish(backup_id, state="failed")
     await host_agent.check_jobs()
@@ -362,14 +372,14 @@ async def test_check_jobs(app: FastAPI, host_agent: HostAgentService, fake_agent
 
 
 async def test_restore_backup(
-    app: FastAPI,
+    plugin_registry: PluginRegistry,
     client: TestClient,
     token: str,
     host_agent: HostAgentService,
     fake_agent: FakeAgent,
     backups_dir: pathlib.Path,
 ) -> None:
-    restore_hook = record_hook(await get_service(app, PluginRegistry), "restore_backup")
+    restore_hook = record_hook(plugin_registry, "restore_backup")
 
     async def restore(filename: str) -> tuple[dict[str, Any], pathlib.Path]:
         resp = await client.post("/manage/backups/restore", files={"backup": (filename, b"data")}, headers=auth(token))
@@ -397,11 +407,10 @@ async def test_restore_backup(
 
 
 async def test_configurator_current_instance(
-    app: FastAPI, client: TestClient, token: str, host_agent: HostAgentService, fake_agent: FakeAgent
+    plugin_registry: PluginRegistry, client: TestClient, token: str, host_agent: HostAgentService, fake_agent: FakeAgent
 ) -> None:
-    registry = await get_service(app, PluginRegistry)
-    pre_deploy = record_hook(registry, "pre_deploy")
-    post_deploy = record_hook(registry, "post_deploy")
+    pre_deploy = record_hook(plugin_registry, "pre_deploy")
+    post_deploy = record_hook(plugin_registry, "post_deploy")
     resp = await client.post("/configurator/server-settings", headers=auth(token))
     assert resp.json() == {
         "domain_settings": {"domain": "shop.example.com", "https": True},
@@ -475,11 +484,10 @@ async def test_check_jobs_deadline(host_agent: HostAgentService, fake_agent: Fak
 
 
 async def test_replaced_running_job_is_completed(
-    app: FastAPI, host_agent: HostAgentService, fake_agent: FakeAgent, background_tasks: MagicMock
+    plugin_registry: PluginRegistry, host_agent: HostAgentService, fake_agent: FakeAgent, background_tasks: MagicMock
 ) -> None:
-    registry = await get_service(app, PluginRegistry)
-    finished = record_hook(registry, "host_agent_job_finished")
-    post_backup = record_hook(registry, "post_backup")
+    finished = record_hook(plugin_registry, "host_agent_job_finished")
+    post_backup = record_hook(plugin_registry, "post_backup")
     first_id = (await host_agent.call("backup"))["job_id"]
     fake_agent.finish(first_id, state="failed", log=b"bad S3 settings\n")
     second_id = (await host_agent.call("backup"))["job_id"]

@@ -28,6 +28,7 @@ from api.models import Model
 from api.plugins import PluginObjects
 from api.services.coins import CoinService
 from api.services.exchange_rate import ExchangeRateService
+from api.services.plugin_registry import PluginRegistry
 from api.settings import Settings
 from tests.helper import make_client
 
@@ -239,6 +240,11 @@ def pytest_configure(config: pytest.Config) -> None:
 @pytest.fixture
 async def coin_service(app: FastAPI) -> CoinService:
     return await app.state.dishka_container.get(CoinService)
+
+
+@pytest.fixture
+async def plugin_registry(app: FastAPI) -> PluginRegistry:
+    return await app.state.dishka_container.get(PluginRegistry)
 
 
 @pytest.fixture(autouse=True)

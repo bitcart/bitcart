@@ -1672,6 +1672,35 @@ async def test_lightning_description_empty_template_stays_empty(
     assert add_invoice.call_args.kwargs["description"] == ""
 
 
+async def create_plugin_lightning_method(*args: Any) -> dict[str, Any]:
+    *_, get_lightning_description = args
+    return {
+        "payment_address": "lnbc1plugin",
+        "payment_url": "lnbc1plugin",
+        "lookup_field": "rhash1",
+        "lightning": True,
+        "metadata": {"description": await get_lightning_description()},
+    }
+
+
+async def test_plugin_lightning_method_gets_the_description(
+    client: TestClient, token: str, plugin_registry: PluginRegistry
+) -> None:
+    headers = {"Authorization": f"Bearer {token}"}
+    store = await create_store(client, token, custom_store_attrs={"checkout_settings": {"transaction_speed": 2}})
+    template = (
+        await client.post("/templates", json={"name": "custom", "text": "Order {{ invoice.order_id }}"}, headers=headers)
+    ).json()
+    resp = await client.patch(
+        f"/stores/{store['id']}", json={"templates": {"lightning_description": template["id"]}}, headers=headers
+    )
+    assert resp.status_code == 200
+    plugin_registry.register_filter("create_payment_method", create_plugin_lightning_method)
+    payment = (await create_invoice(client, token, store_id=store["id"], order_id="A-42"))["payments"][0]
+    assert payment["metadata"] == {"description": "Order A-42"}
+    assert payment["required_confirmations"] == 0
+
+
 @pytest.mark.parametrize(
     "error",
     [RateUnavailableError("ETH", "USD"), ExchangeRatesUnavailableError(), Exception("Currently not supported")],
@@ -2654,15 +2683,15 @@ async def test_invoices_payment_details(client: TestClient, token: str) -> None:
     ).status_code == 422
 
 
-async def test_invoice_payment_wallet(client: TestClient, token: str, app: FastAPI) -> None:
+async def require_sender_address(method: dict[str, Any]) -> dict[str, Any]:
+    method["wallet"]["sender_address_required"] = True
+    return method
+
+
+async def test_invoice_payment_wallet(client: TestClient, token: str, plugin_registry: PluginRegistry) -> None:
     invoice = await create_invoice(client, token)
     assert invoice["payments"][0]["wallet"] == {"network": None, "sender_address_required": False, "links": []}
-
-    async def require_sender(method: dict[str, Any]) -> dict[str, Any]:
-        method["wallet"]["sender_address_required"] = True
-        return method
-
-    (await app.state.dishka_container.get(PluginRegistry)).register_filter("post_create_payment_method", require_sender)
+    plugin_registry.register_filter("post_create_payment_method", require_sender_address)
     invoice = await create_invoice(client, token)
     assert invoice["payments"][0]["wallet"]["sender_address_required"] is True
     fetched = (await client.get(f"/invoices/{invoice['id']}")).json()
@@ -2715,14 +2744,15 @@ async def test_get_payment_wallet(
         assert wallet["links"][0]["url"] == "https://link.metamask.io/dapp/localhost:3000/i/inv1?method=pm1"
 
 
-async def test_policies_urls(
-    client: TestClient, token: str, app: FastAPI, settings: Settings, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    async def add_plugin_policy(data: dict[str, Any]) -> dict[str, Any]:
-        data["eth_plugin_active"] = False
-        return data
+async def add_plugin_policy(data: dict[str, Any]) -> dict[str, Any]:
+    data["eth_plugin_active"] = False
+    return data
 
-    (await app.state.dishka_container.get(PluginRegistry)).register_filter("get_global_policies", add_plugin_policy)
+
+async def test_policies_urls(
+    client: TestClient, token: str, plugin_registry: PluginRegistry, settings: Settings, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    plugin_registry.register_filter("get_global_policies", add_plugin_policy)
     monkeypatch.setattr(settings, "ADMIN_ROOTPATH", "/admin")
     monkeypatch.setattr(settings, "CHECKOUT_URL", "https://pay.example.com/checkout/")
     public = (await client.get("/manage/policies")).json()

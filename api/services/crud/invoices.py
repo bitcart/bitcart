@@ -1,9 +1,10 @@
 import asyncio
 import contextlib
+import functools
 import secrets
 import time
 from collections import defaultdict
-from collections.abc import Generator
+from collections.abc import Awaitable, Callable, Generator
 from datetime import datetime, timedelta
 from decimal import Decimal
 from operator import attrgetter
@@ -55,6 +56,8 @@ from api.types import TasksBroker
 from api.utils.routing import SearchPagination
 
 logger = get_logger(__name__)
+
+type LightningDescriptionGetter = Callable[[], Awaitable[str]]
 
 
 class InvoiceService(CRUDService[models.Invoice]):
@@ -265,9 +268,9 @@ class InvoiceService(CRUDService[models.Invoice]):
     ) -> None:
         logger.info(f"Started adding invoice payments for invoice {invoice.id}")
         wallets = await self.wallet_repository.get_ordered_wallets(wallets_ids)
-        lightning_description = ""
-        if any(self._creates_lightning_method(wallet) for wallet in wallets):
-            lightning_description = await self.template_service.render_lightning_description(store, invoice, product)
+        get_lightning_description = functools.cache(
+            lambda: asyncio.ensure_future(self.template_service.render_lightning_description(store, invoice, product))
+        )
         randomize_selection = store.checkout_settings.randomize_wallet_selection
         if randomize_selection:
             symbols = defaultdict(list)
@@ -283,14 +286,14 @@ class InvoiceService(CRUDService[models.Invoice]):
                     store,
                     product,
                     promocode,
-                    lightning_description=lightning_description,
+                    get_lightning_description=get_lightning_description,
                 )
                 for symbol in symbols
             ]
         else:
             coros = [
                 self.create_method_for_wallet(
-                    invoice, wallet, discounts, store, product, promocode, lightning_description=lightning_description
+                    invoice, wallet, discounts, store, product, promocode, get_lightning_description=get_lightning_description
                 )
                 for wallet in wallets
             ]
@@ -318,11 +321,11 @@ class InvoiceService(CRUDService[models.Invoice]):
         discounts: list[models.Discount],
         promocode: str | None,
         *,
-        lightning_description: str,
+        get_lightning_description: LightningDescriptionGetter,
     ) -> list[dict[str, Any]] | None:
         results = []
         method = await self._create_payment_method(
-            invoice, wallet, product, store, discounts, promocode, lightning_description=lightning_description
+            invoice, wallet, product, store, discounts, promocode, get_lightning_description=get_lightning_description
         )
         if method is not None:
             results.append(method)
@@ -335,7 +338,7 @@ class InvoiceService(CRUDService[models.Invoice]):
                 discounts,
                 promocode,
                 lightning=True,
-                lightning_description=lightning_description,
+                get_lightning_description=get_lightning_description,
             )
             if method is not None:
                 results.append(method)
@@ -354,11 +357,11 @@ class InvoiceService(CRUDService[models.Invoice]):
         product: models.Product | None,
         promocode: str | None,
         *,
-        lightning_description: str,
+        get_lightning_description: LightningDescriptionGetter,
     ) -> list[dict[str, Any]] | None:
         try:
             return await self.create_payment_method(
-                invoice, wallet, product, store, discounts, promocode, lightning_description=lightning_description
+                invoice, wallet, product, store, discounts, promocode, get_lightning_description=get_lightning_description
             )
         except ExchangeRateError as e:
             logger.warning(
@@ -381,7 +384,7 @@ class InvoiceService(CRUDService[models.Invoice]):
         promocode: str | None,
         *,
         lightning: bool = False,
-        lightning_description: str,
+        get_lightning_description: LightningDescriptionGetter,
     ) -> dict[str, Any] | None:
         metrics.pending_creation_payment_methods_count.labels(
             currency=wallet.currency, contract=wallet.contract, store=store.id, lightning=lightning
@@ -395,7 +398,7 @@ class InvoiceService(CRUDService[models.Invoice]):
                 discounts,
                 promocode,
                 lightning=lightning,
-                lightning_description=lightning_description,
+                get_lightning_description=get_lightning_description,
             )
         finally:
             metrics.pending_creation_payment_methods_count.labels(
@@ -407,7 +410,7 @@ class InvoiceService(CRUDService[models.Invoice]):
             transaction_speed = (
                 wallet.transaction_speed if wallet.transaction_speed is not None else store.checkout_settings.transaction_speed
             )
-            data["required_confirmations"] = 0 if lightning else transaction_speed
+            data["required_confirmations"] = 0 if data["lightning"] else transaction_speed
         return data
 
     async def _create_payment_method_core(
@@ -420,7 +423,7 @@ class InvoiceService(CRUDService[models.Invoice]):
         promocode: str | None,
         *,
         lightning: bool = False,
-        lightning_description: str,
+        get_lightning_description: LightningDescriptionGetter,
     ) -> dict[str, Any] | None:
         coin = await self.coin_service.get_coin(
             wallet.currency, {"xpub": wallet.xpub, "contract": wallet.contract, **wallet.additional_xpub_data}
@@ -465,7 +468,7 @@ class InvoiceService(CRUDService[models.Invoice]):
             product,
             store,
             lightning,
-            lightning_description,
+            get_lightning_description,
         )
         if method is SKIP_PAYMENT_METHOD:  # pragma: no cover
             return None
@@ -498,7 +501,7 @@ class InvoiceService(CRUDService[models.Invoice]):
             data["recommended_fee"] = round_half_up(
                 Decimal(recommended_fee) / 1000, 2
             )  # convert to sat/byte, two decimal places
-            description = lightning_description if lightning else (product.name if product else "")
+            description = await get_lightning_description() if lightning else (product.name if product else "")
             data_got = await method(request_price, description=description, expire=invoice.expiration)
             data["payment_address"] = data_got["address"] if not lightning else data_got["lightning_invoice"]
             data["payment_url"] = data_got["URI"] if not lightning else data_got["lightning_invoice"]
