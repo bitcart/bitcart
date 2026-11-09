@@ -125,12 +125,12 @@ class PayoutManager:
         coin, wallet, destination, request_amount, max_fee, divisibility = result
         try:
             raw_tx = await self.prepare_tx(coin, wallet, destination, request_amount, divisibility)
-            tx_hash = await self.broadcast_tx_flow(coin, wallet, raw_tx, max_fee)
-            if tx_hash is not None:
-                await self.mark_payout_sent(payout, tx_hash)
         except Exception:
             await coin.server.close_wallet()
             raise
+        tx_hash = await self.broadcast_tx_flow(coin, wallet, raw_tx, max_fee)
+        if tx_hash is not None:
+            await self.mark_payout_sent(payout, tx_hash)
 
     async def broadcast_tx_flow(self, coin: BTC, wallet: models.Wallet, raw_tx: str, max_fee: Decimal | None) -> str | None:
         try:
@@ -149,7 +149,8 @@ class PayoutManager:
                         await coin.server.removelocaltx(local_txid)
                 raise
         finally:
-            await coin.server.close_wallet()
+            with log_errors(logger):
+                await coin.server.close_wallet()
 
     async def finalize_payout(self, coin: BTC, payout: models.Payout) -> None:
         used_fee = await coin.server.get_used_fee(payout.tx_hash)
