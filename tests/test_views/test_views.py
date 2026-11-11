@@ -1841,6 +1841,112 @@ async def test_failed_batch_payout_keeps_sent_payouts(
     assert await get_payout_state(client, token, pending_id) == (PayoutStatus.FAILED, None)
 
 
+async def test_payout_error_after_broadcast_keeps_sent(
+    client: TestClient, token: str, store: dict[str, Any], mocker: pytest_mock.MockerFixture
+) -> None:
+    mocker.patch.object(PayoutManager, "prepare_tx", return_value="raw_tx")
+    broadcast = mocker.patch.object(PayoutManager, "broadcast_tx_flow", return_value="tx_hash")
+    mocker.patch.object(RefundService, "process_sent_payout", side_effect=Exception("Database error"))
+    payout_id = await create_store_payout(client, token, store)
+    await send_payouts(client, token, [payout_id])
+    await send_payouts(client, token, [payout_id])
+    broadcast.assert_awaited_once()
+    assert await get_payout_state(client, token, payout_id) == (PayoutStatus.SENT, "tx_hash")
+
+
+def mock_payout_coin(mocker: pytest_mock.MockerFixture) -> mock.Mock:
+    coin = mocker.Mock(is_eth_based=False, server=mocker.AsyncMock(), pay_to_many=mocker.AsyncMock(return_value="raw_tx"))
+    coin.server.get_default_fee.return_value = "0.0001"
+    coin.server.addtransaction.return_value = "local_txid"
+    coin.server.broadcast.return_value = "tx_hash"
+    mocker.patch.object(CoinService, "get_coin", return_value=coin)
+    mocker.patch("api.services.wallet_data.WalletDataService.get_divisibility", return_value=8)
+    mocker.patch.object(PayoutManager, "prepare_tx", return_value="raw_tx")
+    return coin
+
+
+@pytest.mark.parametrize("batch", [False, True])
+async def test_close_wallet_error_after_broadcast_keeps_tx_hash(
+    client: TestClient, token: str, store: dict[str, Any], mocker: pytest_mock.MockerFixture, batch: bool
+) -> None:
+    payout_id = await create_store_payout(client, token, store)
+    coin = mock_payout_coin(mocker)
+    coin.server.close_wallet.side_effect = BitcartBaseError("Wallet not loaded")
+    await send_payouts(client, token, [payout_id], {"batch": batch})
+    await send_payouts(client, token, [payout_id], {"batch": batch})
+    coin.server.broadcast.assert_awaited_once()
+    assert await get_payout_state(client, token, payout_id) == (PayoutStatus.SENT, "tx_hash")
+
+
+@pytest.mark.parametrize("batch", [False, True])
+@pytest.mark.parametrize(
+    ("broadcast_error", "state"),
+    [(None, (PayoutStatus.SENT, "tx_hash")), (BitcartBaseError("gave up"), (PayoutStatus.FAILED, None))],
+)
+async def test_payout_closes_wallet_once(
+    client: TestClient,
+    token: str,
+    store: dict[str, Any],
+    mocker: pytest_mock.MockerFixture,
+    batch: bool,
+    broadcast_error: Exception | None,
+    state: tuple[str, str | None],
+) -> None:
+    payout_id = await create_store_payout(client, token, store)
+    coin = mock_payout_coin(mocker)
+    coin.server.broadcast.side_effect = broadcast_error
+    await send_payouts(client, token, [payout_id], {"batch": batch})
+    coin.server.close_wallet.assert_awaited_once()
+    assert await get_payout_state(client, token, payout_id) == state
+
+
+@pytest.mark.parametrize("batch", [False, True])
+async def test_close_wallet_error_keeps_broadcast_error(
+    client: TestClient,
+    token: str,
+    store: dict[str, Any],
+    mocker: pytest_mock.MockerFixture,
+    caplog: pytest.LogCaptureFixture,
+    batch: bool,
+) -> None:
+    payout_id = await create_store_payout(client, token, store)
+    coin = mock_payout_coin(mocker)
+    coin.server.broadcast.side_effect = BitcartBaseError("cannot establish a connection... gave up.")
+    coin.server.close_wallet.side_effect = BitcartBaseError("Wallet not loaded")
+    await send_payouts(client, token, [payout_id], {"batch": batch})
+    events = [record.msg["event"].rstrip() for record in caplog.records if isinstance(record.msg, dict)]
+    assert any(event.endswith("gave up.") for event in events)
+    assert await get_payout_state(client, token, payout_id) == (PayoutStatus.FAILED, None)
+
+
+@pytest.mark.parametrize(("private_key", "diskless"), [(None, False), ("private_key", True)])
+async def test_payout_loads_wallet_diskless_only_with_private_key(
+    client: TestClient,
+    token: str,
+    store: dict[str, Any],
+    mocker: pytest_mock.MockerFixture,
+    private_key: str | None,
+    diskless: bool,
+) -> None:
+    payout_id = await create_store_payout(client, token, store)
+    get_coin = mocker.patch.object(CoinService, "get_coin", return_value=mock_payout_coin(mocker))
+    options = {"wallets": {store["wallets"][0]: private_key}} if private_key else {}
+    await send_payouts(client, token, [payout_id], options)
+    assert [call.args[1]["diskless"] for call in get_coin.call_args_list if "diskless" in call.args[1]] == [diskless]
+
+
+async def test_failed_sent_save_is_written_at_request_end(
+    client: TestClient, token: str, store: dict[str, Any], mocker: pytest_mock.MockerFixture
+) -> None:
+    payout_id = await create_store_payout(client, token, store)
+    coin = mock_payout_coin(mocker)
+    mocker.patch.object(PayoutService, "merge_object", side_effect=DBAPIError("UPDATE payouts", None, Exception("lost")))
+    await send_payouts(client, token, [payout_id])
+    await send_payouts(client, token, [payout_id])
+    coin.server.broadcast.assert_awaited_once()
+    assert await get_payout_state(client, token, payout_id) == (PayoutStatus.SENT, "tx_hash")
+
+
 async def test_create_invoice_and_pay(client: TestClient, token: str, store: dict[str, Any], app: FastAPI) -> None:
     payment_processor = await app.state.dishka_container.get(PaymentProcessor)
     store_id = store["id"]

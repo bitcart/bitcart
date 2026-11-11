@@ -122,4 +122,5 @@ class PayoutService(CRUDService[models.Payout]):
                     await self.payout_manager.send_payout(payout, private_key=wallets.get(payout.wallet_id))
                 except Exception as e:
                     logger.error(get_exception_message(e))
-                    await self.payout_manager.update_status(payout, PayoutStatus.FAILED)
+                    if payout.status not in SENT_PAYOUT_STATUSES:
+                        await self.payout_manager.update_status(payout, PayoutStatus.FAILED)
