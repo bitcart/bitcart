@@ -122,21 +122,46 @@ class TestingProvider(Provider):
         yield service
 
 
-@pytest.fixture(autouse=True)
-async def configure_dishka_test_session(app: FastAPI, worker_id: str, settings: Settings) -> AsyncIterator[None]:
-    db_name = get_db_url(settings, worker_id)
-    template_db = f"{settings.DB_DATABASE}_template"
+async def execute_as_admin(settings: Settings, statement: str) -> None:
     engine = create_async_engine(settings, "test", dsn=settings.build_postgres_dsn(db_name="postgres"))
     async with engine.connect() as conn:
         await conn.execution_options(isolation_level="AUTOCOMMIT")
-        await conn.execute(text(f"DROP DATABASE IF EXISTS {db_name}"))
-        await conn.execute(text(f"CREATE DATABASE {db_name} TEMPLATE {template_db}"))
+        await conn.execute(text(statement))
     await engine.dispose()
+
+
+async def recreate_database(settings: Settings, db_name: str) -> None:
+    await execute_as_admin(settings, f"DROP DATABASE IF EXISTS {db_name}")
+    await execute_as_admin(settings, f"CREATE DATABASE {db_name} TEMPLATE {settings.DB_DATABASE}_template")
+
+
+async def clear_database(settings: Settings, db_name: str) -> None:
+    engine = create_async_engine(settings, "test", dsn=settings.build_postgres_dsn(db_name=db_name))
+    async with engine.begin() as conn:
+        for table in reversed(Model.metadata.sorted_tables):
+            await conn.execute(table.delete())
+    await engine.dispose()
+
+
+@pytest.fixture(scope="session")
+async def worker_database(settings: Settings, worker_id: str, initialize_test_database_fixture: None) -> str:
+    db_name = get_db_url(settings, worker_id)
+    await recreate_database(settings, db_name)
+    return db_name
+
+
+@pytest.fixture(autouse=True)
+async def configure_dishka_test_session(
+    app: FastAPI, worker_id: str, settings: Settings, worker_database: str, request: pytest.FixtureRequest
+) -> AsyncIterator[None]:
+    await clear_database(settings, worker_database)
     async with app.state.dishka_container(scope=Scope.APP, context={WorkerId: worker_id}) as container:
         original_container = app.state.dishka_container
         app.state.dishka_container = container
         yield
     app.state.dishka_container = original_container
+    if request.node.get_closest_marker("alters_schema"):
+        await recreate_database(settings, worker_database)
 
 
 @pytest.fixture(scope="session")
@@ -234,6 +259,9 @@ def pytest_configure(config: pytest.Config) -> None:
             "exchange_rates: mark test as requiring exchange rates mocking. For now in all tests it is mocked, you can use"
             " cryptos param to specify which cryptos to enable"
         ),
+    )
+    config.addinivalue_line(
+        "markers", "alters_schema: mark test as changing the database schema, so the database is recreated after it"
     )
 
 

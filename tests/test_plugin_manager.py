@@ -196,6 +196,7 @@ async def test_update_plugins_prefers_active_license(
     assert installed_version(plugin_manager.settings, "Paid") == "1.1.0"
 
 
+@pytest.mark.alters_schema
 async def test_update_plugins_before_settings_migrations(
     app: FastAPI, plugin_manager: PluginManager, marketplace: FakeMarketplace, tmp_path: pathlib.Path
 ) -> None:

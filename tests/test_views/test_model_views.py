@@ -131,7 +131,7 @@ class ViewTestMixin:
         assert resp.status_code == 200
         objects = self.check_pagination_response(resp.json())
         # The objects list is ordered by created date; first object is the last object created
-        assert objects[0] == state["data"]
+        assert objects[0] == self.with_computed_fields(state["data"], objects[0])
 
     async def test_get_count(self, client: TestClient, token: str) -> None:
         assert (await client.get(f"/{self.name}/count")).status_code == 401
@@ -144,10 +144,10 @@ class ViewTestMixin:
             assert (await client.get(f"/{self.name}/{object_id}")).status_code == 401
         resp = await client.get(f"/{self.name}/{object_id}", headers={"Authorization": f"Bearer {token}"})
         assert resp.status_code == 200
-        assert resp.json() == state["data"]
+        assert resp.json() == self.with_computed_fields(state["data"], resp.json())
 
-    def get_computed_fields(self) -> set[str]:
-        return getattr(self, "computed_fields", set())
+    def with_computed_fields(self, expected: dict[str, Any], actual: dict[str, Any]) -> dict[str, Any]:
+        return {**expected, **{field: actual[field] for field in self.computed_fields if field in actual}}
 
     async def test_update(self, client: TestClient, token: str, state: dict[str, Any], object_id: str) -> None:
         assert (await client.patch(f"/{self.name}/{object_id}", **self.prepare_data(self.patch_data))).status_code == 401
@@ -165,14 +165,7 @@ class ViewTestMixin:
                     patch_resp[key].update(value)
                 else:
                     patch_resp[key] = value
-        patch_resp["updated"] = resp.json()["updated"]
-
-        computed_fields = self.get_computed_fields()
-        for field in computed_fields:
-            if field in resp.json():
-                patch_resp[field] = resp.json()[field]
-
-        assert resp.json() == patch_resp
+        assert resp.json() == self.with_computed_fields(patch_resp, resp.json())
         assert (
             await client.patch(
                 f"/{self.name}/{object_id}",
@@ -185,7 +178,7 @@ class ViewTestMixin:
         assert (await client.delete(f"/{self.name}/{object_id}")).status_code == 401
         resp = await client.delete(f"/{self.name}/{object_id}", headers={"Authorization": f"Bearer {token}"})
         assert resp.status_code == 200
-        assert resp.json() == state["data"]
+        assert resp.json() == self.with_computed_fields(state["data"], resp.json())
         assert (await client.get(f"/{self.name}/{object_id}", headers={"Authorization": f"Bearer {token}"})).status_code == 404
 
 

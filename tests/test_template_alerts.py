@@ -1,11 +1,13 @@
+from __future__ import annotations
+
 from collections.abc import AsyncIterator
+from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock
 
 import pytest
 import pytest_mock
 from dishka import AsyncContainer, Scope
 from fastapi import FastAPI
-from httpx import AsyncClient as TestClient
 
 from api.exceptions import EmailSendError
 from api.schemas.misc import EmailSettings
@@ -13,6 +15,9 @@ from api.schemas.policies import Policy
 from api.services.notification_manager import NotifyResult
 from api.services.template_alerts import ALERT_SUBJECT, TemplateAlertService
 from tests.helper import create_store, create_token, create_user
+
+if TYPE_CHECKING:
+    from httpx import AsyncClient as TestClient
 
 pytestmark = pytest.mark.anyio
 

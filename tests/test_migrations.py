@@ -9,21 +9,13 @@ from sqlalchemy import Connection, inspect, text
 
 from api.db import create_async_engine
 from api.settings import Settings
-from tests.conftest import get_db_url
+from tests.conftest import execute_as_admin, get_db_url
 
 pytestmark = pytest.mark.anyio
 
 LIST_FUNCTIONS = text(
     "SELECT p.oid::regprocedure::text FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace WHERE n.nspname = 'public'"
 )
-
-
-async def execute_as_admin(settings: Settings, statement: str) -> None:
-    engine = create_async_engine(settings, "test", dsn=settings.build_postgres_dsn(db_name="postgres"))
-    async with engine.connect() as conn:
-        await conn.execution_options(isolation_level="AUTOCOMMIT")
-        await conn.execute(text(statement))
-    await engine.dispose()
 
 
 def by_name(items: Iterable[Mapping[str, Any]]) -> dict[str, Any]:

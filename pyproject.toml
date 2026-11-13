@@ -311,4 +311,5 @@ filterwarnings = [
     # apprise checks `import imghdr`, will self-resolve on 3.13
     "ignore:'imghdr' is deprecated:DeprecationWarning",
 ]
+testpaths = ["tests"]
 norecursedirs = ["tests/functional"]

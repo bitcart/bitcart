@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import asyncio
 import json
 import logging
@@ -9,7 +11,7 @@ import time
 from collections.abc import AsyncIterator, Awaitable, Callable, Iterator
 from datetime import UTC, date, datetime
 from decimal import Decimal
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from unittest.mock import AsyncMock
 from uuid import UUID
 
@@ -17,7 +19,6 @@ import pytest
 import pytest_mock
 from dishka import AsyncContainer, Scope
 from fastapi import FastAPI
-from httpx import AsyncClient as TestClient
 from sqlalchemy import func, select
 
 from api import exceptions, models, templates
@@ -39,6 +40,9 @@ from api.templates.context import (
 )
 from api.templates.defaults import default_templates
 from tests.helper import create_invoice, create_product, create_store, create_token, create_user
+
+if TYPE_CHECKING:
+    from httpx import AsyncClient as TestClient
 
 pytestmark = pytest.mark.anyio
 
