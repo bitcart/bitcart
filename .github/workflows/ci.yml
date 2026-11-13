@@ -82,7 +82,7 @@ jobs:
     uses: bitcart/bitcart-actions/.github/workflows/python-tests.yml@master
     needs: [lint, workflows]
     with:
-      python-versions: '["3.12", "3.13", "3.14"]'
+      python-versions: '["3.12", "3.13", "3.14", "3.15"]'
       install-daemon: true
       install-dependencies: |
         uv sync --frozen --compile-bytecode --no-dev --group web --group otel --group test --group btc
