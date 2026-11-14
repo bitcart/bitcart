@@ -2,6 +2,8 @@
 
 ## Latest changes
 
+- Exchange rates: added native `kucoin` and `coinbase` exchanges, usable in rate rules even when CoinGecko is unavailable
+
 ## 0.11.1.0
 
 ### New template renderer
