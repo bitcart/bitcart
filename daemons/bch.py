@@ -21,6 +21,7 @@ class BCHDaemon(BTCDaemon):
     name = "BCH"
     ASYNC_CLIENT = False
     LIGHTNING_SUPPORTED = False
+    FEE_POLICY_SUPPORTED = False
     DEFAULT_PORT = 5004
     DATA_PATH_OPTION = "electron_cash_path"
 

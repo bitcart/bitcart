@@ -38,6 +38,7 @@ class BTCDaemon(BaseDaemon):
     electrum: ModuleType
     # lightning support
     LIGHTNING_SUPPORTED = True
+    FEE_POLICY_SUPPORTED = True
     # whether client is using asyncio or is synchronous
     ASYNC_CLIENT = True
     # map electrum events to bitcart's own events
@@ -111,6 +112,11 @@ class BTCDaemon(BaseDaemon):
         self.SERVER = self.env("SERVER", default="")
         self.ONESERVER = self.env("ONESERVER", cast=bool, default=False)
         self.PROXY_URL = self.env("PROXY_URL", default=None)
+        self.FEE_POLICY = self.env("FEE_POLICY", default="") if self.FEE_POLICY_SUPPORTED else ""
+        if self.FEE_POLICY and self.electrum.fee_policy.FeePolicy(self.FEE_POLICY).get_descriptor() != self.FEE_POLICY:
+            raise ValueError(
+                f"Invalid fee policy passed: {self.FEE_POLICY}. Expected e.g. eta:2, mempool:1000000 or feerate:1000"
+            )
         self.NETWORK_MAPPING = self.NETWORK_MAPPING or {
             "mainnet": self.electrum.constants.BitcoinMainnet.set_as_network,
             "testnet": self.electrum.constants.BitcoinTestnet.set_as_network,
@@ -174,6 +180,8 @@ class BTCDaemon(BaseDaemon):
             "wallet_partial_writes": True,
             self.NET.lower(): True,
         }
+        if self.FEE_POLICY:
+            options[self.electrum.simple_config.SimpleConfig.FEE_POLICY.key()] = self.FEE_POLICY
         options.update(self.get_proxy_settings())
         return options
 
