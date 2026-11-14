@@ -16,6 +16,9 @@ class XRGDaemon(BCHDaemon):
         }
         self.reuse_expired_request_addresses()
 
+    def create_token_meta(self):
+        return None
+
     @rpc(requires_wallet=True)
     def addrequest(self, *args, **kwargs):
         wallet = kwargs.pop("wallet", None)

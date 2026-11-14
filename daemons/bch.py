@@ -1,13 +1,17 @@
+import asyncio
 import json
 import os
 from collections import defaultdict
 from decimal import Decimal
 
 from btc import BTCDaemon
-from logger import configure_logging
+from logger import configure_logging, get_logger
 from utils import format_satoshis, format_satoshis_plain, get_exception_message, modify_payment_url, rpc
 
+logger = get_logger(__name__)
+
 NO_HW_SIGNING_MESSAGE = "PSBT and hardware wallet signing are not supported for this coin"
+MAX_AUTHCHAIN_LENGTH = 100
 
 with open("daemons/tokens/cashtokens.json") as f:
     CASHTOKENS = json.loads(f.read())
@@ -42,6 +46,118 @@ class BCHDaemon(BTCDaemon):
         }
         self.ignore_token_outputs_in_bch_requests()
         self.reuse_expired_request_addresses()
+        self.resolve_bcmr_from_authchain()
+
+    def resolve_bcmr_from_authchain(self):  # noqa: C901
+        # electron cash only looks for the BCMR publication in the token genesis tx, but issuers may publish it in any
+        # later authchain tx (MUSD does), and the latest publication is the current one.
+        # Lookup failures raise instead of returning None, otherwise a failure mid-chain would look like the authchain head
+        address = self.electrum.address
+        util = self.electrum.util
+
+        # fmt: off
+        def find_authchain_child(wallet, txid, timeout=30):  # noqa: C901
+            """This is potentially slow because it does go out to the network and may end up retrieving quite a few
+            transactions to determine what spent txid:0."""
+            assert isinstance(txid, str) and len(txid) == 64  # noqa: S101
+            # First, see if it's a wallet tx
+            try:
+                tx = wallet.try_to_get_tx(txid, allow_network_lookup=True, timeout=timeout)
+            except util.TimeoutException as e:
+                util.print_error(f"Failed to get tx {txid}; got exception: {e!r}")
+                raise
+            if not tx:
+                util.print_error(f"Failed to get tx {txid}; not found")
+                raise LookupError(txid)
+
+            # Next, see what address spends output 0
+            addr_or_script = tx.outputs()[0][1] if tx.outputs() else None
+            if not addr_or_script:
+                util.print_error(f"Failed to get the spender of {txid}:0; no outputs!")
+                raise LookupError(txid)
+            # Maybe it's one of ours?
+            h = wallet.get_address_history(addr_or_script)
+            if not h:
+                # Nope, get a full address history from the network for this address
+                if not wallet.network:
+                    util.print_error(f"Failed to get the spender of {txid}:0; no network!")
+                    raise LookupError(txid)
+                try:
+                    request = ("blockchain.scripthash.get_history", [addr_or_script.to_scripthash_hex()])
+                    h2 = wallet.network.synchronous_get(request)
+                except Exception as e:
+                    util.print_error(f"Failed to get the spender of {txid}:0;"
+                                     f" failed to retrieve history for {addr_or_script}; got exception: {e!r}")
+                    raise
+                h = [(x.get('tx_hash', ''), x.get('height', 0)) for x in h2]
+
+            # Next, find the height for the tx
+            for tx_hash, height in h:
+                if tx_hash == txid:
+                    confirmed_height = height
+                    break
+            else:
+                util.print_error(f"Failed to get the spender of {txid}:0;"
+                                 f" could not find tx in history for {addr_or_script}")
+                raise LookupError(txid)
+
+            # Examine all txns that are >= the height of the tx
+            for tx_hash, height in h:
+                is_candidate = height <= 0 or height >= confirmed_height  # Pick up mempool + anything >= confirmed_height
+                if is_candidate and tx_hash != txid:
+                    try:
+                        tx2 = wallet.try_to_get_tx(tx_hash, allow_network_lookup=True, timeout=timeout)
+                    except util.TimeoutException as e:
+                        util.print_error(f"Failed to get the spender of {txid}:0; could not get potential child tx"
+                                         f" {tx_hash}; got exception: {e!r}")
+                        raise
+                    if not tx2:
+                        util.print_error(f"Failed to get the spender of {txid}:0; could not get potential"
+                                         f" child tx {tx_hash}")
+                        raise LookupError(tx_hash)
+                    for inp in tx2.inputs():
+                        if inp['prevout_n'] == 0 and inp['prevout_hash'] == txid:
+                            # Found it!
+                            return tx2
+            else:
+                util.print_error(f"{txid}:0 is unspent, it is the authchain head")
+            return None
+
+        def get_bcmr_op_return_pushes(tx, token_id_hex):
+            for i, (_, script, _) in enumerate(tx.outputs()):
+                if isinstance(script, address.ScriptOutput) and script.is_opreturn():
+                    try:
+                        pushes = address.Script.get_ops(script.to_script()[1:])
+                    except address.ScriptError as e:
+                        util.print_error(f"Tx: {token_id_hex} Output: {i}, could not parse OP_RETURN"
+                                         f" {script.to_script().hex()}: {e!r}")
+                        continue
+                    if (all(isinstance(t, tuple) and len(t) == 2 and isinstance(t[0], int)
+                            and isinstance(t[1], (bytes, bytearray)) for t in pushes)
+                        and len(pushes) >= 2 and pushes[0] == (4, b'BCMR') and pushes[1][0] == 32):
+                        return [p[1] for p in pushes[1:]]
+                    else:  # noqa: RET505
+                        util.print_error(f"Tx: {token_id_hex} Output: {i}, malformed BCMR OP_RETURN:"
+                                         f" {script.to_script().hex()}, pushes: {pushes!r}")
+        # fmt: on
+
+        def try_to_get_bcmr_op_return_pushes(wallet, token_id_hex, timeout=30):
+            latest = None
+            txid = token_id_hex
+            try:
+                for _ in range(MAX_AUTHCHAIN_LENGTH):
+                    tx = find_authchain_child(wallet, txid, timeout)
+                    if tx is None:
+                        return latest
+                    latest = get_bcmr_op_return_pushes(tx, token_id_hex) or latest
+                    txid = tx.txid()
+            except Exception as e:
+                logger.error(f"Failed walking authchain of token {token_id_hex}: {get_exception_message(e)}")
+                return None
+            logger.error(f"Authchain of token {token_id_hex} is longer than {MAX_AUTHCHAIN_LENGTH} transactions")
+            return None
+
+        self.electrum.token_meta.try_to_get_bcmr_op_return_pushes = try_to_get_bcmr_op_return_pushes  # TODO: submit upstream
 
     def reuse_expired_request_addresses(self):
         # electron cash keeps addresses of expired requests reserved forever, so every unpaid invoice widens the gap
@@ -115,6 +231,20 @@ class BCHDaemon(BTCDaemon):
         self.electrum_config = self.create_config()
         self.copy_config_settings(self.electrum_config)
         configure_logging(debug=self.VERBOSE)
+        self.token_meta = self.create_token_meta()
+
+    def create_token_meta(self):
+        class DaemonTokenMeta(self.electrum.token_meta.TokenMeta):
+            def _icon_to_bytes(self, icon):
+                return b""
+
+            def _bytes_to_icon(self, buf):
+                return b""
+
+            def gen_default_icon(self, token_id_hex):
+                return b""
+
+        return DaemonTokenMeta(self.electrum_config)
 
     def register_callbacks(self, callback_function):
         self.network.register_callback(callback_function, self.available_events)
@@ -359,10 +489,28 @@ class BCHDaemon(BTCDaemon):
     async def get_commands_list(self, commands):
         return commands.help()
 
+    def download_token_metadata(self, wallet, contract):
+        for source, options in (("indexer", {"use_blockchain": False}), ("blockchain", {"use_indexers": False})):
+            try:
+                md = self.electrum.token_meta.try_to_download_metadata(wallet, contract, skip_icon=True, **options)
+            except Exception as e:
+                logger.error(f"Failed fetching metadata of token {contract} from {source}: {get_exception_message(e)}")
+                continue
+            if md is not None:
+                return md
+        return None
+
     async def fetch_token_info(self, contract, wallet):
-        md = self.electrum.token_meta.try_to_download_metadata(wallet, contract, skip_icon=True)
+        decimals = self.token_meta.get_token_decimals(contract)
+        symbol = self.token_meta.get_token_ticker_symbol(contract)
+        if decimals is not None and symbol is not None:
+            return decimals, symbol
+        md = await asyncio.to_thread(self.download_token_metadata, wallet, contract)
         if md is None:
             raise Exception("Invalid token, failed fetching BCMR metadata")
+        self.token_meta.set_token_decimals(contract, md.decimals)
+        self.token_meta.set_token_ticker_symbol(contract, md.symbol)
+        self.token_meta.save()
         return md.decimals, md.symbol
 
     @rpc(requires_network=True)
