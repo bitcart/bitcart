@@ -320,6 +320,10 @@ async def test_fiatlist(client: TestClient) -> None:
     resp5 = await client.get(r"/cryptos/fiatlist?query=btc\\")
     assert resp5.status_code == 200
     assert resp5.json() == []
+    for query in ("", "|"):
+        resp6 = await client.get(f"/cryptos/fiatlist?query={query}")
+        assert resp6.status_code == 200
+        assert resp6.json() == j1
 
 
 @pytest.mark.exchange_rates(cryptos={"btc": BTC(), "ltc": LTC()})

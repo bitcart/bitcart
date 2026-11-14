@@ -57,8 +57,8 @@ async def get_fiatlist(
 ) -> Any:
     s: set[str] | list[str] = set(await exchange_rate_service.get_fiatlist())
     s = await plugin_registry.apply_filters("get_fiatlist", s)
-    if query is not None:
-        terms = [t.lower() for t in query.split("|") if t]
+    terms = [t.lower() for t in (query or "").split("|") if t]
+    if terms:
         s = [x for x in s if any(x.lower().startswith(t) for t in terms)]
     return sorted(s)
 
