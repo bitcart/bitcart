@@ -81,21 +81,21 @@ eth-based = [
 # sort alphabetically
 bch = [
     { include-group = "btc-based" },
-    "electron-cash @ https://github.com/Electron-Cash/Electron-Cash/archive/c64404809d73a14afd9335651f5460c6e053573a.zip",
+    "electron-cash @ https://github.com/Electron-Cash/Electron-Cash/archive/7f4afadbf62a6daa1d6d0563d0951141ddcc6a7c.zip",
 ]
 bnb = [{ include-group = "eth-based" }]
 btc = [
     { include-group = "btc-derived" },
-    "electrum[crypto] @ git+https://github.com/spesmilo/electrum@fc31115ef76b7a8969cf5292bfe3440e5e67a2c0",
+    "electrum[crypto] @ git+https://github.com/spesmilo/electrum@22e24580915df72f01deff34d5c6db4b541b1ed5",
 ]
 eth = [{ include-group = "eth-based" }]
 grs = [
     { include-group = "btc-derived" },
-    "electrum-grs[crypto] @ git+https://github.com/Groestlcoin/electrum-grs@b949d74b7b4d7366f56e3875a8eaf06c14973cdc",
+    "electrum-grs[crypto] @ git+https://github.com/Groestlcoin/electrum-grs@e6ecfb64bcba9bf78b300516b56b13c7e7ade88f",
 ]
 ltc = [
     { include-group = "btc-derived" },
-    "electrum-ltc[crypto] @ git+https://github.com/bitcart/electrum-ltc@193c832d9024c784b15b5a853affe1e1a6b59040",
+    "electrum-ltc[crypto] @ git+https://github.com/bitcart/electrum-ltc@cefd95fe81ccd25bd1753a5965ba84b225d24cfb",
     "scrypt>=0.6.0",
 ]
 matic = [{ include-group = "eth-based" }]
