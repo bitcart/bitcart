@@ -90,7 +90,7 @@ async def get_licenses(
     plugin_manager: FromDishka[PluginManager],
     user: models.User = Security(utils.authorization.auth_dependency, scopes=[AuthScopes.SERVER_MANAGEMENT]),
 ) -> Any:
-    return await plugin_manager.get_licenses()
+    return await plugin_manager.refresh_licenses()
 
 
 @router.delete("/licenses/{license_key}")

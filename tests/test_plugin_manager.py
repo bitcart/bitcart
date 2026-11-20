@@ -1,22 +1,24 @@
 from __future__ import annotations
 
+import hashlib
 import io
 import json
 import os
 import pathlib
 import zipfile
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Awaitable, Callable
 from typing import Any
 
 import pytest
 from aiohttp import web
 from aiohttp.test_utils import TestServer
 from dishka import Scope
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from sqlalchemy import text
 
 from api.constants import VERSION
 from api.db import AsyncEngine
+from api.redis import Redis
 from api.schemas.policies import PluginsState
 from api.services.plugin_manager import PluginManager
 from api.services.plugin_registry import PluginRegistry
@@ -47,6 +49,9 @@ def make_archive(name: str, version: str, constraint: str = "") -> bytes:
 class FakeMarketplace:
     def __init__(self) -> None:
         self.plugins: dict[str, dict[str, Any]] = {}
+        self.licenses: dict[str, dict[str, Any] | int] = {}
+        self.license_requests = 0
+        self.on_license_request: Callable[[], Awaitable[None]] | None = None
 
     def add(
         self,
@@ -76,6 +81,17 @@ class FakeMarketplace:
                 entry = {**entry, "plugin_version": plugin["licensed"]}
             entries.append(entry)
         return web.json_response(entries)
+
+    async def license_info(self, request: web.Request) -> web.Response:
+        self.license_requests += 1
+        if self.on_license_request:
+            await self.on_license_request()
+        info = self.licenses.get(request.headers.get("X-License-Key", ""))
+        if info is None:
+            return web.json_response({"detail": "Invalid license key"}, status=403)
+        if isinstance(info, int):
+            return web.Response(status=info)
+        return web.json_response(info)
 
     async def download(self, request: web.Request) -> web.Response:
         plugin = self.plugins[request.match_info["plugin_id"]]
@@ -110,6 +126,7 @@ async def marketplace(plugin_manager: PluginManager) -> AsyncIterator[FakeMarket
     web_app = web.Application()
     web_app.router.add_get("/plugins", fake.list_plugins)
     web_app.router.add_get("/plugins/{plugin_id}/download", fake.download)
+    web_app.router.add_get("/licenses/info", fake.license_info)
     async with TestServer(web_app) as server:
         url = str(server.make_url("")).rstrip("/")
         plugin_manager.settings = plugin_manager.settings.model_copy(update={"LICENSE_SERVER_URL": url})
@@ -138,9 +155,16 @@ async def store_licenses(app: FastAPI, plugin_id: str, name: str, keys: dict[str
         key: {"license_key": key, "plugin_id": plugin_id, "plugin_name": name, "plugin_author": "bitcart", "active": active}
         for key, active in keys.items()
     }
+    redis = await app.state.dishka_container.get(Redis)
+    for key in keys:
+        await redis.delete(f"license_refresh:{hashlib.sha256(key.encode()).hexdigest()}")
     async with app.state.dishka_container(scope=Scope.REQUEST) as container:
         setting_service = await container.get(SettingService)
         await setting_service.set_setting(PluginsState(license_keys=license_keys))
+
+
+def license_info(key: str, active: bool) -> dict[str, Any]:
+    return {"license_key": key, "plugin_id": "Paid-id", "plugin_name": "Paid", "plugin_author": "bitcart", "active": active}
 
 
 async def test_get_plugins_lists_incompatible_plugins(
@@ -269,3 +293,69 @@ async def test_update_plugins_skips_symlinked_plugins(
     assert await plugin_manager.update_plugins() == {}
     assert os.path.islink(backend_path)
     assert installed_version(plugin_manager.settings, "Dev") == "1.0.0"
+
+
+async def test_add_license_sends_key_in_header(plugin_manager: PluginManager, marketplace: FakeMarketplace) -> None:
+    marketplace.licenses["added-key"] = license_info("added-key", True)
+    added = await plugin_manager.add_license("added-key")
+    assert added["active"] is True
+    with pytest.raises(HTTPException):
+        await plugin_manager.add_license("unknown-key")
+
+
+async def test_refresh_licenses_updates_stored_info(
+    app: FastAPI, plugin_manager: PluginManager, marketplace: FakeMarketplace
+) -> None:
+    await store_licenses(app, "Paid-id", "Paid", {"renewed-key": False})
+    marketplace.licenses["renewed-key"] = license_info("renewed-key", True)
+    [refreshed] = await plugin_manager.refresh_licenses()
+    assert refreshed["active"] is True
+    assert refreshed["stale"] is False
+    [stored] = await plugin_manager.get_licenses()
+    assert stored["active"] is True
+    assert "stale" not in stored
+
+
+async def test_refresh_licenses_marks_unknown_key_inactive(
+    app: FastAPI, plugin_manager: PluginManager, marketplace: FakeMarketplace
+) -> None:
+    await store_licenses(app, "Paid-id", "Paid", {"deleted-key": True})
+    [refreshed] = await plugin_manager.refresh_licenses()
+    assert refreshed["active"] is False
+    assert refreshed["stale"] is False
+
+
+async def test_refresh_licenses_keeps_stored_info_on_failure(
+    app: FastAPI, plugin_manager: PluginManager, marketplace: FakeMarketplace
+) -> None:
+    await store_licenses(app, "Paid-id", "Paid", {"unreachable-key": True})
+    marketplace.licenses["unreachable-key"] = 500
+    [refreshed] = await plugin_manager.refresh_licenses()
+    assert refreshed["active"] is True
+    assert refreshed["stale"] is True
+
+
+async def test_refresh_licenses_once_per_interval(
+    app: FastAPI, plugin_manager: PluginManager, marketplace: FakeMarketplace
+) -> None:
+    await store_licenses(app, "Paid-id", "Paid", {"throttled-key": True})
+    marketplace.licenses["throttled-key"] = license_info("throttled-key", True)
+    await plugin_manager.refresh_licenses()
+    [refreshed] = await plugin_manager.refresh_licenses()
+    assert marketplace.license_requests == 1
+    assert refreshed["stale"] is False
+
+
+async def test_refresh_licenses_keeps_concurrent_changes(
+    app: FastAPI, plugin_manager: PluginManager, marketplace: FakeMarketplace
+) -> None:
+    await store_licenses(app, "Paid-id", "Paid", {"removed-key": True})
+    marketplace.licenses["removed-key"] = license_info("removed-key", True)
+
+    async def replace_keys() -> None:
+        await store_licenses(app, "Paid-id", "Paid", {"new-key": True})
+
+    marketplace.on_license_request = replace_keys
+    refreshed = await plugin_manager.refresh_licenses()
+    assert [info["license_key"] for info in refreshed] == ["new-key"]
+    assert [info["license_key"] for info in await plugin_manager.get_licenses()] == ["new-key"]

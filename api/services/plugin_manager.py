@@ -1,7 +1,10 @@
+import asyncio
+import hashlib
 import json
 import os
 import shutil
 import tempfile
+from datetime import datetime, timedelta
 from typing import Any, cast
 
 import aiofiles
@@ -15,14 +18,20 @@ from packaging.version import InvalidVersion, Version
 
 from api import constants, utils
 from api.constants import VERSION
-from api.logging import get_exception_summary
+from api.logging import get_exception_summary, get_logger
 from api.plugins import is_bitcart_compatible
+from api.redis import Redis
 from api.schemas.policies import PluginsState
 from api.services.plugin_registry import PluginRegistry
 from api.services.settings import SettingService
 from api.settings import Settings
 
+logger = get_logger(__name__)
+
 MARKETPLACE_TIMEOUT = 120
+LICENSE_REFRESH_TIMEOUT = 5
+LICENSE_REFRESH_INTERVAL = 60
+STALE_LICENSE_AGE = timedelta(minutes=2)
 
 
 class PluginManager:
@@ -272,12 +281,9 @@ class PluginManager:
             if license_key in license_keys:
                 raise HTTPException(status_code=400, detail="License key already added")
             try:
-                license_info = await utils.common.send_request(
-                    "GET", f"{self.settings.LICENSE_SERVER_URL}/licenses/{license_key}", return_json=False
-                )
-                if license_info[0].status != 200:
+                license_info = await self.fetch_license_info(license_key)
+                if not license_info:
                     raise HTTPException(status_code=400, detail="Invalid license key")
-                license_info = await license_info[0].json()
                 license_keys[license_key] = license_info
                 state = PluginsState(**state.model_dump(exclude={"license_keys"}), license_keys=license_keys)
                 await setting_service.set_setting(state)
@@ -293,6 +299,53 @@ class PluginManager:
             setting_service = await container.get(SettingService)
             state = await setting_service.get_setting(PluginsState)
             return list(state.license_keys.values())
+
+    async def refresh_licenses(self) -> list[dict[str, Any]]:
+        licenses = await self.get_licenses()
+        redis = await self.container.get(Redis)
+        results = await asyncio.gather(*(self.refresh_license(redis, info) for info in licenses))
+        refreshed = {info["license_key"]: info for info in results if info}
+        if refreshed:
+            async with self.container(scope=Scope.REQUEST) as container:
+                setting_service = await container.get(SettingService)
+                state = await setting_service.get_setting(PluginsState)
+                license_keys = {key: refreshed.get(key, info) for key, info in state.license_keys.items()}
+                await setting_service.set_setting(
+                    PluginsState(**state.model_dump(exclude={"license_keys"}), license_keys=license_keys)
+                )
+            licenses = list(license_keys.values())
+        now = utils.time.now()
+        return [{**info, "stale": self.is_license_stale(info, now)} for info in licenses]
+
+    async def refresh_license(self, redis: Redis, info: dict[str, Any]) -> dict[str, Any] | None:
+        license_key = info["license_key"]
+        lock = f"license_refresh:{hashlib.sha256(license_key.encode()).hexdigest()}"
+        if not await redis.set(lock, 1, nx=True, ex=LICENSE_REFRESH_INTERVAL):
+            return None
+        try:
+            fresh = await self.fetch_license_info(license_key)
+        except Exception as e:
+            logger.warning(f"Failed to refresh the {info.get('plugin_name')} license: {get_exception_summary(e)}")
+            return None
+        return {**(fresh or {**info, "active": False}), "refreshed_at": utils.time.now().isoformat()}
+
+    async def fetch_license_info(self, license_key: str) -> dict[str, Any] | None:
+        response, body = await utils.common.send_request(
+            "GET",
+            f"{self.settings.LICENSE_SERVER_URL}/licenses/info",
+            headers={"X-License-Key": license_key},
+            timeout=ClientTimeout(total=LICENSE_REFRESH_TIMEOUT),
+            return_json=False,
+        )
+        if response.status == 403:
+            return None
+        response.raise_for_status()
+        return json.loads(body)
+
+    @staticmethod
+    def is_license_stale(info: dict[str, Any], now: datetime) -> bool:
+        refreshed_at = info.get("refreshed_at")
+        return not refreshed_at or now - datetime.fromisoformat(refreshed_at) > STALE_LICENSE_AGE
 
     async def delete_license(self, license_key: str) -> bool:
         async with self.container(scope=Scope.REQUEST) as container:
