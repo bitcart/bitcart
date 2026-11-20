@@ -206,11 +206,14 @@ class PluginManager:
             (info["plugin_author"], info["plugin_name"]): info
             for info in sorted(await self.get_licenses(), key=lambda info: bool(info.get("active")))
         }
+        license_keys = ",".join(info["license_key"] for info in licenses.values())
         results: dict[str, str] = {}
         async with ClientSession(timeout=ClientTimeout(total=MARKETPLACE_TIMEOUT)) as session:
             try:
                 async with session.get(
-                    f"{self.settings.LICENSE_SERVER_URL}/plugins", params={"bitcart_version": VERSION}
+                    f"{self.settings.LICENSE_SERVER_URL}/plugins",
+                    params={"bitcart_version": VERSION},
+                    headers={"X-License-Key": license_keys} if license_keys else None,
                 ) as resp:
                     resp.raise_for_status()
                     marketplace = await resp.json()

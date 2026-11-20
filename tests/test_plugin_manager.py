@@ -48,23 +48,34 @@ class FakeMarketplace:
     def __init__(self) -> None:
         self.plugins: dict[str, dict[str, Any]] = {}
 
-    def add(self, name: str, selected: str | None, versions: tuple[str, ...], *, license_key: str | None = None) -> str:
+    def add(
+        self,
+        name: str,
+        selected: str | None,
+        versions: tuple[str, ...],
+        *,
+        license_key: str | None = None,
+        licensed: str | None = None,
+    ) -> str:
         plugin_id = f"{name}-id"
         self.plugins[plugin_id] = {
             "entry": {"id": plugin_id, "name": name, "author": "bitcart", "plugin_version": selected},
             "archives": {version: make_archive(name, version) for version in versions},
             "license_key": license_key,
+            "licensed": licensed,
         }
         return plugin_id
 
     async def list_plugins(self, request: web.Request) -> web.Response:
         current = request.query.get("bitcart_version") == VERSION
-        return web.json_response(
-            [
-                plugin["entry"] if current else {**plugin["entry"], "plugin_version": next(iter(plugin["archives"]))}
-                for plugin in self.plugins.values()
-            ]
-        )
+        license_keys = request.headers.get("X-License-Key", "").split(",")
+        entries = []
+        for plugin in self.plugins.values():
+            entry = plugin["entry"] if current else {**plugin["entry"], "plugin_version": next(iter(plugin["archives"]))}
+            if plugin["licensed"] and plugin["license_key"] in license_keys:
+                entry = {**entry, "plugin_version": plugin["licensed"]}
+            entries.append(entry)
+        return web.json_response(entries)
 
     async def download(self, request: web.Request) -> web.Response:
         plugin = self.plugins[request.match_info["plugin_id"]]
@@ -192,6 +203,16 @@ async def test_update_plugins_prefers_active_license(
     paid_id = marketplace.add("Paid", "1.1.0", ("1.0.0", "1.1.0"), license_key="renewed-key")
     await install(plugin_manager, tmp_path, "Paid", "1.0.0")
     await store_licenses(app, paid_id, "Paid", {"renewed-key": True, "expired-key": False})
+    assert await plugin_manager.update_plugins() == {"bitcart/Paid": "updated to 1.1.0"}
+    assert installed_version(plugin_manager.settings, "Paid") == "1.1.0"
+
+
+async def test_update_plugins_sends_license_keys(
+    app: FastAPI, plugin_manager: PluginManager, marketplace: FakeMarketplace, tmp_path: pathlib.Path
+) -> None:
+    paid_id = marketplace.add("Paid", "1.2.0", ("1.0.0", "1.1.0", "1.2.0"), license_key="paid-key", licensed="1.1.0")
+    await install(plugin_manager, tmp_path, "Paid", "1.0.0")
+    await store_licenses(app, paid_id, "Paid", {"paid-key": True})
     assert await plugin_manager.update_plugins() == {"bitcart/Paid": "updated to 1.1.0"}
     assert installed_version(plugin_manager.settings, "Paid") == "1.1.0"
 
