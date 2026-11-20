@@ -36,7 +36,9 @@ def worker_result(func: Callable[..., Any]) -> Callable[..., Any]:
         if self.settings.IS_WORKER or self.settings.is_testing():
             return await func(self, *args, **kwargs)
         try:
-            task = await self.broker.publish("rates_action", RatesActionMessage(func=func.__name__, args=args))
+            task = await self.broker.publish(
+                "rates_action", RatesActionMessage(func=func.__name__, args=args), expires_in=CALL_TIMEOUT
+            )
             task_result = await task.wait_result(check_interval=0.01, timeout=CALL_TIMEOUT)
         except TaskiqError as e:
             raise ExchangeRatesUnavailableError("The worker did not answer the exchange rates request") from e

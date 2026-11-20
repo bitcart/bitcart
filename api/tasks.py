@@ -37,7 +37,7 @@ from api.services.plugin_registry import PluginRegistry
 from api.services.template_alerts import TemplateAlertService
 from api.services.wallet_data import WalletDataService
 from api.settings import Settings
-from api.types import TasksBroker
+from api.types import ClientTasksBroker, TasksBroker
 
 logger = get_logger(__name__)
 
@@ -50,7 +50,7 @@ broker = TasksBroker(url=settings.redis_url, maint_notifications_config=REDIS_MA
         maint_notifications_config=REDIS_MAINT_NOTIFICATIONS,
     )
 )
-client_tasks_broker = TasksBroker(
+client_tasks_broker = ClientTasksBroker(
     url=settings.redis_url, queue_name="taskiq_client_tasks", maint_notifications_config=REDIS_MAINT_NOTIFICATIONS
 ).with_result_backend(
     RedisAsyncResultBackend(
@@ -159,7 +159,8 @@ async def process_new_backup_policy(params: ProcessNewBackupPolicyMessage, backu
     await backup_manager.process_new_policy(params.old_policy, params.new_policy)
 
 
-@broker.task("deploy_task")
+# a deploy can outlast the stream's idle timeout and is unsafe to rerun halfway, so it is acked before it starts
+@broker.task("deploy_task", ack_type="when_received")
 @inject(patch_module=True)
 async def deploy_task(params: DeployTaskMessage, configurator_service: FromDishka[ConfiguratorService]) -> None:
     return await configurator_service.run_deploy_task(params.task_id)

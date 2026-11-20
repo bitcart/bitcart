@@ -27,7 +27,7 @@ from api.services.notification_manager import NotificationManager
 from api.services.plugin_registry import PluginRegistry
 from api.settings import Settings
 from api.tasks import broker, scheduler
-from api.types import TasksBroker
+from api.types import BaseTasksBroker, TasksBroker
 from api.utils.common import excepthook_handler, handle_event_loop_exception
 
 logger = get_logger("worker")
@@ -100,7 +100,7 @@ def get_app(process: Process) -> TasksBroker:
     return broker
 
 
-async def _run_broker_core(broker: TasksBroker, stop_event: asyncio.Event | None) -> None:
+async def _run_broker_core(broker: BaseTasksBroker, stop_event: asyncio.Event | None) -> None:
     broker.is_worker_process = True
     await broker.startup()
     receiver_task = asyncio.create_task(run_receiver_task(broker))
@@ -118,7 +118,7 @@ async def _run_broker_core(broker: TasksBroker, stop_event: asyncio.Event | None
         await broker.shutdown()
 
 
-async def start_broker_basic(broker: TasksBroker) -> None:
+async def start_broker_basic(broker: BaseTasksBroker) -> None:
     await _run_broker_core(broker, stop_event=None)
 
 

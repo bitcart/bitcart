@@ -18,7 +18,7 @@ from api.redis import Redis
 from api.schemas.tasks import SyncWalletMessage
 from api.services.coins import CoinService
 from api.services.crud.wallets import WalletService
-from api.services.exchange_rate import ExchangeRateService
+from api.services.exchange_rate import CALL_TIMEOUT, ExchangeRateService
 from api.services.wallet_data import WalletDataService
 from api.settings import Settings
 from api.tasks import sync_wallet
@@ -161,9 +161,11 @@ async def test_worker_errors_mean_rates_unavailable(
     exchange_rate_service = await app.state.dishka_container.get(ExchangeRateService)
     mocker.patch.object(Settings, "is_testing", return_value=False)
     task = Mock(wait_result=AsyncMock(side_effect=wait_error))
-    mocker.patch.object(exchange_rate_service, "broker", Mock(publish=AsyncMock(return_value=task, side_effect=publish_error)))
+    broker = Mock(publish=AsyncMock(return_value=task, side_effect=publish_error))
+    mocker.patch.object(exchange_rate_service, "broker", broker)
     with pytest.raises(ExchangeRatesUnavailableError):
         await exchange_rate_service.get_rate("coingecko")
+    assert broker.publish.await_args.kwargs == {"expires_in": CALL_TIMEOUT}
 
 
 async def test_proxied_exchanges_load_in_background(app: FastAPI, mocker: pytest_mock.MockerFixture) -> None:
