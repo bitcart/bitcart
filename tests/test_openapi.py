@@ -24,7 +24,6 @@ from api.services.plugin_registry import PluginRegistry
 from api.settings import Settings
 from api.tasks import broker, client_tasks_broker
 from api.templates import TemplateManager
-from api.types import ClientTasksBroker
 
 QUALITY_BASELINE_PATH = "tests/fixtures/openapi_quality_baseline.json"
 HIDDEN_CORE_PATHS = {"/", "/favicon.ico", "/swagger", "/redoc", "/openapi.json"}
@@ -94,7 +93,7 @@ def setup_plugin(app: FastAPI, settings: Settings, fresh_app: FastAPI) -> Plugin
         plugin_registry = PluginRegistry(
             settings,
             broker,
-            ClientTasksBroker(client_tasks_broker),
+            client_tasks_broker,
             TemplateManager([]),
             PluginObjects({plugin.name: plugin}),
             app.state.dishka_container,
