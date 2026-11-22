@@ -25,3 +25,4 @@ venv
 .venv
 .DS_Store
 .pyarmor/
+.scratch/

@@ -39,6 +39,7 @@ from api.constants import (
 from api.db import AsyncSession
 from api.exceptions import EmailSendError, ExchangeRatesUnavailableError, RateUnavailableError, RendererUnavailableError
 from api.invoices import InvoiceStatus
+from api.plugins import CoinServer
 from api.redis import Redis
 from api.schemas.misc import CaptchaType, EmailSettings
 from api.schemas.stores import StoreCheckoutSettings, StoreThemeSettings
@@ -2677,6 +2678,54 @@ async def test_syncinfo(client: TestClient, token: str, mocker: pytest_mock.Mock
     data = (await client.get("/manage/syncinfo", headers={"Authorization": f"Bearer {token}"})).json()
     item = find_element(data, "BTC")
     assert item["running"] is False
+
+
+class UnreachablePluginServer(CoinServer):
+    async def getinfo(self) -> dict[str, Any]:
+        raise BitcartBaseError("Not running")
+
+
+class UnreachablePluginCoin:
+    server = UnreachablePluginServer("Plugincoin", None)
+
+
+async def test_health_ready(client: TestClient) -> None:
+    resp = await client.get("/health/ready")
+    assert resp.status_code == 200
+    assert resp.json() == {"status": "ok"}
+
+
+async def test_health_ready_daemon_timeout(
+    client: TestClient, coin_service: CoinService, mocker: pytest_mock.MockerFixture
+) -> None:
+    async def hang() -> None:
+        await asyncio.sleep(60)
+
+    mocker.patch("api.services.coins.DAEMON_READINESS_TIMEOUT", 0.01)
+    mocker.patch.object(coin_service.cryptos["btc"].server, "fetch_spec", hang)
+    resp = await client.get("/health/ready")
+    assert resp.status_code == 503
+    assert resp.json() == {"status": "degraded", "detail": "coins unreachable: btc"}
+
+
+async def test_health_ready_daemon_rejects_credentials(
+    client: TestClient, coin_service: CoinService, mocker: pytest_mock.MockerFixture
+) -> None:
+    unauthorized = {"jsonrpc": "2.0", "error": {"code": -32600, "message": "Unauthorized"}, "id": None}
+    mocker.patch.object(coin_service.cryptos["btc"].server, "fetch_spec", mocker.AsyncMock(return_value=unauthorized))
+    resp = await client.get("/health/ready")
+    assert resp.status_code == 503
+    assert resp.json() == {"status": "degraded", "detail": "coins unreachable: btc"}
+
+
+async def test_health_ready_skips_plugin_coins(
+    client: TestClient, coin_service: CoinService, mocker: pytest_mock.MockerFixture
+) -> None:
+    btc = coin_service.cryptos["btc"]
+    mocker.patch("api.services.coins.CoinService.cryptos", {"btc": btc, "plugincoin": UnreachablePluginCoin()})
+    resp = await client.get("/health/ready")
+    assert resp.status_code == 200
+    assert resp.json() == {"status": "ok"}
 
 
 async def test_create_invoice_randomize_wallets(client: TestClient, token: str) -> None:

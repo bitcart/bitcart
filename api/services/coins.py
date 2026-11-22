@@ -1,9 +1,11 @@
+import asyncio
 from typing import Any, cast
 
 from bitcart import (  # type: ignore[attr-defined]
     BTC,
     COINS,
     APIManager,
+    RPCProxy,
 )
 from fastapi import HTTPException
 
@@ -11,6 +13,8 @@ from api.ext.blockexplorer import EXPLORERS
 from api.ext.rpc import RPC
 from api.services.plugin_registry import PluginRegistry
 from api.settings import Settings
+
+DAEMON_READINESS_TIMEOUT = 3
 
 
 class CoinService:
@@ -94,11 +98,17 @@ class CoinService:
         return RPC.get(coin, {}).get(self._crypto_settings[coin]["network"], "")
 
     async def coins_healthcheck(self) -> dict[str, str]:
-        results: dict[str, str] = {}
-        for coin_name, coin in self.cryptos.items():
-            try:
-                await coin.server.getinfo()
-                results[coin_name] = "ok"
-            except Exception as e:
-                results[coin_name] = f"error: {str(e)}"
-        return results
+        daemons = {name: coin.server for name, coin in self.cryptos.items() if isinstance(coin.server, RPCProxy)}
+        statuses = await asyncio.gather(*(self.daemon_status(server) for server in daemons.values()))
+        return dict(zip(daemons, statuses, strict=True))
+
+    @staticmethod
+    async def daemon_status(server: RPCProxy) -> str:
+        try:
+            async with asyncio.timeout(DAEMON_READINESS_TIMEOUT):
+                spec = await server.fetch_spec()
+        except TimeoutError:
+            return "timeout"
+        except Exception as e:
+            return f"error: {e}"
+        return "ok" if server.validate_spec(spec) else "error: invalid spec"
