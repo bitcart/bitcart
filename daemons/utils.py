@@ -288,23 +288,16 @@ class MultipleProviderRPC(metaclass=ABCMeta):
     def current_rpc(self):
         return self.providers[self.current_rpc_idx]
 
-    def prev_rpc_idx(self, idx):
-        return (idx - 1) % len(self.providers)
-
     def next_rpc_idx(self, idx):
         return (idx + 1) % len(self.providers)
 
-    async def prev_rpc(self):
+    async def switch_rpc(self, from_idx, to_idx):
         async with self.switch_lock:
-            await self._edit_failed_stats(self.current_rpc_idx)
-            self.current_rpc_idx = self.prev_rpc_idx(self.current_rpc_idx)
-            return self.current_rpc
-
-    async def next_rpc(self):
-        async with self.switch_lock:
-            await self._edit_failed_stats(self.current_rpc_idx)
-            self.current_rpc_idx = self.next_rpc_idx(self.current_rpc_idx)
-            return self.current_rpc
+            if self.current_rpc_idx != from_idx:
+                return
+            await self._edit_failed_stats(from_idx)
+            await self._edit_failed_stats(to_idx)
+            self.current_rpc_idx = to_idx
 
     def is_last_rpc(self):
         return self.current_rpc_idx == len(self.providers) - 1
@@ -327,7 +320,7 @@ class MultipleProviderRPC(metaclass=ABCMeta):
                 except Exception:
                     await self._edit_failed_stats(rpc_idx, +1)
                     if self.failed_stats[rpc_idx] > self.NEXT_RPC_SWITCH_TIMES:
-                        await self.next_rpc()
+                        await self.switch_rpc(rpc_idx, self.next_rpc_idx(rpc_idx))
                     rpc_idx = self.next_rpc_idx(rpc_idx)
                     if rpc_idx == start_rpc_idx:
                         raise
@@ -341,7 +334,8 @@ class MultipleProviderRPC(metaclass=ABCMeta):
     async def maintain_stable_rpc(self):
         while self.running:
             await asyncio.sleep(self.CHECK_STABLE_RPC_INTERVAL)
-            prev_idx = self.current_rpc_idx - 1
+            current_idx = self.current_rpc_idx
+            prev_idx = current_idx - 1
             if prev_idx < 0:
                 continue
             is_stable = True
@@ -352,7 +346,7 @@ class MultipleProviderRPC(metaclass=ABCMeta):
                     is_stable = False
                     break
             if is_stable:
-                await self.prev_rpc()
+                await self.switch_rpc(current_idx, prev_idx)
 
     async def start(self):
         self.running = True

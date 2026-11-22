@@ -774,10 +774,13 @@ class ETHDaemon(BlockProcessorDaemon):
         if cacheable_function and (value := self.contract_cache[function].get(cache_key)) is not None:
             return value
         exec_function = await self.load_contract_exec_function(address, function, *args, **kwargs)
-        result = await exec_function.call()
+        result = await self.call_contract_function(exec_function)
         if cacheable_function:
             self.contract_cache[function][cache_key] = result
         return result
+
+    async def call_contract_function(self, exec_function):
+        return await exec_function.call()
 
     @rpc(requires_wallet=True)
     def signmessage(self, address=None, message=None, wallet=None):

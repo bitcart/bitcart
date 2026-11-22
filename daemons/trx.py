@@ -35,6 +35,8 @@ DEFAULT_FEE_LIMIT = 30_000_000  # 30 TRX
 
 TRX_TRANSFER_TOPIC = TRANSFER_TOPIC.replace("0x", "")
 
+TRON_ZERO_ADDRESS = keys.to_base58check_address("41" + "00" * 20)
+
 
 # For testing with aiohttp client (might be more stable)
 # class AsyncHTTPProvider:
@@ -62,11 +64,32 @@ TRX_TRANSFER_TOPIC = TRANSFER_TOPIC.replace("0x", "")
 
 
 class TronRPCProvider(AbstractRPCProvider, AsyncHTTPProvider):
+    def __init__(self, *args, watched_contracts: dict[str, Any], **kwargs):
+        super().__init__(*args, **kwargs)
+        self.watched_contracts = watched_contracts
+
     async def send_single_request(self, *args, **kwargs):
         return await self.make_request(*args, **kwargs)
 
     async def send_ping_request(self):
-        return await self.send_single_request("wallet/getnowblock")
+        block = await self.send_single_request("wallet/getnowblock")
+        await self.send_single_request(
+            "wallet/gettransactioninfobyblocknum", {"num": block["block_header"]["raw_data"]["number"]}
+        )
+        if (contract := next(iter(self.watched_contracts), None)) is None:
+            return
+        response = await self.send_single_request(
+            "wallet/triggerconstantcontract",
+            {
+                "owner_address": TRON_ZERO_ADDRESS,
+                "contract_address": contract,
+                "function_selector": "decimals()",
+                "parameter": "",
+                "visible": True,
+            },
+        )
+        if not response.get("constant_result"):
+            raise ValueError(f"Constant contract call failed: {response}")
 
 
 class MultipleRPCTronProvider(AsyncHTTPProvider):
@@ -279,7 +302,7 @@ class TRXDaemon(ETHDaemon):
                 server_list[idx] += "/"
         server_providers = []
         for server in server_list:
-            server_provider = TronRPCProvider(server)
+            server_provider = TronRPCProvider(server, watched_contracts=self.contracts)
             server_provider.make_request = exception_retry_middleware(
                 server_provider.make_request, (httpx.HTTPError, AsyncClientError, TimeoutError, asyncio.TimeoutError)
             )
@@ -376,9 +399,7 @@ class TRXDaemon(ETHDaemon):
             message.encode("utf-8"), keys.Signature.fromhex(signature)
         ).to_base58check_address() == self.coin.normalize_address(address)
 
-    @rpc(requires_network=True)
-    async def readcontract(self, address, function, *args, **kwargs):
-        exec_function = await self.load_contract_exec_function(address, function, *args, **kwargs)
+    async def call_contract_function(self, exec_function):
         return await exec_function
 
     @rpc(requires_network=True)
