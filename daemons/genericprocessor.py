@@ -340,8 +340,7 @@ class Wallet:
             self.db.write(self.storage)
 
     async def _start_init_vars(self):
-        if self.latest_height == -1:
-            self.latest_height = await self.coin.get_block_number()
+        pass
 
     async def _start_process_pending(self, blocks, current_height):
         for block in blocks:
@@ -358,7 +357,7 @@ class Wallet:
 
         self.running = True
         # process onchain transactions
-        current_height = await self.coin.get_block_number()
+        current_height = daemon_ctx.get().latest_height
         if not first_start and not daemon_ctx.get().NO_DOWNTIME_PROCESSING:
             await self._start_process_pending(blocks, current_height)
 

@@ -11,6 +11,7 @@ from typing import Any
 
 from aiohttp import ClientError as AsyncClientError
 from aiolimiter import AsyncLimiter
+from async_lru import alru_cache
 from eth_account import Account
 from eth_account.messages import encode_defunct
 from eth_keys.datatypes import PrivateKey, PublicKey
@@ -347,8 +348,7 @@ class Wallet(BaseWallet):
         return self.contract.address if self.contract else None
 
     async def fetch_token_info(self):
-        self.symbol = (await daemon_ctx.get().readcontract(self.contract, "symbol")).upper()
-        self.divisibility = await daemon_ctx.get().readcontract(self.contract, "decimals")
+        self.symbol, self.divisibility = await daemon_ctx.get().get_token_info(self.contract_addr)
         self._token_fetched = True
 
     async def _start_init_vars(self):
@@ -533,6 +533,10 @@ class ETHDaemon(BlockProcessorDaemon):
         self.contracts[contract] = await self.create_web3_contract(contract)
         self.wallets[wallet].contract = self.contracts[contract]
         await self.wallets[wallet].fetch_token_info()
+
+    @alru_cache(maxsize=32)
+    async def get_token_info(self, contract):
+        return (await self.readcontract(contract, "symbol")).upper(), await self.readcontract(contract, "decimals")
 
     async def create_web3_contract(self, contract):
         try:
