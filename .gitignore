@@ -8,6 +8,7 @@
 .ruff_cache/
 .vscode/*
 !.vscode/settings.json
+.zed/tasks.json
 /data/
 __pycache__/
 backup/

@@ -670,6 +670,7 @@ bch = [
 bnb = [
     { name = "aiohttp" },
     { name = "aiolimiter" },
+    { name = "async-lru" },
     { name = "eth-account" },
     { name = "eth-keys" },
     { name = "hexbytes" },
@@ -790,6 +791,7 @@ dev = [
 eth = [
     { name = "aiohttp" },
     { name = "aiolimiter" },
+    { name = "async-lru" },
     { name = "eth-account" },
     { name = "eth-keys" },
     { name = "hexbytes" },
@@ -799,6 +801,7 @@ eth = [
 eth-based = [
     { name = "aiohttp" },
     { name = "aiolimiter" },
+    { name = "async-lru" },
     { name = "eth-account" },
     { name = "eth-keys" },
     { name = "hexbytes" },
@@ -825,6 +828,7 @@ ltc = [
 matic = [
     { name = "aiohttp" },
     { name = "aiolimiter" },
+    { name = "async-lru" },
     { name = "eth-account" },
     { name = "eth-keys" },
     { name = "hexbytes" },
@@ -927,6 +931,7 @@ bch = [
 bnb = [
     { name = "aiohttp", specifier = "<4.0" },
     { name = "aiolimiter", specifier = ">=1.3.0" },
+    { name = "async-lru", specifier = ">=2.4.0" },
     { name = "eth-account", specifier = ">=0.14.0" },
     { name = "eth-keys", specifier = ">=0.8.0" },
     { name = "hexbytes", specifier = ">=2.0.0" },
@@ -1043,6 +1048,7 @@ dev = [
 eth = [
     { name = "aiohttp", specifier = "<4.0" },
     { name = "aiolimiter", specifier = ">=1.3.0" },
+    { name = "async-lru", specifier = ">=2.4.0" },
     { name = "eth-account", specifier = ">=0.14.0" },
     { name = "eth-keys", specifier = ">=0.8.0" },
     { name = "hexbytes", specifier = ">=2.0.0" },
@@ -1052,6 +1058,7 @@ eth = [
 eth-based = [
     { name = "aiohttp", specifier = "<4.0" },
     { name = "aiolimiter", specifier = ">=1.3.0" },
+    { name = "async-lru", specifier = ">=2.4.0" },
     { name = "eth-account", specifier = ">=0.14.0" },
     { name = "eth-keys", specifier = ">=0.8.0" },
     { name = "hexbytes", specifier = ">=2.0.0" },
@@ -1078,6 +1085,7 @@ ltc = [
 matic = [
     { name = "aiohttp", specifier = "<4.0" },
     { name = "aiolimiter", specifier = ">=1.3.0" },
+    { name = "async-lru", specifier = ">=2.4.0" },
     { name = "eth-account", specifier = ">=0.14.0" },
     { name = "eth-keys", specifier = ">=0.8.0" },
     { name = "hexbytes", specifier = ">=2.0.0" },
