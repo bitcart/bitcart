@@ -194,7 +194,7 @@ def get_func_name(func):
     return func.__name__
 
 
-def exception_retry_middleware(make_request, errors, retries=5):
+def exception_retry_middleware(make_request, errors, retries=5, no_retry_errors=(), retry_delay=1, backoff=1):
     async def middleware(*args, **kwargs):
         for i in range(retries):
             try:
@@ -202,10 +202,12 @@ def exception_retry_middleware(make_request, errors, retries=5):
                 if "error" in result and result["error"].get("code") == -32603:  # Internal error
                     raise ValueError(result["error"])
                 return result
-            except errors:
+            except errors as e:
+                if isinstance(e, no_retry_errors):
+                    raise
                 if i < retries - 1:
                     logger.debug(f"Retrying {get_func_name(make_request)} {args} {kwargs}, attempt {i + 1}")
-                    await asyncio.sleep(1)
+                    await asyncio.sleep(retry_delay * backoff**i)
                     continue
                 error_msg = (
                     f"Failed after {retries} retries: {get_func_name(make_request)} {args} {kwargs}"
@@ -272,12 +274,19 @@ class MultipleProviderRPC(metaclass=ABCMeta):
 
     RESET = object()  # sentinel
 
-    def __init__(self, providers: list[AbstractRPCProvider]):
+    def __init__(
+        self,
+        providers: list[AbstractRPCProvider],
+        slow_request_time: float | None = None,
+        retry_round_delays: tuple[float, ...] = (),
+    ):
         if not isinstance(providers, list):
             raise TypeError("providers must be a list")
         self.providers = providers
         if not self.providers:
             raise ValueError("No urls provided")
+        self.slow_request_time = slow_request_time
+        self.retry_round_delays = retry_round_delays
         self.current_rpc_idx = 0
         self.failed_stats = [0 for _ in self.providers]
         self.switch_lock = asyncio.Lock()
@@ -309,27 +318,50 @@ class MultipleProviderRPC(metaclass=ABCMeta):
             else:
                 self.failed_stats[idx] = max(0, self.failed_stats[idx] + delta)
 
+    def is_slow(self, started):
+        return self.slow_request_time is not None and time.monotonic() - started > self.slow_request_time
+
+    async def _record_failure(self, idx):
+        await self._edit_failed_stats(idx, +1)
+        if self.failed_stats[idx] > self.NEXT_RPC_SWITCH_TIMES:
+            await self.switch_rpc(idx, self.next_rpc_idx(idx))
+
     async def send_request(self, *args, **kwargs):
-        has_exception = False
-        try:
-            start_rpc_idx = self.current_rpc_idx
-            rpc_idx = start_rpc_idx
-            while True:
-                try:
-                    return await self.providers[rpc_idx].send_single_request(*args, **kwargs)
-                except Exception:
-                    await self._edit_failed_stats(rpc_idx, +1)
-                    if self.failed_stats[rpc_idx] > self.NEXT_RPC_SWITCH_TIMES:
-                        await self.switch_rpc(rpc_idx, self.next_rpc_idx(rpc_idx))
-                    rpc_idx = self.next_rpc_idx(rpc_idx)
-                    if rpc_idx == start_rpc_idx:
+        start_rpc_idx = self.current_rpc_idx
+        rpc_idx = start_rpc_idx
+        round_delays = iter(self.retry_round_delays)
+        while True:
+            started = time.monotonic()
+            try:
+                result = await self.providers[rpc_idx].send_single_request(*args, **kwargs)
+            except Exception as e:
+                await self._record_failure(rpc_idx)
+                next_idx = self.next_rpc_idx(rpc_idx)
+                if next_idx == start_rpc_idx:
+                    delay = next(round_delays, None)
+                    if delay is None:
                         raise
-        except Exception:
-            has_exception = True
-            raise
-        finally:
-            if not has_exception:
+                    logger.debug(f"Request {args} failed on all nodes, trying them again in {delay}s")
+                    await asyncio.sleep(delay)
+                logger.debug(f"Request {args} failed on node {rpc_idx} ({get_exception_message(e)}), trying node {next_idx}")
+                rpc_idx = next_idx
+                continue
+            if self.is_slow(started):
+                await self._record_failure(rpc_idx)
+            else:
                 await self._edit_failed_stats(rpc_idx, -1)
+            return result
+
+    async def is_rpc_stable(self, idx):
+        for _ in range(self.RPC_UP_CHECK_TIMES + 1):
+            started = time.monotonic()
+            try:
+                await self.providers[idx].send_ping_request()
+            except Exception:
+                return False
+            if self.is_slow(started):
+                return False
+        return True
 
     async def maintain_stable_rpc(self):
         while self.running:
@@ -338,14 +370,7 @@ class MultipleProviderRPC(metaclass=ABCMeta):
             prev_idx = current_idx - 1
             if prev_idx < 0:
                 continue
-            is_stable = True
-            for _ in range(self.RPC_UP_CHECK_TIMES + 1):
-                try:
-                    await self.providers[prev_idx].send_ping_request()
-                except Exception:
-                    is_stable = False
-                    break
-            if is_stable:
+            if await self.is_rpc_stable(prev_idx):
                 await self.switch_rpc(current_idx, prev_idx)
 
     async def start(self):

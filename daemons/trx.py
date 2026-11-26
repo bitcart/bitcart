@@ -33,6 +33,9 @@ TRX_ACCOUNT_PATH = "m/44'/195'/0'/0/0"
 
 DEFAULT_FEE_LIMIT = 30_000_000  # 30 TRX
 
+SLOW_RPC_REQUEST_TIME = 3  # TRON block time
+RETRY_ROUND_DELAYS = (5, 10, 20, 40)
+
 TRX_TRANSFER_TOPIC = TRANSFER_TOPIC.replace("0x", "")
 
 TRON_ZERO_ADDRESS = keys.to_base58check_address("41" + "00" * 20)
@@ -68,8 +71,18 @@ class TronRPCProvider(AbstractRPCProvider, AsyncHTTPProvider):
         super().__init__(*args, **kwargs)
         self.watched_contracts = watched_contracts
 
-    async def send_single_request(self, *args, **kwargs):
-        return await self.make_request(*args, **kwargs)
+    async def send_single_request(self, method, params=None):
+        response = await self.make_request(method, params)
+        if method == "wallet/getblockbynum" and params and params.get("num") is not None:
+            self.ensure_block_available(params["num"], response)
+        elif method == "wallet/gettransactioninfobyblocknum" and not response:
+            header = await self.make_request("wallet/getblock", {"id_or_num": str(params["num"]), "detail": False})
+            self.ensure_block_available(params["num"], header)
+        return response
+
+    def ensure_block_available(self, num, block):
+        if "blockID" not in block:
+            raise ValueError(f"Block {num} is not available on {self.endpoint_uri}")
 
     async def send_ping_request(self):
         block = await self.send_single_request("wallet/getnowblock")
@@ -304,10 +317,16 @@ class TRXDaemon(ETHDaemon):
         for server in server_list:
             server_provider = TronRPCProvider(server, watched_contracts=self.contracts)
             server_provider.make_request = exception_retry_middleware(
-                server_provider.make_request, (httpx.HTTPError, AsyncClientError, TimeoutError, asyncio.TimeoutError)
+                server_provider.make_request,
+                (httpx.HTTPError, AsyncClientError, TimeoutError, asyncio.TimeoutError),
+                no_retry_errors=(httpx.TimeoutException,) if len(server_list) > 1 else (),
+                retry_delay=0.25,
+                backoff=2,
             )
             server_providers.append(server_provider)
-        multi_provider = MultipleProviderRPC(server_providers)
+        multi_provider = MultipleProviderRPC(
+            server_providers, slow_request_time=SLOW_RPC_REQUEST_TIME, retry_round_delays=RETRY_ROUND_DELAYS
+        )
         await multi_provider.start()
         provider = MultipleRPCTronProvider(multi_provider)
         self.coin = TRXFeatures(AsyncTron(provider, conf={"fee_limit": DEFAULT_FEE_LIMIT}))
