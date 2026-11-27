@@ -79,6 +79,8 @@ class JSONEncoder(StorageJSONEncoder):
 
 
 class MultipleRPCEthereumProvider(AsyncWeb3.AsyncHTTPProvider):
+    global_ccip_read_enabled = False
+
     def __init__(self, rpc: MultipleProviderRPC, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.rpc = rpc
