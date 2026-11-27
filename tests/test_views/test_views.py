@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import json as json_module
 import os
+import re
 import socket
 from collections import defaultdict
 from dataclasses import dataclass
@@ -57,6 +58,7 @@ from api.services.notification_manager import NotificationManager
 from api.services.payment_processor import PaymentProcessor
 from api.services.payout_manager import PayoutManager
 from api.services.plugin_registry import PluginRegistry
+from api.services.wallet_data import WalletDataService
 from api.settings import Settings
 from api.templates import RenderResult, TemplateManager
 from api.types import Quotes, TasksBroker
@@ -262,6 +264,35 @@ async def test_invoice_logs_rates_unavailable_cause(
     )
     assert resp.json()["payments"] == []
     assert "skipped payment method BTC: The worker did not answer (TaskiqResultTimeoutError" in caplog.text
+
+
+async def test_invoice_logs_slowest_payment_method(
+    client: TestClient,
+    token: str,
+    store: dict[str, Any],
+    mocker: pytest_mock.MockerFixture,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    headers = {"Authorization": f"Bearer {token}"}
+    slow_wallet_id = (await create_wallet(client, token))["id"]
+    resp = await client.patch(f"/stores/{store['id']}", json={"wallets": [*store["wallets"], slow_wallet_id]}, headers=headers)
+    assert resp.status_code == 200
+
+    async def get_rate(self: WalletDataService, wallet: models.Wallet, *args: Any, **kwargs: Any) -> Decimal:
+        if wallet.id == slow_wallet_id:
+            await asyncio.sleep(0.2)
+        return Decimal(1)
+
+    mocker.patch.object(WalletDataService, "get_rate", get_rate)
+    invoice = (await client.post("/invoices", json={"store_id": store["id"], "price": 5}, headers=headers)).json()
+    assert len(invoice["payments"]) == 2
+    match = re.search(
+        rf"Successfully added 2 payment methods to invoice {invoice['id']} in \d+\.\d{{2}}s "
+        rf"\(slowest: BTC wallet {slow_wallet_id} in (\d+\.\d{{2}})s\)",
+        caplog.text,
+    )
+    assert match is not None
+    assert float(match.group(1)) >= 0.2
 
 
 async def test_failed_rate_rules_not_saved(

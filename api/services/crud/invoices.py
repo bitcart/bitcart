@@ -4,7 +4,7 @@ import functools
 import secrets
 import time
 from collections import defaultdict
-from collections.abc import Awaitable, Callable, Generator
+from collections.abc import Awaitable, Callable, Generator, Sequence
 from datetime import datetime, timedelta
 from decimal import Decimal
 from operator import attrgetter
@@ -278,27 +278,20 @@ class InvoiceService(CRUDService[models.Invoice]):
                 with contextlib.suppress(Exception):
                     symbol = await self.wallet_data_service.get_wallet_symbol(wallet)
                     symbols[symbol].append(wallet)
-            coros = [
-                self.create_method_for_wallet(
-                    invoice,
-                    secrets.choice(symbols[symbol]),
-                    discounts,
-                    store,
-                    product,
-                    promocode,
-                    get_lightning_description=get_lightning_description,
-                )
-                for symbol in symbols
-            ]
+            selected_wallets: Sequence[models.Wallet] = [secrets.choice(group) for group in symbols.values()]
         else:
-            coros = [
-                self.create_method_for_wallet(
-                    invoice, wallet, discounts, store, product, promocode, get_lightning_description=get_lightning_description
-                )
-                for wallet in wallets
-            ]
+            selected_wallets = wallets
+
+        async def create_timed(wallet: models.Wallet) -> tuple[models.Wallet, float, list[dict[str, Any]] | None]:
+            method_start = time.perf_counter()
+            result = await self.create_method_for_wallet(
+                invoice, wallet, discounts, store, product, promocode, get_lightning_description=get_lightning_description
+            )
+            return wallet, time.perf_counter() - method_start, result
+
+        results = await asyncio.gather(*(create_timed(wallet) for wallet in selected_wallets))
         db_data = []
-        for result in await asyncio.gather(*coros):
+        for _, _, result in results:
             if result is not None:
                 for method in result:
                     db_data.append({**method, "created": utils.time.now()})
@@ -306,8 +299,13 @@ class InvoiceService(CRUDService[models.Invoice]):
             await self.session.execute(insert(models.PaymentMethod), db_data)
             await self.session.refresh(invoice, attribute_names=["payments"])
         creation_time = time.time() - start_time
+        slowest_info = ""
+        if results:
+            slowest_wallet, slowest_time, _ = max(results, key=lambda item: item[1])
+            slowest_info = f" (slowest: {slowest_wallet.currency.upper()} wallet {slowest_wallet.id} in {slowest_time:.2f}s)"
         logger.info(
-            f"Successfully added {len(invoice.payments)} payment methods to invoice {invoice.id} in {creation_time:.2f}s"
+            f"Successfully added {len(invoice.payments)} payment methods to invoice {invoice.id} "
+            f"in {creation_time:.2f}s{slowest_info}"
         )
         invoice.creation_time = Decimal(creation_time)
         await self.session.flush()
