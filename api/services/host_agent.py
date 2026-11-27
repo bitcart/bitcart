@@ -84,7 +84,9 @@ class HostAgentService:
 
     async def _call_worker(self, command: str, args: dict[str, str]) -> dict[str, Any]:
         try:
-            task = await self.broker.publish("agent_call", AgentCallMessage(command=command, args=args))
+            task = await self.broker.publish(
+                "agent_call", AgentCallMessage(command=command, args=args), expires_in=CALL_TIMEOUT
+            )
             result = await task.wait_result(check_interval=0.01, timeout=CALL_TIMEOUT)
         except TaskiqError as e:
             logger.warning(f"Host agent {command} call failed: {get_exception_summary(e)}")

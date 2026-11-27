@@ -17,7 +17,7 @@ from api.schemas.misc import HostAgentJob
 from api.schemas.policies import BackupsPolicy
 from api.services import backup_manager as backup_manager_module
 from api.services.backup_manager import BackupManager
-from api.services.host_agent import AGENT_UNAVAILABLE, STALE_STATE_SECONDS, STATE_KEY, HostAgentService
+from api.services.host_agent import AGENT_UNAVAILABLE, CALL_TIMEOUT, STALE_STATE_SECONDS, STATE_KEY, HostAgentService
 from api.services.plugin_registry import PluginRegistry
 from api.services.settings import SettingService
 from api.settings import Settings
@@ -527,6 +527,8 @@ async def test_worker_errors_mean_agent_unavailable(
     wait_error: Exception | None,
 ) -> None:
     task = MagicMock(wait_result=AsyncMock(side_effect=wait_error))
-    monkeypatch.setattr(host_agent, "broker", MagicMock(publish=AsyncMock(return_value=task, side_effect=publish_error)))
+    broker = MagicMock(publish=AsyncMock(return_value=task, side_effect=publish_error))
+    monkeypatch.setattr(host_agent, "broker", broker)
     reply = await host_agent._call_worker("status", {})
     assert reply == {"ok": False, "error": AgentError(AgentErrorCode.UNAVAILABLE, AGENT_UNAVAILABLE).to_dict()}
+    assert broker.publish.await_args.kwargs == {"expires_in": CALL_TIMEOUT}
