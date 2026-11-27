@@ -1,9 +1,7 @@
 import asyncio
 import inspect
-import ipaddress
 import json
 import secrets
-import socket
 import traceback
 from collections import defaultdict
 from collections.abc import Callable, Sized
@@ -90,11 +88,6 @@ def str_to_bool(s: str) -> bool:
     if s in STR_TO_BOOL_MAPPING:
         return STR_TO_BOOL_MAPPING[s]
     return False
-
-
-def get_global_addresses(host: str) -> list[str]:
-    addresses = (ipaddress.ip_address(sockaddr[0]) for *_, sockaddr in socket.getaddrinfo(host, None, type=socket.SOCK_STREAM))
-    return [str(address) for address in addresses if address.is_global]
 
 
 @overload

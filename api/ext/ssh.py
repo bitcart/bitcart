@@ -1,34 +1,31 @@
 import threading
 
 import paramiko
+from outbound_guard import OutboundGuard
+from outbound_guard.ssh import connect_ssh
 from paramiko.channel import ChannelFile, ChannelStderrFile, ChannelStdinFile
 
-from api import utils
 from api.schemas.configurator import ConfiguratorSSHSettings
 
+SSH_PORT = 22
+SSH_CONNECT_TIMEOUT = 10
 SSH_COMMAND_TIMEOUT = 10
 MAX_REMOTE_FILE_SIZE = 64 * 1024
 
 
-def resolve_ssh_host(host: str) -> str:
-    addresses = utils.common.get_global_addresses(host)
-    if not addresses:
-        raise ValueError(f"SSH host {host!r} does not resolve to a public address")
-    return addresses[0]
-
-
-def create_ssh_client(settings: ConfiguratorSSHSettings) -> paramiko.SSHClient:
-    address = resolve_ssh_host(settings.host)
+async def create_ssh_client(settings: ConfiguratorSSHSettings) -> paramiko.SSHClient:
     client = paramiko.SSHClient()
     client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    client.connect(
-        hostname=address,
-        port=22,
+    await connect_ssh(
+        OutboundGuard(),
+        client,
+        settings.host,
+        SSH_PORT,
+        timeout=SSH_CONNECT_TIMEOUT,
         username=settings.username,
         password=settings.password,
         allow_agent=False,
         look_for_keys=False,
-        timeout=10,
     )
     return client
 

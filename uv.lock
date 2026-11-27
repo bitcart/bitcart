@@ -1,6 +1,6 @@
 version = 1
 revision = 5
-requires-python = ">=3.12"
+requires-python = ">=3.12.4"
 resolution-markers = [
     "python_full_version >= '3.15'",
     "python_full_version == '3.14.*'",
@@ -15,6 +15,7 @@ exclude-newer-span = "P1W"
 [options.exclude-newer-package]
 bitcart = { timestamp = "0001-01-01T00:00:00Z", span = "PT0S" }
 certifi = { timestamp = "0001-01-01T00:00:00Z", span = "PT0S" }
+outbound-guard = { timestamp = "0001-01-01T00:00:00Z", span = "PT0S" }
 tronpy = { timestamp = "0001-01-01T00:00:00Z", span = "PT0S" }
 trontxsize = { timestamp = "0001-01-01T00:00:00Z", span = "PT0S" }
 universalasync = { timestamp = "0001-01-01T00:00:00Z", span = "PT0S" }
@@ -754,6 +755,7 @@ dev = [
     { name = "opentelemetry-instrumentation-structlog" },
     { name = "opentelemetry-sdk" },
     { name = "oregano" },
+    { name = "outbound-guard", extra = ["aiohttp", "smtp", "ssh"] },
     { name = "packaging" },
     { name = "paramiko" },
     { name = "prek" },
@@ -888,6 +890,7 @@ web = [
     { name = "fido2" },
     { name = "jsonschema" },
     { name = "msgpack" },
+    { name = "outbound-guard", extra = ["aiohttp", "smtp", "ssh"] },
     { name = "packaging" },
     { name = "paramiko" },
     { name = "prometheus-client" },
@@ -1013,6 +1016,7 @@ dev = [
     { name = "opentelemetry-instrumentation-structlog", specifier = "==0.66b2" },
     { name = "opentelemetry-sdk", specifier = "==1.45.2" },
     { name = "oregano", url = "https://github.com/Ergon-moe/Oregano/archive/6bf78d3be864c053c95ee332c6ab366e5695d8a4.zip" },
+    { name = "outbound-guard", extras = ["aiohttp", "smtp", "ssh"], specifier = ">=0.1.0" },
     { name = "packaging", specifier = ">=26.0" },
     { name = "paramiko", specifier = ">=5.0.0" },
     { name = "prek", specifier = ">=0.3.1" },
@@ -1145,6 +1149,7 @@ web = [
     { name = "fido2", specifier = ">=2.0.0" },
     { name = "jsonschema", specifier = ">=4.25.1" },
     { name = "msgpack", specifier = ">=1.2.4" },
+    { name = "outbound-guard", extras = ["aiohttp", "smtp", "ssh"], specifier = ">=0.1.0" },
     { name = "packaging", specifier = ">=26.0" },
     { name = "paramiko", specifier = ">=5.0.0" },
     { name = "prometheus-client", specifier = ">=0.25.0" },
@@ -3632,6 +3637,26 @@ requires-dist = [
     { name = "zxing-cpp", marker = "extra == 'gui'", specifier = ">=2.2.0" },
 ]
 provides-extras = ["hardware", "gui", "console2", "all"]
+
+[[package]]
+name = "outbound-guard"
+version = "0.1.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/c5/d2/3a831474e7a31dc063522e97c3f17355ecd2dc851b5735d5aedf2bfee55f/outbound_guard-0.1.0.tar.gz", hash = "sha256:d0b37e05db0adbc342856ceafc8ef13ab00f2c2584af369b05d0816631053b6a", size = 17239, upload-time = "2026-11-27T22:36:30.576Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/7d/b0/5e181229380960a657ba0c289a79d6f042233d9fa8b7953e8a0561d32d6e/outbound_guard-0.1.0-py3-none-any.whl", hash = "sha256:69c3e180bd92dc4770fc6d975613b6a351f84d75ed1699a69c13c6304f878a2e", size = 11292, upload-time = "2026-11-27T22:36:29.353Z" },
+]
+
+[package.optional-dependencies]
+aiohttp = [
+    { name = "aiohttp" },
+]
+smtp = [
+    { name = "aiosmtplib" },
+]
+ssh = [
+    { name = "paramiko" },
+]
 
 [[package]]
 name = "packaging"

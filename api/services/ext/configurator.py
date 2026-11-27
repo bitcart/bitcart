@@ -5,16 +5,18 @@ import re
 import time
 from typing import Any, cast
 
+import paramiko
 from dishka import AsyncContainer, Scope
 from fastapi import HTTPException, Request
 from fastapi.security import SecurityScopes
+from outbound_guard import OutboundGuard
 from paramiko.channel import Channel
 from starlette.concurrency import run_in_threadpool
 from starlette.datastructures import CommaSeparatedStrings
 
 from api import constants, models, utils
 from api.ext.agent import AgentError
-from api.ext.ssh import ServerEnv, create_ssh_client, resolve_ssh_host
+from api.ext.ssh import SSH_PORT, ServerEnv, create_ssh_client
 from api.logging import get_logger, log_errors
 from api.redis import Redis
 from api.schemas.configurator import (
@@ -86,13 +88,13 @@ class ConfiguratorService:
         return settings
 
     @classmethod
-    def collect_remote_server_settings(
+    async def collect_remote_server_settings(
         cls, ssh_settings: ConfiguratorSSHSettings
     ) -> ConfiguratorServerSettings:  # pragma: no cover
         with contextlib.suppress(Exception):
-            client = create_ssh_client(ssh_settings)
+            client = await create_ssh_client(ssh_settings)
             try:
-                return cls.build_server_settings(ServerEnv(client).env)
+                return cls.build_server_settings((await run_in_threadpool(ServerEnv, client)).env)
             finally:
                 client.close()
         return ConfiguratorServerSettings()
@@ -108,7 +110,7 @@ class ConfiguratorService:
         if ssh_settings:
             await self.authenticate_request(request)
             await self.check_ssh_access(request, ssh_settings)
-            server_settings = await run_in_threadpool(self.collect_remote_server_settings, ssh_settings)
+            server_settings = await self.collect_remote_server_settings(ssh_settings)
         elif user:
             server_settings = await self.collect_current_server_settings()
         else:
@@ -120,7 +122,7 @@ class ConfiguratorService:
         await self.authenticate_request(request)
         try:
             async with asyncio.timeout(DNS_TIMEOUT):
-                return bool(await run_in_threadpool(utils.common.get_global_addresses, name))
+                return bool(await OutboundGuard().resolve(name, 0))
         except Exception:
             return False
 
@@ -136,7 +138,7 @@ class ConfiguratorService:
             )
         try:
             async with asyncio.timeout(DNS_TIMEOUT):
-                await run_in_threadpool(resolve_ssh_host, ssh_settings.host)
+                await OutboundGuard().resolve(ssh_settings.host, SSH_PORT)
         except Exception:
             raise HTTPException(422, "SSH host must resolve to a public address") from None
 
@@ -234,20 +236,26 @@ class ConfiguratorService:
         return output
 
     @classmethod
-    def execute_ssh_commands(cls, commands: str, ssh_settings: ConfiguratorSSHSettings) -> tuple[bool, str]:
+    async def execute_ssh_commands(cls, commands: str, ssh_settings: ConfiguratorSSHSettings) -> tuple[bool, str]:
         try:
-            client = create_ssh_client(ssh_settings)
-            channel = client.invoke_shell()
-            output = ""
-            for command in commands.splitlines():
-                output += cls.send_command(channel, command)
-            output = cls.remove_intermediate_lines(output)
-            output = cls.remove_colors(output)
-            channel.close()
-            client.close()
-            return True, output
+            client = await create_ssh_client(ssh_settings)
+            try:
+                return True, await run_in_threadpool(cls.run_shell, client, commands)
+            finally:
+                client.close()
         except Exception as e:
             return False, str(e)
+
+    @classmethod
+    def run_shell(cls, client: paramiko.SSHClient, commands: str) -> str:
+        channel = client.invoke_shell()
+        output = ""
+        for command in commands.splitlines():
+            output += cls.send_command(channel, command)
+        output = cls.remove_intermediate_lines(output)
+        output = cls.remove_colors(output)
+        channel.close()
+        return output
 
     async def set_task(self, task_id: str, data: dict[str, Any]) -> None:
         await self.redis_pool.hset(REDIS_KEY, mapping={task_id: json.dumps(data)})
@@ -322,9 +330,7 @@ class ConfiguratorService:
         logger.debug("Started deployment", task_id=task_id)
         await self.plugin_registry.run_hook("pre_deploy", task_id, task)
         await asyncio.sleep(10)
-        success, output = await run_in_threadpool(
-            self.execute_ssh_commands, task["script"], ConfiguratorSSHSettings(**task["ssh_settings"])
-        )
+        success, output = await self.execute_ssh_commands(task["script"], ConfiguratorSSHSettings(**task["ssh_settings"]))
         await self.plugin_registry.run_hook("post_deploy", task_id, task, success, output)
         logger.debug("Deployment finished", task_id=task_id, success=success)
         task["finished"] = True
