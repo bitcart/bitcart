@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import signal
 from collections.abc import AsyncIterator, Awaitable, Callable, Iterator
 from datetime import timedelta
@@ -11,6 +12,7 @@ from typing import TYPE_CHECKING, Any, cast
 import pytest
 from aiohttp import web
 from bitcart import BTC  # type: ignore
+from bitcart.errors import BaseError as BitcartBaseError
 from bitcart.utils import bitcoins
 from dishka import Scope
 from fastapi import FastAPI
@@ -27,6 +29,7 @@ from tests.helper import create_store, create_wallet, set_allowed_hosts
 
 if TYPE_CHECKING:
     from httpx import AsyncClient as TestClient
+    from httpx import Response
 
 REGTEST_XPUB = "dutch field mango comfort symptom smooth wide senior tongue oyster wash spoon"
 REGTEST_XPUB2 = "hungry ordinary similar more spread math general wire jealous valve exhaust emotion"
@@ -149,14 +152,59 @@ async def regtest_lnnode() -> BTC:
     return BTC(xpub=REGTEST_XPUB2, rpc_url="http://localhost:5110")
 
 
+async def open_channel_via_api(client: TestClient, token: str, wallet_id: str, node_id: str) -> Response:
+    return await client.post(
+        f"/wallets/{wallet_id}/channels/open",
+        json={"node_id": node_id, "amount": str(LIGHTNING_CHANNEL_AMOUNT)},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+
+async def check_dialled_bytes(regtest_wallet: BTC) -> None:
+    dialled: asyncio.Future[bytes] = asyncio.get_running_loop().create_future()
+
+    async def read(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+        received = b""
+        with contextlib.suppress(TimeoutError):
+            async with asyncio.timeout(2):
+                while data := await reader.read(1024):
+                    received += data
+        writer.close()
+        dialled.set_result(received)
+
+    server = await asyncio.start_server(read, "127.0.0.1", 0)
+    port = server.sockets[0].getsockname()[1]
+    other_node = "02" + "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
+    with pytest.raises(BitcartBaseError):
+        await regtest_wallet.open_channel(f"{other_node}@127.0.0.1:{port}", LIGHTNING_CHANNEL_AMOUNT)
+    server.close()
+    handshake = await dialled
+    assert (len(handshake), handshake[0]) == (50, 0)
+
+
 @pytest.fixture
-async def prepare_ln_channels(regtest_wallet: BTC, regtest_lnnode: BTC) -> AsyncIterator[None]:
+async def prepare_ln_channels(
+    client: TestClient,
+    token: str,
+    regtest_api_wallet: dict[str, Any],
+    regtest_wallet: BTC,
+    regtest_lnnode: BTC,
+) -> AsyncIterator[None]:
     node_id = await regtest_lnnode.node_id
     # first fund the channel opener
     fund_amount = 10 * LIGHTNING_CHANNEL_AMOUNT
     address = (await regtest_wallet.add_request(fund_amount))["address"]
     await send_to_address(address, fund_amount, confirm=True, wait_balance=True)
-    channel_point = await regtest_wallet.open_channel(node_id, LIGHTNING_CHANNEL_AMOUNT)
+    await check_dialled_bytes(regtest_wallet)
+    wallet_id = regtest_api_wallet["id"]
+    pubkey, _, address = node_id.partition("@")
+    for refused in (node_id, pubkey):
+        assert (await open_channel_via_api(client, token, wallet_id, refused)).status_code == 400
+    assert pubkey not in [peer["node_id"] for peer in await regtest_wallet.server.list_peers()]
+    assert (await set_allowed_hosts(client, token, [address, f"{IPN_HOST}:{IPN_PORT}"])).status_code == 200
+    resp = await open_channel_via_api(client, token, wallet_id, node_id)
+    assert resp.status_code == 200
+    channel_point = resp.json()
     # make it fully open
     utils.run_shell(["newblocks", "3"])
     await wait_for_channel_opening(regtest_wallet, channel_point)
