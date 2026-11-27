@@ -23,7 +23,7 @@ from api.db import AsyncSession
 from api.ext.moneyformat import round_half_up
 from api.settings import Settings
 from tests.functional import utils
-from tests.helper import create_store, create_wallet
+from tests.helper import create_store, create_wallet, set_allowed_hosts
 
 if TYPE_CHECKING:
     from httpx import AsyncClient as TestClient
@@ -41,6 +41,9 @@ MAIN_URL = f"http://localhost:{MAIN_PORT}"
 del settings
 
 INVOICE_AMOUNT = "0.00018"  # as of 2 Apr 2023, we do this to avoid calling coingecko
+
+IPN_HOST = "0.0.0.0"
+IPN_PORT = 8080
 
 pytestmark = pytest.mark.anyio
 
@@ -175,8 +178,7 @@ def queue() -> MPQueue:
 
 @pytest.fixture
 async def ipn_server(queue: MPQueue, client: TestClient, token: str) -> AsyncIterator[str]:
-    host = "0.0.0.0"
-    port = 8080
+    assert (await set_allowed_hosts(client, token, [f"{IPN_HOST}:{IPN_PORT}"])).status_code == 200
 
     async def handle_post(request: web.Request) -> web.Response:
         data = await request.json()
@@ -189,9 +191,9 @@ async def ipn_server(queue: MPQueue, client: TestClient, token: str) -> AsyncIte
     app.router.add_post("/", handle_post)
     runner = web.AppRunner(app)
     await runner.setup()
-    site = web.TCPSite(runner, host, port)
+    site = web.TCPSite(runner, IPN_HOST, IPN_PORT)
     await site.start()
-    yield f"http://{host}:{port}"
+    yield f"http://{IPN_HOST}:{IPN_PORT}"
     await runner.cleanup()
 
 

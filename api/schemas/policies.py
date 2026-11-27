@@ -1,6 +1,7 @@
 from typing import Any
 
 from fastapi import HTTPException
+from outbound_guard import parse_destination
 from pydantic import ConfigDict, field_validator
 
 from api.constants import BACKUP_FREQUENCIES, BACKUP_PROVIDERS
@@ -38,6 +39,20 @@ class PublicPolicy(Schema):
 class Policy(PublicPolicy):
     captcha_secretkey: str = ""
     email_settings: EmailSettings = EmailSettings()
+    allowed_internal_hosts: list[str] = []
+
+    @field_validator("allowed_internal_hosts")
+    @classmethod
+    def validate_allowed_internal_hosts(cls, v: list[str]) -> list[str]:
+        hosts = list(dict.fromkeys(host.strip() for host in v))
+        for host in hosts:
+            try:
+                parse_destination(host)
+            except ValueError:
+                raise HTTPException(
+                    422, f"Invalid internal host {host!r}. Expected a name or an IP, optionally with a port."
+                ) from None
+        return hosts
 
 
 class PublicPolicyResponse(PublicPolicy):

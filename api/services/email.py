@@ -1,4 +1,6 @@
+import asyncio
 import contextlib
+import socket
 import ssl
 import traceback
 from collections.abc import AsyncGenerator
@@ -13,6 +15,7 @@ from starlette.concurrency import run_in_threadpool
 from api.exceptions import EmailSendError
 from api.logging import get_logger
 from api.schemas.misc import EmailSettings, SMTPAuthMode
+from api.services.outbound import OutboundService
 
 logger = get_logger(__name__)
 
@@ -22,6 +25,9 @@ TLS_CONTEXT = ssl.create_default_context()
 
 
 class EmailService:
+    def __init__(self, outbound: OutboundService) -> None:
+        self.outbound = outbound
+
     @staticmethod
     def is_enabled(settings: EmailSettings) -> bool:
         return bool(settings.host and settings.port and settings.user and settings.password and settings.address)
@@ -64,12 +70,14 @@ class EmailService:
     def _describe(settings: EmailSettings) -> str:
         return f"{settings.user}@{settings.host}:{settings.port} ({settings.auth_mode})"
 
-    @staticmethod
+    async def _connect(self, host: str, port: int) -> socket.socket:
+        return await self.outbound.connect(host, port, SMTP_TIMEOUT)
+
     @contextlib.asynccontextmanager
-    async def _smtp_session(settings: EmailSettings) -> AsyncGenerator[aiosmtplib.SMTP]:
+    async def _smtp_session(self, settings: EmailSettings) -> AsyncGenerator[aiosmtplib.SMTP]:
         client = aiosmtplib.SMTP(
             hostname=settings.host,
-            port=settings.port,
+            port=None,
             username=settings.user,
             password=settings.password,
             use_tls=settings.auth_mode == SMTPAuthMode.SSL_TLS,
@@ -77,10 +85,17 @@ class EmailService:
             tls_context=TLS_CONTEXT,
             timeout=SMTP_TIMEOUT,
         )
+        sock = await self._connect(settings.host, settings.port)
         try:
-            await client.connect()
+            await client.connect(sock=sock)
             yield client
             with contextlib.suppress(Exception):
                 await client.quit()
         finally:
             client.close()
+
+
+class ServerEmailService(EmailService):
+    async def _connect(self, host: str, port: int) -> socket.socket:
+        connection = asyncio.to_thread(socket.create_connection, (host, port), SMTP_TIMEOUT)
+        return await asyncio.wait_for(connection, SMTP_TIMEOUT)

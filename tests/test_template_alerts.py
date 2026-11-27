@@ -32,13 +32,15 @@ async def container(app: FastAPI) -> AsyncIterator[AsyncContainer]:
 async def alerts(container: AsyncContainer, mocker: pytest_mock.MockerFixture) -> TemplateAlertService:
     service = await container.get(TemplateAlertService)
     mocker.patch.object(service.notification_manager, "notify", new=AsyncMock(return_value=NotifyResult()))
-    mocker.patch.object(service.email_service, "send", new=AsyncMock())
-    mocker.patch.object(service.email_service, "is_enabled", return_value=True)
+    for email_service in (service.email_service, service.server_email_service):
+        mocker.patch.object(email_service, "send", new=AsyncMock())
+        mocker.patch.object(email_service, "is_enabled", return_value=True)
     return service
 
 
 def email_recipients(alerts: TemplateAlertService) -> list[str]:
-    return [call.args[1] for call in alerts.email_service.send.call_args_list]  # type: ignore[attr-defined]
+    services = (alerts.email_service, alerts.server_email_service)
+    return [call.args[1] for service in services for call in service.send.call_args_list]  # type: ignore[attr-defined]
 
 
 async def current_user_email(client: TestClient, token: str) -> str:
@@ -138,7 +140,7 @@ async def test_global_alert_emails_enabled_superusers_with_policy_settings(
     assert disabled["email"] not in recipients
     assert regular["email"] not in recipients
     assert not alerts.notification_manager.notify.called  # type: ignore[attr-defined]
-    settings, _, subject, body = alerts.email_service.send.call_args.args  # type: ignore[attr-defined]
+    settings, _, subject, body = alerts.server_email_service.send.call_args.args  # type: ignore[attr-defined]
     assert settings.address == "policy@example.com"
     assert subject == ALERT_SUBJECT
     assert body == "renderer is down"
@@ -148,6 +150,6 @@ async def test_global_alert_keeps_going_after_a_failed_email(
     client: TestClient, token: str, alerts: TemplateAlertService
 ) -> None:
     await create_user(client, token=token)
-    alerts.email_service.send.side_effect = EmailSendError("SMTP is down")  # type: ignore[attr-defined]
+    alerts.server_email_service.send.side_effect = EmailSendError("SMTP is down")  # type: ignore[attr-defined]
     await alerts.send(None, "renderer is down")
     assert len(email_recipients(alerts)) >= 2

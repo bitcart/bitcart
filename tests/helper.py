@@ -6,22 +6,36 @@ from collections.abc import Generator
 from contextlib import contextmanager
 from datetime import timedelta
 from typing import TYPE_CHECKING, Any
+from unittest.mock import AsyncMock
 
 from httpx import AsyncClient
 from httpx_ws.transport import ASGIWebSocketTransport
+from outbound_guard import OutboundGuard, parse_destination
 
 from api import utils
 from api.settings import Settings
 from tests.fixtures import static_data
 
 if TYPE_CHECKING:
+    import pytest_mock
     from fastapi import FastAPI
     from httpx import AsyncClient as TestClient
+    from httpx import Response
 
 
 def make_client(app: FastAPI) -> AsyncClient:
     client_ip = f"test-{utils.common.unique_id()}"
     return AsyncClient(transport=ASGIWebSocketTransport(app=app, client=(client_ip, 123)), base_url="http://testserver")
+
+
+def allow_outbound(mocker: pytest_mock.MockerFixture, *hosts: str) -> None:
+    allowed = frozenset(parse_destination(host) for host in hosts)
+    mocker.patch.object(OutboundGuard, "get_allowed", AsyncMock(return_value=allowed))
+
+
+async def set_allowed_hosts(client: TestClient, token: str, hosts: Any) -> Response:
+    headers = {"Authorization": f"Bearer {token}"}
+    return await client.post("/manage/policies", json={"allowed_internal_hosts": hosts}, headers=headers)
 
 
 async def create_user(client: TestClient, *, token: str | None = None, **custom_attrs: Any) -> dict[str, Any]:

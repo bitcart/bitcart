@@ -30,7 +30,7 @@ from api.services.crud import CRUDService, ModelDictT
 from api.services.crud.repositories import UserRepository
 from api.services.crud.templates import TemplateService
 from api.services.crud.tokens import TokenService
-from api.services.email import EmailService
+from api.services.email import ServerEmailService
 from api.services.plugin_registry import PluginRegistry
 from api.services.settings import SettingService
 from api.settings import Settings
@@ -57,7 +57,7 @@ class UserService(CRUDService[models.User]):
         auth_service: AuthService,
         password_hasher: PasswordHasherProtocol,
         template_service: TemplateService,
-        email_service: EmailService,
+        email_service: ServerEmailService,
         plugin_registry: PluginRegistry,
     ) -> None:
         super().__init__(session, container)
