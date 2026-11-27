@@ -23,17 +23,19 @@ router = APIRouter(route_class=DishkaRoute)
 
 @router.post("", response_model=AuthResponse)
 async def create_token(
+    request: Request,
     token_service: FromDishka[TokenService],
     token_data: HTTPCreateLoginToken | None = None,
     auth_data: tuple[models.User | None, models.Token] | None = Security(
         utils.authorization.AuthDependency(token_required=False, return_token=True)
     ),
 ) -> Any:
-    return await token_service.create_token(auth_data, token_data)
+    return await token_service.create_token(auth_data, token_data, utils.routing.get_client_ip(request))
 
 
 @router.post("/oauth2")
 async def create_oauth2_token(
+    request: Request,
     token_service: FromDishka[TokenService],
     form_data: OAuth2PasswordRequestForm = Depends(),
     auth_data: tuple[models.User | None, models.Token] | None = Security(
@@ -44,7 +46,7 @@ async def create_oauth2_token(
         token_data = HTTPCreateLoginToken(email=form_data.username, password=form_data.password, permissions=form_data.scopes)
     except ValidationError as e:
         raise HTTPException(422, e.errors()) from None
-    return await token_service.create_token(auth_data, token_data)
+    return await token_service.create_token(auth_data, token_data, utils.routing.get_client_ip(request))
 
 
 @router.post("/2fa/totp")

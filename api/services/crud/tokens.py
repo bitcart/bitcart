@@ -10,7 +10,7 @@ from fido2.webauthn import AttestedCredentialData, PublicKeyCredentialRpEntity, 
 from sqlalchemy import ColumnElement, Select, exists, func
 
 from api import models, utils
-from api.constants import FIDO2_LOGIN_KEY, SHORT_EXPIRATION
+from api.constants import FIDO2_LOGIN_KEY, SHORT_EXPIRATION, CaptchaAction
 from api.db import AsyncSession
 from api.redis import Redis
 from api.schemas.auth import FIDO2Auth, TOTPAuth
@@ -52,13 +52,14 @@ class TokenService(CRUDService[models.Token]):
         self,
         auth_data: tuple[models.User | None, models.Token] | None,
         token_data: HTTPCreateLoginToken | None = None,
+        client_ip: str | None = None,
     ) -> dict[str, Any]:
         if token_data is None:  # pragma: no cover
             token_data = HTTPCreateLoginToken()
         user, token = None, None
         if auth_data:
             user, token = auth_data
-        checked_user = await self.validate_credentials(user, token_data)
+        checked_user = await self.validate_credentials(user, token_data, client_ip)
         token_dict = token_data.model_dump()
         strict = token_dict.pop("strict")
         if "server_management" in token_dict["permissions"] and not checked_user.is_superuser:
@@ -104,9 +105,11 @@ class TokenService(CRUDService[models.Token]):
         await self.redis_pool.delete(f"{TFA_REDIS_KEY}:{auth_data.token}")
         return await self.create_token_normal(token_data)
 
-    async def validate_credentials(self, user: models.User | None | bool, token_data: HTTPCreateLoginToken) -> models.User:
+    async def validate_credentials(
+        self, user: models.User | None | bool, token_data: HTTPCreateLoginToken, client_ip: str | None = None
+    ) -> models.User:
         if not user:
-            await self.auth_service.captcha_flow(token_data.captcha_code)
+            await self.auth_service.captcha_flow(token_data.captcha_code, CaptchaAction.LOGIN, client_ip)
             user, status = await self.auth_service.authenticate_user(token_data.email, token_data.password)
             if not user:
                 raise HTTPException(401, {"message": "Unauthorized", "status": status})

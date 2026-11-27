@@ -5,7 +5,7 @@ from dishka.integrations.fastapi import DishkaRoute
 from fastapi import APIRouter, HTTPException, Query, Request, Security
 
 from api import models, utils
-from api.constants import AuthScopes
+from api.constants import AuthScopes, CaptchaAction
 from api.exceptions import EmailSendError
 from api.logging import get_exception_message, get_logger
 from api.schemas.auth import (
@@ -46,9 +46,12 @@ async def set_settings(
 # NOTE: it is a good practice not to return any information whether the user exists in the system
 @router.post("/reset_password")
 async def reset_password(
-    auth_service: FromDishka[AuthService], user_service: FromDishka[UserService], data: ResetPasswordData
+    request: Request,
+    auth_service: FromDishka[AuthService],
+    user_service: FromDishka[UserService],
+    data: ResetPasswordData,
 ) -> Any:
-    await auth_service.captcha_flow(data.captcha_code)
+    await auth_service.captcha_flow(data.captcha_code, CaptchaAction.FORGOT_PASSWORD, utils.routing.get_client_ip(request))
     user = await user_service.get_or_none(None, email=data.email)
     if not user:
         return True
@@ -64,6 +67,7 @@ async def finalize_password_reset(request: Request, user_service: FromDishka[Use
 
 @router.post("/verify")
 async def send_verification_email(
+    request: Request,
     auth_service: FromDishka[AuthService],
     user_service: FromDishka[UserService],
     data: VerifyEmailData,
@@ -72,7 +76,7 @@ async def send_verification_email(
     ),
 ) -> Any:
     if not auth_user:
-        await auth_service.captcha_flow(data.captcha_code)
+        await auth_service.captcha_flow(data.captcha_code, CaptchaAction.VERIFY_EMAIL, utils.routing.get_client_ip(request))
     user = await user_service.get_or_none(None, email=data.email)
     if user and user.is_verified and auth_user:
         raise HTTPException(422, "User is already verified")
@@ -176,10 +180,11 @@ create_crud_router(
 
 @router.post("", response_model=DisplayUserWithToken)
 async def create_user(
+    request: Request,
     data: CreateUser,
     service: FromDishka[UserService],
     auth_user: models.User | None = Security(
         utils.authorization.optional_auth_dependency, scopes=[AuthScopes.SERVER_MANAGEMENT]
     ),
 ) -> Any:
-    return await service.create_with_token(data, auth_user)
+    return await service.create_with_token(data, auth_user, utils.routing.get_client_ip(request))

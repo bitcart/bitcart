@@ -51,6 +51,7 @@ FIDO2_REGISTER_KEY = "fido2_register_cache"
 FIDO2_LOGIN_KEY = "fido2_login_cache"
 VERIFY_CODE_LENGTH = 8  # human-typeable email verification code length
 VERIFY_EMAIL_EXPIRATION = 60 * 15  # 15 minutes
+CAPTCHA_TIMEOUT = 10  # seconds to wait for the captcha provider
 DEFAULT_SENDMAIL_SUBJECT = "Thank you for your order"  # used in api/invoices.py
 HTTPS_REVERSE_PROXIES = ["nginx-https"]
 
@@ -69,6 +70,13 @@ class AuthScopes(enum.StrEnum):
     FILE_MANAGEMENT = "file_management"
     METRICS_MANAGEMENT = "metrics_management"
     FULL_CONTROL = "full_control"
+
+
+class CaptchaAction(enum.StrEnum):
+    LOGIN = "login"
+    REGISTER = "register"
+    FORGOT_PASSWORD = "forgot_password"  # noqa: S105
+    VERIFY_EMAIL = "verify_email"
 
 
 CRUD_MODELS = [

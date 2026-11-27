@@ -3625,9 +3625,9 @@ async def test_login_checks_captcha_before_password(
         json={"captcha_type": CaptchaType.HCAPTCHA, "captcha_secretkey": "secret"},
         headers={"Authorization": f"Bearer {token}"},
     )
-    mocker.patch("api.services.auth.AuthService.verify_captcha", return_value=False)
+    mocker.patch("api.services.auth.AuthService.fetch_captcha_result", return_value={"success": False})
     for email, password in (("missing@example.com", "wrong"), (user["email"], "wrong"), (user["email"], static_data.USER_PWD)):
-        resp = await client.post("/token", json={"email": email, "password": password})
+        resp = await client.post("/token", json={"email": email, "password": password, "captcha_code": "code"})
         assert resp.json()["detail"]["status"] == 403
 
 
