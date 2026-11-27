@@ -37,10 +37,12 @@ class SettingService:
         for handler in EXTERNAL_SCHEMA_PROCESSORS.get(schema_class, []):
             await handler(self, data)
 
+    async def get_stored_setting(self, scheme: type[T], name: str | None = None) -> T:
+        value = await self.setting_repository.get_value(name or scheme.__name__.lower())
+        return scheme() if value is None else scheme(**json.loads(value))
+
     async def get_setting(self, scheme: type[T], name: str | None = None) -> T:
-        name = name or scheme.__name__.lower()
-        value = await self.setting_repository.get_value(name)
-        data = scheme() if value is None else scheme(**json.loads(value))
+        data = await self.get_stored_setting(scheme, name)
         await self._dispatch_async_init(data)
         return data
 

@@ -126,7 +126,7 @@ class ConfiguratorService:
 
     async def check_ssh_access(self, request: Request, ssh_settings: ConfiguratorSSHSettings) -> None:
         if not self.settings.is_testing():
-            client_ip = request.client.host if request.client else "unknown"
+            client_ip = utils.routing.get_client_ip(request) or "unknown"
             await utils.redis.check_rate_limit(
                 self.redis_pool,
                 f"{SSH_RATE_KEY}:{client_ip}",

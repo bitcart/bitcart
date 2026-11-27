@@ -23,6 +23,10 @@ if TYPE_CHECKING:
 ModelT = TypeVar("ModelT", bound=ModelProtocol)
 
 
+def get_client_ip(request: Request) -> str | None:
+    return request.client.host if request.client else None
+
+
 @dataclass
 class SearchPagination:
     limit: int

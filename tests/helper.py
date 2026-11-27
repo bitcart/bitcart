@@ -20,7 +20,8 @@ if TYPE_CHECKING:
 
 
 def make_client(app: FastAPI) -> AsyncClient:
-    return AsyncClient(transport=ASGIWebSocketTransport(app=app), base_url="http://testserver")
+    client_ip = f"test-{utils.common.unique_id()}"
+    return AsyncClient(transport=ASGIWebSocketTransport(app=app, client=(client_ip, 123)), base_url="http://testserver")
 
 
 async def create_user(client: TestClient, *, token: str | None = None, **custom_attrs: Any) -> dict[str, Any]:
