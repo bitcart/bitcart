@@ -120,7 +120,7 @@ async def test_allowed_hosts_policy_applies_immediately(
                 await session.get(url)
             assert not await email_service.check_ping(smtp_settings("localhost", smtp_server.port))
             await set_allowed_hosts(client, token, [f"127.0.0.1:{port}", f"localhost:{smtp_server.port}"])
-            async with session.get(url, headers={"Connection": "close"}) as response:
+            async with session.get(url) as response:
                 assert response.status == 200
             assert await email_service.check_ping(smtp_settings("localhost", smtp_server.port))
             await set_allowed_hosts(client, token, [])
