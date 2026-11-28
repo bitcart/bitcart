@@ -127,9 +127,7 @@ async def test_turnstile_action_must_match(
 
 
 @pytest.mark.parametrize("captcha_type", PROVIDERS)
-@pytest.mark.parametrize(
-    "status,result", [(500, {"success": True}), (403, {"success": False}), (200, []), (200, {}), (200, "x")]
-)
+@pytest.mark.parametrize("status,result", [(500, {"success": True}), (400, "x"), (200, []), (200, {}), (200, "x")])
 async def test_provider_failure(
     captcha_type: str,
     status: int,

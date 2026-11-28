@@ -144,7 +144,8 @@ class AuthService:
                 return_json=False,
                 timeout=ClientTimeout(total=CAPTCHA_TIMEOUT),
             )
-            response.raise_for_status()
+            if response.status >= 500:
+                response.raise_for_status()
             result = json.loads(body)
             if not isinstance(result, dict) or not isinstance(result.get("success"), bool):
                 raise ValueError("unexpected response")
