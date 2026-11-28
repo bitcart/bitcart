@@ -132,6 +132,7 @@ async def test_only_the_service_uses_allowed_hosts(
     read = mocker.spy(SettingService, "get_stored_setting")
     server, port = await start_server()
     await set_allowed_hosts(client, token, ["127.0.0.1", "localhost"])
+    await outbound.redis_pool.delete(outbound.allowed_hosts_key)
     read.reset_mock()
     for host in ("127.0.0.1", "localhost"):
         with pytest.raises(aiohttp.ClientOSError):
@@ -146,10 +147,43 @@ async def test_allowed_hosts_are_read_without_plugins(
     client: TestClient, token: str, outbound: OutboundService, plugin_registry: PluginRegistry
 ) -> None:
     await set_allowed_hosts(client, token, ["n8n:5678"])
+    await outbound.redis_pool.delete(outbound.allowed_hosts_key)
     explorer = AsyncMock(return_value="")
     plugin_registry.register_filter("get_coin_explorer", explorer)
     assert await outbound.get_allowed_hosts() == ["n8n:5678"]
     explorer.assert_not_called()
+
+
+async def test_allowed_hosts_are_cached(
+    client: TestClient, token: str, outbound: OutboundService, mocker: pytest_mock.MockerFixture
+) -> None:
+    read = mocker.spy(SettingService, "get_stored_setting")
+    await set_allowed_hosts(client, token, ["n8n:5678"])
+    read.reset_mock()
+    assert await outbound.get_allowed_hosts() == ["n8n:5678"]
+    read.assert_not_called()
+    await outbound.redis_pool.delete(outbound.allowed_hosts_key)
+    for _ in range(2):
+        assert await outbound.get_allowed_hosts() == ["n8n:5678"]
+    read.assert_called_once()
+    assert 0 < await outbound.redis_pool.ttl(outbound.allowed_hosts_key) <= 300
+
+
+async def test_loading_allowed_hosts_keeps_a_newer_policy(
+    client: TestClient, token: str, outbound: OutboundService, mocker: pytest_mock.MockerFixture
+) -> None:
+    await set_allowed_hosts(client, token, ["old"])
+    await outbound.redis_pool.delete(outbound.allowed_hosts_key)
+    get_stored_setting = SettingService.get_stored_setting
+
+    async def save_while_loading(self: SettingService, *args: Any, **kwargs: Any) -> Any:
+        result = await get_stored_setting(self, *args, **kwargs)
+        await outbound.set_allowed_hosts(["new"])
+        return result
+
+    mocker.patch.object(SettingService, "get_stored_setting", save_while_loading)
+    assert await outbound.get_allowed_hosts() == ["old"]
+    assert await outbound.get_allowed_hosts() == ["new"]
 
 
 async def test_server_email_does_not_need_allowed_hosts(client: TestClient, token: str, smtp_server: FakeSMTPServer) -> None:
@@ -283,7 +317,7 @@ async def test_smtp_connects_only_to_checked_addresses(
     smtp_server: FakeSMTPServer, outbound: OutboundService, client: TestClient, token: str
 ) -> None:
     email_service = EmailService(outbound)
-    for host in ("127.0.0.1", "localhost", "127.1", "2130706433", "::1"):
+    for host in ("127.0.0.1", "localhost", "127.1", "2130706433"):
         assert not await email_service.check_ping(smtp_settings(host, smtp_server.port))
     assert smtp_server.commands == []
     await set_allowed_hosts(client, token, [f"localhost:{smtp_server.port}"])

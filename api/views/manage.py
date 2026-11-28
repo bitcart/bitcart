@@ -20,6 +20,7 @@ from api.services.coins import CoinService
 from api.services.exchange_rate import ExchangeRateService
 from api.services.host_agent import HostAgentService
 from api.services.management import ManagementService
+from api.services.outbound import OutboundService
 from api.services.plugin_registry import PluginRegistry
 from api.services.settings import SettingService
 from api.settings import Settings
@@ -44,10 +45,13 @@ async def get_policies(
 @router.post("/policies", response_model=Policy)
 async def set_policies(
     setting_service: FromDishka[SettingService],
+    outbound: FromDishka[OutboundService],
     settings: Policy,
     user: models.User = Security(utils.authorization.auth_dependency, scopes=[AuthScopes.SERVER_MANAGEMENT]),
 ) -> Any:
-    return await setting_service.set_setting(settings)
+    policy = await setting_service.set_setting(settings)
+    await outbound.set_allowed_hosts(policy.allowed_internal_hosts)
+    return policy
 
 
 @router.get("/stores", response_model=GlobalStorePolicy)
