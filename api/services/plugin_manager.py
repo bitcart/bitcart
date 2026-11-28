@@ -22,6 +22,7 @@ from api.logging import get_exception_summary, get_logger
 from api.plugins import is_bitcart_compatible
 from api.redis import Redis
 from api.schemas.policies import PluginsState
+from api.services.outbound import OutboundService
 from api.services.plugin_registry import PluginRegistry
 from api.services.settings import SettingService
 from api.settings import Settings
@@ -29,16 +30,20 @@ from api.settings import Settings
 logger = get_logger(__name__)
 
 MARKETPLACE_TIMEOUT = 120
+MAX_PLUGIN_SIZE = 256 * 1024 * 1024
 LICENSE_REFRESH_TIMEOUT = 5
 LICENSE_REFRESH_INTERVAL = 60
 STALE_LICENSE_AGE = timedelta(minutes=2)
 
 
 class PluginManager:
-    def __init__(self, settings: Settings, plugin_registry: PluginRegistry, container: AsyncContainer) -> None:
+    def __init__(
+        self, settings: Settings, plugin_registry: PluginRegistry, container: AsyncContainer, outbound: OutboundService
+    ) -> None:
         self.settings = settings
         self.plugin_registry = plugin_registry
         self.container = container
+        self.outbound = outbound
         self.plugins_schema: dict[str, Any] = {}
 
     async def fetch_schema(self) -> None:
@@ -217,7 +222,9 @@ class PluginManager:
         }
         license_keys = ",".join(info["license_key"] for info in licenses.values())
         results: dict[str, str] = {}
-        async with ClientSession(timeout=ClientTimeout(total=MARKETPLACE_TIMEOUT)) as session:
+        async with self.outbound.session(
+            timeout=ClientTimeout(total=MARKETPLACE_TIMEOUT), max_response_size=MAX_PLUGIN_SIZE
+        ) as session:
             try:
                 async with session.get(
                     f"{self.settings.LICENSE_SERVER_URL}/plugins",
@@ -330,17 +337,16 @@ class PluginManager:
         return {**(fresh or {**info, "active": False}), "refreshed_at": utils.time.now().isoformat()}
 
     async def fetch_license_info(self, license_key: str) -> dict[str, Any] | None:
-        response, body = await utils.common.send_request(
-            "GET",
-            f"{self.settings.LICENSE_SERVER_URL}/licenses/info",
-            headers={"X-License-Key": license_key},
-            timeout=ClientTimeout(total=LICENSE_REFRESH_TIMEOUT),
-            return_json=False,
-        )
-        if response.status == 403:
-            return None
-        response.raise_for_status()
-        return json.loads(body)
+        async with (
+            self.outbound.session(timeout=ClientTimeout(total=LICENSE_REFRESH_TIMEOUT)) as session,
+            session.get(
+                f"{self.settings.LICENSE_SERVER_URL}/licenses/info", headers={"X-License-Key": license_key}
+            ) as response,
+        ):
+            if response.status == 403:
+                return None
+            response.raise_for_status()
+            return json.loads(await response.text())
 
     @staticmethod
     def is_license_stale(info: dict[str, Any], now: datetime) -> bool:

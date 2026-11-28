@@ -147,6 +147,7 @@ class User(RecordModel):
     tfa_enabled: Mapped[bool] = mapped_column(Boolean(), default=False)
     recovery_codes: Mapped[list[str]] = mapped_column(MutableList.as_mutable(ARRAY(Text)), default=list)
     fido2_devices: Mapped[list[dict[str, Any]]] = mapped_column(MutableList.as_mutable(ARRAY(JSONB())), default=list)
+    allowed_internal_hosts: Mapped[list[str]] = mapped_column(MutableList.as_mutable(ARRAY(Text)), default=list)
     settings: Mapped[UserPreferences] = mapped_column(
         "settings",
         MutableModel(UserPreferences),

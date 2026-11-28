@@ -6,6 +6,7 @@ from fastapi import APIRouter, File, Query, Security, UploadFile
 
 from api import constants, models, utils
 from api.constants import AuthScopes
+from api.db import AsyncSession
 from api.schemas.misc import HostAgentJobStatus, HostAgentOverview, RateSourceInfo
 from api.schemas.policies import (
     BackupsPolicy,
@@ -20,6 +21,7 @@ from api.services.coins import CoinService
 from api.services.exchange_rate import ExchangeRateService
 from api.services.host_agent import HostAgentService
 from api.services.management import ManagementService
+from api.services.outbound import OutboundService
 from api.services.plugin_registry import PluginRegistry
 from api.services.settings import SettingService
 from api.settings import Settings
@@ -44,10 +46,15 @@ async def get_policies(
 @router.post("/policies", response_model=Policy)
 async def set_policies(
     setting_service: FromDishka[SettingService],
+    outbound: FromDishka[OutboundService],
+    session: FromDishka[AsyncSession],
     settings: Policy,
     user: models.User = Security(utils.authorization.auth_dependency, scopes=[AuthScopes.SERVER_MANAGEMENT]),
 ) -> Any:
-    return await setting_service.set_setting(settings)
+    policy = await setting_service.set_setting(settings)
+    await session.commit()
+    await outbound.forget_allowed_hosts()
+    return policy
 
 
 @router.get("/stores", response_model=GlobalStorePolicy)

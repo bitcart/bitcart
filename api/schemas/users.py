@@ -3,6 +3,7 @@ from typing import Any
 from pydantic import EmailStr
 
 from api.schemas.base import MetadataInput, MetadataOutput, Schema, TimestampedSchema
+from api.schemas.misc import InternalHosts
 
 
 class UserPreferences(Schema):
@@ -25,6 +26,7 @@ class UpdateUser(BaseUser):
     password: str
     is_verified: bool
     is_enabled: bool
+    allowed_internal_hosts: InternalHosts = []
 
 
 User = UpdateUser
@@ -47,6 +49,10 @@ class InfoUser(MetadataOutput, BaseUser):
 
 class DisplayUser(InfoUser, TimestampedSchema):
     pass
+
+
+class ManagedUser(DisplayUser):
+    allowed_internal_hosts: list[str]
 
 
 class DisplayUserWithToken(DisplayUser):

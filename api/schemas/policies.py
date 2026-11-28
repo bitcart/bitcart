@@ -5,7 +5,7 @@ from pydantic import ConfigDict, field_validator
 
 from api.constants import BACKUP_FREQUENCIES, BACKUP_PROVIDERS
 from api.schemas.base import Schema
-from api.schemas.misc import CaptchaType, EmailSettings
+from api.schemas.misc import CaptchaType, EmailSettings, InternalHosts
 
 
 class PublicPolicy(Schema):
@@ -38,6 +38,7 @@ class PublicPolicy(Schema):
 class Policy(PublicPolicy):
     captcha_secretkey: str = ""
     email_settings: EmailSettings = EmailSettings()
+    allowed_internal_hosts: InternalHosts = []
 
 
 class PublicPolicyResponse(PublicPolicy):

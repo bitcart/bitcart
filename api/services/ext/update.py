@@ -3,7 +3,6 @@ import os
 import re
 from typing import Any, cast
 
-from aiohttp import ClientSession
 from bitcart import COINS  # type: ignore[attr-defined]
 from dishka import AsyncContainer, Scope
 from sqlalchemy import func, select
@@ -18,6 +17,7 @@ from api.services.coins import CoinService
 from api.services.crud.repositories.invoices import InvoiceRepository
 from api.services.crud.repositories.users import UserRepository
 from api.services.ext.tor import TorService
+from api.services.outbound import OutboundService
 from api.services.plugin_manager import PluginManager
 from api.services.plugin_registry import PluginRegistry
 from api.services.settings import SettingService
@@ -53,6 +53,7 @@ class UpdateCheckService:
         container: AsyncContainer,
         plugin_manager: PluginManager,
         plugin_registry: PluginRegistry,
+        outbound: OutboundService,
     ) -> None:
         self.coin_service = coin_service
         self.container = container
@@ -61,6 +62,7 @@ class UpdateCheckService:
         self.settings = settings
         self.plugin_manager = plugin_manager
         self.plugin_registry = plugin_registry
+        self.outbound = outbound
 
     async def collect_stats(
         self,
@@ -135,7 +137,7 @@ class UpdateCheckService:
 
     async def get_update_data(self) -> str | None:
         update_url = cast(str, self.settings.UPDATE_URL)
-        async with ClientSession() as session:
+        async with self.outbound.session() as session:
             if update_url.startswith("https://api.github.com/"):
                 async with session.get(update_url) as resp:
                     data = await resp.json()

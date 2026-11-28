@@ -78,7 +78,7 @@ class ManagementService:
 
     async def test_server_email(self) -> bool:
         policy = await self.setting_service.get_setting(Policy)
-        return await self.email_service.check_ping(policy.email_settings)
+        return await self.email_service.for_server(policy).check_ping()
 
     async def get_log_contents(self, log: str) -> str:
         if not self.settings.log_file:

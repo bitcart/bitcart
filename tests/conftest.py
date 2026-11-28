@@ -28,6 +28,7 @@ from api.models import Model
 from api.plugins import PluginObjects
 from api.services.coins import CoinService
 from api.services.exchange_rate import ExchangeRateService
+from api.services.outbound import OutboundService
 from api.services.plugin_registry import PluginRegistry
 from api.settings import Settings
 from tests.helper import make_client
@@ -112,6 +113,13 @@ class TestingProvider(Provider):
     # async def get_redis(self) -> AsyncIterator[Redis]:
     #     async with FakeAsyncRedis(decode_responses=True) as redis:
     #         yield redis
+
+    @decorate
+    async def get_outbound_service(self, service: OutboundService, worker_id: WorkerId) -> OutboundService:
+        if worker_id != "master":
+            service.allowed_hosts.key = f"{service.allowed_hosts.key}:{worker_id}"
+        await service.allowed_hosts.redis.delete(service.allowed_hosts.key)
+        return service
 
     @decorate
     async def get_exchange_rate_service(

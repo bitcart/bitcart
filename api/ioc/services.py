@@ -29,6 +29,7 @@ from api.services.ipn_sender import IPNSender
 from api.services.management import ManagementService
 from api.services.metrics_service import MetricsService
 from api.services.notification_manager import NotificationManager
+from api.services.outbound import OutboundService
 from api.services.payment_processor import PaymentProcessor
 from api.services.payout_manager import PayoutManager
 from api.services.plugin_manager import PluginManager
@@ -87,6 +88,7 @@ class ServicesProvider(Provider):
         ServerManager,
         HostAgentService,
         EmailService,
+        OutboundService,
         RendererClient,
         scope=Scope.APP,  # for tests isolation
     )

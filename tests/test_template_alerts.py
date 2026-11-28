@@ -12,6 +12,7 @@ from fastapi import FastAPI
 from api.exceptions import EmailSendError
 from api.schemas.misc import EmailSettings
 from api.schemas.policies import Policy
+from api.services.email import EmailService, Mailer, connect_directly
 from api.services.notification_manager import NotifyResult
 from api.services.template_alerts import ALERT_SUBJECT, TemplateAlertService
 from tests.helper import create_store, create_token, create_user
@@ -32,13 +33,17 @@ async def container(app: FastAPI) -> AsyncIterator[AsyncContainer]:
 async def alerts(container: AsyncContainer, mocker: pytest_mock.MockerFixture) -> TemplateAlertService:
     service = await container.get(TemplateAlertService)
     mocker.patch.object(service.notification_manager, "notify", new=AsyncMock(return_value=NotifyResult()))
-    mocker.patch.object(service.email_service, "send", new=AsyncMock())
-    mocker.patch.object(service.email_service, "is_enabled", return_value=True)
+    mocker.patch.object(Mailer, "send", autospec=True)
+    mocker.patch.object(EmailService, "is_enabled", return_value=True)
     return service
 
 
-def email_recipients(alerts: TemplateAlertService) -> list[str]:
-    return [call.args[1] for call in alerts.email_service.send.call_args_list]  # type: ignore[attr-defined]
+def sent_emails() -> list[tuple[Mailer, str, str, str]]:
+    return [call.args for call in Mailer.send.call_args_list]  # type: ignore[attr-defined]
+
+
+def email_recipients() -> list[str]:
+    return [recipient for _, recipient, _, _ in sent_emails()]
 
 
 async def current_user_email(client: TestClient, token: str) -> str:
@@ -59,8 +64,9 @@ async def test_store_alert_emails_the_owner_without_providers(
     notified_store, notified_text = alerts.notification_manager.notify.call_args.args  # type: ignore[attr-defined]
     assert notified_store.id == store["id"]
     assert notified_text == "broken"
-    settings, recipient, subject, body = alerts.email_service.send.call_args.args  # type: ignore[attr-defined]
-    assert settings.address == "store@example.com"
+    [(mailer, recipient, subject, body)] = sent_emails()
+    assert mailer.settings.address == "store@example.com"
+    assert mailer.connect is not connect_directly
     assert recipient == await current_user_email(client, token)
     assert subject == ALERT_SUBJECT
     assert body == "broken"
@@ -72,7 +78,7 @@ async def test_store_alert_skips_email_when_a_provider_delivered(
     store = await create_store(client, token)
     alerts.notification_manager.notify.return_value = NotifyResult(sent=1, failed=1)  # type: ignore[attr-defined]
     await alerts.send(store["id"], "broken")
-    assert email_recipients(alerts) == []
+    assert email_recipients() == []
 
 
 async def test_store_alert_emails_when_every_provider_failed(
@@ -81,24 +87,24 @@ async def test_store_alert_emails_when_every_provider_failed(
     store = await create_store(client, token)
     alerts.notification_manager.notify.return_value = NotifyResult(failed=2)  # type: ignore[attr-defined]
     await alerts.send(store["id"], "broken")
-    assert email_recipients(alerts) == [await current_user_email(client, token)]
+    assert email_recipients() == [await current_user_email(client, token)]
 
 
 async def test_store_alert_emails_when_notifying_raises(client: TestClient, token: str, alerts: TemplateAlertService) -> None:
     store = await create_store(client, token)
     alerts.notification_manager.notify.side_effect = RuntimeError("provider is down")  # type: ignore[attr-defined]
     await alerts.send(store["id"], "broken")
-    assert email_recipients(alerts) == [await current_user_email(client, token)]
+    assert email_recipients() == [await current_user_email(client, token)]
 
 
 async def test_store_alert_skips_email_when_not_configured(
     client: TestClient, token: str, alerts: TemplateAlertService, mocker: pytest_mock.MockerFixture
 ) -> None:
     store = await create_store(client, token)
-    mocker.patch.object(alerts.email_service, "is_enabled", return_value=False)
+    mocker.patch.object(EmailService, "is_enabled", return_value=False)
     await alerts.send(store["id"], "broken")
     assert alerts.notification_manager.notify.called  # type: ignore[attr-defined]
-    assert email_recipients(alerts) == []
+    assert email_recipients() == []
 
 
 async def test_store_alert_without_an_owner_only_notifies_providers(
@@ -111,13 +117,13 @@ async def test_store_alert_without_an_owner_only_notifies_providers(
     assert resp.status_code == 200
     await alerts.send(store["id"], "broken")
     assert alerts.notification_manager.notify.called  # type: ignore[attr-defined]
-    assert email_recipients(alerts) == []
+    assert email_recipients() == []
 
 
 async def test_alert_for_a_deleted_store_does_nothing(alerts: TemplateAlertService) -> None:
     await alerts.send("missing", "broken")
     assert not alerts.notification_manager.notify.called  # type: ignore[attr-defined]
-    assert email_recipients(alerts) == []
+    assert email_recipients() == []
 
 
 async def test_global_alert_emails_enabled_superusers_with_policy_settings(
@@ -133,13 +139,14 @@ async def test_global_alert_emails_enabled_superusers_with_policy_settings(
     )
     assert resp.status_code == 200
     await alerts.send(None, "renderer is down")
-    recipients = email_recipients(alerts)
+    recipients = email_recipients()
     assert enabled["email"] in recipients
     assert disabled["email"] not in recipients
     assert regular["email"] not in recipients
     assert not alerts.notification_manager.notify.called  # type: ignore[attr-defined]
-    settings, _, subject, body = alerts.email_service.send.call_args.args  # type: ignore[attr-defined]
-    assert settings.address == "policy@example.com"
+    mailer, _, subject, body = sent_emails()[-1]
+    assert mailer.settings.address == "policy@example.com"
+    assert mailer.connect is connect_directly
     assert subject == ALERT_SUBJECT
     assert body == "renderer is down"
 
@@ -148,6 +155,6 @@ async def test_global_alert_keeps_going_after_a_failed_email(
     client: TestClient, token: str, alerts: TemplateAlertService
 ) -> None:
     await create_user(client, token=token)
-    alerts.email_service.send.side_effect = EmailSendError("SMTP is down")  # type: ignore[attr-defined]
+    Mailer.send.side_effect = EmailSendError("SMTP is down")  # type: ignore[attr-defined]
     await alerts.send(None, "renderer is down")
-    assert len(email_recipients(alerts)) >= 2
+    assert len(email_recipients()) >= 2

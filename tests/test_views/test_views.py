@@ -704,6 +704,7 @@ async def test_policies(client: TestClient, token: str) -> None:
         },
         "rpc_urls": {},
         "email_settings": EmailSettings().model_dump(),
+        "allowed_internal_hosts": [],
         "health_check_store_id": "",
         "allow_eth_plugin_info": True,
         "log_retention_days": 90,
@@ -766,6 +767,7 @@ async def test_policies(client: TestClient, token: str) -> None:
         },
         "rpc_urls": {},
         "email_settings": EmailSettings().model_dump(),
+        "allowed_internal_hosts": [],
         "health_check_store_id": "",
         "allow_eth_plugin_info": True,
         "log_retention_days": 90,
@@ -2982,7 +2984,7 @@ async def test_password_reset(client: TestClient, user: dict[str, Any], token: s
         auth_code = code
 
     mocker.patch("api.services.email.EmailService.is_enabled", return_value=True)
-    mocker.patch("api.services.email.EmailService.send")
+    mocker.patch("api.services.email.Mailer.send")
     mocker.patch("api.utils.routing.get_redirect_url", side_effect=func)
     assert (
         await client.post(
@@ -3102,7 +3104,7 @@ async def test_verify_email(client: TestClient, user: dict[str, Any], token: str
         auth_code = code
 
     mocker.patch("api.services.email.EmailService.is_enabled", return_value=True)
-    mocker.patch("api.services.email.EmailService.send")
+    mocker.patch("api.services.email.Mailer.send")
     mocker.patch("api.utils.routing.get_redirect_url", side_effect=func)
     assert (
         await client.post("/users/verify", json={"email": "notexisting@bitcart.test", "next_url": "https://example.com"})
@@ -3257,7 +3259,7 @@ async def test_refund_functionality(client: TestClient, token: str, mocker: pyte
         return RenderResult("refund")
 
     mocker.patch("api.services.email.EmailService.is_enabled", return_value=True)
-    mocker.patch("api.services.email.EmailService.send")
+    mocker.patch("api.services.email.Mailer.send")
     mocker.patch("api.services.crud.templates.TemplateService.render_customer_refund", side_effect=func)
     resp = await client.post(
         f"/invoices/{invoice_id}/refunds",
@@ -3559,7 +3561,7 @@ async def test_verify_email_add_token(
 ) -> None:
     auth_codes: list[str] = []
     mocker.patch("api.services.email.EmailService.is_enabled", return_value=True)
-    mocker.patch("api.services.email.EmailService.send")
+    mocker.patch("api.services.email.Mailer.send")
     mocker.patch("api.utils.routing.get_redirect_url", side_effect=lambda url, code: auth_codes.append(code))
 
     async def verify() -> str | None:
@@ -3712,7 +3714,7 @@ async def test_refund_succeeds_when_buyer_email_fails(
         DummyInstance(), None, invoice["payments"][0]["lookup_field"], "complete", None
     )
     mocker.patch("api.services.email.EmailService.is_enabled", return_value=True)
-    send = mocker.patch("api.services.email.EmailService.send", side_effect=EmailSendError("SMTP is down"))
+    send = mocker.patch("api.services.email.Mailer.send", side_effect=EmailSendError("SMTP is down"))
     resp = await client.post(
         f"/invoices/{invoice['id']}/refunds",
         json={"amount": 1, "currency": "USD", "send_email": True},
@@ -3730,7 +3732,7 @@ async def test_invoice_completes_when_buyer_email_fails(
     product = await create_product(client, token, store_id=store["id"])
     invoice = await create_invoice(client, token, store_id=store["id"], products=[product["id"]], buyer_email="b@test.com")
     mocker.patch("api.services.email.EmailService.is_enabled", return_value=True)
-    send = mocker.patch("api.services.email.EmailService.send", side_effect=EmailSendError("SMTP is down"))
+    send = mocker.patch("api.services.email.Mailer.send", side_effect=EmailSendError("SMTP is down"))
     await payment_processor.new_payment_handler(
         DummyInstance(), None, invoice["payments"][0]["lookup_field"], "complete", None
     )
@@ -3767,7 +3769,7 @@ async def test_email_flows_hide_email_failure(
     client: TestClient, user: dict[str, Any], mocker: pytest_mock.MockerFixture, path: str
 ) -> None:
     mocker.patch("api.services.email.EmailService.is_enabled", return_value=True)
-    mocker.patch("api.services.email.EmailService.send", side_effect=EmailSendError("SMTP is down"))
+    mocker.patch("api.services.email.Mailer.send", side_effect=EmailSendError("SMTP is down"))
     for email in (user["email"], "missing@bitcart.test"):
         resp = await client.post(path, json={"email": email, "next_url": "https://example.com"})
         assert resp.status_code == 200

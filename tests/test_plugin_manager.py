@@ -10,6 +10,7 @@ from collections.abc import AsyncIterator, Awaitable, Callable
 from typing import Any
 
 import pytest
+import pytest_mock
 from aiohttp import web
 from aiohttp.test_utils import TestServer
 from dishka import Scope
@@ -20,10 +21,12 @@ from api.constants import VERSION
 from api.db import AsyncEngine
 from api.redis import Redis
 from api.schemas.policies import PluginsState
+from api.services.outbound import OutboundService
 from api.services.plugin_manager import PluginManager
 from api.services.plugin_registry import PluginRegistry
 from api.services.settings import SettingService
 from api.settings import Settings
+from tests.helper import allow_outbound
 
 pytestmark = pytest.mark.anyio
 
@@ -117,11 +120,12 @@ def plugin_settings(settings: Settings, tmp_path: pathlib.Path) -> Settings:
 @pytest.fixture
 async def plugin_manager(app: FastAPI, plugin_settings: Settings) -> PluginManager:
     container = app.state.dishka_container
-    return PluginManager(plugin_settings, await container.get(PluginRegistry), container)
+    return PluginManager(plugin_settings, await container.get(PluginRegistry), container, await container.get(OutboundService))
 
 
 @pytest.fixture
-async def marketplace(plugin_manager: PluginManager) -> AsyncIterator[FakeMarketplace]:
+async def marketplace(plugin_manager: PluginManager, mocker: pytest_mock.MockerFixture) -> AsyncIterator[FakeMarketplace]:
+    allow_outbound(mocker, "127.0.0.1")
     fake = FakeMarketplace()
     web_app = web.Application()
     web_app.router.add_get("/plugins", fake.list_plugins)

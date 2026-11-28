@@ -11,9 +11,11 @@ from types import TracebackType
 from typing import Annotated, Any, Literal, cast, overload
 
 from advanced_alchemy.base import ModelProtocol
-from aiohttp import ClientResponse, ClientSession
+from aiohttp import ClientResponse
 from dishka import AsyncContainer, Scope
 from fastapi import HTTPException
+from outbound_guard import OutboundGuard
+from outbound_guard.aiohttp import session as guarded_session
 from pydantic import Field, create_model
 from sqlalchemy import ColumnElement
 from sqlalchemy.orm import InstrumentedAttribute
@@ -101,7 +103,7 @@ async def send_request(
     method: str, url: str, *args: Any, return_json: bool, **kwargs: Any
 ) -> Any | tuple[ClientResponse, str]: ...
 async def send_request(method: str, url: str, *args: Any, return_json: bool = True, **kwargs: Any) -> Any:
-    async with ClientSession() as session, session.request(method, url, *args, **kwargs) as resp:
+    async with guarded_session(OutboundGuard()) as session, session.request(method, url, *args, **kwargs) as resp:
         if return_json:
             return await resp.json()
         return resp, await resp.text()
