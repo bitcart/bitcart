@@ -6,6 +6,7 @@ from fastapi import APIRouter, File, Query, Security, UploadFile
 
 from api import constants, models, utils
 from api.constants import AuthScopes
+from api.db import AsyncSession
 from api.schemas.misc import HostAgentJobStatus, HostAgentOverview, RateSourceInfo
 from api.schemas.policies import (
     BackupsPolicy,
@@ -46,11 +47,13 @@ async def get_policies(
 async def set_policies(
     setting_service: FromDishka[SettingService],
     outbound: FromDishka[OutboundService],
+    session: FromDishka[AsyncSession],
     settings: Policy,
     user: models.User = Security(utils.authorization.auth_dependency, scopes=[AuthScopes.SERVER_MANAGEMENT]),
 ) -> Any:
     policy = await setting_service.set_setting(settings)
-    await outbound.set_allowed_hosts(policy.allowed_internal_hosts)
+    await session.commit()
+    await outbound.forget_allowed_hosts()
     return policy
 
 

@@ -117,8 +117,8 @@ class TestingProvider(Provider):
     @decorate
     async def get_outbound_service(self, service: OutboundService, worker_id: WorkerId) -> OutboundService:
         if worker_id != "master":
-            service.allowed_hosts_key = f"{service.allowed_hosts_key}:{worker_id}"
-        await service.redis_pool.delete(service.allowed_hosts_key)
+            service.allowed_hosts.key = f"{service.allowed_hosts.key}:{worker_id}"
+        await service.allowed_hosts.redis.delete(service.allowed_hosts.key)
         return service
 
     @decorate

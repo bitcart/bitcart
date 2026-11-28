@@ -19,6 +19,7 @@ from aiohttp.test_utils import TestServer
 from outbound_guard import OutboundDenied
 
 from api import utils
+from api.db import AsyncSession
 from api.ext.ssh import create_ssh_client
 from api.schemas.configurator import ConfiguratorSSHSettings
 from api.schemas.misc import EmailSettings
@@ -132,7 +133,7 @@ async def test_only_the_service_uses_allowed_hosts(
     read = mocker.spy(SettingService, "get_stored_setting")
     server, port = await start_server()
     await set_allowed_hosts(client, token, ["127.0.0.1", "localhost"])
-    await outbound.redis_pool.delete(outbound.allowed_hosts_key)
+    await outbound.forget_allowed_hosts()
     read.reset_mock()
     for host in ("127.0.0.1", "localhost"):
         with pytest.raises(aiohttp.ClientOSError):
@@ -147,7 +148,7 @@ async def test_allowed_hosts_are_read_without_plugins(
     client: TestClient, token: str, outbound: OutboundService, plugin_registry: PluginRegistry
 ) -> None:
     await set_allowed_hosts(client, token, ["n8n:5678"])
-    await outbound.redis_pool.delete(outbound.allowed_hosts_key)
+    await outbound.forget_allowed_hosts()
     explorer = AsyncMock(return_value="")
     plugin_registry.register_filter("get_coin_explorer", explorer)
     assert await outbound.get_allowed_hosts() == ["n8n:5678"]
@@ -160,30 +161,40 @@ async def test_allowed_hosts_are_cached(
     read = mocker.spy(SettingService, "get_stored_setting")
     await set_allowed_hosts(client, token, ["n8n:5678"])
     read.reset_mock()
-    assert await outbound.get_allowed_hosts() == ["n8n:5678"]
-    read.assert_not_called()
-    await outbound.redis_pool.delete(outbound.allowed_hosts_key)
     for _ in range(2):
         assert await outbound.get_allowed_hosts() == ["n8n:5678"]
     read.assert_called_once()
-    assert 0 < await outbound.redis_pool.ttl(outbound.allowed_hosts_key) <= 300
+    assert 0 < await outbound.allowed_hosts.redis.ttl(outbound.allowed_hosts.key) <= 60
 
 
-async def test_loading_allowed_hosts_keeps_a_newer_policy(
+async def test_policy_saved_while_loading_is_not_cached_stale(
     client: TestClient, token: str, outbound: OutboundService, mocker: pytest_mock.MockerFixture
 ) -> None:
     await set_allowed_hosts(client, token, ["old"])
-    await outbound.redis_pool.delete(outbound.allowed_hosts_key)
-    get_stored_setting = SettingService.get_stored_setting
+    load_allowed_hosts = outbound.load_allowed_hosts
 
-    async def save_while_loading(self: SettingService, *args: Any, **kwargs: Any) -> Any:
-        result = await get_stored_setting(self, *args, **kwargs)
-        await outbound.set_allowed_hosts(["new"])
-        return result
+    async def save_while_loading() -> list[str]:
+        hosts = await load_allowed_hosts()
+        await set_allowed_hosts(client, token, ["new"])
+        return hosts
 
-    mocker.patch.object(SettingService, "get_stored_setting", save_while_loading)
+    mocker.patch.object(outbound, "load_allowed_hosts", save_while_loading)
     assert await outbound.get_allowed_hosts() == ["old"]
+    mocker.stopall()
     assert await outbound.get_allowed_hosts() == ["new"]
+
+
+async def test_failed_policy_save_keeps_the_allowed_hosts(
+    client: TestClient, token: str, outbound: OutboundService, mocker: pytest_mock.MockerFixture
+) -> None:
+    await set_allowed_hosts(client, token, ["kept"])
+    assert await outbound.get_allowed_hosts() == ["kept"]
+    mocker.patch.object(AsyncSession, "commit", side_effect=OSError("database is down"))
+    with pytest.raises(OSError, match="database is down"):
+        await set_allowed_hosts(client, token, ["n8n"])
+    mocker.stopall()
+    assert await outbound.get_allowed_hosts() == ["kept"]
+    assert (await get_policies(client, token))["allowed_internal_hosts"] == ["kept"]
 
 
 async def test_server_email_does_not_need_allowed_hosts(client: TestClient, token: str, smtp_server: FakeSMTPServer) -> None:
