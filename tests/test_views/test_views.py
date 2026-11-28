@@ -19,7 +19,7 @@ import pytest_mock
 from bitcart import BTC, LTC  # type: ignore
 from bitcart.errors import BaseError as BitcartBaseError
 from dishka import Scope
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from httpx import Request as HttpRequest
 from httpx_ws import AsyncWebSocketSession, WebSocketDisconnect, aconnect_ws
 from redis.observability.attributes import DB_CLIENT_CONNECTION_STATE, ConnectionState
@@ -44,7 +44,7 @@ from api.plugins import CoinServer
 from api.redis import Redis
 from api.schemas.misc import CaptchaType, EmailSettings
 from api.schemas.stores import StoreCheckoutSettings, StoreThemeSettings
-from api.schemas.users import UserPreferences
+from api.schemas.users import CreateUser, UserPreferences
 from api.services.coins import CoinService
 from api.services.crud.invoices import InvoiceService
 from api.services.crud.payouts import PayoutService
@@ -642,6 +642,31 @@ async def test_first_user_registration_bypasses_disable_registration(client: Tes
     resp = await client.post("/users", json={**static_data.POLICY_USER, "email": "other@bitcart.test"})
     assert resp.status_code == 422
     assert resp.json()["detail"] == "Registration disabled"
+
+
+async def test_users_are_created_only_by_server_admins_or_open_registration(
+    app: FastAPI, user: dict[str, Any], limited_user: dict[str, Any]
+) -> None:
+    data = CreateUser(email="direct@bitcart.test", password="12345678", is_superuser=True)
+    async with app.state.dishka_container(scope=Scope.REQUEST) as container:
+        user_service = await container.get(UserService)
+        for caller, status in ((await user_service.get(limited_user["id"]), 403), (None, 422)):
+            with pytest.raises(HTTPException) as e:
+                await user_service.create(data, caller)
+            assert e.value.status_code == status
+        assert (await user_service.create(data, await user_service.get(user["id"]))).is_superuser
+
+
+async def test_signup_never_creates_a_superuser(
+    client: TestClient, token: str, limited_user: dict[str, Any], mocker: pytest_mock.MockerFixture
+) -> None:
+    mocker.patch("api.services.email.EmailService.ensure_deliverable")
+    await client.post("/manage/policies", json={"disable_registration": False}, headers={"Authorization": f"Bearer {token}"})
+    regular_token = (await create_token(client, limited_user))["access_token"]
+    for index, headers in enumerate(({}, {"Authorization": f"Bearer {regular_token}"})):
+        data = {"email": f"signup{index}@bitcart.test", "password": "12345678", "is_superuser": True}
+        resp = await client.post("/users", json=data, headers=headers)
+        assert (resp.status_code, resp.json()["is_superuser"]) == (200, False)
 
 
 async def test_policies(client: TestClient, token: str) -> None:
@@ -3625,9 +3650,9 @@ async def test_login_checks_captcha_before_password(
         json={"captcha_type": CaptchaType.HCAPTCHA, "captcha_secretkey": "secret"},
         headers={"Authorization": f"Bearer {token}"},
     )
-    mocker.patch("api.services.auth.AuthService.verify_captcha", return_value=False)
+    mocker.patch("api.services.auth.AuthService.fetch_captcha_result", return_value={"success": False})
     for email, password in (("missing@example.com", "wrong"), (user["email"], "wrong"), (user["email"], static_data.USER_PWD)):
-        resp = await client.post("/token", json={"email": email, "password": password})
+        resp = await client.post("/token", json={"email": email, "password": password, "captcha_code": "code"})
         assert resp.json()["detail"]["status"] == 403
 
 

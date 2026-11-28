@@ -17,6 +17,7 @@ from fastapi import FastAPI, HTTPException
 from api import exceptions, models, utils
 from api.constants import TFA_RECOVERY_ALPHABET
 from api.schemas.misc import CaptchaType
+from api.schemas.policies import Policy
 from api.schemas.stores import StoreCheckoutSettings
 from api.schemas.wallets import DisplayWallet
 from api.services.auth import AuthService
@@ -32,16 +33,15 @@ from tests.helper import create_notification, create_store, enabled_logs
 if TYPE_CHECKING:
     from httpx import AsyncClient as TestClient
 
+
 # https://docs.hcaptcha.com/#integration-testing-test-keys
 # https://developers.cloudflare.com/turnstile/reference/testing
 VALID_CAPTCHA = {
     CaptchaType.HCAPTCHA: {
-        "API": "https://hcaptcha.com/siteverify",
         "CODE": "20000000-aaaa-bbbb-cccc-000000000002",
         "SECRET": "0x0000000000000000000000000000000000000000",
     },
     CaptchaType.CF_TURNSTILE: {
-        "API": "https://challenges.cloudflare.com/turnstile/v0/siteverify",
         "CODE": "1x00000000000000000000AA",
         "SECRET": "1x0000000000000000000000000000000AA",
     },
@@ -398,22 +398,36 @@ async def test_verify_captcha(impl: CaptchaType, app: FastAPI) -> None:
     # Test with valid code & secret
     async with app.state.dishka_container(scope=Scope.REQUEST) as container:
         auth_service = await container.get(AuthService)
-        assert await auth_service.verify_captcha(details["API"], code=details["CODE"], secret=details["SECRET"])
+        assert (
+            await auth_service.fetch_captcha_result(
+                Policy(captcha_type=str(impl), captcha_secretkey=details["SECRET"]), details["CODE"]
+            )
+        )["success"]
 
     # Test with invalid code/secret
     if str(impl) == CaptchaType.CF_TURNSTILE:
         async with app.state.dishka_container(scope=Scope.REQUEST) as container:
             auth_service = await container.get(AuthService)
-            assert await auth_service.verify_captcha(
-                details["API"], code="non-valid-code", secret=details["SECRET"]
-            )  # secret takes precedence
+            assert (
+                await auth_service.fetch_captcha_result(
+                    Policy(captcha_type=str(impl), captcha_secretkey=details["SECRET"]), "non-valid-code"
+                )
+            )["success"]  # secret takes precedence
     else:
         async with app.state.dishka_container(scope=Scope.REQUEST) as container:
             auth_service = await container.get(AuthService)
-            assert not await auth_service.verify_captcha(details["API"], code="non-valid-code", secret=details["SECRET"])
+            assert not (
+                await auth_service.fetch_captcha_result(
+                    Policy(captcha_type=str(impl), captcha_secretkey=details["SECRET"]), "non-valid-code"
+                )
+            )["success"]
     async with app.state.dishka_container(scope=Scope.REQUEST) as container:
         auth_service = await container.get(AuthService)
-        assert not await auth_service.verify_captcha(details["API"], code=details["CODE"], secret="non-valid-secret")
+        assert not (
+            await auth_service.fetch_captcha_result(
+                Policy(captcha_type=str(impl), captcha_secretkey="non-valid-secret"), details["CODE"]
+            )
+        )["success"]
 
 
 @pytest.mark.anyio
@@ -424,6 +438,7 @@ async def test_captcha_flow(mocker: pytest_mock.MockerFixture, impl: CaptchaType
     fake_policy = mocker.Mock()
     fake_policy.captcha_secretkey = VALID_CAPTCHA[cast(str, impl)]["SECRET"]
     fake_policy.captcha_type = impl
+    fake_policy.captcha_sitekey = ""
     mocker.patch("api.services.settings.SettingService.get_setting", return_value=fake_policy)
     async with app.state.dishka_container(scope=Scope.REQUEST) as container:
         auth_service = await container.get(AuthService)

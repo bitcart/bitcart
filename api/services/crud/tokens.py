@@ -106,7 +106,6 @@ class TokenService(CRUDService[models.Token]):
 
     async def validate_credentials(self, user: models.User | None | bool, token_data: HTTPCreateLoginToken) -> models.User:
         if not user:
-            await self.auth_service.captcha_flow(token_data.captcha_code)
             user, status = await self.auth_service.authenticate_user(token_data.email, token_data.password)
             if not user:
                 raise HTTPException(401, {"message": "Unauthorized", "status": status})

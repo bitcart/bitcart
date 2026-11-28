@@ -7,10 +7,11 @@ from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import ValidationError
 
 from api import models, utils
-from api.constants import AuthScopes
+from api.constants import AuthScopes, CaptchaAction
 from api.schemas.auth import AuthResponse, FIDO2Auth, TOTPAuth
 from api.schemas.misc import BatchAction
 from api.schemas.tokens import EditToken, HTTPCreateLoginToken, Token
+from api.services.auth import AuthService
 from api.services.crud.tokens import TokenService
 from api.utils.routing import (
     OffsetPagination,
@@ -21,20 +22,36 @@ from api.utils.routing import (
 router = APIRouter(route_class=DishkaRoute)
 
 
+async def login_captcha_flow(
+    request: Request,
+    auth_service: AuthService,
+    auth_data: tuple[models.User | None, models.Token] | None,
+    token_data: HTTPCreateLoginToken | None,
+) -> None:
+    if not auth_data or not auth_data[0]:
+        code = token_data.captcha_code if token_data else ""
+        await auth_service.captcha_flow(code, CaptchaAction.LOGIN, utils.routing.get_client_ip(request))
+
+
 @router.post("", response_model=AuthResponse)
 async def create_token(
+    request: Request,
     token_service: FromDishka[TokenService],
+    auth_service: FromDishka[AuthService],
     token_data: HTTPCreateLoginToken | None = None,
     auth_data: tuple[models.User | None, models.Token] | None = Security(
         utils.authorization.AuthDependency(token_required=False, return_token=True)
     ),
 ) -> Any:
+    await login_captcha_flow(request, auth_service, auth_data, token_data)
     return await token_service.create_token(auth_data, token_data)
 
 
 @router.post("/oauth2")
 async def create_oauth2_token(
+    request: Request,
     token_service: FromDishka[TokenService],
+    auth_service: FromDishka[AuthService],
     form_data: OAuth2PasswordRequestForm = Depends(),
     auth_data: tuple[models.User | None, models.Token] | None = Security(
         utils.authorization.AuthDependency(token_required=False, return_token=True)
@@ -44,6 +61,7 @@ async def create_oauth2_token(
         token_data = HTTPCreateLoginToken(email=form_data.username, password=form_data.password, permissions=form_data.scopes)
     except ValidationError as e:
         raise HTTPException(422, e.errors()) from None
+    await login_captcha_flow(request, auth_service, auth_data, token_data)
     return await token_service.create_token(auth_data, token_data)
 
 

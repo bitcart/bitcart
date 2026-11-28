@@ -1,19 +1,29 @@
-from typing import cast
+import json
+from typing import Any, cast
 
+from aiohttp import ClientTimeout
 from fastapi import HTTPException, Request
 from fastapi.security import SecurityScopes
 from sqlalchemy.orm import joinedload
 from starlette.status import HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN
 
 from api import models, utils
-from api.constants import AuthScopes
+from api.constants import CAPTCHA_TIMEOUT, AuthScopes, CaptchaAction
 from api.db import AsyncSession
+from api.logging import get_exception_message, get_logger
 from api.schemas.misc import CaptchaType
 from api.schemas.policies import Policy
 from api.services.crud.repositories import TokenRepository, UserRepository
 from api.services.plugin_registry import PluginRegistry
 from api.services.settings import SettingService
 from api.types import PasswordHasherProtocol
+
+logger = get_logger(__name__)
+
+CAPTCHA_URLS: dict[str, str] = {
+    CaptchaType.HCAPTCHA: "https://api.hcaptcha.com/siteverify",
+    CaptchaType.CF_TURNSTILE: "https://challenges.cloudflare.com/turnstile/v0/siteverify",
+}
 
 
 class AuthService:
@@ -119,20 +129,48 @@ class AuthService:
             return False
         return f"{scope}:{model_id}" in token.permissions
 
-    async def verify_captcha(self, api_uri: str, code: str, secret: str) -> bool:
+    async def fetch_captcha_result(self, policies: Policy, code: str, client_ip: str | None = None) -> dict[str, Any]:
+        captcha_type = policies.captcha_type
+        data = {"response": code, "secret": policies.captcha_secretkey}
+        if captcha_type == CaptchaType.HCAPTCHA:
+            data["sitekey"] = policies.captcha_sitekey
+        if client_ip:
+            data["remoteip"] = client_ip
         try:
-            return (await utils.common.send_request("POST", api_uri, data={"response": code, "secret": secret}))["success"]
-        except Exception:  # pragma: no cover
-            return False
+            response, body = await utils.common.send_request(
+                "POST",
+                CAPTCHA_URLS[captcha_type],
+                data=data,
+                return_json=False,
+                timeout=ClientTimeout(total=CAPTCHA_TIMEOUT),
+            )
+            if response.status >= 500:
+                response.raise_for_status()
+            result = json.loads(body)
+            if not isinstance(result, dict) or not isinstance(result.get("success"), bool):
+                raise ValueError("unexpected response")
+        except Exception as e:
+            logger.error(f"Captcha provider {captcha_type} is unavailable: {get_exception_message(e)}")
+            raise HTTPException(503, "Captcha verification is unavailable. Please try again later.") from None
+        return result
 
-    async def captcha_flow(self, code: str) -> None:
+    def get_captcha_rejection(self, captcha_type: str, result: dict[str, Any], action: CaptchaAction | None) -> str | None:
+        if not result["success"]:
+            return f"provider returned {result.get('error-codes')}"
+        if captcha_type == CaptchaType.CF_TURNSTILE and action is not None and result.get("action") != action:
+            return f"solved for action {result.get('action')!r} instead of {action.value!r}"
+        return None
+
+    async def captcha_flow(self, code: str | None, action: CaptchaAction | None = None, client_ip: str | None = None) -> None:
         policies = await self.setting_service.get_setting(Policy)
-        if policies.captcha_type != CaptchaType.NONE:  # pragma: no cover
-            if policies.captcha_type == CaptchaType.HCAPTCHA:
-                api_uri = "https://hcaptcha.com/siteverify"
-            elif policies.captcha_type == CaptchaType.CF_TURNSTILE:
-                api_uri = "https://challenges.cloudflare.com/turnstile/v0/siteverify"
-            if not await self.verify_captcha(api_uri, code, policies.captcha_secretkey):
-                await self.plugin_registry.run_hook("captcha_failed")
-                raise HTTPException(401, {"message": "Unauthorized", "status": 403})
-            await self.plugin_registry.run_hook("captcha_passed")
+        if policies.captcha_type == CaptchaType.NONE:
+            return
+        rejection: str | None = "no code"
+        if code:
+            result = await self.fetch_captcha_result(policies, code, client_ip)
+            rejection = self.get_captcha_rejection(policies.captcha_type, result, action)
+        if rejection is not None:
+            logger.warning(f"Captcha rejected: {rejection}")
+            await self.plugin_registry.run_hook("captcha_failed")
+            raise HTTPException(401, {"message": "Unauthorized", "status": 403})
+        await self.plugin_registry.run_hook("captcha_passed")
