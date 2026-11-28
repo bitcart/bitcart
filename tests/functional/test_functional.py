@@ -27,6 +27,7 @@ from tests.helper import create_store, create_wallet, set_allowed_hosts
 
 if TYPE_CHECKING:
     from httpx import AsyncClient as TestClient
+    from httpx import Response
 
 REGTEST_XPUB = "dutch field mango comfort symptom smooth wide senior tongue oyster wash spoon"
 REGTEST_XPUB2 = "hungry ordinary similar more spread math general wire jealous valve exhaust emotion"
@@ -149,14 +150,39 @@ async def regtest_lnnode() -> BTC:
     return BTC(xpub=REGTEST_XPUB2, rpc_url="http://localhost:5110")
 
 
+async def open_channel_via_api(client: TestClient, token: str, wallet_id: str, node_id: str) -> Response:
+    return await client.post(
+        f"/wallets/{wallet_id}/channels/open",
+        json={"node_id": node_id, "amount": str(LIGHTNING_CHANNEL_AMOUNT)},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+
 @pytest.fixture
-async def prepare_ln_channels(regtest_wallet: BTC, regtest_lnnode: BTC) -> AsyncIterator[None]:
+async def prepare_ln_channels(
+    client: TestClient,
+    token: str,
+    regtest_api_wallet: dict[str, Any],
+    regtest_wallet: BTC,
+    regtest_lnnode: BTC,
+) -> AsyncIterator[None]:
     node_id = await regtest_lnnode.node_id
     # first fund the channel opener
     fund_amount = 10 * LIGHTNING_CHANNEL_AMOUNT
     address = (await regtest_wallet.add_request(fund_amount))["address"]
     await send_to_address(address, fund_amount, confirm=True, wait_balance=True)
-    channel_point = await regtest_wallet.open_channel(node_id, LIGHTNING_CHANNEL_AMOUNT)
+    wallet_id = regtest_api_wallet["id"]
+    pubkey, _, address = node_id.partition("@")
+    for refused in (node_id, pubkey):
+        assert (await open_channel_via_api(client, token, wallet_id, refused)).status_code == 400
+    assert pubkey not in [peer["node_id"] for peer in await regtest_wallet.server.list_peers()]
+    headers = {"Authorization": f"Bearer {token}"}
+    owner_id = (await client.get("/users/me", headers=headers)).json()["id"]
+    resp = await client.patch(f"/users/{owner_id}", json={"allowed_internal_hosts": [address]}, headers=headers)
+    assert resp.status_code == 200
+    resp = await open_channel_via_api(client, token, wallet_id, node_id)
+    assert resp.status_code == 200
+    channel_point = resp.json()
     # make it fully open
     utils.run_shell(["newblocks", "3"])
     await wait_for_channel_opening(regtest_wallet, channel_point)
