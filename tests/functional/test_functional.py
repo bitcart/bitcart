@@ -201,7 +201,10 @@ async def prepare_ln_channels(
     for refused in (node_id, pubkey):
         assert (await open_channel_via_api(client, token, wallet_id, refused)).status_code == 400
     assert pubkey not in [peer["node_id"] for peer in await regtest_wallet.server.list_peers()]
-    assert (await set_allowed_hosts(client, token, [address, f"{IPN_HOST}:{IPN_PORT}"])).status_code == 200
+    headers = {"Authorization": f"Bearer {token}"}
+    owner_id = (await client.get("/users/me", headers=headers)).json()["id"]
+    resp = await client.patch(f"/users/{owner_id}", json={"allowed_internal_hosts": [address]}, headers=headers)
+    assert resp.status_code == 200
     resp = await open_channel_via_api(client, token, wallet_id, node_id)
     assert resp.status_code == 200
     channel_point = resp.json()

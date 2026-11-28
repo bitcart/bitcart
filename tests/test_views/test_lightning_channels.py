@@ -11,7 +11,7 @@ import pytest_mock
 from bitcart import BTC  # type: ignore[attr-defined]
 from bitcart.errors import BaseError as BitcartBaseError
 
-from tests.helper import allow_outbound, create_token, create_wallet
+from tests.helper import create_token, create_wallet, set_allowed_hosts
 
 if TYPE_CHECKING:
     from httpx import AsyncClient as TestClient
@@ -255,15 +255,24 @@ async def test_second_lookup_cannot_change_the_address(
     open_channel.assert_called_once()
 
 
-async def test_allowed_peers_can_be_internal(
+async def test_peers_allowed_for_the_owner_can_be_internal(
     client: TestClient,
+    token: str,
+    limited_user: dict[str, Any],
     limited_wallet: tuple[str, str],
     open_channel: AsyncMock,
     fake_dns: Dns,
-    mocker: pytest_mock.MockerFixture,
 ) -> None:
     fake_dns(DNS)
-    allow_outbound(mocker, "lnd:9735", "10.0.0.5")
+    await set_allowed_hosts(client, token, ["lnd", "10.0.0.5"])
+    check_refused(await open_with(client, limited_wallet, f"{PUBKEY}@lnd"))
+    await set_allowed_hosts(client, token, [])
+    resp = await client.patch(
+        f"/users/{limited_user['id']}",
+        json={"allowed_internal_hosts": ["lnd:9735", "10.0.0.5"]},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 200
     for address, dialled in (("lnd", "10.0.0.7:9735"), ("internal.example.com:1", "10.0.0.5:1")):
         assert (await open_with(client, limited_wallet, f"{PUBKEY}@{address}")).status_code == 200
         assert open_channel.call_args.args[0] == f"{PUBKEY}@{dialled}"

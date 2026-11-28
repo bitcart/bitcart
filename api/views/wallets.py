@@ -4,16 +4,16 @@ from bitcart.errors import BaseError as BitcartBaseError
 from dishka import FromDishka
 from dishka.integrations.fastapi import DishkaRoute
 from fastapi import APIRouter, HTTPException, Security
+from outbound_guard import OutboundGuard
 
 from api import models, utils
 from api.constants import AuthScopes
 from api.exceptions import RateUnavailableError
-from api.ext.lightning import PeerDenied, get_checked_connection_string
+from api.ext.lightning import OWNER_DENIAL_HINT, PeerDenied, get_checked_connection_string
 from api.schemas.base import DecimalAsString
 from api.schemas.misc import BalanceResponse, CloseChannelScheme, LNPayScheme, OpenChannelScheme, WalletsBalance
 from api.schemas.wallets import CreateWallet, CreateWalletData, DisplayWallet, UpdateWallet
 from api.services.crud.wallets import WalletService
-from api.services.outbound import OutboundService
 from api.services.wallet_data import WalletDataService
 from api.utils.routing import create_crud_router
 
@@ -119,14 +119,14 @@ async def get_wallet_channels(
 @router.post("/{model_id}/channels/open")
 async def open_wallet_channel(
     wallet_service: FromDishka[WalletService],
-    outbound: FromDishka[OutboundService],
     model_id: str,
     params: OpenChannelScheme,
     user: models.User = Security(utils.authorization.auth_dependency, scopes=[AuthScopes.WALLET_MANAGEMENT]),
 ) -> Any:
     try:
         coin = await wallet_service.get_wallet_coin_by_id(model_id, user)
-        node_id = await get_checked_connection_string(outbound, coin, params.node_id)
+        owner_guard = OutboundGuard(user.allowed_internal_hosts, denial_hint=OWNER_DENIAL_HINT)
+        node_id = await get_checked_connection_string(owner_guard, coin, params.node_id)
         return await coin.open_channel(node_id, params.amount, public=params.public)
     except (BitcartBaseError, HTTPException, PeerDenied) as e:
         if isinstance(e, HTTPException) and e.status_code != 422:

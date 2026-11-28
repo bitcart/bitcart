@@ -5,6 +5,7 @@ from bitcart import BTC  # type: ignore[attr-defined]
 from outbound_guard import OutboundGuard
 
 DEFAULT_PORT = 9735
+OWNER_DENIAL_HINT = ". Server admins can allow it in the wallet owner's allowed internal hosts"
 RESOLVE_TIMEOUT = 15
 CONNECTION_STRING = re.compile(
     r"(?P<node_id>[0-9a-f]{66})"
