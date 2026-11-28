@@ -87,8 +87,8 @@ class UserService(CRUDService[models.User]):
         await self.check_can_create(auth_user)
         data = self._check_data(data, update=False)
         data.pop("captcha_code", None)
-        if auth_user is None:
-            data["is_superuser"] = await self.repository.count() == 0
+        if not (auth_user and auth_user.is_superuser):
+            data["is_superuser"] = auth_user is None and await self.repository.count() == 0
         is_first_user = auth_user is None and data["is_superuser"]
         if auth_user is None and not is_first_user:
             await self.email_service.ensure_deliverable(data["email"])

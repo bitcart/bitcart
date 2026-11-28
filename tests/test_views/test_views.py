@@ -647,15 +647,26 @@ async def test_first_user_registration_bypasses_disable_registration(client: Tes
 async def test_users_are_created_only_by_server_admins_or_open_registration(
     app: FastAPI, user: dict[str, Any], limited_user: dict[str, Any]
 ) -> None:
-    data = CreateUser(email="direct@bitcart.test", password="12345678")
+    data = CreateUser(email="direct@bitcart.test", password="12345678", is_superuser=True)
     async with app.state.dishka_container(scope=Scope.REQUEST) as container:
         user_service = await container.get(UserService)
         for caller, status in ((await user_service.get(limited_user["id"]), 403), (None, 422)):
             with pytest.raises(HTTPException) as e:
                 await user_service.create(data, caller)
             assert e.value.status_code == status
-        created = await user_service.create(data, await user_service.get(user["id"]))
-        assert (created.email, created.is_superuser) == ("direct@bitcart.test", False)
+        assert (await user_service.create(data, await user_service.get(user["id"]))).is_superuser
+
+
+async def test_signup_never_creates_a_superuser(
+    client: TestClient, token: str, limited_user: dict[str, Any], mocker: pytest_mock.MockerFixture
+) -> None:
+    mocker.patch("api.services.email.EmailService.ensure_deliverable")
+    await client.post("/manage/policies", json={"disable_registration": False}, headers={"Authorization": f"Bearer {token}"})
+    regular_token = (await create_token(client, limited_user))["access_token"]
+    for index, headers in enumerate(({}, {"Authorization": f"Bearer {regular_token}"})):
+        data = {"email": f"signup{index}@bitcart.test", "password": "12345678", "is_superuser": True}
+        resp = await client.post("/users", json=data, headers=headers)
+        assert (resp.status_code, resp.json()["is_superuser"]) == (200, False)
 
 
 async def test_policies(client: TestClient, token: str) -> None:
