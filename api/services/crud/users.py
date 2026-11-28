@@ -82,11 +82,7 @@ class UserService(CRUDService[models.User]):
         return data
 
     async def create(
-        self,
-        data: "ModelDictT[models.User]",
-        auth_user: models.User | None = None,
-        *,
-        call_hooks: bool = True,
+        self, data: "ModelDictT[models.User]", auth_user: models.User | None = None, *, call_hooks: bool = True
     ) -> models.User:
         await self.check_can_create(auth_user)
         data = self._check_data(data, update=False)
