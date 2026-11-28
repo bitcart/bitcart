@@ -25,7 +25,6 @@ from api.schemas.policies import Policy
 from api.schemas.tasks import SendVerificationEmailMessage
 from api.schemas.tokens import CreateDBToken
 from api.schemas.users import DisplayUser, DisplayUserWithToken
-from api.services.auth import AuthService
 from api.services.crud import CRUDService, ModelDictT
 from api.services.crud.repositories import UserRepository
 from api.services.crud.templates import TemplateService
@@ -54,7 +53,6 @@ class UserService(CRUDService[models.User]):
         settings: Settings,
         setting_service: SettingService,
         token_service: TokenService,
-        auth_service: AuthService,
         password_hasher: PasswordHasherProtocol,
         template_service: TemplateService,
         email_service: EmailService,
@@ -66,7 +64,6 @@ class UserService(CRUDService[models.User]):
         self.settings = settings
         self.setting_service = setting_service
         self.token_service = token_service
-        self.auth_service = auth_service
         self.password_hasher = password_hasher
         self.template_service = template_service
         self.email_service = email_service
@@ -90,24 +87,14 @@ class UserService(CRUDService[models.User]):
         auth_user: models.User | None = None,
         *,
         call_hooks: bool = True,
-        client_ip: str | None = None,
     ) -> models.User:
+        await self.check_can_create(auth_user)
         data = self._check_data(data, update=False)
-        captcha_code = data.pop("captcha_code", None)
-        register_off = (await self.setting_service.get_setting(Policy)).disable_registration
-        if register_off and (not auth_user or not auth_user.is_superuser):
-            raise HTTPException(422, "Registration disabled")
-        if not auth_user or not auth_user.is_superuser:
-            await self.auth_service.captcha_flow(captcha_code, constants.CaptchaAction.REGISTER, client_ip)
-        is_superuser = False
+        data.pop("captcha_code", None)
         if auth_user is None:
-            count = await self.repository.count()
-            is_superuser = count == 0
-        elif auth_user and auth_user.is_superuser:
-            is_superuser = data["is_superuser"]
-        data["is_superuser"] = is_superuser
-        is_first_user = is_superuser and auth_user is None
-        if not is_first_user and not (auth_user and auth_user.is_superuser):
+            data["is_superuser"] = await self.repository.count() == 0
+        is_first_user = auth_user is None and data["is_superuser"]
+        if auth_user is None and not is_first_user:
             await self.email_service.ensure_deliverable(data["email"])
         user = await super().create(data, auth_user, call_hooks=call_hooks)
         if is_first_user:
@@ -115,10 +102,16 @@ class UserService(CRUDService[models.User]):
             await self.setting_service.set_setting(Policy(disable_registration=True))
         return user
 
+    async def check_can_create(self, auth_user: models.User | None) -> None:
+        if auth_user is not None and not auth_user.is_superuser:
+            raise HTTPException(403, "Only server admins can create users")
+        if auth_user is None and (await self.setting_service.get_setting(Policy)).disable_registration:
+            raise HTTPException(422, "Registration disabled")
+
     async def create_with_token(
-        self, data: "ModelDictT[models.User]", auth_user: models.User | None = None, client_ip: str | None = None
+        self, data: "ModelDictT[models.User]", auth_user: models.User | None = None
     ) -> DisplayUserWithToken:
-        user = await self.create(data, auth_user, client_ip=client_ip)
+        user = await self.create(data, auth_user)
         await self.session.commit()
         await self.broker.publish("send_verification_email", SendVerificationEmailMessage(user_id=user.id))
         policies = await self.setting_service.get_setting(Policy)

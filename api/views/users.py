@@ -183,8 +183,12 @@ async def create_user(
     request: Request,
     data: CreateUser,
     service: FromDishka[UserService],
+    auth_service: FromDishka[AuthService],
     auth_user: models.User | None = Security(
         utils.authorization.optional_auth_dependency, scopes=[AuthScopes.SERVER_MANAGEMENT]
     ),
 ) -> Any:
-    return await service.create_with_token(data, auth_user, utils.routing.get_client_ip(request))
+    await service.check_can_create(auth_user)
+    if auth_user is None:
+        await auth_service.captcha_flow(data.captcha_code, CaptchaAction.REGISTER, utils.routing.get_client_ip(request))
+    return await service.create_with_token(data, auth_user)

@@ -14,6 +14,7 @@ from fastapi import FastAPI, HTTPException
 from api.constants import CAPTCHA_TIMEOUT, CaptchaAction
 from api.schemas.misc import CaptchaType
 from api.services.auth import CAPTCHA_URLS, AuthService
+from tests.fixtures import static_data
 from tests.helper import allow_outbound, create_user
 
 if TYPE_CHECKING:
@@ -198,3 +199,14 @@ async def test_every_form_sends_its_action_and_the_client_ip(
     requests_count = len(provider.requests)
     await create_user(client, token=token, is_superuser=False)
     assert len(provider.requests) == requests_count
+
+
+async def test_oauth2_login_needs_the_captcha(
+    client: TestClient, user: dict[str, Any], token: str, provider: FakeProvider
+) -> None:
+    policy = {"captcha_type": CaptchaType.CF_TURNSTILE}
+    assert (
+        await client.post("/manage/policies", json=policy, headers={"Authorization": f"Bearer {token}"})
+    ).status_code == 200
+    resp = await client.post("/token/oauth2", data={"username": user["email"], "password": static_data.USER_PWD})
+    assert (resp.status_code, resp.json()["detail"]) == (401, {"message": "Unauthorized", "status": 403})
