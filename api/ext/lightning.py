@@ -1,5 +1,6 @@
 import asyncio
 import re
+import socket
 
 from bitcart import BTC  # type: ignore[attr-defined]
 from outbound_guard import OutboundGuard
@@ -30,7 +31,8 @@ async def resolve_peer(outbound: OutboundGuard, host: str, port: int) -> str:
             addr_infos = await outbound.resolve(host, port)
     except (OSError, ValueError) as e:
         raise PeerDenied(str(e)) from e
-    return str(addr_infos[0][4][0])
+    ipv4 = [addr_info for addr_info in addr_infos if addr_info[0] == socket.AF_INET]
+    return str((ipv4 or addr_infos)[0][4][0])
 
 
 async def get_checked_connection_string(outbound: OutboundGuard, coin: BTC, connection_string: str) -> str:

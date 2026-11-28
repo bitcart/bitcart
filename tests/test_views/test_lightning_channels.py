@@ -23,7 +23,12 @@ PUBLIC_IP = "93.184.215.14"
 PUBLIC_IPV6 = "2606:4700::1111"
 ONION = "a2" * 28 + ".onion"
 CHANNEL_POINT = "00" * 32 + ":0"
-DNS = {"peer.example.com": PUBLIC_IP, "ipv6.example.com": PUBLIC_IPV6, "lnd": "10.0.0.7"}
+DNS = {
+    "peer.example.com": [PUBLIC_IP],
+    "ipv6.example.com": [PUBLIC_IPV6],
+    "dual.example.com": [PUBLIC_IPV6, PUBLIC_IP],
+    "lnd": ["10.0.0.7"],
+}
 
 
 @pytest.fixture(autouse=True)
@@ -34,10 +39,12 @@ async def fake_dns(mocker: pytest_mock.MockerFixture) -> None:
     async def getaddrinfo(host: str, port: Any, *args: Any, **kwargs: Any) -> list[Any]:
         if host not in DNS:
             return await real_getaddrinfo(host, port, *args, **kwargs)
-        address = DNS[host]
-        if ":" in address:
-            return [(socket.AF_INET6, socket.SOCK_STREAM, 6, "", (address, port, 0, 0))]
-        return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", (address, port))]
+        return [
+            (socket.AF_INET6, socket.SOCK_STREAM, 6, "", (address, port, 0, 0))
+            if ":" in address
+            else (socket.AF_INET, socket.SOCK_STREAM, 6, "", (address, port))
+            for address in DNS[host]
+        ]
 
     mocker.patch.object(loop, "getaddrinfo", getaddrinfo)
 
@@ -71,6 +78,7 @@ def check_refused(resp: Response) -> None:
     [
         (f"{PUBKEY.upper()}@peer.example.com", f"{PUBKEY}@{PUBLIC_IP}:9735"),
         (f"{PUBKEY}@ipv6.example.com:9736", f"{PUBKEY}@[{PUBLIC_IPV6}]:9736"),
+        (f"{PUBKEY}@dual.example.com", f"{PUBKEY}@{PUBLIC_IP}:9735"),
         (f"{PUBKEY}@{ONION}", f"{PUBKEY}@{ONION}:9735"),
     ],
 )
