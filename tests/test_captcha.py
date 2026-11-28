@@ -14,7 +14,6 @@ from fastapi import FastAPI, HTTPException
 from api.constants import CAPTCHA_TIMEOUT, CaptchaAction
 from api.schemas.misc import CaptchaType
 from api.services.auth import CAPTCHA_URLS, AuthService
-from api.settings import Settings
 from tests.helper import allow_outbound, create_user
 
 if TYPE_CHECKING:
@@ -22,7 +21,6 @@ if TYPE_CHECKING:
 
 pytestmark = pytest.mark.anyio
 
-ADMIN_HOSTNAME = "admin.example.com"
 PROVIDERS = [CaptchaType.HCAPTCHA, CaptchaType.CF_TURNSTILE]
 
 
@@ -31,7 +29,7 @@ class FakeProvider:
         self.requests: list[dict[str, str]] = []
         self.status = 200
         self.delay = 0.0
-        self.result: Any = {"success": True, "hostname": ADMIN_HOSTNAME, "action": "login"}
+        self.result: Any = {"success": True, "action": "login"}
 
     async def verify(self, request: web.Request) -> web.Response:
         self.requests.append({key: str(value) for key, value in (await request.post()).items()})
@@ -40,12 +38,11 @@ class FakeProvider:
 
 
 @pytest.fixture
-async def provider(mocker: pytest_mock.MockerFixture, settings: Settings) -> AsyncIterator[FakeProvider]:
+async def provider(mocker: pytest_mock.MockerFixture) -> AsyncIterator[FakeProvider]:
     fake = FakeProvider()
     web_app = web.Application()
     web_app.router.add_post("/siteverify", fake.verify)
     allow_outbound(mocker, "127.0.0.1")
-    mocker.patch.object(settings, "ADMIN_HOST", f"{ADMIN_HOSTNAME}:8443")
     async with TestServer(web_app, host="127.0.0.1") as server:
         mocker.patch.dict(CAPTCHA_URLS, dict.fromkeys(PROVIDERS, str(server.make_url("/siteverify"))))
         yield fake
@@ -64,7 +61,7 @@ def logger(mocker: pytest_mock.MockerFixture) -> Any:
 async def check_captcha(
     app: FastAPI, mocker: pytest_mock.MockerFixture, captcha_type: str, code: str | None = "code", **kwargs: Any
 ) -> None:
-    policy = mocker.Mock(captcha_type=captcha_type, captcha_secretkey="secret")
+    policy = mocker.Mock(captcha_type=captcha_type, captcha_secretkey="secret", captcha_sitekey="sitekey")
     mocker.patch("api.services.settings.SettingService.get_setting", return_value=policy)
     async with app.state.dishka_container(scope=Scope.REQUEST) as container:
         await (await container.get(AuthService)).captcha_flow(code, CaptchaAction.LOGIN, **kwargs)
@@ -77,94 +74,43 @@ def test_providers_urls() -> None:
     }
 
 
-@pytest.mark.parametrize("captcha_type", PROVIDERS)
+@pytest.mark.parametrize(
+    "captcha_type,sent",
+    [
+        (CaptchaType.HCAPTCHA, {"response": "code", "secret": "secret", "sitekey": "sitekey", "remoteip": "203.0.113.5"}),
+        (CaptchaType.CF_TURNSTILE, {"response": "code", "secret": "secret", "remoteip": "203.0.113.5"}),
+    ],
+)
 async def test_solved_captcha(
-    captcha_type: str, app: FastAPI, mocker: pytest_mock.MockerFixture, provider: FakeProvider, run_hook: Any
+    captcha_type: str,
+    sent: dict[str, str],
+    app: FastAPI,
+    mocker: pytest_mock.MockerFixture,
+    provider: FakeProvider,
+    run_hook: Any,
 ) -> None:
     await check_captcha(app, mocker, captcha_type, client_ip="203.0.113.5")
-    assert provider.requests == [{"response": "code", "secret": "secret", "remoteip": "203.0.113.5"}]
+    assert provider.requests == [sent]
     run_hook.assert_called_once_with("captcha_passed")
     await check_captcha(app, mocker, captcha_type)
     assert "remoteip" not in provider.requests[1]
 
 
 @pytest.mark.parametrize("captcha_type", PROVIDERS)
-@pytest.mark.parametrize(
-    "result,cause",
-    [
-        ({"success": False, "error-codes": ["invalid-input-response"]}, "invalid-input-response"),
-        ({"success": False}, "None"),
-        ({"success": True, "hostname": "evil.example.com", "action": "login"}, "evil.example.com"),
-        ({"success": True, "hostname": f"{ADMIN_HOSTNAME}.evil.com", "action": "login"}, ADMIN_HOSTNAME),
-        ({"success": True, "action": "login"}, "None"),
-    ],
-)
 async def test_rejected_captcha(
     captcha_type: str,
-    result: dict[str, Any],
-    cause: str,
     app: FastAPI,
     mocker: pytest_mock.MockerFixture,
     provider: FakeProvider,
     run_hook: Any,
     logger: Any,
 ) -> None:
-    provider.result = result
+    provider.result = {"success": False, "error-codes": ["invalid-input-response"]}
     with pytest.raises(HTTPException) as e:
         await check_captcha(app, mocker, captcha_type)
     assert e.value.status_code == 401
     run_hook.assert_called_once_with("captcha_failed")
-    message = logger.warning.call_args.args[0]
-    assert cause in message
-    if result.get("hostname"):
-        assert repr(ADMIN_HOSTNAME) in message and repr(result["hostname"]) in message
-
-
-async def test_hcaptcha_may_withhold_the_hostname(
-    app: FastAPI, mocker: pytest_mock.MockerFixture, provider: FakeProvider, run_hook: Any
-) -> None:
-    provider.result = {"success": True, "hostname": "not-provided"}
-    await check_captcha(app, mocker, CaptchaType.HCAPTCHA)
-    run_hook.assert_called_once_with("captcha_passed")
-
-
-@pytest.mark.parametrize(
-    "captcha_type,hostname",
-    [
-        (CaptchaType.HCAPTCHA, "not-provided.example.com"),
-        (CaptchaType.HCAPTCHA, ""),
-        (CaptchaType.CF_TURNSTILE, "not-provided"),
-    ],
-)
-async def test_other_hostnames_are_rejected(
-    captcha_type: str,
-    hostname: str,
-    app: FastAPI,
-    mocker: pytest_mock.MockerFixture,
-    provider: FakeProvider,
-    run_hook: Any,
-) -> None:
-    provider.result["hostname"] = hostname
-    with pytest.raises(HTTPException) as e:
-        await check_captcha(app, mocker, captcha_type)
-    assert e.value.status_code == 401
-    run_hook.assert_called_once_with("captcha_failed")
-
-
-@pytest.mark.parametrize("captcha_type", PROVIDERS)
-async def test_missing_hostname_does_not_match_an_unset_admin_host(
-    captcha_type: str,
-    app: FastAPI,
-    mocker: pytest_mock.MockerFixture,
-    provider: FakeProvider,
-    settings: Settings,
-    run_hook: Any,
-) -> None:
-    mocker.patch.object(settings, "ADMIN_HOST", "")
-    del provider.result["hostname"]
-    with pytest.raises(HTTPException) as e:
-        await check_captcha(app, mocker, captcha_type)
-    assert e.value.status_code == 401
+    assert "invalid-input-response" in logger.warning.call_args.args[0]
 
 
 @pytest.mark.parametrize("action", ["register", "", None])
