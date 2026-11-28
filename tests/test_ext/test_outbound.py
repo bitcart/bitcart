@@ -16,29 +16,55 @@ import pytest
 import pytest_mock
 from aiohttp import ClientTimeout, web
 from aiohttp.test_utils import TestServer
+from dishka import Scope
 from outbound_guard import OutboundDenied
 
-from api import utils
+from api import models, utils
 from api.db import AsyncSession
+from api.exceptions import EmailSendError
 from api.ext.ssh import create_ssh_client
 from api.schemas.configurator import ConfiguratorSSHSettings
 from api.schemas.misc import EmailSettings
-from api.services.email import EmailService, ServerEmailService
+from api.schemas.policies import Policy
+from api.services.crud.repositories import UserRepository
+from api.services.email import EmailService, Mailer
 from api.services.ipn_sender import IPNSender
 from api.services.outbound import OutboundService
+from api.services.payment_processor import PaymentProcessor
 from api.services.plugin_registry import PluginRegistry
 from api.services.settings import SettingService
-from tests.helper import allow_outbound, create_store, create_token, create_user, set_allowed_hosts
+from tests.helper import (
+    allow_outbound,
+    create_invoice,
+    create_product,
+    create_store,
+    create_token,
+    create_user,
+    set_allowed_hosts,
+)
 
 if TYPE_CHECKING:
     from fastapi import FastAPI
     from httpx import AsyncClient as TestClient
+    from httpx import Response
 
 pytestmark = pytest.mark.anyio
 
 
+def auth(token: str) -> dict[str, str]:
+    return {"Authorization": f"Bearer {token}"}
+
+
 async def get_policies(client: TestClient, token: str) -> dict[str, Any]:
-    return (await client.get("/manage/policies", headers={"Authorization": f"Bearer {token}"})).json()
+    return (await client.get("/manage/policies", headers=auth(token))).json()
+
+
+async def set_owner_hosts(client: TestClient, token: str, user_id: str, hosts: Any) -> Response:
+    return await client.patch(f"/users/{user_id}", json={"allowed_internal_hosts": hosts}, headers=auth(token))
+
+
+def store_mailer(settings: EmailSettings, owner_hosts: list[str]) -> Mailer:
+    return EmailService().for_store(models.Store(email_settings=settings), owner_hosts)
 
 
 class FakeServer:
@@ -109,20 +135,17 @@ async def outbound(app: FastAPI) -> OutboundService:
 
 
 async def test_allowed_hosts_policy_applies_immediately(
-    client: TestClient, token: str, start_server: ServerFactory, smtp_server: FakeSMTPServer, outbound: OutboundService
+    client: TestClient, token: str, start_server: ServerFactory, outbound: OutboundService
 ) -> None:
     server, port = await start_server()
     url = f"http://127.0.0.1:{port}/"
-    email_service = EmailService(outbound)
     async with outbound.session() as session:
         for _ in range(2):
             with pytest.raises(aiohttp.ClientOSError):
                 await session.get(url)
-            assert not await email_service.check_ping(smtp_settings("localhost", smtp_server.port))
-            await set_allowed_hosts(client, token, [f"127.0.0.1:{port}", f"localhost:{smtp_server.port}"])
+            await set_allowed_hosts(client, token, [f"127.0.0.1:{port}"])
             async with session.get(url) as response:
                 assert response.status == 200
-            assert await email_service.check_ping(smtp_settings("localhost", smtp_server.port))
             await set_allowed_hosts(client, token, [])
     assert len(server.requests) == 2
 
@@ -197,9 +220,102 @@ async def test_failed_policy_save_keeps_the_allowed_hosts(
     assert (await get_policies(client, token))["allowed_internal_hosts"] == ["kept"]
 
 
+async def test_user_allowed_hosts_are_for_server_admins_only(
+    client: TestClient, token: str, mocker: pytest_mock.MockerFixture
+) -> None:
+    user = await create_user(client, token=token, is_superuser=False)
+    user_token = (await create_token(client, user))["access_token"]
+    resp = await set_owner_hosts(client, token, user["id"], [" smtp:587 ", "smtp:587", "10.0.0.5"])
+    assert resp.status_code == 200
+    assert resp.json()["allowed_internal_hosts"] == ["smtp:587", "10.0.0.5"]
+    resp = await client.patch(f"/users/{user['id']}", json={"is_verified": True}, headers=auth(token))
+    assert resp.json()["allowed_internal_hosts"] == ["smtp:587", "10.0.0.5"]
+    assert (await set_owner_hosts(client, token, user["id"], ["http://smtp"])).status_code == 422
+    assert (await set_owner_hosts(client, token, user["id"], "smtp")).status_code == 422
+    assert (await set_owner_hosts(client, user_token, user["id"], ["evil"])).status_code == 403
+    assert "allowed_internal_hosts" not in (await client.get("/users/me", headers=auth(user_token))).json()
+    resp = await client.post("/users/me/settings", json={"allowed_internal_hosts": ["evil"]}, headers=auth(user_token))
+    assert "allowed_internal_hosts" not in resp.json()
+    admin_view = (await client.get(f"/users/{user['id']}", headers=auth(token))).json()
+    assert admin_view["allowed_internal_hosts"] == ["smtp:587", "10.0.0.5"]
+    mocker.patch.object(EmailService, "ensure_deliverable")
+    await client.post("/manage/policies", json={"disable_registration": False}, headers=auth(token))
+    resp = await client.post(
+        "/users",
+        json={"email": "signup@bitcart.test", "password": "password12345", "allowed_internal_hosts": ["evil"]},
+    )
+    assert resp.status_code == 200
+    assert "allowed_internal_hosts" not in resp.json()
+    signed_up = (await client.get(f"/users/{resp.json()['id']}", headers=auth(token))).json()
+    assert signed_up["allowed_internal_hosts"] == []
+
+
+async def test_store_email_uses_only_the_owner_allowed_hosts(
+    client: TestClient, token: str, smtp_server: FakeSMTPServer, outbound: OutboundService
+) -> None:
+    hosts = [f"localhost:{smtp_server.port}"]
+    email_settings = smtp_settings("localhost", smtp_server.port).model_dump()
+    owner = await create_user(client, token=token, is_superuser=False)
+    owner_token = (await create_token(client, owner))["access_token"]
+    other = await create_user(client, token=token, is_superuser=False)
+    other_token = (await create_token(client, other))["access_token"]
+    owner_store = await create_store(client, owner_token, {"email_settings": email_settings})
+    other_store = await create_store(client, other_token, {"email_settings": email_settings})
+
+    async def ping(store: dict[str, Any], store_token: str) -> bool:
+        return (await client.get(f"/stores/{store['id']}/ping", headers=auth(store_token))).json()
+
+    await set_allowed_hosts(client, token, hosts)
+    assert not await ping(owner_store, owner_token)
+    assert smtp_server.commands == []
+    await set_allowed_hosts(client, token, [])
+    await set_owner_hosts(client, token, owner["id"], hosts)
+    assert await ping(owner_store, owner_token)
+    assert not await ping(other_store, other_token)
+    async with outbound.session() as session:
+        with pytest.raises(aiohttp.ClientOSError):
+            await session.get(f"http://localhost:{smtp_server.port}/")
+    await set_owner_hosts(client, token, owner["id"], [])
+    assert not await ping(owner_store, owner_token)
+
+
+class PaymentDaemon:
+    coin_name = "BTC"
+    is_eth_based = False
+
+
+async def test_buyer_emails_use_the_owner_allowed_hosts(
+    client: TestClient, token: str, smtp_server: FakeSMTPServer, app: FastAPI
+) -> None:
+    payment_processor = await app.state.dishka_container.get(PaymentProcessor)
+    me = (await client.get("/users/me", headers=auth(token))).json()
+    await set_owner_hosts(client, token, me["id"], [f"localhost:{smtp_server.port}"])
+    email_settings = smtp_settings("localhost", smtp_server.port).model_dump()
+    store = await create_store(client, token, {"email_settings": email_settings})
+    product = await create_product(client, token, store_id=store["id"])
+    invoice = await create_invoice(client, token, store_id=store["id"], products=[product["id"]], buyer_email="b@test.com")
+    lookup_field = invoice["payments"][0]["lookup_field"]
+    await payment_processor.new_payment_handler(PaymentDaemon(), None, lookup_field, "complete", None)
+    assert smtp_server.commands.count("DATA") == 1
+    resp = await client.post(
+        f"/invoices/{invoice['id']}/refunds",
+        json={"amount": 1, "currency": "USD", "send_email": True},
+        headers=auth(token),
+    )
+    assert resp.status_code == 200
+    assert smtp_server.commands.count("DATA") == 2
+
+
+async def test_owner_allowed_hosts_of_missing_owners_are_empty(app: FastAPI) -> None:
+    async with app.state.dishka_container(scope=Scope.REQUEST) as container:
+        user_repository = await container.get(UserRepository)
+        assert await user_repository.get_allowed_internal_hosts(None) == []
+        assert await user_repository.get_allowed_internal_hosts("missing") == []
+
+
 async def test_server_email_does_not_need_allowed_hosts(client: TestClient, token: str, smtp_server: FakeSMTPServer) -> None:
     email_settings = smtp_settings("localhost", smtp_server.port).model_dump()
-    headers = {"Authorization": f"Bearer {token}"}
+    headers = auth(token)
     store = await create_store(client, token, {"email_settings": email_settings})
     assert (await client.get(f"/stores/{store['id']}/ping", headers=headers)).json() is False
     assert smtp_server.commands == []
@@ -208,11 +324,12 @@ async def test_server_email_does_not_need_allowed_hosts(client: TestClient, toke
     assert (await client.get(f"/stores/{store['id']}/ping", headers=headers)).json() is False
 
 
-async def test_server_email_times_out(mocker: pytest_mock.MockerFixture, outbound: OutboundService) -> None:
+async def test_server_email_times_out(mocker: pytest_mock.MockerFixture) -> None:
     mocker.patch("api.services.email.SMTP_TIMEOUT", 0.05)
     mocker.patch("api.services.email.socket.create_connection", lambda *_: time.sleep(0.5))
     started = time.monotonic()
-    assert not await ServerEmailService(outbound).check_ping(smtp_settings("smtp.example.com", 25))
+    mailer = EmailService().for_server(Policy(email_settings=smtp_settings("smtp.example.com", 25)))
+    assert not await mailer.check_ping()
     assert time.monotonic() - started < 0.4
 
 
@@ -231,7 +348,7 @@ async def test_configurator_does_not_use_allowed_hosts(
     ssh_connect.assert_not_called()
 
 
-async def test_denials_of_the_service_name_the_policy(
+async def test_denials_name_the_list_to_edit(
     start_server: ServerFactory, outbound: OutboundService, caplog: pytest.LogCaptureFixture
 ) -> None:
     caplog.set_level(logging.WARNING, "outbound_guard")
@@ -245,6 +362,10 @@ async def test_denials_of_the_service_name_the_policy(
             await session.get(f"http://localhost:{port}/")
     assert "allowed_internal_hosts" in caplog.text
     assert "allowed_internal_hosts" not in str(e.value)
+    with pytest.raises(EmailSendError) as email_error:
+        await store_mailer(smtp_settings("localhost", port), []).send("buyer@example.com", "subject", "body")
+    assert "store owner's allowed internal hosts" in caplog.text
+    assert "allowed internal hosts" not in str(email_error.value)
 
 
 async def test_send_request_contract(start_server: ServerFactory, mocker: pytest_mock.MockerFixture) -> None:
@@ -324,25 +445,20 @@ def smtp_settings(host: str, port: int, auth_mode: str = "none") -> EmailSetting
     )
 
 
-async def test_smtp_connects_only_to_checked_addresses(
-    smtp_server: FakeSMTPServer, outbound: OutboundService, client: TestClient, token: str
-) -> None:
-    email_service = EmailService(outbound)
+async def test_smtp_connects_only_to_checked_addresses(smtp_server: FakeSMTPServer) -> None:
     for host in ("127.0.0.1", "localhost", "127.1", "2130706433"):
-        assert not await email_service.check_ping(smtp_settings(host, smtp_server.port))
+        assert not await store_mailer(smtp_settings(host, smtp_server.port), []).check_ping()
     assert smtp_server.commands == []
-    await set_allowed_hosts(client, token, [f"localhost:{smtp_server.port}"])
-    assert await email_service.check_ping(smtp_settings("localhost", smtp_server.port))
+    assert await store_mailer(smtp_settings("localhost", smtp_server.port), [f"localhost:{smtp_server.port}"]).check_ping()
     assert "VRFY" in smtp_server.commands
 
 
-async def test_smtp_keeps_the_hostname_for_tls(outbound: OutboundService, client: TestClient, token: str) -> None:
+async def test_smtp_keeps_the_hostname_for_tls() -> None:
     server_names: list[str | None] = []
     context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     context.sni_callback = lambda _, name, __: server_names.append(name)
     server = await asyncio.start_server(lambda _, writer: writer.close(), "127.0.0.1", 0, ssl=context)
     port = server.sockets[0].getsockname()[1]
-    await set_allowed_hosts(client, token, ["localhost"])
-    assert not await EmailService(outbound).check_ping(smtp_settings("localhost", port, "ssl/tls"))
+    assert not await store_mailer(smtp_settings("localhost", port, "ssl/tls"), ["localhost"]).check_ping()
     server.close()
     assert server_names == ["localhost"]

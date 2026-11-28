@@ -18,7 +18,7 @@ from api.services.crud.templates import TemplateService
 from api.services.crud.tokens import TokenService
 from api.services.crud.users import UserService
 from api.services.crud.wallets import WalletService
-from api.services.email import EmailService, ServerEmailService
+from api.services.email import EmailService
 from api.services.exchange_rate import ExchangeRateService
 from api.services.ext.configurator import ConfiguratorService
 from api.services.ext.tor import TorService
@@ -88,7 +88,6 @@ class ServicesProvider(Provider):
         ServerManager,
         HostAgentService,
         EmailService,
-        ServerEmailService,
         OutboundService,
         RendererClient,
         scope=Scope.APP,  # for tests isolation

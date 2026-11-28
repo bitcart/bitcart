@@ -1,9 +1,10 @@
 from datetime import datetime
 from decimal import Decimal
-from typing import Any
+from typing import Annotated, Any
 
 from fastapi import HTTPException
-from pydantic import field_validator
+from outbound_guard import parse_destination
+from pydantic import AfterValidator, field_validator
 
 from api.schemas.base import DecimalAsString, Schema
 from api.types import Money, StrEnum
@@ -13,6 +14,21 @@ class SMTPAuthMode(StrEnum):
     NONE = "none"
     SSL_TLS = "ssl/tls"
     STARTTLS = "starttls"
+
+
+def validate_internal_hosts(hosts: list[str]) -> list[str]:
+    hosts = list(dict.fromkeys(host.strip() for host in hosts))
+    for host in hosts:
+        try:
+            parse_destination(host)
+        except ValueError:
+            raise HTTPException(
+                422, f"Invalid internal host {host!r}. Expected a name or an IP, optionally with a port."
+            ) from None
+    return hosts
+
+
+InternalHosts = Annotated[list[str], AfterValidator(validate_internal_hosts)]
 
 
 class CaptchaType(StrEnum):

@@ -191,7 +191,7 @@ class TestUsers(ViewTestMixin):
     name = "users"
     create_auth = False
     tests = read_tests("tests/fixtures/data/users.json")
-    computed_fields = {"totp_url"}.union(ViewTestMixin.computed_fields)
+    computed_fields = {"totp_url", "allowed_internal_hosts"}.union(ViewTestMixin.computed_fields)
 
 
 class TestWallets(ViewTestMixin):

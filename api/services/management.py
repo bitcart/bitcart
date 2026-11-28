@@ -13,7 +13,7 @@ from api.ext.agent import AgentError
 from api.logging import get_logger
 from api.schemas.policies import Policy
 from api.services.coins import CoinService
-from api.services.email import ServerEmailService
+from api.services.email import EmailService
 from api.services.host_agent import HostAgentService, error_response
 from api.services.plugin_registry import PluginRegistry
 from api.services.settings import SettingService
@@ -30,7 +30,7 @@ class ManagementService:
         coin_service: CoinService,
         plugin_registry: PluginRegistry,
         host_agent: HostAgentService,
-        email_service: ServerEmailService,
+        email_service: EmailService,
     ) -> None:
         self.settings = settings
         self.setting_service = setting_service
@@ -78,7 +78,7 @@ class ManagementService:
 
     async def test_server_email(self) -> bool:
         policy = await self.setting_service.get_setting(Policy)
-        return await self.email_service.check_ping(policy.email_settings)
+        return await self.email_service.for_server(policy).check_ping()
 
     async def get_log_contents(self, log: str) -> str:
         if not self.settings.log_file:

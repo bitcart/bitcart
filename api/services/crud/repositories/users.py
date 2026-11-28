@@ -19,3 +19,9 @@ class UserRepository(CRUDRepository[models.User]):
                 select(models.User).where(models.User.is_superuser.is_(True)).order_by(models.User.created.asc()).limit(1)
             )
         ).scalar()
+
+    async def get_allowed_internal_hosts(self, user_id: str | None) -> list[str]:
+        if user_id is None:
+            return []
+        query = select(models.User.allowed_internal_hosts).where(models.User.id == user_id)
+        return await self.session.scalar(query) or []

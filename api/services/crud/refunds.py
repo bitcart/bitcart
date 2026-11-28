@@ -15,7 +15,7 @@ from api.schemas.tasks import SendNotificationMessage
 from api.services.crud import CRUDService
 from api.services.crud.invoices import InvoiceService
 from api.services.crud.payouts import PayoutService
-from api.services.crud.repositories import RefundRepository
+from api.services.crud.repositories import RefundRepository, UserRepository
 from api.services.crud.stores import StoreService
 from api.services.crud.templates import TemplateService
 from api.services.email import EmailService
@@ -38,6 +38,7 @@ class RefundService(CRUDService[models.Refund]):
         template_service: TemplateService,
         payout_service: PayoutService,
         email_service: EmailService,
+        user_repository: UserRepository,
         broker: TasksBroker,
         plugin_registry: PluginRegistry,
         settings: Settings,
@@ -48,6 +49,7 @@ class RefundService(CRUDService[models.Refund]):
         self.template_service = template_service
         self.payout_service = payout_service
         self.email_service = email_service
+        self.user_repository = user_repository
         self.broker = broker
         self.plugin_registry = plugin_registry
         self.settings = settings
@@ -84,13 +86,10 @@ class RefundService(CRUDService[models.Refund]):
         message = await self.plugin_registry.apply_filters(
             "refund_customer_message", message, store, invoice, refund, refund_url
         )
+        owner_hosts = await self.user_repository.get_allowed_internal_hosts(store.user_id)
         try:
-            await self.email_service.send(
-                store.email_settings,
-                buyer_email,
-                f"Refund for invoice {invoice.id}",
-                message.text,
-                html=message.is_html,
+            await self.email_service.for_store(store, owner_hosts).send(
+                buyer_email, f"Refund for invoice {invoice.id}", message.text, html=message.is_html
             )
         except EmailSendError as e:
             logger.warning(f"Refund {refund.id}: failed to email the buyer: {get_exception_message(e)}")

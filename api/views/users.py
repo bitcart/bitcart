@@ -18,7 +18,7 @@ from api.schemas.auth import (
     VerifyEmailData,
     VerifyTOTP,
 )
-from api.schemas.users import CreateUser, DisplayUser, DisplayUserWithToken, UpdateUser, UserPreferences
+from api.schemas.users import CreateUser, DisplayUser, DisplayUserWithToken, ManagedUser, UpdateUser, UserPreferences
 from api.services.auth import AuthService
 from api.services.crud.users import UserService
 from api.types import PasswordHasherProtocol
@@ -166,7 +166,7 @@ async def get_stats(
 create_crud_router(
     CreateUser,
     UpdateUser,
-    DisplayUser,
+    ManagedUser,
     UserService,
     router=router,
     disabled_endpoints={"create": True},

@@ -30,7 +30,7 @@ from api.services.crud import CRUDService, ModelDictT
 from api.services.crud.repositories import UserRepository
 from api.services.crud.templates import TemplateService
 from api.services.crud.tokens import TokenService
-from api.services.email import ServerEmailService
+from api.services.email import EmailService
 from api.services.plugin_registry import PluginRegistry
 from api.services.settings import SettingService
 from api.settings import Settings
@@ -57,7 +57,7 @@ class UserService(CRUDService[models.User]):
         auth_service: AuthService,
         password_hasher: PasswordHasherProtocol,
         template_service: TemplateService,
-        email_service: ServerEmailService,
+        email_service: EmailService,
         plugin_registry: PluginRegistry,
     ) -> None:
         super().__init__(session, container)
@@ -175,7 +175,7 @@ class UserService(CRUDService[models.User]):
         reset_url = utils.routing.get_redirect_url(next_url, code=token)
         message = await self.template_service.render(template_name, email=user.email, link=reset_url, code=token)
         await self.redis_pool.set(f"{redis_key}:{token_hash}", user.id, ex=expire_time)
-        await self.email_service.send(policy.email_settings, user.email, email_title, message.text, html=message.is_html)
+        await self.email_service.for_server(policy).send(user.email, email_title, message.text, html=message.is_html)
         await self.plugin_registry.run_hook(f"{hook_name}_requested", user, token)
 
     async def reset_user_password(self, user: models.User) -> None:

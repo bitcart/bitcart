@@ -15,6 +15,7 @@ from api.schemas.stores import (
     StoreThemeSettings,
     UpdateStore,
 )
+from api.services.crud.repositories import UserRepository
 from api.services.crud.stores import StoreService
 from api.services.email import EmailService
 from api.utils.routing import create_crud_router
@@ -42,11 +43,13 @@ async def get_item(
 async def ping_email(
     store_service: FromDishka[StoreService],
     email_service: FromDishka[EmailService],
+    user_repository: FromDishka[UserRepository],
     model_id: str,
     user: models.User = Security(utils.authorization.auth_dependency, scopes=[AuthScopes.STORE_MANAGEMENT]),
 ) -> Any:
     model = await store_service.get(model_id, user)
-    return await email_service.check_ping(model.email_settings)
+    owner_hosts = await user_repository.get_allowed_internal_hosts(model.user_id)
+    return await email_service.for_store(model, owner_hosts).check_ping()
 
 
 # NOTE: to_optional not required here because settings have default values set everywhere

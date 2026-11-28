@@ -42,6 +42,7 @@ from api.services.crud.repositories import (
     PaymentMethodRepository,
     ProductRepository,
     StoreRepository,
+    UserRepository,
     WalletRepository,
 )
 from api.services.crud.templates import TemplateService
@@ -70,6 +71,7 @@ class InvoiceService(CRUDService[models.Invoice]):
         payment_method_repository: PaymentMethodRepository,
         store_repository: StoreRepository,
         wallet_repository: WalletRepository,
+        user_repository: UserRepository,
         product_repository: ProductRepository,
         product_service: ProductService,
         coin_service: CoinService,
@@ -87,6 +89,7 @@ class InvoiceService(CRUDService[models.Invoice]):
         self.payment_method_repository = payment_method_repository
         self.store_repository = store_repository
         self.wallet_repository = wallet_repository
+        self.user_repository = user_repository
         self.product_repository = product_repository
         self.product_service = product_service
         self.coin_service = coin_service
@@ -765,13 +768,10 @@ class InvoiceService(CRUDService[models.Invoice]):
         )
         logger.debug(f"Invoice {invoice.id} email notification: rendered final template:\n{message.text}")
         await self.plugin_registry.run_hook("invoice_email", invoice, message)
+        owner_hosts = await self.user_repository.get_allowed_internal_hosts(store.user_id)
         try:
-            await self.email_service.send(
-                store.email_settings,
-                buyer_email,
-                DEFAULT_SENDMAIL_SUBJECT,
-                message.text,
-                html=message.is_html,
+            await self.email_service.for_store(store, owner_hosts).send(
+                buyer_email, DEFAULT_SENDMAIL_SUBJECT, message.text, html=message.is_html
             )
         except EmailSendError as e:
             logger.warning(f"Invoice {invoice.id}: failed to email the buyer: {get_exception_message(e)}")
