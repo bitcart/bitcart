@@ -153,7 +153,7 @@ class Logging[RendererType]:
 
     @classmethod
     def get_third_party_loggers(cls, settings: Settings) -> list[str]:
-        loggers_list = ["asyncio"] + cls.debug_loggers(settings)
+        loggers_list = ["asyncio", "outbound_guard"] + cls.debug_loggers(settings)
         loggers_list.append("uvicorn" if not settings.is_production() else "uvicorn.error")
         return loggers_list
 

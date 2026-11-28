@@ -2363,15 +2363,16 @@ def make_addrinfo(*addresses: str) -> list[Any]:
 
 
 @pytest.fixture
-def fake_dns(mocker: pytest_mock.MockerFixture) -> None:
-    real_getaddrinfo = socket.getaddrinfo
+async def fake_dns(mocker: pytest_mock.MockerFixture) -> None:
+    loop = asyncio.get_running_loop()
+    real_getaddrinfo = loop.getaddrinfo
 
-    def getaddrinfo(host: str, *args: Any, **kwargs: Any) -> list[Any]:
+    async def getaddrinfo(host: str, *args: Any, **kwargs: Any) -> list[Any]:
         if host not in FAKE_DNS:
-            return real_getaddrinfo(host, *args, **kwargs)
+            return await real_getaddrinfo(host, *args, **kwargs)
         return make_addrinfo(*FAKE_DNS[host])
 
-    mocker.patch("socket.getaddrinfo", getaddrinfo)
+    mocker.patch.object(loop, "getaddrinfo", getaddrinfo)
 
 
 @pytest.mark.usefixtures("fake_dns")
@@ -2446,13 +2447,20 @@ async def test_get_server_settings(client: TestClient, token: str, mocker: pytes
     assert (await client.post("/configurator/server-settings")).status_code == 401
     for host in INTERNAL_HOSTS:
         assert (await client.post("/configurator/server-settings", json={"host": host})).status_code == 422
+    dialled: list[tuple[socket.socket, Any]] = []
+
+    async def sock_connect(sock: socket.socket, address: Any) -> None:
+        dialled.append((sock, address))
+
+    mocker.patch.object(asyncio.get_running_loop(), "sock_connect", sock_connect)
     connect = mocker.patch("paramiko.SSHClient.connect", side_effect=paramiko.AuthenticationException)
     resp = await client.post("/configurator/server-settings", json=SSH_SETTINGS)
     assert resp.status_code == 200
     assert resp.json() == static_data.FALLBACK_SERVER_SETTINGS
     connect.assert_called_once()
-    assert connect.call_args.kwargs["hostname"] == PUBLIC_IP
-    assert connect.call_args.kwargs["port"] == 22
+    sock = connect.call_args.kwargs["sock"]
+    assert dialled == [(sock, (PUBLIC_IP, 0))]
+    assert sock.fileno() == -1
     await client.post("/manage/policies", json={"allow_anonymous_configurator": False}, headers=headers)
     assert (await client.post("/configurator/server-settings", json=SSH_SETTINGS)).status_code == 422
     assert connect.call_count == 1
@@ -2463,15 +2471,16 @@ async def test_get_server_settings(client: TestClient, token: str, mocker: pytes
 
 
 async def test_get_server_settings_dns_rebinding(client: TestClient, mocker: pytest_mock.MockerFixture) -> None:
-    real_getaddrinfo = socket.getaddrinfo
+    loop = asyncio.get_running_loop()
+    real_getaddrinfo = loop.getaddrinfo
     answers = [make_addrinfo(PUBLIC_IP), make_addrinfo("127.0.0.1")]
 
-    def getaddrinfo(host: str, *args: Any, **kwargs: Any) -> list[Any]:
+    async def getaddrinfo(host: str, *args: Any, **kwargs: Any) -> list[Any]:
         if host != "rebind.example.com":
-            return real_getaddrinfo(host, *args, **kwargs)
+            return await real_getaddrinfo(host, *args, **kwargs)
         return answers.pop(0)
 
-    mocker.patch("socket.getaddrinfo", getaddrinfo)
+    mocker.patch.object(loop, "getaddrinfo", getaddrinfo)
     connect = mocker.patch("paramiko.SSHClient.connect")
     resp = await client.post("/configurator/server-settings", json={"host": "rebind.example.com"})
     assert resp.status_code == 200
