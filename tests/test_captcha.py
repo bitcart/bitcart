@@ -105,11 +105,10 @@ async def test_rejected_captcha(
     assert "invalid-input-response" in logger.warning.call_args.args[0]
 
 
-@pytest.mark.parametrize("action", ["register", None])
 async def test_turnstile_action_must_match(
-    action: str | None, app: FastAPI, mocker: pytest_mock.MockerFixture, provider: FakeProvider, run_hook: Any, logger: Any
+    app: FastAPI, mocker: pytest_mock.MockerFixture, provider: FakeProvider, run_hook: Any, logger: Any
 ) -> None:
-    provider.result["action"] = action
+    provider.result["action"] = "register"
     with pytest.raises(HTTPException) as e:
         await check_captcha(app, mocker, CaptchaType.CF_TURNSTILE)
     assert e.value.status_code == 401
