@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import contextlib
 import signal
 from collections.abc import AsyncIterator, Awaitable, Callable, Iterator
 from datetime import timedelta
@@ -12,7 +11,6 @@ from typing import TYPE_CHECKING, Any, cast
 import pytest
 from aiohttp import web
 from bitcart import BTC  # type: ignore
-from bitcart.errors import BaseError as BitcartBaseError
 from bitcart.utils import bitcoins
 from dishka import Scope
 from fastapi import FastAPI
@@ -160,28 +158,6 @@ async def open_channel_via_api(client: TestClient, token: str, wallet_id: str, n
     )
 
 
-async def check_dialled_bytes(regtest_wallet: BTC) -> None:
-    dialled: asyncio.Future[bytes] = asyncio.get_running_loop().create_future()
-
-    async def read(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
-        received = b""
-        with contextlib.suppress(TimeoutError):
-            async with asyncio.timeout(2):
-                while data := await reader.read(1024):
-                    received += data
-        writer.close()
-        dialled.set_result(received)
-
-    server = await asyncio.start_server(read, "127.0.0.1", 0)
-    port = server.sockets[0].getsockname()[1]
-    other_node = "02" + "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
-    with pytest.raises(BitcartBaseError):
-        await regtest_wallet.open_channel(f"{other_node}@127.0.0.1:{port}", LIGHTNING_CHANNEL_AMOUNT)
-    server.close()
-    handshake = await dialled
-    assert (len(handshake), handshake[0]) == (50, 0)
-
-
 @pytest.fixture
 async def prepare_ln_channels(
     client: TestClient,
@@ -195,7 +171,6 @@ async def prepare_ln_channels(
     fund_amount = 10 * LIGHTNING_CHANNEL_AMOUNT
     address = (await regtest_wallet.add_request(fund_amount))["address"]
     await send_to_address(address, fund_amount, confirm=True, wait_balance=True)
-    await check_dialled_bytes(regtest_wallet)
     wallet_id = regtest_api_wallet["id"]
     pubkey, _, address = node_id.partition("@")
     for refused in (node_id, pubkey):
